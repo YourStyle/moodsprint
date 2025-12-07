@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Metrics - MoodSprint Admin{% endblock %}
+{% block header %}Product Metrics{% endblock %}
+
+{% block content %}
+<!-- Key Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">D1 Retention</p>
+        <p class="text-3xl font-bold text-gray-900">{{ day1_retention }}%</p>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">Avg Session</p>
+        <p class="text-3xl font-bold text-gray-900">{{ avg_session }} min</p>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">Task Completion</p>
+        <p class="text-3xl font-bold text-gray-900">{{ completion_rate }}%</p>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">Avg XP/User</p>
+        <p class="text-3xl font-bold text-gray-900">{{ avg_xp | int }}</p>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <p class="text-sm text-gray-500">Avg Streak</p>
+        <p class="text-3xl font-bold text-gray-900">{{ avg_streak }} days</p>
+    </div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Daily Active Users (30 days)</h3>
+        <canvas id="dauChart" height="200"></canvas>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Tasks Completed (30 days)</h3>
+        <canvas id="tasksChart" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Focus Time (30 days)</h3>
+        <canvas id="focusChart" height="200"></canvas>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">New Users (30 days)</h3>
+        <canvas id="newUsersChart" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Distribution Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Mood Distribution</h3>
+        <canvas id="moodChart" height="200"></canvas>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Energy Distribution</h3>
+        <canvas id="energyChart" height="200"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dailyData = {{ daily_metrics | tojson }};
+    const moodData = {{ mood_distribution | tojson }};
+    const energyData = {{ energy_distribution | tojson }};
+
+    const moodLabels = ['Very Low', 'Low', 'Neutral', 'Good', 'Great'];
+    const energyLabels = ['Exhausted', 'Tired', 'Normal', 'Energized', 'Peak'];
+
+    // DAU Chart
+    new Chart(document.getElementById('dauChart'), {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [{
+                label: 'DAU',
+                data: dailyData.map(d => d.active_users),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Tasks Chart
+    new Chart(document.getElementById('tasksChart'), {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [{
+                label: 'Tasks',
+                data: dailyData.map(d => d.tasks_completed),
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Focus Chart
+    new Chart(document.getElementById('focusChart'), {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [{
+                label: 'Minutes',
+                data: dailyData.map(d => d.focus_minutes),
+                backgroundColor: 'rgb(168, 85, 247)',
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // New Users Chart
+    new Chart(document.getElementById('newUsersChart'), {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [{
+                label: 'New Users',
+                data: dailyData.map(d => d.new_users),
+                backgroundColor: 'rgb(249, 115, 22)',
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Mood Distribution
+    new Chart(document.getElementById('moodChart'), {
+        type: 'doughnut',
+        data: {
+            labels: moodData.map(d => moodLabels[d.mood - 1] || d.mood),
+            datasets: [{
+                data: moodData.map(d => d.count),
+                backgroundColor: [
+                    'rgb(239, 68, 68)',
+                    'rgb(249, 115, 22)',
+                    'rgb(234, 179, 8)',
+                    'rgb(34, 197, 94)',
+                    'rgb(16, 185, 129)'
+                ]
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // Energy Distribution
+    new Chart(document.getElementById('energyChart'), {
+        type: 'doughnut',
+        data: {
+            labels: energyData.map(d => energyLabels[d.energy - 1] || d.energy),
+            datasets: [{
+                data: energyData.map(d => d.count),
+                backgroundColor: [
+                    'rgb(239, 68, 68)',
+                    'rgb(249, 115, 22)',
+                    'rgb(234, 179, 8)',
+                    'rgb(59, 130, 246)',
+                    'rgb(168, 85, 247)'
+                ]
+            }]
+        },
+        options: { responsive: true }
+    });
+</script>
+{% endblock %}

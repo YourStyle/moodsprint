@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Users - MoodSprint Admin{% endblock %}
+{% block header %}Users{% endblock %}
+
+{% block content %}
+<!-- Search -->
+<div class="mb-6">
+    <form method="GET" class="flex gap-4">
+        <input type="text" name="search" value="{{ search }}" placeholder="Search users..."
+               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Search
+        </button>
+    </form>
+</div>
+
+<!-- Users Table -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">XP</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Streak</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for user in users %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold">
+                            {{ (user.first_name or user.username or '?')[0] | upper }}
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ user.first_name or 'Unknown' }} {{ user.last_name or '' }}
+                            </div>
+                            <div class="text-sm text-gray-500">@{{ user.username or user.telegram_id }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        Lv.{{ user.level or 1 }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ user.xp or 0 }}</td>
+                <td class="px-6 py-4">
+                    {% if user.streak_days %}
+                    <span class="text-orange-500 font-medium">🔥 {{ user.streak_days }}</span>
+                    {% else %}
+                    <span class="text-gray-400">-</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    {{ user.created_at[:10] if user.created_at else '-' }}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                    {{ user.last_activity_date or '-' }}
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <a href="{{ url_for('user_detail', user_id=user.id) }}"
+                       class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        View
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="mt-6 flex justify-center gap-2">
+    {% for p in range(1, total_pages + 1) %}
+    <a href="?page={{ p }}{% if search %}&search={{ search }}{% endif %}"
+       class="px-4 py-2 rounded-lg {% if p == page %}bg-blue-600 text-white{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %}">
+        {{ p }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

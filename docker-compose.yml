@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: moodsprint-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-moodsprint}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodsprint}
+      POSTGRES_DB: ${POSTGRES_DB:-moodsprint}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-moodsprint}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moodsprint-network
+
+  # Flask Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: moodsprint-backend
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - moodsprint-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+    container_name: moodsprint-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+    depends_on:
+      - backend
+    networks:
+      - moodsprint-network
+
+  # Telegram Bot
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: moodsprint-bot
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      WEBAPP_URL: ${WEBAPP_URL:-https://moodsprint.app}
+      ADMIN_IDS: ${ADMIN_IDS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - moodsprint-network
+
+  # Admin Panel
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: moodsprint-admin
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${ADMIN_SECRET_KEY:-change-me-in-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - moodsprint-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: moodsprint-nginx
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+      - "${ADMIN_PORT:-5001}:5001"
+    depends_on:
+      - frontend
+      - backend
+      - admin
+    networks:
+      - moodsprint-network
+
+networks:
+  moodsprint-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
