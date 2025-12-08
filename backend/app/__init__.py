@@ -44,8 +44,7 @@ def create_app(config_name: str | None = None) -> Flask:
     # Shell context
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import (Achievement, FocusSession, MoodCheck, Subtask,
-                                Task, User)
+        from app.models import Achievement, FocusSession, MoodCheck, Subtask, Task, User
 
         return {
             "db": db,

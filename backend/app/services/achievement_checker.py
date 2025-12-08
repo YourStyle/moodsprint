@@ -3,8 +3,7 @@
 from datetime import date, datetime
 
 from app import db
-from app.models import (Achievement, FocusSession, MoodCheck, Task, User,
-                        UserAchievement)
+from app.models import Achievement, FocusSession, MoodCheck, Task, User, UserAchievement
 from app.models.focus_session import FocusSessionStatus
 from app.models.task import TaskStatus
 

@@ -1,14 +1,18 @@
 """Authentication API endpoints."""
 
 from flask import request
-from flask_jwt_extended import (create_access_token, get_jwt_identity,
-                                jwt_required)
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
 from app.models import User
-from app.utils import (parse_telegram_user, success_response, unauthorized,
-                       validate_telegram_data, validation_error)
+from app.utils import (
+    parse_telegram_user,
+    success_response,
+    unauthorized,
+    validate_telegram_data,
+    validation_error,
+)
 
 
 @api_bp.route("/auth/telegram", methods=["POST"])

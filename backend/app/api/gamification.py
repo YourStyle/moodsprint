@@ -8,8 +8,15 @@ from sqlalchemy import func
 
 from app import db
 from app.api import api_bp
-from app.models import (Achievement, FocusSession, MoodCheck, Subtask, Task,
-                        User, UserAchievement)
+from app.models import (
+    Achievement,
+    FocusSession,
+    MoodCheck,
+    Subtask,
+    Task,
+    User,
+    UserAchievement,
+)
 from app.models.achievement import get_level_name
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
