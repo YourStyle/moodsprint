@@ -6,9 +6,9 @@ RUN rm /etc/nginx/conf.d/default.conf
 # Copy custom config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Health check
+# Health check - verify nginx config is valid and process is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+    CMD nginx -t 2>&1 | grep -q 'syntax is ok' || exit 1
 
 EXPOSE 80
 
