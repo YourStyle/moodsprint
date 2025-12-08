@@ -8,7 +8,7 @@ import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { EnergySlider } from '@/components/mood/EnergySlider';
 import { TaskCard } from '@/components/tasks';
-import { XPBar, StreakBadge, DailyGoals } from '@/components/gamification';
+import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, gamificationService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
@@ -188,6 +188,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen p-4 space-y-6 safe-area-top safe-area-bottom">
+      {/* Daily Bonus Modal */}
+      <DailyBonus />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

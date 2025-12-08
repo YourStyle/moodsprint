@@ -22,6 +22,7 @@ class User(db.Model):
     streak_days = db.Column(db.Integer, default=0, nullable=False)
     longest_streak = db.Column(db.Integer, default=0, nullable=False)
     last_activity_date = db.Column(db.Date, nullable=True)
+    last_daily_bonus_date = db.Column(db.Date, nullable=True)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

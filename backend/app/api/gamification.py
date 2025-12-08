@@ -233,6 +233,82 @@ def get_daily_goals():
     )
 
 
+@api_bp.route("/daily-bonus", methods=["POST"])
+@jwt_required()
+def claim_daily_bonus():
+    """Claim daily login bonus."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    today = date.today()
+
+    # Check if already claimed today
+    if user.last_daily_bonus_date == today:
+        return success_response(
+            {
+                "claimed": False,
+                "message": "Бонус уже получен сегодня",
+                "next_bonus_at": (
+                    datetime.combine(today, datetime.min.time())
+                    + __import__("datetime").timedelta(days=1)
+                ).isoformat(),
+            }
+        )
+
+    # Calculate bonus based on streak
+    base_bonus = 10
+    streak_multiplier = min(user.streak_days, 7)  # Max 7x multiplier
+    bonus_xp = base_bonus + (streak_multiplier * 5)  # 10 + (streak * 5)
+
+    # Award bonus
+    xp_result = user.add_xp(bonus_xp)
+    user.last_daily_bonus_date = today
+
+    db.session.commit()
+
+    return success_response(
+        {
+            "claimed": True,
+            "xp_earned": bonus_xp,
+            "streak_bonus": streak_multiplier * 5,
+            "streak_days": user.streak_days,
+            "total_xp": user.xp,
+            "level_up": xp_result["level_up"],
+            "new_level": xp_result["new_level"] if xp_result["level_up"] else None,
+        }
+    )
+
+
+@api_bp.route("/daily-bonus/status", methods=["GET"])
+@jwt_required()
+def get_daily_bonus_status():
+    """Check if daily bonus is available."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    today = date.today()
+    can_claim = user.last_daily_bonus_date != today
+
+    # Calculate potential bonus
+    base_bonus = 10
+    streak_multiplier = min(user.streak_days, 7)
+    potential_bonus = base_bonus + (streak_multiplier * 5)
+
+    return success_response(
+        {
+            "can_claim": can_claim,
+            "potential_xp": potential_bonus if can_claim else 0,
+            "streak_days": user.streak_days,
+            "streak_multiplier": streak_multiplier,
+            "last_claimed": (
+                user.last_daily_bonus_date.isoformat()
+                if user.last_daily_bonus_date
+                else None
+            ),
+        }
+    )
+
+
 @api_bp.route("/leaderboard", methods=["GET"])
 @jwt_required()
 def get_leaderboard():
