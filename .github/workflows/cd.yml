@@ -104,7 +104,7 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "nginx/nginx.ssl.conf,docker-compose.yml,docker-compose.prod.yml"
+          source: "nginx/nginx.staging.conf,docker-compose.yml,docker-compose.prod.yml"
           target: /opt/moodsprint
           overwrite: true
 
@@ -117,6 +117,9 @@ jobs:
           script: |
             cd /opt/moodsprint
 
+            # Use staging nginx config
+            cp nginx/nginx.staging.conf nginx/nginx.ssl.conf
+
             # Pull latest images
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 
@@ -127,7 +130,7 @@ jobs:
             docker exec moodsprint-nginx nginx -s reload || true
 
             # Run migrations
-            docker compose exec -T backend flask db upgrade
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend flask db upgrade || true
 
             # Cleanup old images
             docker image prune -af --filter "until=24h"
