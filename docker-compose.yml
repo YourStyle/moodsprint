@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
@@ -25,7 +23,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: moodsprint-backend
     restart: unless-stopped
     environment:
       FLASK_ENV: ${FLASK_ENV:-production}
