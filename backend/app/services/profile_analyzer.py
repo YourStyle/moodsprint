@@ -130,9 +130,9 @@ Return ONLY valid JSON, no other text.
             "main_challenges": challenges,
             "recommended_session_duration": session_duration,
             "personalized_tips": [
-                "Start with your easiest task to build momentum",
-                "Take breaks every 25-30 minutes",
-                "Celebrate small wins along the way",
+                "Начни с самой простой задачи, чтобы набрать темп",
+                "Делай перерывы каждые 25-30 минут",
+                "Отмечай маленькие победы по ходу дела",
             ],
             "motivation_style": "gentle",
         }
@@ -144,10 +144,10 @@ Return ONLY valid JSON, no other text.
         _ = profile.get("work_style", "flexible")
 
         messages = {
-            "morning_bird": "Early bird gets the worm! Let's make your mornings count.",
-            "afternoon_peak": "Afternoon power hours ahead! Let's plan for peak performance.",
-            "night_owl": "Night owl mode activated! The quiet hours are yours.",
-            "steady_pace": "Consistent wins the race! Let's build sustainable habits.",
+            "morning_bird": "Кто рано встаёт, тому бог даёт! Используй утро по максимуму.",
+            "afternoon_peak": "Впереди самые продуктивные часы! Планируй на пике энергии.",
+            "night_owl": "Режим совы активирован! Тихие часы — твоя сила.",
+            "steady_pace": "Стабильность — залог успеха! Строим устойчивые привычки.",
         }
 
-        return messages.get(productivity_type, "Let's make today productive!")
+        return messages.get(productivity_type, "Сделаем этот день продуктивным!")
