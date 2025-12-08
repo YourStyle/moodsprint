@@ -35,10 +35,16 @@ function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Try to authenticate
         const initData = getTelegramInitData();
+        const isTg = isTelegramWebApp();
+
+        console.log('[Auth] isTelegramWebApp:', isTg);
+        console.log('[Auth] initData exists:', !!initData);
 
         if (initData) {
           // Authenticate with Telegram
+          console.log('[Auth] Authenticating with Telegram...');
           const result = await authService.authenticateTelegram(initData);
+          console.log('[Auth] Result:', result.success, result.error);
           if (result.success && result.data) {
             setUser(result.data.user);
           }
