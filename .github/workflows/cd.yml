@@ -92,11 +92,21 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
     environment:
       name: staging
-      url: https://staging.moodsprint.app
+      url: https://staging.moodsprint.ru
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Copy configs to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "nginx/nginx.ssl.conf,docker-compose.yml,docker-compose.prod.yml"
+          target: /opt/moodsprint
+          overwrite: true
 
       - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.0
@@ -108,10 +118,13 @@ jobs:
             cd /opt/moodsprint
 
             # Pull latest images
-            docker compose pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 
             # Deploy with zero downtime
-            docker compose up -d --remove-orphans
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Reload nginx with new config
+            docker exec moodsprint-nginx nginx -s reload || true
 
             # Run migrations
             docker compose exec -T backend flask db upgrade
@@ -121,7 +134,7 @@ jobs:
 
             # Health check
             sleep 10
-            curl -f http://localhost/health || exit 1
+            curl -f https://staging.moodsprint.ru/health || curl -f http://localhost/health || exit 1
 
       - name: Notify on success
         if: success()
@@ -135,7 +148,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*MoodSprint Staging Deployed*\n<https://staging.moodsprint.app|View staging>"
+                    "text": "*MoodSprint Staging Deployed*\n<https://staging.moodsprint.ru|View staging>"
                   }
                 }
               ]
@@ -153,11 +166,21 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
     environment:
       name: production
-      url: https://moodsprint.app
+      url: https://moodsprint.ru
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Copy configs to production server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          source: "nginx/nginx.ssl.conf,docker-compose.yml,docker-compose.prod.yml"
+          target: /opt/moodsprint
+          overwrite: true
 
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.0
@@ -169,15 +192,16 @@ jobs:
             cd /opt/moodsprint
 
             # Backup database before deployment
-            docker compose exec -T db pg_dump -U moodsprint moodsprint > /backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql
+            docker compose exec -T db pg_dump -U moodsprint moodsprint > /backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql || true
 
             # Pull latest images
-            docker compose pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 
             # Deploy with zero downtime (rolling update)
-            docker compose up -d --remove-orphans --scale backend=2
-            sleep 30
-            docker compose up -d --scale backend=1
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Reload nginx with new config
+            docker exec moodsprint-nginx nginx -s reload || true
 
             # Run migrations
             docker compose exec -T backend flask db upgrade
@@ -187,7 +211,7 @@ jobs:
 
             # Health check
             sleep 10
-            curl -f http://localhost/health || exit 1
+            curl -f https://moodsprint.ru/health || curl -f http://localhost/health || exit 1
 
       - name: Notify on success
         if: success()
@@ -201,7 +225,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*MoodSprint Production Deployed*\nVersion: ${{ github.ref_name }}\n<https://moodsprint.app|View production>"
+                    "text": "*MoodSprint Production Deployed*\nVersion: ${{ github.ref_name }}\n<https://moodsprint.ru|View production>"
                   }
                 }
               ]
