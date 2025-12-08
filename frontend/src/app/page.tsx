@@ -15,7 +15,7 @@ import { hapticFeedback } from '@/lib/telegram';
 import type { MoodLevel, EnergyLevel } from '@/domain/types';
 
 function WeekCalendar() {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   const today = new Date();
   const currentDay = today.getDay();
 
@@ -72,7 +72,7 @@ function TaskCardNew({
             {task.estimated_minutes && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <Clock className="w-3 h-3" />
-                <span>{task.estimated_minutes} min</span>
+                <span>{task.estimated_minutes} мин</span>
               </div>
             )}
           </div>
@@ -157,18 +157,18 @@ export default function HomePage() {
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500/30 to-blue-500/30 blur-2xl" />
           <div className="absolute inset-4 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 animate-pulse-glow" />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-3">
-          What do you want to accomplish?
+        <h1 className="text-2xl font-bold text-white mb-3">
+          MoodSprint
         </h1>
         <p className="text-gray-400 mb-8 max-w-xs">
-          Adaptive task management that matches your mood and energy.
+          Это твой личный помощник, который знает, как распределить дела для максимальной эффективности.
         </p>
         <Button variant="gradient" size="lg" className="w-full max-w-xs">
           <Sparkles className="w-5 h-5" />
-          Let Neura Think
+          Открыть в Telegram
         </Button>
         <p className="text-xs text-gray-500 mt-4">
-          Please open this app inside Telegram to continue.
+          Пожалуйста, откройте приложение через Telegram для продолжения.
         </p>
       </div>
     );
@@ -181,9 +181,9 @@ export default function HomePage() {
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return 'Доброе утро';
+    if (hour < 17) return 'Добрый день';
+    return 'Добрый вечер';
   };
 
   return (
@@ -207,7 +207,7 @@ export default function HomePage() {
       {/* Mood Check Section */}
       <Card variant="glass" padding="lg">
         <h2 className="text-lg font-semibold text-white mb-4">
-          How do you feel today?
+          Как ты себя чувствуешь сегодня?
         </h2>
         <EnergySlider value={energyValue} onChange={setEnergyValue} />
       </Card>
@@ -234,13 +234,13 @@ export default function HomePage() {
       {/* Tasks Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-white">Your Tasks</h2>
+          <h2 className="font-semibold text-white">Твои задачи</h2>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push('/tasks')}
           >
-            View all
+            Все
           </Button>
         </div>
 
@@ -261,7 +261,7 @@ export default function HomePage() {
                 <TaskCardNew
                   task={{
                     ...task,
-                    ai_suggestion: index === 0 ? 'Neura prioritized this based on your urgency — let\'s get it started right away.' : undefined,
+                    ai_suggestion: index === 0 ? 'ИИ приоритизировал эту задачу — начни с неё прямо сейчас.' : undefined,
                     estimated_minutes: task.subtasks?.reduce((acc, s) => acc + (s.estimated_minutes || 0), 0) || 30,
                   }}
                   onClick={() => router.push(`/tasks/${task.id}`)}
@@ -272,10 +272,10 @@ export default function HomePage() {
         ) : (
           <Card variant="glass" className="text-center py-8">
             <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">No active tasks</p>
+            <p className="text-gray-400 mb-4">Нет активных задач</p>
             <Button variant="gradient" onClick={() => router.push('/tasks')}>
               <Plus className="w-4 h-4" />
-              Create Task
+              Создать задачу
             </Button>
           </Card>
         )}
@@ -285,7 +285,7 @@ export default function HomePage() {
       <Modal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
-        title="How are you feeling?"
+        title="Как ты себя чувствуешь?"
       >
         <MoodSelector onSubmit={handleMoodSubmit} isLoading={moodLoading} />
       </Modal>

@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'MoodSprint',
-  description: 'Adaptive task management based on your mood',
+  description: 'Адаптивное управление задачами на основе твоего настроения',
   manifest: '/manifest.json',
 };
 
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <head>
         <script src="https://telegram.org/js/telegram-web-app.js" />
       </head>

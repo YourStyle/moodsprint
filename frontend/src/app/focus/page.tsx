@@ -117,13 +117,13 @@ export default function FocusPage() {
     <div className="p-4 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Focus Session</h1>
-        <p className="text-sm text-gray-500">Concentrate on one task at a time</p>
+        <h1 className="text-xl font-bold text-white">Режим фокуса</h1>
+        <p className="text-sm text-gray-400">Сконцентрируйся на одной задаче</p>
       </div>
 
       {/* Duration Selector */}
       <Card>
-        <h3 className="font-medium text-gray-900 mb-3">Session Duration</h3>
+        <h3 className="font-medium text-white mb-3">Длительность сессии</h3>
         <div className="flex gap-2">
           {durations.map((d) => (
             <button
@@ -132,10 +132,10 @@ export default function FocusPage() {
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
                 duration === d
                   ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              {d} min
+              {d} мин
             </button>
           ))}
         </div>
@@ -150,7 +150,7 @@ export default function FocusPage() {
             size="lg"
           >
             <Target className="w-5 h-5 mr-2" />
-            Start with a task
+            Начать с задачи
           </Button>
         ) : (
           <Button
@@ -160,7 +160,7 @@ export default function FocusPage() {
             size="lg"
           >
             <Play className="w-5 h-5 mr-2" />
-            Start Free Focus
+            Начать свободный фокус
           </Button>
         )}
 
@@ -171,7 +171,7 @@ export default function FocusPage() {
             isLoading={startMutation.isPending}
             className="w-full"
           >
-            Start without task
+            Начать без задачи
           </Button>
         )}
       </div>
@@ -179,25 +179,25 @@ export default function FocusPage() {
       {/* Recent Sessions */}
       {history.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-900">Recent Sessions</h3>
+          <h3 className="font-medium text-white">Недавние сессии</h3>
           <div className="space-y-2">
             {history.map((session) => (
               <Card key={session.id} padding="sm" className="flex items-center gap-3">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     session.status === 'completed'
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-gray-100 text-gray-400'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-gray-700 text-gray-400'
                   }`}
                 >
                   <Clock className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">
-                    {session.subtask_title || 'Free focus'}
+                  <p className="font-medium text-white truncate">
+                    {session.subtask_title || 'Свободный фокус'}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {session.actual_duration_minutes} min
+                  <p className="text-xs text-gray-400">
+                    {session.actual_duration_minutes} мин
                   </p>
                 </div>
               </Card>
@@ -210,7 +210,7 @@ export default function FocusPage() {
       <Modal
         isOpen={showSelectSubtask}
         onClose={() => setShowSelectSubtask(false)}
-        title="Choose a step"
+        title="Выбери шаг"
       >
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {availableSubtasks.map((subtask) => (

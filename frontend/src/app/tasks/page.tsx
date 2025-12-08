@@ -42,10 +42,10 @@ export default function TasksPage() {
   };
 
   const filters: { value: FilterStatus; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'in_progress', label: 'Active' },
-    { value: 'completed', label: 'Done' },
+    { value: 'all', label: 'Все' },
+    { value: 'pending', label: 'Ожидают' },
+    { value: 'in_progress', label: 'В работе' },
+    { value: 'completed', label: 'Готово' },
   ];
 
   const tasks = data?.data?.tasks || [];
@@ -54,10 +54,10 @@ export default function TasksPage() {
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
+        <h1 className="text-xl font-bold text-white">Задачи</h1>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="w-4 h-4 mr-1" />
-          New
+          Новая
         </Button>
       </div>
 
@@ -100,11 +100,11 @@ export default function TasksPage() {
           <div className="text-4xl mb-4">📝</div>
           <p className="text-gray-500 mb-4">
             {filterStatus === 'all'
-              ? 'No tasks yet'
-              : `No ${filterStatus.replace('_', ' ')} tasks`}
+              ? 'Пока нет задач'
+              : 'Нет задач в этой категории'}
           </p>
           <Button onClick={() => setShowCreateModal(true)}>
-            Create your first task
+            Создать первую задачу
           </Button>
         </Card>
       )}
@@ -113,7 +113,7 @@ export default function TasksPage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create Task"
+        title="Создать задачу"
       >
         <TaskForm
           onSubmit={handleCreateTask}
