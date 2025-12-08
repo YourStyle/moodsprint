@@ -18,6 +18,11 @@ export function Navigation() {
   const pathname = usePathname();
   const { activeSession } = useAppStore();
 
+  // Hide navigation on onboarding page
+  if (pathname === '/onboarding') {
+    return null;
+  }
+
   return (
     <motion.div
       className="fixed bottom-0 left-0 right-0 z-50 pb-4 safe-area-bottom"

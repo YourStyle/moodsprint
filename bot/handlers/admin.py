@@ -29,16 +29,16 @@ def is_admin(user_id: int) -> bool:
 async def cmd_admin(message: Message):
     """Admin panel."""
     if not is_admin(message.from_user.id):
-        await message.answer("Access denied.")
+        await message.answer("⛔ Доступ запрещён.")
         return
 
     users = await get_all_users()
 
     text = (
-        f"Admin Panel\n"
-        f"{'=' * 20}\n\n"
-        f"Total users: {len(users)}\n\n"
-        "Select an action:"
+        f"🔐 Панель администратора\n"
+        f"{'─' * 20}\n\n"
+        f"👥 Всего пользователей: {len(users)}\n\n"
+        "Выбери действие:"
     )
 
     await message.answer(text, reply_markup=get_admin_keyboard())
@@ -48,7 +48,7 @@ async def cmd_admin(message: Message):
 async def admin_stats(callback: CallbackQuery):
     """Show admin statistics."""
     if not is_admin(callback.from_user.id):
-        await callback.answer("Access denied.")
+        await callback.answer("⛔ Доступ запрещён.")
         return
 
     users = await get_all_users()
@@ -59,11 +59,11 @@ async def admin_stats(callback: CallbackQuery):
     avg_level = sum(u.get("level", 1) for u in users) / max(total_users, 1)
 
     text = (
-        f"Platform Statistics\n"
-        f"{'=' * 20}\n\n"
-        f"Total users: {total_users}\n"
-        f"Total XP earned: {total_xp}\n"
-        f"Average level: {avg_level:.1f}\n"
+        f"📊 Статистика платформы\n"
+        f"{'─' * 20}\n\n"
+        f"👥 Всего пользователей: {total_users}\n"
+        f"✨ Всего XP заработано: {total_xp}\n"
+        f"📈 Средний уровень: {avg_level:.1f}\n"
     )
 
     await callback.message.edit_text(text, reply_markup=get_admin_keyboard())
@@ -74,13 +74,13 @@ async def admin_stats(callback: CallbackQuery):
 async def start_broadcast(callback: CallbackQuery, state: FSMContext):
     """Start broadcast flow."""
     if not is_admin(callback.from_user.id):
-        await callback.answer("Access denied.")
+        await callback.answer("⛔ Доступ запрещён.")
         return
 
     await callback.message.edit_text(
-        "Send me the message you want to broadcast to all users.\n\n"
-        "You can send text, photo, or video.\n"
-        "Send /cancel to abort."
+        "📢 Отправь мне сообщение для рассылки всем пользователям.\n\n"
+        "Можно отправить текст, фото или видео.\n"
+        "Отправь /cancel для отмены."
     )
     await state.set_state(BroadcastStates.waiting_for_message)
     await callback.answer()
@@ -94,7 +94,7 @@ async def cancel_broadcast(message: Message, state: FSMContext):
         return
 
     await state.clear()
-    await message.answer("Broadcast cancelled.", reply_markup=get_admin_keyboard())
+    await message.answer("❌ Рассылка отменена.", reply_markup=get_admin_keyboard())
 
 
 @router.message(BroadcastStates.waiting_for_message)
@@ -116,7 +116,7 @@ async def receive_broadcast_message(message: Message, state: FSMContext):
     users = await get_all_users()
 
     await message.answer(
-        f"Ready to send this message to {len(users)} users.\n" "Confirm?",
+        f"📨 Готово к отправке {len(users)} пользователям.\n" "Подтвердить?",
         reply_markup=get_broadcast_confirm_keyboard(),
     )
     await state.set_state(BroadcastStates.confirm)
@@ -126,13 +126,13 @@ async def receive_broadcast_message(message: Message, state: FSMContext):
 async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
     """Confirm and send broadcast."""
     if not is_admin(callback.from_user.id):
-        await callback.answer("Access denied.")
+        await callback.answer("⛔ Доступ запрещён.")
         return
 
     data = await state.get_data()
     users = await get_all_users()
 
-    await callback.message.edit_text("Sending broadcast...")
+    await callback.message.edit_text("📤 Отправляю рассылку...")
 
     sent = 0
     failed = 0
@@ -155,7 +155,9 @@ async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
     await callback.message.edit_text(
-        f"Broadcast complete!\n\n" f"Sent: {sent}\n" f"Failed: {failed}",
+        f"✅ Рассылка завершена!\n\n"
+        f"📬 Отправлено: {sent}\n"
+        f"❌ Не доставлено: {failed}",
         reply_markup=get_admin_keyboard(),
     )
 
@@ -165,7 +167,7 @@ async def cancel_broadcast_callback(callback: CallbackQuery, state: FSMContext):
     """Cancel broadcast from callback."""
     await state.clear()
     await callback.message.edit_text(
-        "Broadcast cancelled.", reply_markup=get_admin_keyboard()
+        "❌ Рассылка отменена.", reply_markup=get_admin_keyboard()
     )
     await callback.answer()
 
@@ -174,7 +176,7 @@ async def cancel_broadcast_callback(callback: CallbackQuery, state: FSMContext):
 async def show_active_users(callback: CallbackQuery):
     """Show recently active users."""
     if not is_admin(callback.from_user.id):
-        await callback.answer("Access denied.")
+        await callback.answer("⛔ Доступ запрещён.")
         return
 
     users = await get_all_users()
@@ -186,7 +188,7 @@ async def show_active_users(callback: CallbackQuery):
         reverse=True,
     )[:10]
 
-    text = "Recently Active Users\n" + "=" * 20 + "\n\n"
+    text = "👥 Недавно активные пользователи\n" + "─" * 20 + "\n\n"
 
     for i, user in enumerate(sorted_users, 1):
         username = (
@@ -197,7 +199,7 @@ async def show_active_users(callback: CallbackQuery):
         level = user.get("level", 1)
         xp = user.get("xp", 0)
         streak = user.get("streak_days", 0)
-        text += f"{i}. {username} - Lv.{level} ({xp} XP, {streak}d streak)\n"
+        text += f"{i}. {username} — Ур.{level} ({xp} XP, {streak}дн. серия)\n"
 
     await callback.message.edit_text(text, reply_markup=get_admin_keyboard())
     await callback.answer()

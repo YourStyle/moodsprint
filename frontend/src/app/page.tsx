@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
-import { EnergySlider } from '@/components/mood/EnergySlider';
+import { AIBlob } from '@/components/AIBlob';
 import { TaskCard } from '@/components/tasks';
 import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
@@ -103,7 +103,6 @@ export default function HomePage() {
   const router = useRouter();
   const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
-  const [energyValue, setEnergyValue] = useState(3);
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
     queryKey: ['tasks', 'active'],
@@ -207,13 +206,35 @@ export default function HomePage() {
       {/* Week Calendar */}
       <WeekCalendar />
 
-      {/* Mood Check Section */}
-      <Card variant="glass" padding="lg">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Как ты себя чувствуешь сегодня?
-        </h2>
-        <EnergySlider value={energyValue} onChange={setEnergyValue} />
-      </Card>
+      {/* AI Assistant Blob */}
+      <div className="relative">
+        <Card variant="glass" padding="lg" className="overflow-visible">
+          <div className="flex items-center gap-4">
+            <AIBlob size={100} className="flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-white mb-1">
+                Твой AI-помощник
+              </h2>
+              <p className="text-sm text-gray-400">
+                {latestMood
+                  ? 'Готов помочь с задачами на основе твоего настроения'
+                  : 'Отметь настроение, чтобы я мог подстроиться под тебя'}
+              </p>
+              {!latestMood && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-purple-400"
+                  onClick={() => setShowMoodModal(true)}
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  Отметить настроение
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* XP Bar */}
       {stats && (

@@ -49,7 +49,7 @@ export function Modal({
           fullScreen
             ? 'h-full rounded-none'
             : 'sm:w-auto sm:min-w-[320px] sm:max-w-md rounded-t-3xl sm:rounded-2xl',
-          'p-6',
+          'p-6 pb-24',
           className
         )}
       >

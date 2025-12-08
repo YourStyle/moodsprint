@@ -53,7 +53,7 @@ export function FocusTimer({
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
       {session.subtask_title && (
         <Card className="mb-6 w-full max-w-sm text-center">
-          <p className="text-sm text-gray-500">Working on</p>
+          <p className="text-sm text-gray-500">Работаю над</p>
           <p className="font-semibold text-gray-900 mt-1">{session.subtask_title}</p>
           {session.task_title && (
             <p className="text-xs text-gray-400 mt-1">{session.task_title}</p>
@@ -96,7 +96,7 @@ export function FocusTimer({
             {formatTime(isOvertime ? -remaining : remaining)}
           </span>
           <span className="text-sm text-gray-500 mt-2">
-            {isOvertime ? 'overtime' : 'remaining'}
+            {isOvertime ? 'сверхурочно' : 'осталось'}
           </span>
         </div>
       </div>
@@ -135,7 +135,7 @@ export function FocusTimer({
       </div>
 
       <p className="text-sm text-gray-500 mt-4">
-        {isPaused ? 'Paused' : 'Focus in progress...'}
+        {isPaused ? 'Пауза' : 'Фокус...'}
       </p>
     </div>
   );

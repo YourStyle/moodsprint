@@ -21,7 +21,7 @@ export function EnergySlider({
   const [isDragging, setIsDragging] = useState(false);
 
   const getEnergyLabel = (val: number) => {
-    const labels = ['Low', 'Medium', 'High'];
+    const labels = ['Низкая', 'Средняя', 'Высокая'];
     if (val <= 2) return labels[0];
     if (val <= 4) return labels[1];
     return labels[2];
@@ -45,11 +45,11 @@ export function EnergySlider({
   return (
     <div className={clsx('w-full', className)}>
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm text-gray-400">Low</span>
+        <span className="text-sm text-gray-400">Низкая</span>
         <span className={clsx('text-sm font-medium', getEnergyColor(value))}>
           {getEnergyLabel(value)}
         </span>
-        <span className="text-sm text-gray-400">High</span>
+        <span className="text-sm text-gray-400">Высокая</span>
       </div>
 
       <div className="relative h-3">
@@ -94,7 +94,7 @@ export function EnergySlider({
           <div className="flex items-start gap-2">
             <span className="text-lg">✨</span>
             <p className="text-sm text-gray-300">
-              Low energy detected! - I will suggest lighter tasks for later today.
+              Низкая энергия! Предложу более лёгкие задачи на сегодня.
             </p>
           </div>
         </div>

@@ -160,7 +160,7 @@ export default function FocusPage() {
             size="lg"
           >
             <Play className="w-5 h-5 mr-2" />
-            Начать свободный фокус
+            Начать фокус-сессию
           </Button>
         )}
 
@@ -194,7 +194,7 @@ export default function FocusPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">
-                    {session.subtask_title || 'Свободный фокус'}
+                    {session.subtask_title || 'Фокус-сессия'}
                   </p>
                   <p className="text-xs text-gray-400">
                     {session.actual_duration_minutes} мин

@@ -17,8 +17,8 @@ export function MoodCard({ mood, onCheck }: MoodCardProps) {
         onClick={onCheck}
       >
         <div className="text-center py-2">
-          <div className="text-3xl mb-2">How are you feeling?</div>
-          <p className="text-sm text-gray-600">Tap to log your mood</p>
+          <div className="text-3xl mb-2">Как ты себя чувствуешь?</div>
+          <p className="text-sm text-gray-600">Нажми, чтобы отметить настроение</p>
         </div>
       </Card>
     );
@@ -40,7 +40,7 @@ export function MoodCard({ mood, onCheck }: MoodCardProps) {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-500 mb-1">Current State</p>
+          <p className="text-xs text-gray-500 mb-1">Текущее состояние</p>
           <div className="flex items-center gap-3">
             <span className="text-2xl">{MOOD_EMOJIS[mood.mood]}</span>
             <span className="text-2xl">{ENERGY_EMOJIS[mood.energy]}</span>
@@ -52,7 +52,7 @@ export function MoodCard({ mood, onCheck }: MoodCardProps) {
         </div>
         {isOld && (
           <div className="text-right">
-            <span className="text-xs text-gray-400">Tap to update</span>
+            <span className="text-xs text-gray-400">Нажми, чтобы обновить</span>
           </div>
         )}
       </div>

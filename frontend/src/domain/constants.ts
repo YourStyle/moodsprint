@@ -3,19 +3,19 @@
  */
 
 export const MOOD_LABELS: Record<number, string> = {
-  1: 'Very Low',
-  2: 'Low',
-  3: 'Neutral',
-  4: 'Good',
-  5: 'Great',
+  1: 'Очень плохо',
+  2: 'Плохо',
+  3: 'Нормально',
+  4: 'Хорошо',
+  5: 'Отлично',
 };
 
 export const ENERGY_LABELS: Record<number, string> = {
-  1: 'Exhausted',
-  2: 'Tired',
-  3: 'Normal',
-  4: 'Energized',
-  5: 'Peak',
+  1: 'Истощён',
+  2: 'Устал',
+  3: 'Норма',
+  4: 'Энергичный',
+  5: 'На пике',
 };
 
 export const MOOD_EMOJIS: Record<number, string> = {
@@ -78,38 +78,38 @@ export const ACHIEVEMENT_ICONS: Record<string, string> = {
 };
 
 export const LEVEL_NAMES: Record<number, string> = {
-  1: 'Beginner',
-  2: 'Starter',
-  3: 'Explorer',
-  4: 'Achiever',
-  5: 'Focused',
-  6: 'Consistent',
-  7: 'Dedicated',
-  8: 'Skilled',
-  9: 'Expert',
-  10: 'Master',
-  11: 'Champion',
-  12: 'Legend',
-  13: 'Guru',
-  14: 'Sage',
-  15: 'Enlightened',
+  1: 'Новичок',
+  2: 'Стартер',
+  3: 'Исследователь',
+  4: 'Достигатор',
+  5: 'Сфокусированный',
+  6: 'Стабильный',
+  7: 'Преданный',
+  8: 'Опытный',
+  9: 'Эксперт',
+  10: 'Мастер',
+  11: 'Чемпион',
+  12: 'Легенда',
+  13: 'Гуру',
+  14: 'Мудрец',
+  15: 'Просветлённый',
 };
 
 export const getLevelName = (level: number): string => {
-  if (level <= 0) return 'Novice';
-  if (level > 15) return `Transcendent ${level - 15}`;
-  return LEVEL_NAMES[level] || `Level ${level}`;
+  if (level <= 0) return 'Ученик';
+  if (level > 15) return `Трансцендент ${level - 15}`;
+  return LEVEL_NAMES[level] || `Уровень ${level}`;
 };
 
 export const ACHIEVEMENT_CATEGORIES: Record<string, { label: string; icon: string }> = {
-  beginner: { label: 'First Steps', icon: '👣' },
-  streaks: { label: 'Streaks', icon: '🔥' },
-  mood: { label: 'Mood', icon: '❤️' },
-  focus: { label: 'Focus', icon: '🎯' },
-  tasks: { label: 'Tasks', icon: '✅' },
-  levels: { label: 'Levels', icon: '📈' },
-  daily: { label: 'Daily', icon: '☀️' },
-  special: { label: 'Special', icon: '✨' },
+  beginner: { label: 'Первые шаги', icon: '👣' },
+  streaks: { label: 'Серии', icon: '🔥' },
+  mood: { label: 'Настроение', icon: '❤️' },
+  focus: { label: 'Фокус', icon: '🎯' },
+  tasks: { label: 'Задачи', icon: '✅' },
+  levels: { label: 'Уровни', icon: '📈' },
+  daily: { label: 'Ежедневно', icon: '☀️' },
+  special: { label: 'Особые', icon: '✨' },
 };
 
 export const DEFAULT_FOCUS_DURATION = 25;

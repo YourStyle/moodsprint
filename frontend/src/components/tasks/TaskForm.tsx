@@ -19,7 +19,7 @@ export function TaskForm({
   initialTitle = '',
   initialDescription = '',
   initialPriority = 'medium',
-  submitLabel = 'Create Task',
+  submitLabel = 'Создать задачу',
 }: TaskFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -33,16 +33,16 @@ export function TaskForm({
   };
 
   const priorities: { value: TaskPriority; label: string; color: string }[] = [
-    { value: 'low', label: 'Low', color: 'bg-green-100 text-green-800 ring-green-500' },
-    { value: 'medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-800 ring-yellow-500' },
-    { value: 'high', label: 'High', color: 'bg-red-100 text-red-800 ring-red-500' },
+    { value: 'low', label: 'Низкий', color: 'bg-green-100 text-green-800 ring-green-500' },
+    { value: 'medium', label: 'Средний', color: 'bg-yellow-100 text-yellow-800 ring-yellow-500' },
+    { value: 'high', label: 'Высокий', color: 'bg-red-100 text-red-800 ring-red-500' },
   ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
-        label="Task name"
-        placeholder="What do you need to do?"
+        label="Название задачи"
+        placeholder="Что нужно сделать?"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={500}
@@ -51,8 +51,8 @@ export function TaskForm({
       />
 
       <Textarea
-        label="Description (optional)"
-        placeholder="Add more details..."
+        label="Описание (необязательно)"
+        placeholder="Добавьте подробности..."
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={3}
@@ -60,7 +60,7 @@ export function TaskForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Priority
+          Приоритет
         </label>
         <div className="flex gap-2">
           {priorities.map((p) => (

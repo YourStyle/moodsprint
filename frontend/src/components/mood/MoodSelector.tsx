@@ -40,8 +40,8 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
       {step === 'mood' && (
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900">How are you feeling?</h3>
-            <p className="text-sm text-gray-500 mt-1">Select your current mood</p>
+            <h3 className="text-lg font-semibold text-gray-900">Как ты себя чувствуешь?</h3>
+            <p className="text-sm text-gray-500 mt-1">Выбери своё настроение</p>
           </div>
           <div className="flex justify-center gap-2">
             {levels.map((level) => (
@@ -61,8 +61,8 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
             ))}
           </div>
           <div className="flex justify-between text-xs text-gray-400 px-2">
-            <span>Very Low</span>
-            <span>Great</span>
+            <span>Очень плохо</span>
+            <span>Отлично</span>
           </div>
         </div>
       )}
@@ -70,9 +70,9 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
       {step === 'energy' && (
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900">Energy level?</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Уровень энергии?</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Mood: {MOOD_EMOJIS[mood!]} {MOOD_LABELS[mood!]}
+              Настроение: {MOOD_EMOJIS[mood!]} {MOOD_LABELS[mood!]}
             </p>
           </div>
           <div className="flex justify-center gap-2">
@@ -93,14 +93,14 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
             ))}
           </div>
           <div className="flex justify-between text-xs text-gray-400 px-2">
-            <span>Exhausted</span>
-            <span>Peak</span>
+            <span>Истощён</span>
+            <span>На пике</span>
           </div>
           <button
             onClick={() => setStep('mood')}
             className="text-sm text-gray-500 hover:text-gray-700 mx-auto block"
           >
-            Back to mood
+            Назад к настроению
           </button>
         </div>
       )}
@@ -108,7 +108,7 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
       {step === 'note' && (
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900">Any notes?</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Заметки?</h3>
             <p className="text-sm text-gray-500 mt-1">
               {MOOD_EMOJIS[mood!]} {MOOD_LABELS[mood!]} | {ENERGY_EMOJIS[energy!]} {ENERGY_LABELS[energy!]}
             </p>
@@ -116,7 +116,7 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional: What's on your mind?"
+            placeholder="Необязательно: что у тебя на уме?"
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             rows={3}
             maxLength={500}
@@ -127,14 +127,14 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
               onClick={() => setStep('energy')}
               className="flex-1"
             >
-              Back
+              Назад
             </Button>
             <Button
               onClick={handleSubmit}
               isLoading={isLoading}
               className="flex-1"
             >
-              Log Mood
+              Сохранить
             </Button>
           </div>
         </div>

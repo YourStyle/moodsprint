@@ -44,9 +44,17 @@ export default function ProfilePage() {
     <div className="p-4 space-y-4">
       {/* User Info */}
       <Card className="text-center">
-        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3">
-          {user.first_name?.[0] || user.username?.[0] || '?'}
-        </div>
+        {user.photo_url ? (
+          <img
+            src={user.photo_url}
+            alt={user.first_name || user.username || 'User'}
+            className="w-20 h-20 mx-auto rounded-full object-cover mb-3"
+          />
+        ) : (
+          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3">
+            {user.first_name?.[0] || user.username?.[0] || '?'}
+          </div>
+        )}
         <h1 className="text-xl font-bold text-white">
           {user.first_name || user.username}
         </h1>

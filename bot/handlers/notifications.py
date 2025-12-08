@@ -23,9 +23,9 @@ class NotificationService:
         users = await get_users_with_notifications_enabled()
 
         messages = [
-            "Good morning! Ready to tackle today? Open MoodSprint and log how you're feeling.",
-            "Rise and shine! Start your day with a quick mood check.",
-            "New day, new opportunities! What's on your mind today?",
+            "☀️ Доброе утро! Готов к новому дню? Зайди в MoodSprint и отметь своё настроение.",
+            "🌅 Подъём! Начни день с проверки настроения.",
+            "✨ Новый день — новые возможности! Что у тебя на уме сегодня?",
         ]
 
         import random
@@ -65,7 +65,8 @@ class NotificationService:
                     try:
                         await self.bot.send_message(
                             user["telegram_id"],
-                            f"Don't lose your {streak}-day streak! Complete just one small step to keep it going.",
+                            f"🔥 Не потеряй свою серию в {streak} дней! "
+                            "Выполни хотя бы один маленький шаг, чтобы сохранить её.",
                             reply_markup=get_webapp_button(),
                         )
                     except Exception as e:
@@ -87,13 +88,13 @@ class NotificationService:
 
                 u = stats["user"]
                 text = (
-                    f"Your weekly MoodSprint summary\n"
-                    f"{'=' * 25}\n\n"
-                    f"Level: {u.get('level', 1)} | XP: {u.get('xp', 0)}\n"
-                    f"Current streak: {u.get('streak_days', 0)} days\n\n"
-                    f"Tasks completed: {stats['completed_tasks']}\n"
-                    f"Focus time: {stats['total_focus_minutes']} min\n\n"
-                    "Keep up the great work!"
+                    f"📅 Твой недельный отчёт MoodSprint\n"
+                    f"{'─' * 25}\n\n"
+                    f"🎯 Уровень: {u.get('level', 1)} | ✨ XP: {u.get('xp', 0)}\n"
+                    f"🔥 Текущая серия: {u.get('streak_days', 0)} дн.\n\n"
+                    f"✅ Задач выполнено: {stats['completed_tasks']}\n"
+                    f"⏱️ Время фокуса: {stats['total_focus_minutes']} мин\n\n"
+                    "Так держать! 💪"
                 )
 
                 await self.bot.send_message(
@@ -113,10 +114,10 @@ class NotificationService:
         try:
             await self.bot.send_message(
                 telegram_id,
-                f"Achievement Unlocked!\n\n"
+                f"🏆 Достижение разблокировано!\n\n"
                 f"{achievement_title}\n"
                 f"+{xp_reward} XP\n\n"
-                "Open MoodSprint to see your progress!",
+                "Открой MoodSprint, чтобы увидеть свой прогресс!",
                 reply_markup=get_webapp_button(),
             )
         except Exception as e:
@@ -129,7 +130,9 @@ class NotificationService:
         try:
             await self.bot.send_message(
                 telegram_id,
-                f"Level Up!\n\n" f"You've reached Level {new_level}!\n\n" "Keep going!",
+                f"🎉 Новый уровень!\n\n"
+                f"Ты достиг уровня {new_level}!\n\n"
+                "Продолжай в том же духе! 🚀",
                 reply_markup=get_webapp_button(),
             )
         except Exception as e:
@@ -142,10 +145,10 @@ class NotificationService:
         try:
             await self.bot.send_message(
                 telegram_id,
-                f"Focus session complete!\n\n"
-                f"Duration: {duration_minutes} minutes\n"
-                f"XP earned: +{xp_earned}\n\n"
-                "Great focus! Take a short break.",
+                f"✅ Фокус-сессия завершена!\n\n"
+                f"⏱️ Длительность: {duration_minutes} мин\n"
+                f"✨ Заработано XP: +{xp_earned}\n\n"
+                "Отличный фокус! Сделай небольшой перерыв. ☕",
                 reply_markup=get_webapp_button(),
             )
         except Exception as e:

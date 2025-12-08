@@ -1,9 +1,10 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from '@/lib/store';
-import { authService, moodService, focusService } from '@/services';
+import { authService, moodService, focusService, onboardingService } from '@/services';
 import {
   getTelegramInitData,
   isTelegramWebApp,
@@ -22,7 +23,15 @@ const queryClient = new QueryClient({
 });
 
 function AuthProvider({ children }: { children: ReactNode }) {
-  const { setUser, setLoading, setLatestMood, setActiveSession } = useAppStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const {
+    setUser,
+    setLoading,
+    setLatestMood,
+    setActiveSession,
+    setOnboardingCompleted,
+  } = useAppStore();
 
   useEffect(() => {
     const initAuth = async () => {
@@ -40,6 +49,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] isTelegramWebApp:', isTg);
         console.log('[Auth] initData exists:', !!initData);
 
+        let authenticated = false;
+
         if (initData) {
           // Authenticate with Telegram
           console.log('[Auth] Authenticating with Telegram...');
@@ -47,18 +58,35 @@ function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] Result:', result.success, result.error);
           if (result.success && result.data) {
             setUser(result.data.user);
+            authenticated = true;
           }
         } else if (process.env.NODE_ENV === 'development') {
           // Dev mode: use dev auth
           const result = await authService.devAuthenticate();
           if (result.success && result.data) {
             setUser(result.data.user);
+            authenticated = true;
           }
         } else {
           // Try existing token
           const result = await authService.getCurrentUser();
           if (result.success && result.data) {
             setUser(result.data.user);
+            authenticated = true;
+          }
+        }
+
+        // Check onboarding status if authenticated
+        if (authenticated) {
+          const onboardingResult = await onboardingService.getStatus();
+          if (onboardingResult.success && onboardingResult.data) {
+            const completed = onboardingResult.data.completed;
+            setOnboardingCompleted(completed);
+
+            // Redirect to onboarding if not completed and not already there
+            if (!completed && pathname !== '/onboarding') {
+              router.push('/onboarding');
+            }
           }
         }
 
@@ -83,7 +111,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
-  }, [setUser, setLoading, setLatestMood, setActiveSession]);
+  }, [
+    setUser,
+    setLoading,
+    setLatestMood,
+    setActiveSession,
+    setOnboardingCompleted,
+    router,
+    pathname,
+  ]);
 
   return <>{children}</>;
 }

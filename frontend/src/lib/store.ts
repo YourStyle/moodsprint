@@ -13,6 +13,10 @@ interface AppState {
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
 
+  // Onboarding
+  onboardingCompleted: boolean | null;
+  setOnboardingCompleted: (completed: boolean) => void;
+
   // Active focus session
   activeSession: FocusSession | null;
   setActiveSession: (session: FocusSession | null) => void;
@@ -37,6 +41,10 @@ export const useAppStore = create<AppState>((set) => ({
   isLoading: true,
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setLoading: (isLoading) => set({ isLoading }),
+
+  // Onboarding
+  onboardingCompleted: null,
+  setOnboardingCompleted: (onboardingCompleted) => set({ onboardingCompleted }),
 
   // Active focus session
   activeSession: null,
