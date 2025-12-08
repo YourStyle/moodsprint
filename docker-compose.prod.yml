@@ -81,6 +81,13 @@ services:
   nginx:
     image: ghcr.io/${GITHUB_REPOSITORY:-moodsprint}/nginx:${VERSION:-latest}
     restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+      - ./nginx/nginx.ssl.conf:/etc/nginx/nginx.conf:ro
     deploy:
       resources:
         limits:
