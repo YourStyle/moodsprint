@@ -33,6 +33,7 @@ export interface Task {
   description: string | null;
   priority: TaskPriority;
   status: TaskStatus;
+  due_date: string | null;
   subtasks_count: number;
   subtasks_completed: number;
   progress_percent: number;
@@ -46,6 +47,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   priority?: TaskPriority;
+  due_date?: string;
 }
 
 export interface UpdateTaskInput {
@@ -53,6 +55,7 @@ export interface UpdateTaskInput {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
+  due_date?: string;
 }
 
 // ============ Subtasks ============
@@ -131,6 +134,7 @@ export interface FocusSession {
 
 export interface StartFocusInput {
   subtask_id?: number;
+  task_id?: number;
   planned_duration_minutes?: number;
 }
 

@@ -53,8 +53,8 @@ export function FocusTimer({
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
       {session.subtask_title && (
         <Card className="mb-6 w-full max-w-sm text-center">
-          <p className="text-sm text-gray-500">Работаю над</p>
-          <p className="font-semibold text-gray-900 mt-1">{session.subtask_title}</p>
+          <p className="text-sm text-gray-400">Работаю над</p>
+          <p className="font-semibold text-white mt-1">{session.subtask_title}</p>
           {session.task_title && (
             <p className="text-xs text-gray-400 mt-1">{session.task_title}</p>
           )}
@@ -70,7 +70,7 @@ export function FocusTimer({
             stroke="currentColor"
             strokeWidth="8"
             fill="none"
-            className="text-gray-100"
+            className="text-gray-700"
           />
           <circle
             cx="144"
@@ -90,7 +90,7 @@ export function FocusTimer({
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={`text-5xl font-bold tabular-nums ${
-            isOvertime ? 'text-red-500' : 'text-gray-900'
+            isOvertime ? 'text-red-500' : 'text-white'
           }`}>
             {isOvertime && '+'}
             {formatTime(isOvertime ? -remaining : remaining)}

@@ -30,6 +30,9 @@ class FocusSession(db.Model):
     subtask_id = db.Column(
         db.Integer, db.ForeignKey("subtasks.id", ondelete="SET NULL"), nullable=True
     )
+    task_id = db.Column(
+        db.Integer, db.ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
 
     planned_duration_minutes = db.Column(db.Integer, default=25, nullable=False)
     actual_duration_minutes = db.Column(db.Integer, nullable=True)
@@ -98,12 +101,16 @@ class FocusSession(db.Model):
             self.status = FocusSessionStatus.ACTIVE.value
             self.paused_at = None
 
+    # Define relationship to Task
+    task = db.relationship("Task", foreign_keys=[task_id], lazy="joined")
+
     def to_dict(self) -> dict:
         """Convert focus session to dictionary."""
         result = {
             "id": self.id,
             "user_id": self.user_id,
             "subtask_id": self.subtask_id,
+            "task_id": self.task_id,
             "planned_duration_minutes": self.planned_duration_minutes,
             "actual_duration_minutes": self.actual_duration_minutes,
             "elapsed_minutes": self.elapsed_minutes,
@@ -119,6 +126,8 @@ class FocusSession(db.Model):
             result["task_title"] = (
                 self.subtask.task.title if self.subtask.task else None
             )
+        elif self.task:
+            result["task_title"] = self.task.title
 
         return result
 

@@ -1,6 +1,6 @@
 """Task model."""
 
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 from app import db
@@ -41,6 +41,7 @@ class Task(db.Model):
         db.String(20), default=TaskPriority.MEDIUM.value, nullable=False
     )
     status = db.Column(db.String(20), default=TaskStatus.PENDING.value, nullable=False)
+    due_date = db.Column(db.Date, default=date.today, nullable=True, index=True)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -105,6 +106,7 @@ class Task(db.Model):
             "description": self.description,
             "priority": self.priority,
             "status": self.status,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
             "subtasks_count": self.subtasks_count,
             "subtasks_completed": self.subtasks_completed,
             "progress_percent": self.progress_percent,

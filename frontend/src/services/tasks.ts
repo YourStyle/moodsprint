@@ -39,11 +39,13 @@ interface DecomposeResponse {
 export const tasksService = {
   async getTasks(params?: {
     status?: string;
+    due_date?: string;
     limit?: number;
     offset?: number;
   }): Promise<ApiResponse<TasksListResponse>> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
+    if (params?.due_date) searchParams.set('due_date', params.due_date);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
 

@@ -1,5 +1,7 @@
 """Tasks API endpoints."""
 
+from datetime import date, datetime
+
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -20,6 +22,7 @@ def get_tasks():
 
     Query params:
     - status: filter by status (pending, in_progress, completed)
+    - due_date: filter by due date (YYYY-MM-DD format)
     - limit: max results (default 50)
     - offset: pagination offset (default 0)
     """
@@ -32,6 +35,15 @@ def get_tasks():
     status = request.args.get("status")
     if status and status in [s.value for s in TaskStatus]:
         query = query.filter_by(status=status)
+
+    # Filter by due_date
+    due_date_str = request.args.get("due_date")
+    if due_date_str:
+        try:
+            due_date_filter = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            query = query.filter(Task.due_date == due_date_filter)
+        except ValueError:
+            pass
 
     # Order by created_at desc
     query = query.order_by(Task.created_at.desc())
@@ -57,7 +69,8 @@ def create_task():
     {
         "title": "Task title",
         "description": "Optional description",
-        "priority": "low|medium|high"
+        "priority": "low|medium|high",
+        "due_date": "YYYY-MM-DD"  // optional, defaults to today
     }
     """
     user_id = int(get_jwt_identity())
@@ -77,11 +90,21 @@ def create_task():
     if priority not in [p.value for p in TaskPriority]:
         priority = TaskPriority.MEDIUM.value
 
+    # Parse due_date
+    due_date_value = date.today()
+    due_date_str = data.get("due_date")
+    if due_date_str:
+        try:
+            due_date_value = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
     task = Task(
         user_id=user_id,
         title=title,
         description=data.get("description"),
         priority=priority,
+        due_date=due_date_value,
     )
 
     db.session.add(task)
@@ -114,7 +137,8 @@ def update_task(task_id: int):
         "title": "New title",
         "description": "New description",
         "priority": "low|medium|high",
-        "status": "pending|in_progress|completed"
+        "status": "pending|in_progress|completed",
+        "due_date": "YYYY-MM-DD"
     }
     """
     user_id = int(get_jwt_identity())
@@ -143,6 +167,12 @@ def update_task(task_id: int):
     if "status" in data:
         if data["status"] in [s.value for s in TaskStatus]:
             task.status = data["status"]
+
+    if "due_date" in data:
+        try:
+            task.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            pass
 
     db.session.commit()
 

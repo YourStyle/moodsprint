@@ -23,7 +23,8 @@ def start_focus_session():
 
     Request body:
     {
-        "subtask_id": 1,
+        "subtask_id": 1,  // optional - start focus on a subtask
+        "task_id": 1,     // optional - start focus on a task directly
         "planned_duration_minutes": 25
     }
     """
@@ -43,6 +44,7 @@ def start_focus_session():
 
     # Validate subtask (optional)
     subtask_id = data.get("subtask_id")
+    subtask = None
     if subtask_id:
         subtask = (
             Subtask.query.join(Task)
@@ -52,8 +54,14 @@ def start_focus_session():
 
         if not subtask:
             return not_found("Subtask not found")
-    else:
-        subtask = None
+
+    # Validate task (optional)
+    task_id = data.get("task_id")
+    task = None
+    if task_id and not subtask_id:
+        task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+        if not task:
+            return not_found("Task not found")
 
     # Validate duration
     try:
@@ -64,12 +72,19 @@ def start_focus_session():
 
     # Create session
     session = FocusSession(
-        user_id=user_id, subtask_id=subtask_id, planned_duration_minutes=duration
+        user_id=user_id,
+        subtask_id=subtask_id,
+        task_id=task_id if task else None,
+        planned_duration_minutes=duration
     )
 
     # Update subtask status if linked
     if subtask and subtask.status == SubtaskStatus.PENDING.value:
         subtask.status = SubtaskStatus.IN_PROGRESS.value
+
+    # Update task status if linked directly
+    if task and task.status == "pending":
+        task.status = "in_progress"
 
     db.session.add(session)
     db.session.commit()

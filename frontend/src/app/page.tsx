@@ -1,45 +1,75 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Sparkles, Menu, HelpCircle, Clock } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
+import { TaskForm } from '@/components/tasks';
 import { AIBlob } from '@/components/AIBlob';
 import { TaskCard } from '@/components/tasks';
 import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
-import { tasksService, moodService, gamificationService } from '@/services';
+import { tasksService, moodService, gamificationService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
-import type { MoodLevel, EnergyLevel } from '@/domain/types';
+import type { MoodLevel, EnergyLevel, TaskPriority } from '@/domain/types';
 
-function WeekCalendar() {
+const formatDateForAPI = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+const formatDateDisplay = (date: Date): string => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (formatDateForAPI(date) === formatDateForAPI(today)) return 'Сегодня';
+  if (formatDateForAPI(date) === formatDateForAPI(tomorrow)) return 'Завтра';
+  if (formatDateForAPI(date) === formatDateForAPI(yesterday)) return 'Вчера';
+
+  return date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+};
+
+interface WeekCalendarProps {
+  selectedDate: Date;
+  onDateSelect: (date: Date) => void;
+}
+
+function WeekCalendar({ selectedDate, onDateSelect }: WeekCalendarProps) {
   const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   const today = new Date();
   const currentDay = today.getDay();
+  const selectedDateStr = formatDateForAPI(selectedDate);
 
   return (
     <div className="flex justify-between gap-1">
       {days.map((day, index) => {
-        const isToday = index === currentDay;
         const date = new Date(today);
         date.setDate(today.getDate() - currentDay + index);
+        const dateStr = formatDateForAPI(date);
+        const isSelected = dateStr === selectedDateStr;
+        const isToday = dateStr === formatDateForAPI(today);
 
         return (
-          <div
+          <button
             key={day}
+            onClick={() => onDateSelect(date)}
             className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
-              isToday
-                ? 'bg-dark-600 border border-purple-500/30'
-                : 'opacity-60'
+              isSelected
+                ? 'bg-primary-500/20 border border-primary-500/50'
+                : isToday
+                ? 'bg-dark-600 border border-gray-700'
+                : 'opacity-60 hover:opacity-100'
             }`}
           >
             <span className="text-xs text-gray-400 mb-1">{day}</span>
-            <span className={`text-lg font-semibold ${isToday ? 'text-white' : 'text-gray-400'}`}>
+            <span className={`text-lg font-semibold ${isSelected ? 'text-primary-400' : isToday ? 'text-white' : 'text-gray-400'}`}>
               {date.getDate()}
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -49,27 +79,38 @@ function WeekCalendar() {
 function TaskCardNew({
   task,
   onClick,
+  onStart,
 }: {
-  task: { id: number; title: string; progress_percent: number; estimated_minutes?: number; ai_suggestion?: string };
+  task: { id: number; title: string; progress_percent: number; estimated_minutes?: number; status: string; subtasks_count: number };
   onClick: () => void;
+  onStart?: () => void;
 }) {
+  const isCompleted = task.status === 'completed';
+  const hasSubtasks = task.subtasks_count > 0;
+
   return (
     <Card
       variant="gradient"
       padding="md"
       hover
-      onClick={onClick}
-      className="relative overflow-hidden"
+      className={`relative overflow-hidden ${isCompleted ? 'opacity-60' : ''}`}
     >
-      {/* Time indicator */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-purple-400" />
+      <div className="flex items-center justify-between mb-3" onClick={onClick}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            isCompleted ? 'bg-green-500/20' : 'bg-purple-500/20'
+          }`}>
+            {isCompleted ? (
+              <span className="text-lg">✓</span>
+            ) : (
+              <Sparkles className="w-5 h-5 text-purple-400" />
+            )}
           </div>
-          <div>
-            <h3 className="font-semibold text-white">{task.title}</h3>
-            {task.estimated_minutes && (
+          <div className="flex-1 min-w-0">
+            <h3 className={`font-semibold truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}`}>
+              {task.title}
+            </h3>
+            {task.estimated_minutes && task.estimated_minutes > 0 && (
               <div className="flex items-center gap-1 text-xs text-gray-400">
                 <Clock className="w-3 h-3" />
                 <span>{task.estimated_minutes} мин</span>
@@ -77,22 +118,29 @@ function TaskCardNew({
             )}
           </div>
         </div>
-        <span className="text-purple-300 font-medium">{task.progress_percent}%</span>
+        {!isCompleted && onStart && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStart();
+            }}
+            className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0 ml-2"
+          >
+            <Play className="w-5 h-5 text-white" fill="white" />
+          </button>
+        )}
+        {isCompleted && (
+          <span className="text-green-400 text-sm font-medium">Готово</span>
+        )}
       </div>
 
       {/* Progress bar */}
-      <div className="progress-bar h-1.5 mb-3">
-        <div
-          className="progress-bar-fill h-full"
-          style={{ width: `${task.progress_percent}%` }}
-        />
-      </div>
-
-      {/* AI suggestion */}
-      {task.ai_suggestion && (
-        <div className="flex items-start gap-2 text-sm">
-          <span className="text-purple-400">✨</span>
-          <p className="text-gray-400">{task.ai_suggestion}</p>
+      {!isCompleted && hasSubtasks && (
+        <div className="progress-bar h-1.5" onClick={onClick}>
+          <div
+            className="progress-bar-fill h-full"
+            style={{ width: `${task.progress_percent}%` }}
+          />
         </div>
       )}
     </Card>
@@ -101,14 +149,63 @@ function TaskCardNew({
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation } = useAppStore();
+  const queryClient = useQueryClient();
+  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const selectedDateStr = formatDateForAPI(selectedDate);
+
+  // Check if we should show mood modal on first entry
+  useEffect(() => {
+    if (user && !latestMood) {
+      // Check if mood was checked today
+      moodService.getLatestMood().then((result) => {
+        if (result.success && result.data?.mood_check) {
+          setLatestMood(result.data.mood_check);
+        } else {
+          // No mood today, show modal
+          setShowMoodModal(true);
+        }
+      });
+    }
+  }, [user, latestMood, setLatestMood, setShowMoodModal]);
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
-    queryKey: ['tasks', 'active'],
-    queryFn: () => tasksService.getTasks({ status: 'in_progress', limit: 3 }),
+    queryKey: ['tasks', 'by_date', selectedDateStr],
+    queryFn: () => tasksService.getTasks({ due_date: selectedDateStr, limit: 50 }),
     enabled: !!user,
   });
+
+  const createMutation = useMutation({
+    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string }) =>
+      tasksService.createTask(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowCreateModal(false);
+      hapticFeedback('success');
+    },
+  });
+
+  const startFocusMutation = useMutation({
+    mutationFn: (taskId: number) =>
+      focusService.startSession({
+        task_id: taskId,
+        planned_duration_minutes: 25,
+      }),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        setActiveSession(result.data.session);
+        router.push('/focus');
+        hapticFeedback('success');
+      }
+    },
+  });
+
+  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string) => {
+    createMutation.mutate({ title, description, priority, due_date: dueDate });
+  };
 
   const { data: statsData } = useQuery({
     queryKey: ['user', 'stats'],
@@ -175,7 +272,9 @@ export default function HomePage() {
 
   const stats = statsData?.data;
   const goals = goalsData?.data;
-  const activeTasks = tasksData?.data?.tasks || [];
+  const tasks = tasksData?.data?.tasks || [];
+  const incompleteTasks = tasks.filter(t => t.status !== 'completed');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -204,13 +303,85 @@ export default function HomePage() {
       </div>
 
       {/* Week Calendar */}
-      <WeekCalendar />
+      <WeekCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+
+      {/* Tasks Section - Moved to top */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate)}</h2>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Добавить
+          </Button>
+        </div>
+
+        {tasksLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <Card key={i} variant="glass" className="h-20 animate-pulse" />
+            ))}
+          </div>
+        ) : tasks.length > 0 ? (
+          <div className="space-y-3">
+            {/* Incomplete tasks first */}
+            {incompleteTasks.map((task, index) => (
+              <div
+                key={task.id}
+                className="animate-slide-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <TaskCardNew
+                  task={{
+                    ...task,
+                    estimated_minutes: task.subtasks?.reduce((acc, s) => acc + (s.estimated_minutes || 0), 0) || 0,
+                  }}
+                  onClick={() => router.push(`/tasks/${task.id}`)}
+                  onStart={() => startFocusMutation.mutate(task.id)}
+                />
+              </div>
+            ))}
+            {/* Completed tasks */}
+            {completedTasks.length > 0 && (
+              <>
+                {completedTasks.map((task, index) => (
+                  <div
+                    key={task.id}
+                    className="animate-slide-up"
+                    style={{ animationDelay: `${(incompleteTasks.length + index) * 50}ms` }}
+                  >
+                    <TaskCardNew
+                      task={{
+                        ...task,
+                        estimated_minutes: 0,
+                      }}
+                      onClick={() => router.push(`/tasks/${task.id}`)}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        ) : (
+          <Card variant="glass" className="text-center py-8">
+            <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+            <p className="text-gray-400 mb-4">Нет задач на {formatDateDisplay(selectedDate).toLowerCase()}</p>
+            <Button variant="gradient" onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4" />
+              Создать задачу
+            </Button>
+          </Card>
+        )}
+      </div>
 
       {/* AI Assistant Blob */}
       <div className="relative">
         <Card variant="glass" padding="lg" className="overflow-visible">
           <div className="flex items-center gap-4">
-            <AIBlob size={100} className="flex-shrink-0" />
+            <AIBlob size={80} className="flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-white mb-1">
                 Твой AI-помощник
@@ -220,17 +391,15 @@ export default function HomePage() {
                   ? 'Готов помочь с задачами на основе твоего настроения'
                   : 'Отметь настроение, чтобы я мог подстроиться под тебя'}
               </p>
-              {!latestMood && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-purple-400"
-                  onClick={() => setShowMoodModal(true)}
-                >
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  Отметить настроение
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 text-purple-400"
+                onClick={() => setShowMoodModal(true)}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {latestMood ? 'Обновить настроение' : 'Отметить настроение'}
+              </Button>
             </div>
           </div>
         </Card>
@@ -255,56 +424,6 @@ export default function HomePage() {
       {/* Daily Goals */}
       {goals && <DailyGoals goals={goals.goals} allCompleted={goals.all_completed} />}
 
-      {/* Tasks Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-white">Твои задачи</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/tasks')}
-          >
-            Все
-          </Button>
-        </div>
-
-        {tasksLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <Card key={i} variant="glass" className="h-28 animate-pulse" />
-            ))}
-          </div>
-        ) : activeTasks.length > 0 ? (
-          <div className="space-y-3">
-            {activeTasks.map((task, index) => (
-              <div
-                key={task.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <TaskCardNew
-                  task={{
-                    ...task,
-                    ai_suggestion: index === 0 ? 'ИИ приоритизировал эту задачу — начни с неё прямо сейчас.' : undefined,
-                    estimated_minutes: task.subtasks?.reduce((acc, s) => acc + (s.estimated_minutes || 0), 0) || 30,
-                  }}
-                  onClick={() => router.push(`/tasks/${task.id}`)}
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Card variant="glass" className="text-center py-8">
-            <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">Нет активных задач</p>
-            <Button variant="gradient" onClick={() => router.push('/tasks')}>
-              <Plus className="w-4 h-4" />
-              Создать задачу
-            </Button>
-          </Card>
-        )}
-      </div>
-
       {/* Mood Modal */}
       <Modal
         isOpen={showMoodModal}
@@ -312,6 +431,19 @@ export default function HomePage() {
         title="Как ты себя чувствуешь?"
       >
         <MoodSelector onSubmit={handleMoodSubmit} isLoading={moodLoading} />
+      </Modal>
+
+      {/* Create Task Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Создать задачу"
+      >
+        <TaskForm
+          onSubmit={handleCreateTask}
+          isLoading={createMutation.isPending}
+          initialDueDate={selectedDateStr}
+        />
       </Modal>
     </div>
   );
