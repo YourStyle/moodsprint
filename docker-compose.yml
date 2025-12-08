@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
     environment:
       BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
       WEBAPP_URL: ${WEBAPP_URL:-https://moodsprint.app}
       ADMIN_IDS: ${ADMIN_IDS:-}
     depends_on:
