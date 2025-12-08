@@ -1,11 +1,12 @@
 """Flask application factory."""
 
 import os
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 from app.config import config
 
@@ -43,7 +44,8 @@ def create_app(config_name: str | None = None) -> Flask:
     # Shell context
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import User, Task, Subtask, MoodCheck, FocusSession, Achievement
+        from app.models import (Achievement, FocusSession, MoodCheck, Subtask,
+                                Task, User)
 
         return {
             "db": db,

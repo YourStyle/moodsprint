@@ -1,25 +1,19 @@
 """Gamification API endpoints."""
 
-from datetime import datetime, date
+from datetime import date, datetime
+
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
 from app import db
 from app.api import api_bp
-from app.models import (
-    User,
-    Achievement,
-    UserAchievement,
-    Task,
-    Subtask,
-    FocusSession,
-    MoodCheck,
-)
-from app.models.task import TaskStatus
-from app.models.subtask import SubtaskStatus
-from app.models.focus_session import FocusSessionStatus
+from app.models import (Achievement, FocusSession, MoodCheck, Subtask, Task,
+                        User, UserAchievement)
 from app.models.achievement import get_level_name
+from app.models.focus_session import FocusSessionStatus
+from app.models.subtask import SubtaskStatus
+from app.models.task import TaskStatus
 from app.utils import success_response
 
 

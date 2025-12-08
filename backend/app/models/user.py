@@ -1,6 +1,7 @@
 """User model."""
 
-from datetime import datetime, date
+from datetime import date, datetime
+
 from app import db
 
 

@@ -1,6 +1,7 @@
 """User profile model for onboarding and personalization."""
 
 from datetime import datetime
+
 from app import db
 
 

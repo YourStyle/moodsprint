@@ -1,15 +1,15 @@
 """Tasks API endpoints."""
 
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models import Task, Subtask, MoodCheck, User
-from app.models.task import TaskStatus, TaskPriority
+from app.models import MoodCheck, Subtask, Task, User
 from app.models.subtask import SubtaskStatus
-from app.services import AIDecomposer, XPCalculator, AchievementChecker
-from app.utils import success_response, validation_error, not_found
+from app.models.task import TaskPriority, TaskStatus
+from app.services import AchievementChecker, AIDecomposer, XPCalculator
+from app.utils import not_found, success_response, validation_error
 
 
 @api_bp.route("/tasks", methods=["GET"])

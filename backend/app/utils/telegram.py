@@ -3,8 +3,9 @@
 import hashlib
 import hmac
 import json
-from urllib.parse import parse_qs
 from typing import Any
+from urllib.parse import parse_qs
+
 from flask import current_app
 
 

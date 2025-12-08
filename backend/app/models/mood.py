@@ -1,6 +1,7 @@
 """Mood check model."""
 
 from datetime import datetime
+
 from app import db
 
 

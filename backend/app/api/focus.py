@@ -1,8 +1,9 @@
 """Focus session API endpoints."""
 
-from datetime import datetime, date
+from datetime import date, datetime
+
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
 from app import db
@@ -10,8 +11,8 @@ from app.api import api_bp
 from app.models import FocusSession, Subtask, Task, User
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
-from app.services import XPCalculator, AchievementChecker
-from app.utils import success_response, validation_error, not_found, conflict
+from app.services import AchievementChecker, XPCalculator
+from app.utils import conflict, not_found, success_response, validation_error
 
 
 @api_bp.route("/focus/start", methods=["POST"])

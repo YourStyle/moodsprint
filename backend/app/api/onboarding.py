@@ -1,15 +1,16 @@
 """Onboarding API endpoints."""
 
 from datetime import datetime
+
 from flask import request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models import UserActivityLog, ActivityType
+from app.models import ActivityType, UserActivityLog
 from app.models.user_profile import UserProfile
 from app.services.profile_analyzer import ProfileAnalyzer
-from app.utils import success_response, validation_error, not_found
+from app.utils import not_found, success_response, validation_error
 
 
 @api_bp.route("/onboarding/status", methods=["GET"])

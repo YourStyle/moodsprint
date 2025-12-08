@@ -1,10 +1,12 @@
 """Achievement checking service."""
 
 from datetime import date, datetime
+
 from app import db
-from app.models import User, Achievement, UserAchievement, Task, FocusSession, MoodCheck
-from app.models.task import TaskStatus
+from app.models import (Achievement, FocusSession, MoodCheck, Task, User,
+                        UserAchievement)
 from app.models.focus_session import FocusSessionStatus
+from app.models.task import TaskStatus
 
 
 class AchievementChecker:

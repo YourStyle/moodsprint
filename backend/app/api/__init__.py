@@ -4,11 +4,5 @@ from flask import Blueprint
 
 api_bp = Blueprint("api", __name__)
 
-from app.api import (
-    auth,
-    tasks,
-    mood,
-    focus,
-    gamification,
-    onboarding,
-)  # noqa: E402, F401
+from app.api import (auth, focus, gamification, mood,  # noqa: E402, F401
+                     onboarding, tasks)
