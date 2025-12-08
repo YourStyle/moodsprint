@@ -6,7 +6,7 @@ interface ProgressProps {
   value: number;
   max?: number;
   size?: 'sm' | 'md' | 'lg';
-  color?: 'purple' | 'gradient' | 'success' | 'warning' | 'energy';
+  color?: 'primary' | 'purple' | 'gradient' | 'success' | 'warning' | 'energy';
   showLabel?: boolean;
   className?: string;
 }
@@ -28,6 +28,7 @@ export function Progress({
   };
 
   const colors = {
+    primary: 'bg-purple-500',
     purple: 'bg-purple-500',
     gradient: 'bg-gradient-to-r from-purple-600 to-purple-400',
     success: 'bg-green-500',

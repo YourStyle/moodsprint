@@ -1,4 +1,5 @@
 """User handlers."""
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
@@ -39,18 +40,14 @@ async def cmd_start(message: Message):
 async def cmd_app(message: Message):
     """Open the webapp."""
     await message.answer(
-        "Tap to open MoodSprint in fullscreen:",
-        reply_markup=get_webapp_button()
+        "Tap to open MoodSprint in fullscreen:", reply_markup=get_webapp_button()
     )
 
 
 @router.message(F.text == "Open MoodSprint")
 async def open_webapp(message: Message):
     """Handle webapp button press."""
-    await message.answer(
-        "Opening MoodSprint...",
-        reply_markup=get_webapp_button()
-    )
+    await message.answer("Opening MoodSprint...", reply_markup=get_webapp_button())
 
 
 @router.message(F.text == "My Stats")
@@ -59,10 +56,12 @@ async def show_stats(message: Message):
     stats = await get_user_stats(message.from_user.id)
 
     if not stats:
-        await message.answer("You haven't started using MoodSprint yet. Tap 'Open MoodSprint' to begin!")
+        await message.answer(
+            "You haven't started using MoodSprint yet. Tap 'Open MoodSprint' to begin!"
+        )
         return
 
-    user = stats['user']
+    user = stats["user"]
     text = (
         f"Your MoodSprint Stats\n"
         f"{'=' * 20}\n\n"
@@ -82,11 +81,10 @@ async def show_stats(message: Message):
 async def show_settings(message: Message):
     """Show settings."""
     user = await get_user_by_telegram_id(message.from_user.id)
-    notifications_enabled = user.get('notifications_enabled', True) if user else True
+    notifications_enabled = user.get("notifications_enabled", True) if user else True
 
     await message.answer(
-        "Settings:",
-        reply_markup=get_settings_keyboard(notifications_enabled)
+        "Settings:", reply_markup=get_settings_keyboard(notifications_enabled)
     )
 
 

@@ -1,0 +1,7 @@
+# Trivy ignore file
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/
+
+# glob vulnerability in eslint-config-next (dev dependency only)
+# This only affects the linting toolchain, not production code
+# Will be fixed when upgrading to Next.js 15.x
+GHSA-5j98-mcp5-4vw2

@@ -1,4 +1,5 @@
 """Admin handlers for broadcast and management."""
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
@@ -14,6 +15,7 @@ router = Router()
 
 class BroadcastStates(StatesGroup):
     """Broadcast FSM states."""
+
     waiting_for_message = State()
     confirm = State()
 
@@ -53,8 +55,8 @@ async def admin_stats(callback: CallbackQuery):
 
     # Calculate some basic stats
     total_users = len(users)
-    total_xp = sum(u.get('xp', 0) for u in users)
-    avg_level = sum(u.get('level', 1) for u in users) / max(total_users, 1)
+    total_xp = sum(u.get("xp", 0) for u in users)
+    avg_level = sum(u.get("level", 1) for u in users) / max(total_users, 1)
 
     text = (
         f"Platform Statistics\n"
@@ -105,18 +107,17 @@ async def receive_broadcast_message(message: Message, state: FSMContext):
     await state.update_data(
         message_id=message.message_id,
         chat_id=message.chat.id,
-        message_type='text' if message.text else 'photo' if message.photo else 'video',
+        message_type="text" if message.text else "photo" if message.photo else "video",
         text=message.text or message.caption,
         photo_id=message.photo[-1].file_id if message.photo else None,
-        video_id=message.video.file_id if message.video else None
+        video_id=message.video.file_id if message.video else None,
     )
 
     users = await get_all_users()
 
     await message.answer(
-        f"Ready to send this message to {len(users)} users.\n"
-        "Confirm?",
-        reply_markup=get_broadcast_confirm_keyboard()
+        f"Ready to send this message to {len(users)} users.\n" "Confirm?",
+        reply_markup=get_broadcast_confirm_keyboard(),
     )
     await state.set_state(BroadcastStates.confirm)
 
@@ -138,33 +139,24 @@ async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
 
     for user in users:
         try:
-            if data['message_type'] == 'text':
-                await callback.bot.send_message(
-                    user['telegram_id'],
-                    data['text']
-                )
-            elif data['message_type'] == 'photo':
+            if data["message_type"] == "text":
+                await callback.bot.send_message(user["telegram_id"], data["text"])
+            elif data["message_type"] == "photo":
                 await callback.bot.send_photo(
-                    user['telegram_id'],
-                    data['photo_id'],
-                    caption=data.get('text')
+                    user["telegram_id"], data["photo_id"], caption=data.get("text")
                 )
-            elif data['message_type'] == 'video':
+            elif data["message_type"] == "video":
                 await callback.bot.send_video(
-                    user['telegram_id'],
-                    data['video_id'],
-                    caption=data.get('text')
+                    user["telegram_id"], data["video_id"], caption=data.get("text")
                 )
             sent += 1
-        except Exception as e:
+        except Exception:
             failed += 1
 
     await state.clear()
     await callback.message.edit_text(
-        f"Broadcast complete!\n\n"
-        f"Sent: {sent}\n"
-        f"Failed: {failed}",
-        reply_markup=get_admin_keyboard()
+        f"Broadcast complete!\n\n" f"Sent: {sent}\n" f"Failed: {failed}",
+        reply_markup=get_admin_keyboard(),
     )
 
 
@@ -173,8 +165,7 @@ async def cancel_broadcast_callback(callback: CallbackQuery, state: FSMContext):
     """Cancel broadcast from callback."""
     await state.clear()
     await callback.message.edit_text(
-        "Broadcast cancelled.",
-        reply_markup=get_admin_keyboard()
+        "Broadcast cancelled.", reply_markup=get_admin_keyboard()
     )
     await callback.answer()
 
@@ -191,17 +182,21 @@ async def show_active_users(callback: CallbackQuery):
     # Sort by last activity (if available) or creation date
     sorted_users = sorted(
         users,
-        key=lambda x: x.get('last_activity_date') or x.get('created_at') or '',
-        reverse=True
+        key=lambda x: x.get("last_activity_date") or x.get("created_at") or "",
+        reverse=True,
     )[:10]
 
     text = "Recently Active Users\n" + "=" * 20 + "\n\n"
 
     for i, user in enumerate(sorted_users, 1):
-        username = user.get('username') or user.get('first_name') or f"User {user['telegram_id']}"
-        level = user.get('level', 1)
-        xp = user.get('xp', 0)
-        streak = user.get('streak_days', 0)
+        username = (
+            user.get("username")
+            or user.get("first_name")
+            or f"User {user['telegram_id']}"
+        )
+        level = user.get("level", 1)
+        xp = user.get("xp", 0)
+        streak = user.get("streak_days", 0)
         text += f"{i}. {username} - Lv.{level} ({xp} XP, {streak}d streak)\n"
 
     await callback.message.edit_text(text, reply_markup=get_admin_keyboard())
