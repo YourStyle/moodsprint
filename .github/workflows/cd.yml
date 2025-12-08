@@ -161,7 +161,7 @@ jobs:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          source: "nginx/nginx.ssl.conf,docker-compose.yml,docker-compose.prod.yml"
+          source: "nginx/nginx.prod.conf,docker-compose.yml,docker-compose.prod.yml"
           target: /opt/moodsprint
           overwrite: true
 
@@ -173,6 +173,9 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             cd /opt/moodsprint
+
+            # Use production nginx config
+            cp nginx/nginx.prod.conf nginx/nginx.ssl.conf
 
             # Backup database before deployment
             docker compose exec -T db pg_dump -U moodsprint moodsprint > /backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql || true
@@ -187,7 +190,7 @@ jobs:
             docker exec moodsprint-nginx nginx -s reload || true
 
             # Run migrations
-            docker compose exec -T backend flask db upgrade
+            docker compose exec -T backend flask db upgrade || true
 
             # Cleanup
             docker image prune -af --filter "until=24h"
