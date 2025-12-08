@@ -28,7 +28,7 @@ from app.utils import success_response
 @jwt_required()
 def get_user_stats():
     """Get user statistics and progress."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     # Total completed tasks
@@ -129,7 +129,7 @@ def get_all_achievements():
 @jwt_required()
 def get_user_achievements():
     """Get user's achievements with progress."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     # Get all achievements
     all_achievements = Achievement.query.filter_by(is_hidden=False).all()
@@ -162,7 +162,7 @@ def get_user_achievements():
 @jwt_required()
 def get_daily_goals():
     """Get daily goals progress."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     today_start = datetime.combine(date.today(), datetime.min.time())
 
@@ -237,7 +237,7 @@ def get_daily_goals():
 @jwt_required()
 def claim_daily_bonus():
     """Claim daily login bonus."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     today = date.today()
@@ -283,7 +283,7 @@ def claim_daily_bonus():
 @jwt_required()
 def get_daily_bonus_status():
     """Check if daily bonus is available."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     today = date.today()

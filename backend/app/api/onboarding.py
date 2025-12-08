@@ -17,7 +17,7 @@ from app.utils import not_found, success_response, validation_error
 @jwt_required()
 def get_onboarding_status():
     """Check if user has completed onboarding."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     profile = UserProfile.query.filter_by(user_id=user_id).first()
 
@@ -44,7 +44,7 @@ def complete_onboarding():
         "goals": "I want to be more consistent with my tasks"
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
@@ -109,7 +109,7 @@ def complete_onboarding():
 @jwt_required()
 def get_profile():
     """Get user's productivity profile."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     profile = UserProfile.query.filter_by(user_id=user_id).first()
     if not profile:
@@ -131,7 +131,7 @@ def update_profile():
         "preferred_session_duration": 25
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     profile = UserProfile.query.filter_by(user_id=user_id).first()

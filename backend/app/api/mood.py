@@ -26,7 +26,7 @@ def create_mood_check():
         "note": "Optional note"
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
@@ -83,7 +83,7 @@ def create_mood_check():
 @jwt_required()
 def get_latest_mood():
     """Get the latest mood check."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     mood_check = (
         MoodCheck.query.filter_by(user_id=user_id)
@@ -105,7 +105,7 @@ def get_mood_history():
     Query params:
     - days: number of days to include (default 7, max 30)
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     days = min(int(request.args.get("days", 7)), 30)
     start_date = datetime.combine(
@@ -162,7 +162,7 @@ def get_mood_history():
 @jwt_required()
 def get_mood_stats():
     """Get mood statistics."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     # Overall averages
     overall = (

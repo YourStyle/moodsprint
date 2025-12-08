@@ -27,7 +27,7 @@ def start_focus_session():
         "planned_duration_minutes": 25
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
@@ -81,7 +81,7 @@ def start_focus_session():
 @jwt_required()
 def get_active_session():
     """Get the current active focus session."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     session = FocusSession.query.filter_by(
         user_id=user_id, status=FocusSessionStatus.ACTIVE.value
@@ -108,7 +108,7 @@ def complete_focus_session():
         "complete_subtask": true
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     session_id = data.get("session_id")
@@ -182,7 +182,7 @@ def cancel_focus_session():
         "reason": "interrupted"
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     session_id = data.get("session_id")
@@ -210,7 +210,7 @@ def cancel_focus_session():
 @jwt_required()
 def pause_focus_session():
     """Pause the active focus session."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     session = FocusSession.query.filter_by(
         user_id=user_id, status=FocusSessionStatus.ACTIVE.value
@@ -229,7 +229,7 @@ def pause_focus_session():
 @jwt_required()
 def resume_focus_session():
     """Resume a paused focus session."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     session = FocusSession.query.filter_by(
         user_id=user_id, status=FocusSessionStatus.PAUSED.value
@@ -254,7 +254,7 @@ def get_focus_history():
     - limit: max results (default 20)
     - offset: pagination offset (default 0)
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     query = FocusSession.query.filter(
         FocusSession.user_id == user_id,
@@ -295,7 +295,7 @@ def get_focus_history():
 @jwt_required()
 def get_today_focus():
     """Get today's focus statistics."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     today_start = datetime.combine(date.today(), datetime.min.time())
 

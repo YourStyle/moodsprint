@@ -65,8 +65,8 @@ def authenticate_telegram():
 
     db.session.commit()
 
-    # Create JWT token
-    access_token = create_access_token(identity=user.id)
+    # Create JWT token (identity must be a string for Flask-JWT-Extended)
+    access_token = create_access_token(identity=str(user.id))
 
     return success_response({"user": user.to_dict(), "token": access_token})
 
@@ -75,7 +75,7 @@ def authenticate_telegram():
 @jwt_required()
 def get_current_user():
     """Get current authenticated user."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     if not user:
@@ -118,6 +118,6 @@ def dev_authenticate():
         db.session.add(user)
         db.session.commit()
 
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
 
     return success_response({"user": user.to_dict(), "token": access_token})

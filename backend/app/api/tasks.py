@@ -23,7 +23,7 @@ def get_tasks():
     - limit: max results (default 50)
     - offset: pagination offset (default 0)
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     # Build query
     query = Task.query.filter_by(user_id=user_id)
@@ -60,7 +60,7 @@ def create_task():
         "priority": "low|medium|high"
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data:
@@ -94,7 +94,7 @@ def create_task():
 @jwt_required()
 def get_task(task_id: int):
     """Get a single task with subtasks."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     task = Task.query.filter_by(id=task_id, user_id=user_id).first()
     if not task:
@@ -117,7 +117,7 @@ def update_task(task_id: int):
         "status": "pending|in_progress|completed"
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     task = Task.query.filter_by(id=task_id, user_id=user_id).first()
     if not task:
@@ -173,7 +173,7 @@ def update_task(task_id: int):
 @jwt_required()
 def delete_task(task_id: int):
     """Delete a task and all its subtasks."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     task = Task.query.filter_by(id=task_id, user_id=user_id).first()
     if not task:
@@ -196,7 +196,7 @@ def decompose_task(task_id: int):
         "mood_id": 5  // optional, uses latest mood if not provided
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     task = Task.query.filter_by(id=task_id, user_id=user_id).first()
     if not task:
@@ -267,7 +267,7 @@ def update_subtask(subtask_id: int):
         "estimated_minutes": 15
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     subtask = (
         Subtask.query.join(Task)
@@ -351,7 +351,7 @@ def reorder_subtasks():
         "subtask_ids": [3, 1, 2, 4]
     }
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data or "task_id" not in data or "subtask_ids" not in data:
