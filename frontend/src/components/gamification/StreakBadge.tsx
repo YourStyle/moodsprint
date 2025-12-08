@@ -16,12 +16,12 @@ export function StreakBadge({ days, longestStreak }: StreakBadgeProps) {
       </div>
       <div>
         <p className="text-2xl font-bold text-white">{days}</p>
-        <p className="text-xs text-orange-400">Day Streak</p>
+        <p className="text-xs text-orange-400">{days === 1 ? 'день подряд' : days < 5 ? 'дня подряд' : 'дней подряд'}</p>
       </div>
       {longestStreak > days && (
         <div className="ml-auto text-right">
-          <p className="text-sm font-medium text-gray-400">Best</p>
-          <p className="text-sm text-purple-300">{longestStreak} days</p>
+          <p className="text-sm font-medium text-gray-400">Рекорд</p>
+          <p className="text-sm text-purple-300">{longestStreak} дн.</p>
         </div>
       )}
     </Card>

@@ -118,9 +118,9 @@ export default function TaskDetailPage() {
   if (!task) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Task not found</p>
+        <p className="text-gray-500">Задача не найдена</p>
         <Button onClick={() => router.push('/tasks')} className="mt-4">
-          Back to Tasks
+          Назад к задачам
         </Button>
       </div>
     );
@@ -153,10 +153,10 @@ export default function TaskDetailPage() {
       <Card>
         <div className="flex items-center justify-between mb-3">
           <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
-            {task.priority} priority
+            {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
           </span>
           <span className="text-sm text-gray-500">
-            {task.progress_percent}% complete
+            {task.progress_percent}% выполнено
           </span>
         </div>
         <Progress value={task.progress_percent} color="primary" />
@@ -173,7 +173,7 @@ export default function TaskDetailPage() {
           className="w-full"
         >
           <Wand2 className="w-4 h-4 mr-2" />
-          Break down task with AI
+          Разбить на шаги с ИИ
         </Button>
       )}
 
@@ -181,13 +181,13 @@ export default function TaskDetailPage() {
       {subtasks.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Steps</h2>
+            <h2 className="font-semibold text-gray-900">Шаги</h2>
             <button
               onClick={handleDecompose}
               className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
             >
               <Wand2 className="w-4 h-4" />
-              Regenerate
+              Перегенерировать
             </button>
           </div>
 
@@ -214,10 +214,10 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
-        title="Log your mood first"
+        title="Сначала отметь настроение"
       >
         <p className="text-sm text-gray-500 mb-4">
-          We&apos;ll adjust the task breakdown based on how you&apos;re feeling.
+          Мы подстроим разбивку задачи под твоё текущее состояние.
         </p>
         <MoodSelector onSubmit={handleMoodSubmit} isLoading={moodLoading} />
       </Modal>
@@ -226,10 +226,10 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Delete Task"
+        title="Удалить задачу"
       >
         <p className="text-gray-600 mb-4">
-          Are you sure you want to delete &quot;{task.title}&quot;? This cannot be undone.
+          Ты уверен, что хочешь удалить «{task.title}»? Это нельзя отменить.
         </p>
         <div className="flex gap-3">
           <Button
@@ -237,7 +237,7 @@ export default function TaskDetailPage() {
             onClick={() => setShowDeleteConfirm(false)}
             className="flex-1"
           >
-            Cancel
+            Отмена
           </Button>
           <Button
             variant="danger"
@@ -245,7 +245,7 @@ export default function TaskDetailPage() {
             isLoading={deleteMutation.isPending}
             className="flex-1"
           >
-            Delete
+            Удалить
           </Button>
         </div>
       </Modal>

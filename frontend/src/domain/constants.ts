@@ -35,16 +35,16 @@ export const ENERGY_EMOJIS: Record<number, string> = {
 };
 
 export const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-green-100 text-green-800',
-  medium: 'bg-yellow-100 text-yellow-800',
-  high: 'bg-red-100 text-red-800',
+  low: 'bg-green-500/20 text-green-400 border border-green-500/30',
+  medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+  high: 'bg-red-500/20 text-red-400 border border-red-500/30',
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-800',
-  in_progress: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  skipped: 'bg-gray-100 text-gray-500',
+  pending: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  in_progress: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  completed: 'bg-green-500/20 text-green-400 border border-green-500/30',
+  skipped: 'bg-gray-500/20 text-gray-500 border border-gray-500/30',
 };
 
 export const ACHIEVEMENT_ICONS: Record<string, string> = {

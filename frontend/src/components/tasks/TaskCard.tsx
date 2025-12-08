@@ -56,7 +56,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  {task.subtasks_completed}/{task.subtasks_count} steps
+                  {task.subtasks_completed}/{task.subtasks_count} шагов
                 </span>
                 <span>{task.progress_percent}%</span>
               </div>

@@ -33,9 +33,9 @@ export function TaskForm({
   };
 
   const priorities: { value: TaskPriority; label: string; color: string }[] = [
-    { value: 'low', label: 'Низкий', color: 'bg-green-100 text-green-800 ring-green-500' },
-    { value: 'medium', label: 'Средний', color: 'bg-yellow-100 text-yellow-800 ring-yellow-500' },
-    { value: 'high', label: 'Высокий', color: 'bg-red-100 text-red-800 ring-red-500' },
+    { value: 'low', label: 'Низкий', color: 'bg-green-500/20 text-green-400 ring-green-500' },
+    { value: 'medium', label: 'Средний', color: 'bg-yellow-500/20 text-yellow-400 ring-yellow-500' },
+    { value: 'high', label: 'Высокий', color: 'bg-red-500/20 text-red-400 ring-red-500' },
   ];
 
   return (
@@ -59,7 +59,7 @@ export function TaskForm({
       />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           Приоритет
         </label>
         <div className="flex gap-2">
@@ -71,7 +71,7 @@ export function TaskForm({
               className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
                 priority === p.value
                   ? `${p.color} ring-2`
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
               {p.label}

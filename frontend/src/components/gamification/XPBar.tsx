@@ -22,7 +22,7 @@ export function XPBar({ xp, level, levelName, xpForNextLevel, progressPercent }:
         {/* Level info */}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-400">Level {level}</span>
+            <span className="text-sm text-gray-400">Уровень {level}</span>
             <span className="text-sm text-purple-300">{xp} / {xpForNextLevel} XP</span>
           </div>
           {levelName && (

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, Card } from '@/components/ui';
 import { onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -43,7 +43,7 @@ const challengeOptions = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setOnboardingCompleted } = useAppStore();
+  const { onboardingCompleted, setOnboardingCompleted } = useAppStore();
   const [step, setStep] = useState<Step>('time');
   const [data, setData] = useState<OnboardingInput>({
     productive_time: 'morning',
@@ -56,6 +56,19 @@ export default function OnboardingPage() {
     message: string;
     tips: string[];
   } | null>(null);
+
+  // Check if onboarding is already completed
+  const { data: statusData } = useQuery({
+    queryKey: ['onboarding', 'status'],
+    queryFn: () => onboardingService.getStatus(),
+  });
+
+  // Redirect if already completed
+  useEffect(() => {
+    if (statusData?.data?.completed || onboardingCompleted) {
+      router.replace('/');
+    }
+  }, [statusData?.data?.completed, onboardingCompleted, router]);
 
   const completeMutation = useMutation({
     mutationFn: (input: OnboardingInput) => onboardingService.complete(input),
