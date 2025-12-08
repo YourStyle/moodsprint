@@ -1,4 +1,5 @@
 """Flask application factory."""
+
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -16,7 +17,7 @@ jwt = JWTManager()
 def create_app(config_name: str | None = None) -> Flask:
     """Create and configure the Flask application."""
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'development')
+        config_name = os.environ.get("FLASK_ENV", "development")
 
     app = Flask(__name__)
     app.config.from_object(config[config_name])
@@ -27,29 +28,31 @@ def create_app(config_name: str | None = None) -> Flask:
     jwt.init_app(app)
 
     # CORS
-    CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
+    CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     # Register blueprints
     from app.api import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
+
+    app.register_blueprint(api_bp, url_prefix="/api/v1")
 
     # Health check endpoint
-    @app.route('/health')
+    @app.route("/health")
     def health():
-        return {'status': 'ok'}
+        return {"status": "ok"}
 
     # Shell context
     @app.shell_context_processor
     def make_shell_context():
         from app.models import User, Task, Subtask, MoodCheck, FocusSession, Achievement
+
         return {
-            'db': db,
-            'User': User,
-            'Task': Task,
-            'Subtask': Subtask,
-            'MoodCheck': MoodCheck,
-            'FocusSession': FocusSession,
-            'Achievement': Achievement
+            "db": db,
+            "User": User,
+            "Task": Task,
+            "Subtask": Subtask,
+            "MoodCheck": MoodCheck,
+            "FocusSession": FocusSession,
+            "Achievement": Achievement,
         }
 
     return app

@@ -1,4 +1,5 @@
 """Focus session model."""
+
 from datetime import datetime
 from enum import Enum
 from app import db
@@ -6,25 +7,35 @@ from app import db
 
 class FocusSessionStatus(str, Enum):
     """Focus session status enum."""
-    ACTIVE = 'active'
-    COMPLETED = 'completed'
-    CANCELLED = 'cancelled'
-    PAUSED = 'paused'
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    PAUSED = "paused"
 
 
 class FocusSession(db.Model):
     """Focus session model for tracking work sessions."""
 
-    __tablename__ = 'focus_sessions'
+    __tablename__ = "focus_sessions"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    subtask_id = db.Column(db.Integer, db.ForeignKey('subtasks.id', ondelete='SET NULL'), nullable=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    subtask_id = db.Column(
+        db.Integer, db.ForeignKey("subtasks.id", ondelete="SET NULL"), nullable=True
+    )
 
     planned_duration_minutes = db.Column(db.Integer, default=25, nullable=False)
     actual_duration_minutes = db.Column(db.Integer, nullable=True)
 
-    status = db.Column(db.String(20), default=FocusSessionStatus.ACTIVE.value, nullable=False)
+    status = db.Column(
+        db.String(20), default=FocusSessionStatus.ACTIVE.value, nullable=False
+    )
 
     # Timestamps
     started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -89,24 +100,26 @@ class FocusSession(db.Model):
     def to_dict(self) -> dict:
         """Convert focus session to dictionary."""
         result = {
-            'id': self.id,
-            'user_id': self.user_id,
-            'subtask_id': self.subtask_id,
-            'planned_duration_minutes': self.planned_duration_minutes,
-            'actual_duration_minutes': self.actual_duration_minutes,
-            'elapsed_minutes': self.elapsed_minutes,
-            'remaining_minutes': self.remaining_minutes,
-            'is_overtime': self.is_overtime,
-            'status': self.status,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'ended_at': self.ended_at.isoformat() if self.ended_at else None
+            "id": self.id,
+            "user_id": self.user_id,
+            "subtask_id": self.subtask_id,
+            "planned_duration_minutes": self.planned_duration_minutes,
+            "actual_duration_minutes": self.actual_duration_minutes,
+            "elapsed_minutes": self.elapsed_minutes,
+            "remaining_minutes": self.remaining_minutes,
+            "is_overtime": self.is_overtime,
+            "status": self.status,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
         }
 
         if self.subtask:
-            result['subtask_title'] = self.subtask.title
-            result['task_title'] = self.subtask.task.title if self.subtask.task else None
+            result["subtask_title"] = self.subtask.title
+            result["task_title"] = (
+                self.subtask.task.title if self.subtask.task else None
+            )
 
         return result
 
     def __repr__(self) -> str:
-        return f'<FocusSession {self.id}: {self.status}>'
+        return f"<FocusSession {self.id}: {self.status}>"

@@ -1,4 +1,5 @@
 """Achievement checking service."""
+
 from datetime import date, datetime
 from app import db
 from app.models import User, Achievement, UserAchievement, Task, FocusSession, MoodCheck
@@ -25,18 +26,17 @@ class AchievementChecker:
 
         return unlocked
 
-    def _get_or_create_user_achievement(self, achievement: Achievement) -> UserAchievement:
+    def _get_or_create_user_achievement(
+        self, achievement: Achievement
+    ) -> UserAchievement:
         """Get or create a user achievement record."""
         user_achievement = UserAchievement.query.filter_by(
-            user_id=self.user.id,
-            achievement_id=achievement.id
+            user_id=self.user.id, achievement_id=achievement.id
         ).first()
 
         if not user_achievement:
             user_achievement = UserAchievement(
-                user_id=self.user.id,
-                achievement_id=achievement.id,
-                progress=0
+                user_id=self.user.id, achievement_id=achievement.id, progress=0
             )
             db.session.add(user_achievement)
 
@@ -48,12 +48,11 @@ class AchievementChecker:
 
         # Count completed tasks
         completed_tasks = Task.query.filter_by(
-            user_id=self.user.id,
-            status=TaskStatus.COMPLETED.value
+            user_id=self.user.id, status=TaskStatus.COMPLETED.value
         ).count()
 
         # First task
-        achievement = Achievement.query.filter_by(code='first_task').first()
+        achievement = Achievement.query.filter_by(code="first_task").first()
         if achievement and completed_tasks >= 1:
             user_ach = self._get_or_create_user_achievement(achievement)
             if not user_ach.is_unlocked:
@@ -61,7 +60,7 @@ class AchievementChecker:
                 unlocked.append(achievement)
 
         # Task master 10
-        achievement = Achievement.query.filter_by(code='task_master_10').first()
+        achievement = Achievement.query.filter_by(code="task_master_10").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
             user_ach.progress = min(completed_tasks, achievement.progress_max or 10)
@@ -70,7 +69,7 @@ class AchievementChecker:
                 unlocked.append(achievement)
 
         # Task master 50
-        achievement = Achievement.query.filter_by(code='task_master_50').first()
+        achievement = Achievement.query.filter_by(code="task_master_50").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
             user_ach.progress = min(completed_tasks, achievement.progress_max or 50)
@@ -86,12 +85,11 @@ class AchievementChecker:
 
         # Count completed focus sessions
         completed_sessions = FocusSession.query.filter_by(
-            user_id=self.user.id,
-            status=FocusSessionStatus.COMPLETED.value
+            user_id=self.user.id, status=FocusSessionStatus.COMPLETED.value
         ).count()
 
         # First focus
-        achievement = Achievement.query.filter_by(code='first_focus').first()
+        achievement = Achievement.query.filter_by(code="first_focus").first()
         if achievement and completed_sessions >= 1:
             user_ach = self._get_or_create_user_achievement(achievement)
             if not user_ach.is_unlocked:
@@ -99,7 +97,7 @@ class AchievementChecker:
                 unlocked.append(achievement)
 
         # Focus master 10
-        achievement = Achievement.query.filter_by(code='focus_master_10').first()
+        achievement = Achievement.query.filter_by(code="focus_master_10").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
             user_ach.progress = min(completed_sessions, achievement.progress_max or 10)
@@ -109,15 +107,19 @@ class AchievementChecker:
 
         # Focus hour (60 min in one day)
         today_start = datetime.combine(date.today(), datetime.min.time())
-        today_minutes = db.session.query(
-            db.func.coalesce(db.func.sum(FocusSession.actual_duration_minutes), 0)
-        ).filter(
-            FocusSession.user_id == self.user.id,
-            FocusSession.status == FocusSessionStatus.COMPLETED.value,
-            FocusSession.started_at >= today_start
-        ).scalar()
+        today_minutes = (
+            db.session.query(
+                db.func.coalesce(db.func.sum(FocusSession.actual_duration_minutes), 0)
+            )
+            .filter(
+                FocusSession.user_id == self.user.id,
+                FocusSession.status == FocusSessionStatus.COMPLETED.value,
+                FocusSession.started_at >= today_start,
+            )
+            .scalar()
+        )
 
-        achievement = Achievement.query.filter_by(code='focus_hour').first()
+        achievement = Achievement.query.filter_by(code="focus_hour").first()
         if achievement and today_minutes >= 60:
             user_ach = self._get_or_create_user_achievement(achievement)
             if not user_ach.is_unlocked:
@@ -131,17 +133,15 @@ class AchievementChecker:
         unlocked = []
         streak = self.user.streak_days
 
-        streak_achievements = [
-            ('streak_3', 3),
-            ('streak_7', 7),
-            ('streak_30', 30)
-        ]
+        streak_achievements = [("streak_3", 3), ("streak_7", 7), ("streak_30", 30)]
 
         for code, required_streak in streak_achievements:
             achievement = Achievement.query.filter_by(code=code).first()
             if achievement:
                 user_ach = self._get_or_create_user_achievement(achievement)
-                user_ach.progress = min(streak, achievement.progress_max or required_streak)
+                user_ach.progress = min(
+                    streak, achievement.progress_max or required_streak
+                )
                 if streak >= required_streak and not user_ach.is_unlocked:
                     user_ach.unlock()
                     unlocked.append(achievement)
@@ -155,7 +155,7 @@ class AchievementChecker:
         mood_count = MoodCheck.query.filter_by(user_id=self.user.id).count()
 
         # Mood tracker 10
-        achievement = Achievement.query.filter_by(code='mood_tracker').first()
+        achievement = Achievement.query.filter_by(code="mood_tracker").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
             user_ach.progress = min(mood_count, achievement.progress_max or 10)
@@ -164,7 +164,7 @@ class AchievementChecker:
                 unlocked.append(achievement)
 
         # Mood master 50
-        achievement = Achievement.query.filter_by(code='mood_master').first()
+        achievement = Achievement.query.filter_by(code="mood_master").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
             user_ach.progress = min(mood_count, achievement.progress_max or 50)
@@ -179,16 +179,15 @@ class AchievementChecker:
         unlocked = []
         level = self.user.level
 
-        level_achievements = [
-            ('level_5', 5),
-            ('level_10', 10)
-        ]
+        level_achievements = [("level_5", 5), ("level_10", 10)]
 
         for code, required_level in level_achievements:
             achievement = Achievement.query.filter_by(code=code).first()
             if achievement:
                 user_ach = self._get_or_create_user_achievement(achievement)
-                user_ach.progress = min(level, achievement.progress_max or required_level)
+                user_ach.progress = min(
+                    level, achievement.progress_max or required_level
+                )
                 if level >= required_level and not user_ach.is_unlocked:
                     user_ach.unlock()
                     unlocked.append(achievement)

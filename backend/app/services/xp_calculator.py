@@ -65,6 +65,7 @@ class XPCalculator:
     def calculate_level(cls, xp: int) -> int:
         """Calculate level from XP."""
         import math
+
         if xp < 100:
             return 1
         return int(math.floor(math.sqrt(xp / 100))) + 1

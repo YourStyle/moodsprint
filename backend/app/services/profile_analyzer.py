@@ -1,10 +1,12 @@
 """GPT-based user profile analyzer for onboarding."""
+
 import json
 from typing import Any
 from flask import current_app
 
 try:
     from openai import OpenAI
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -16,7 +18,7 @@ class ProfileAnalyzer:
     def __init__(self):
         self.client = None
         if OPENAI_AVAILABLE:
-            api_key = current_app.config.get('OPENAI_API_KEY')
+            api_key = current_app.config.get("OPENAI_API_KEY")
             if api_key:
                 self.client = OpenAI(api_key=api_key)
 
@@ -35,7 +37,7 @@ class ProfileAnalyzer:
             try:
                 return self._gpt_analyze(responses)
             except Exception as e:
-                current_app.logger.error(f'GPT analysis failed: {e}')
+                current_app.logger.error(f"GPT analysis failed: {e}")
 
         # Fallback to rule-based analysis
         return self._rule_based_analyze(responses)
@@ -67,84 +69,84 @@ Return ONLY valid JSON, no other text.
 """
 
         response = self.client.chat.completions.create(
-            model='gpt-4o-mini',
+            model="gpt-4o-mini",
             messages=[
                 {
-                    'role': 'system',
-                    'content': 'You are a productivity coach analyzing user profiles. Always respond with valid JSON only.'
+                    "role": "system",
+                    "content": "You are a productivity coach analyzing user profiles. Always respond with valid JSON only.",
                 },
-                {'role': 'user', 'content': prompt}
+                {"role": "user", "content": prompt},
             ],
             temperature=0.7,
-            max_tokens=500
+            max_tokens=500,
         )
 
         content = response.choices[0].message.content.strip()
 
         # Parse JSON
-        if content.startswith('```'):
-            content = content.split('```')[1]
-            if content.startswith('json'):
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
                 content = content[4:]
 
         result = json.loads(content)
 
         # Add raw GPT response
-        result['gpt_raw'] = content
+        result["gpt_raw"] = content
 
         return result
 
     def _rule_based_analyze(self, responses: dict[str, Any]) -> dict[str, Any]:
         """Rule-based fallback analysis."""
-        productive_time = responses.get('productive_time', 'morning')
-        challenges = responses.get('challenges', [])
+        productive_time = responses.get("productive_time", "morning")
+        challenges = responses.get("challenges", [])
 
         # Determine productivity type
         time_to_type = {
-            'morning': 'morning_bird',
-            'afternoon': 'afternoon_peak',
-            'evening': 'night_owl',
-            'night': 'night_owl'
+            "morning": "morning_bird",
+            "afternoon": "afternoon_peak",
+            "evening": "night_owl",
+            "night": "night_owl",
         }
-        productivity_type = time_to_type.get(productive_time, 'steady_pace')
+        productivity_type = time_to_type.get(productive_time, "steady_pace")
 
         # Determine work style based on challenges
-        if 'focus' in challenges:
-            work_style = 'pomodoro'
+        if "focus" in challenges:
+            work_style = "pomodoro"
             session_duration = 25
-        elif 'overwhelm' in challenges:
-            work_style = 'sprinter'
+        elif "overwhelm" in challenges:
+            work_style = "sprinter"
             session_duration = 15
         else:
-            work_style = 'flexible'
+            work_style = "flexible"
             session_duration = 25
 
         return {
-            'productivity_type': productivity_type,
-            'preferred_time': productive_time,
-            'work_style': work_style,
-            'favorite_task_types': responses.get('favorite_tasks', []),
-            'main_challenges': challenges,
-            'recommended_session_duration': session_duration,
-            'personalized_tips': [
-                'Start with your easiest task to build momentum',
-                'Take breaks every 25-30 minutes',
-                'Celebrate small wins along the way'
+            "productivity_type": productivity_type,
+            "preferred_time": productive_time,
+            "work_style": work_style,
+            "favorite_task_types": responses.get("favorite_tasks", []),
+            "main_challenges": challenges,
+            "recommended_session_duration": session_duration,
+            "personalized_tips": [
+                "Start with your easiest task to build momentum",
+                "Take breaks every 25-30 minutes",
+                "Celebrate small wins along the way",
             ],
-            'motivation_style': 'gentle'
+            "motivation_style": "gentle",
         }
 
     def get_personalized_message(self, profile: dict[str, Any]) -> str:
         """Generate a personalized welcome message based on profile."""
-        productivity_type = profile.get('productivity_type', 'steady_pace')
+        productivity_type = profile.get("productivity_type", "steady_pace")
         # work_style can be used for more personalized messages in the future
-        _ = profile.get('work_style', 'flexible')
+        _ = profile.get("work_style", "flexible")
 
         messages = {
-            'morning_bird': "Early bird gets the worm! Let's make your mornings count.",
-            'afternoon_peak': "Afternoon power hours ahead! Let's plan for peak performance.",
-            'night_owl': "Night owl mode activated! The quiet hours are yours.",
-            'steady_pace': "Consistent wins the race! Let's build sustainable habits."
+            "morning_bird": "Early bird gets the worm! Let's make your mornings count.",
+            "afternoon_peak": "Afternoon power hours ahead! Let's plan for peak performance.",
+            "night_owl": "Night owl mode activated! The quiet hours are yours.",
+            "steady_pace": "Consistent wins the race! Let's build sustainable habits.",
         }
 
         return messages.get(productivity_type, "Let's make today productive!")

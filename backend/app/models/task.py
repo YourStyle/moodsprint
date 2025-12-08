@@ -1,4 +1,5 @@
 """Task model."""
+
 from datetime import datetime
 from enum import Enum
 from app import db
@@ -6,43 +7,54 @@ from app import db
 
 class TaskStatus(str, Enum):
     """Task status enum."""
-    PENDING = 'pending'
-    IN_PROGRESS = 'in_progress'
-    COMPLETED = 'completed'
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
 
 
 class TaskPriority(str, Enum):
     """Task priority enum."""
-    LOW = 'low'
-    MEDIUM = 'medium'
-    HIGH = 'high'
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
 
 
 class Task(db.Model):
     """Task model."""
 
-    __tablename__ = 'tasks'
+    __tablename__ = "tasks"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     title = db.Column(db.String(500), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    priority = db.Column(db.String(20), default=TaskPriority.MEDIUM.value, nullable=False)
+    priority = db.Column(
+        db.String(20), default=TaskPriority.MEDIUM.value, nullable=False
+    )
     status = db.Column(db.String(20), default=TaskStatus.PENDING.value, nullable=False)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     completed_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     subtasks = db.relationship(
-        'Subtask',
-        backref='task',
-        lazy='dynamic',
-        cascade='all, delete-orphan',
-        order_by='Subtask.order'
+        "Subtask",
+        backref="task",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+        order_by="Subtask.order",
     )
 
     @property
@@ -54,6 +66,7 @@ class Task(db.Model):
     def subtasks_completed(self) -> int:
         """Get completed subtasks count."""
         from app.models.subtask import SubtaskStatus
+
         return self.subtasks.filter_by(status=SubtaskStatus.COMPLETED.value).count()
 
     @property
@@ -85,24 +98,28 @@ class Task(db.Model):
     def to_dict(self, include_subtasks: bool = False) -> dict:
         """Convert task to dictionary."""
         result = {
-            'id': self.id,
-            'user_id': self.user_id,
-            'title': self.title,
-            'description': self.description,
-            'priority': self.priority,
-            'status': self.status,
-            'subtasks_count': self.subtasks_count,
-            'subtasks_completed': self.subtasks_completed,
-            'progress_percent': self.progress_percent,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "description": self.description,
+            "priority": self.priority,
+            "status": self.status,
+            "subtasks_count": self.subtasks_count,
+            "subtasks_completed": self.subtasks_completed,
+            "progress_percent": self.progress_percent,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }
 
         if include_subtasks:
-            result['subtasks'] = [s.to_dict() for s in self.subtasks.order_by('order').all()]
+            result["subtasks"] = [
+                s.to_dict() for s in self.subtasks.order_by("order").all()
+            ]
 
         return result
 
     def __repr__(self) -> str:
-        return f'<Task {self.id}: {self.title[:30]}>'
+        return f"<Task {self.id}: {self.title[:30]}>"
