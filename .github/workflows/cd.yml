@@ -139,26 +139,6 @@ jobs:
             sleep 10
             curl -f https://staging.moodsprint.ru/health || curl -f http://localhost/health || exit 1
 
-      - name: Notify on success
-        if: success()
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "✅ Staging deployment successful",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*MoodSprint Staging Deployed*\n<https://staging.moodsprint.ru|View staging>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
   # ===========================================
   # Deploy to production
   # ===========================================
@@ -215,26 +195,6 @@ jobs:
             # Health check
             sleep 10
             curl -f https://moodsprint.ru/health || curl -f http://localhost/health || exit 1
-
-      - name: Notify on success
-        if: success()
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          payload: |
-            {
-              "text": "🚀 Production deployment successful",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*MoodSprint Production Deployed*\nVersion: ${{ github.ref_name }}\n<https://moodsprint.ru|View production>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
