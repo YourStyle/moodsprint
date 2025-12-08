@@ -17,7 +17,7 @@
             {% for log in logs %}
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 text-sm text-gray-500">
-                    {{ log.created_at[:19] if log.created_at else '-' }}
+                    {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}
                 </td>
                 <td class="px-6 py-4">
                     <a href="{{ url_for('user_detail', user_id=log.user_id) }}" class="text-blue-600 hover:text-blue-800">

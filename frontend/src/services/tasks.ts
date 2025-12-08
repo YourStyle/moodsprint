@@ -73,6 +73,13 @@ export const tasksService = {
     });
   },
 
+  async createSubtask(
+    taskId: number,
+    input: { title: string; estimated_minutes?: number }
+  ): Promise<ApiResponse<SubtaskResponse>> {
+    return api.post<SubtaskResponse>(`/tasks/${taskId}/subtasks`, input);
+  },
+
   async updateSubtask(
     subtaskId: number,
     input: UpdateSubtaskInput

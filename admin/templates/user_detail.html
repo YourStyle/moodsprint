@@ -72,7 +72,7 @@
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                     <p class="font-medium text-gray-900">{{ session.actual_duration_minutes or 0 }} min</p>
-                    <p class="text-sm text-gray-500">{{ session.started_at[:16] if session.started_at else '-' }}</p>
+                    <p class="text-sm text-gray-500">{{ session.started_at.strftime('%Y-%m-%d %H:%M') if session.started_at else '-' }}</p>
                 </div>
                 <span class="px-2 py-1 text-xs rounded-full
                     {% if session.status == 'completed' %}bg-green-100 text-green-800
@@ -95,7 +95,7 @@
     <div class="space-y-2 max-h-96 overflow-y-auto">
         {% for log in activity %}
         <div class="flex items-center gap-4 p-2 hover:bg-gray-50 rounded">
-            <span class="text-sm text-gray-400 w-36">{{ log.created_at[:19] if log.created_at else '-' }}</span>
+            <span class="text-sm text-gray-400 w-36">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</span>
             <span class="px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-700">{{ log.action_type }}</span>
             <span class="text-sm text-gray-600">{{ log.action_details or '' }}</span>
         </div>

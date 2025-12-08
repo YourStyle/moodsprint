@@ -401,6 +401,191 @@ def metrics():
     )
 
 
+@app.route("/business")
+@login_required
+def business_metrics():
+    """Business metrics page with North Star metric."""
+    # North Star: Completed Tasks / Created Tasks ratio
+    north_star = db.session.execute(
+        text(
+            """
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'completed')::float /
+            NULLIF(COUNT(*), 0) * 100 as ratio
+        FROM tasks
+        """
+        )
+    ).scalar() or 0
+
+    # Tasks created vs completed
+    total_created = db.session.execute(
+        text("SELECT COUNT(*) FROM tasks")
+    ).scalar() or 0
+    total_completed = db.session.execute(
+        text("SELECT COUNT(*) FROM tasks WHERE status = 'completed'")
+    ).scalar() or 0
+
+    # Weekly North Star trend
+    weekly_north_star = db.session.execute(
+        text(
+            """
+        SELECT
+            DATE_TRUNC('week', created_at)::date as week,
+            COUNT(*) FILTER (WHERE status = 'completed')::float /
+            NULLIF(COUNT(*), 0) * 100 as ratio,
+            COUNT(*) as total_created,
+            COUNT(*) FILTER (WHERE status = 'completed') as total_completed
+        FROM tasks
+        WHERE created_at >= CURRENT_DATE - INTERVAL '12 weeks'
+        GROUP BY DATE_TRUNC('week', created_at)
+        ORDER BY week
+        """
+        )
+    ).fetchall()
+
+    # Daily North Star for last 30 days
+    daily_north_star = db.session.execute(
+        text(
+            """
+        SELECT
+            d.date,
+            COUNT(t.id) as created,
+            COUNT(t.id) FILTER (WHERE t.status = 'completed') as completed,
+            CASE WHEN COUNT(t.id) > 0 THEN
+                COUNT(t.id) FILTER (WHERE t.status = 'completed')::float / COUNT(t.id) * 100
+            ELSE 0 END as ratio
+        FROM generate_series(
+            CURRENT_DATE - INTERVAL '29 days',
+            CURRENT_DATE,
+            '1 day'::interval
+        ) as d(date)
+        LEFT JOIN tasks t ON DATE(t.created_at) = d.date
+        GROUP BY d.date
+        ORDER BY d.date
+        """
+        )
+    ).fetchall()
+
+    # Per-user completion rates (top and bottom performers)
+    user_completion_rates = db.session.execute(
+        text(
+            """
+        SELECT
+            u.id,
+            u.first_name,
+            u.username,
+            COUNT(t.id) as total_tasks,
+            COUNT(t.id) FILTER (WHERE t.status = 'completed') as completed_tasks,
+            CASE WHEN COUNT(t.id) > 0 THEN
+                COUNT(t.id) FILTER (WHERE t.status = 'completed')::float / COUNT(t.id) * 100
+            ELSE 0 END as completion_rate
+        FROM users u
+        LEFT JOIN tasks t ON t.user_id = u.id
+        GROUP BY u.id, u.first_name, u.username
+        HAVING COUNT(t.id) >= 3
+        ORDER BY completion_rate DESC
+        LIMIT 10
+        """
+        )
+    ).fetchall()
+
+    # Users with low completion (need attention)
+    users_needing_help = db.session.execute(
+        text(
+            """
+        SELECT
+            u.id,
+            u.first_name,
+            u.username,
+            COUNT(t.id) as total_tasks,
+            COUNT(t.id) FILTER (WHERE t.status = 'completed') as completed_tasks,
+            CASE WHEN COUNT(t.id) > 0 THEN
+                COUNT(t.id) FILTER (WHERE t.status = 'completed')::float / COUNT(t.id) * 100
+            ELSE 0 END as completion_rate
+        FROM users u
+        LEFT JOIN tasks t ON t.user_id = u.id
+        GROUP BY u.id, u.first_name, u.username
+        HAVING COUNT(t.id) >= 3
+        ORDER BY completion_rate ASC
+        LIMIT 10
+        """
+        )
+    ).fetchall()
+
+    # Cohort retention by week
+    cohort_retention = db.session.execute(
+        text(
+            """
+        SELECT
+            DATE_TRUNC('week', u.created_at)::date as cohort_week,
+            COUNT(DISTINCT u.id) as users,
+            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '7 days' THEN u.id END) as week1,
+            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '14 days' THEN u.id END) as week2,
+            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '21 days' THEN u.id END) as week3
+        FROM users u
+        WHERE u.created_at >= CURRENT_DATE - INTERVAL '8 weeks'
+        GROUP BY DATE_TRUNC('week', u.created_at)
+        ORDER BY cohort_week DESC
+        """
+        )
+    ).fetchall()
+
+    return render_template(
+        "business.html",
+        north_star=round(north_star, 1),
+        total_created=total_created,
+        total_completed=total_completed,
+        weekly_north_star=[
+            {
+                "week": str(r[0]),
+                "ratio": round(r[1] or 0, 1),
+                "created": r[2],
+                "completed": r[3],
+            }
+            for r in weekly_north_star
+        ],
+        daily_north_star=[
+            {
+                "date": str(r[0]),
+                "created": r[1],
+                "completed": r[2],
+                "ratio": round(r[3] or 0, 1),
+            }
+            for r in daily_north_star
+        ],
+        top_performers=[
+            {
+                "id": r[0],
+                "name": r[1] or r[2] or "Unknown",
+                "total": r[3],
+                "completed": r[4],
+                "rate": round(r[5] or 0, 1),
+            }
+            for r in user_completion_rates
+        ],
+        users_needing_help=[
+            {
+                "id": r[0],
+                "name": r[1] or r[2] or "Unknown",
+                "total": r[3],
+                "completed": r[4],
+                "rate": round(r[5] or 0, 1),
+            }
+            for r in users_needing_help
+        ],
+        cohort_retention=[
+            {
+                "week": str(r[0]),
+                "users": r[1],
+                "week1": round(r[2] / r[1] * 100, 1) if r[1] > 0 else 0,
+                "week2": round(r[3] / r[1] * 100, 1) if r[1] > 0 else 0,
+                "week3": round(r[4] / r[1] * 100, 1) if r[1] > 0 else 0,
+            }
+            for r in cohort_retention
+        ],
+    )
+
+
 @app.route("/api/metrics/realtime")
 @login_required
 def realtime_metrics():

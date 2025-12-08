@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Wand2, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Wand2, Trash2, Plus } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -22,6 +22,8 @@ export default function TaskDetailPage() {
   const { latestMood, setLatestMood, setActiveSession, showXPAnimation } = useAppStore();
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -60,6 +62,16 @@ export default function TaskDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       router.push('/tasks');
+      hapticFeedback('success');
+    },
+  });
+
+  const createSubtaskMutation = useMutation({
+    mutationFn: (title: string) => tasksService.createSubtask(taskId, { title }),
+    onSuccess: () => {
+      refetch();
+      setShowAddSubtask(false);
+      setNewSubtaskTitle('');
       hapticFeedback('success');
     },
   });
@@ -134,12 +146,12 @@ export default function TaskDetailPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.push('/tasks')}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-full"
+          className="p-2 -ml-2 hover:bg-gray-700 rounded-full"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 text-white" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-gray-900 truncate">{task.title}</h1>
+          <h1 className="text-lg font-bold text-white truncate">{task.title}</h1>
         </div>
         <button
           onClick={() => setShowDeleteConfirm(true)}
@@ -161,7 +173,7 @@ export default function TaskDetailPage() {
         </div>
         <Progress value={task.progress_percent} color="primary" />
         {task.description && (
-          <p className="text-sm text-gray-600 mt-3">{task.description}</p>
+          <p className="text-sm text-gray-400 mt-3">{task.description}</p>
         )}
       </Card>
 
@@ -181,14 +193,22 @@ export default function TaskDetailPage() {
       {subtasks.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Шаги</h2>
-            <button
-              onClick={handleDecompose}
-              className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
-            >
-              <Wand2 className="w-4 h-4" />
-              Перегенерировать
-            </button>
+            <h2 className="font-semibold text-white">Шаги</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddSubtask(true)}
+                className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Добавить
+              </button>
+              <button
+                onClick={handleDecompose}
+                className="text-sm text-gray-400 hover:text-gray-300 flex items-center gap-1"
+              >
+                <Wand2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -208,6 +228,18 @@ export default function TaskDetailPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Add Subtask when no subtasks exist */}
+      {subtasks.length === 0 && (
+        <Button
+          variant="secondary"
+          onClick={() => setShowAddSubtask(true)}
+          className="w-full mt-2"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Добавить шаг вручную
+        </Button>
       )}
 
       {/* Mood Modal */}
@@ -247,6 +279,47 @@ export default function TaskDetailPage() {
           >
             Удалить
           </Button>
+        </div>
+      </Modal>
+
+      {/* Add Subtask Modal */}
+      <Modal
+        isOpen={showAddSubtask}
+        onClose={() => {
+          setShowAddSubtask(false);
+          setNewSubtaskTitle('');
+        }}
+        title="Добавить шаг"
+      >
+        <div className="space-y-4">
+          <input
+            type="text"
+            value={newSubtaskTitle}
+            onChange={(e) => setNewSubtaskTitle(e.target.value)}
+            placeholder="Название шага"
+            className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            autoFocus
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowAddSubtask(false);
+                setNewSubtaskTitle('');
+              }}
+              className="flex-1"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => createSubtaskMutation.mutate(newSubtaskTitle)}
+              isLoading={createSubtaskMutation.isPending}
+              disabled={!newSubtaskTitle.trim()}
+              className="flex-1"
+            >
+              Добавить
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

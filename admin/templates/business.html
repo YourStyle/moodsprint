@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Business Metrics - MoodSprint Admin{% endblock %}
+{% block header %}Business Metrics{% endblock %}
+
+{% block content %}
+<!-- North Star Metric -->
+<div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-lg mb-8 text-white">
+    <div class="text-center">
+        <p class="text-lg opacity-80 mb-2">⭐ North Star Metric</p>
+        <p class="text-6xl font-bold mb-2">{{ north_star }}%</p>
+        <p class="text-xl opacity-90">Task Completion Rate</p>
+        <p class="text-sm opacity-70 mt-2">{{ total_completed }} completed / {{ total_created }} created</p>
+    </div>
+</div>
+
+<!-- Daily North Star Chart -->
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Daily Completion Rate (30 days)</h3>
+    <canvas id="dailyNorthStarChart" height="150"></canvas>
+</div>
+
+<!-- Weekly Trend -->
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Weekly North Star Trend</h3>
+    <canvas id="weeklyChart" height="150"></canvas>
+</div>
+
+<!-- Tasks Created vs Completed -->
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Daily Tasks: Created vs Completed</h3>
+    <canvas id="tasksComparisonChart" height="150"></canvas>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Top Performers -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">🏆 Top Performers</h3>
+        <div class="space-y-3">
+            {% for user in top_performers %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {{ loop.index }}
+                    </div>
+                    <div>
+                        <a href="{{ url_for('user_detail', user_id=user.id) }}" class="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {{ user.name }}
+                        </a>
+                        <p class="text-xs text-gray-500">{{ user.completed }}/{{ user.total }} tasks</p>
+                    </div>
+                </div>
+                <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    {{ user.rate }}%
+                </span>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No data yet (min 3 tasks required)</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Users Needing Help -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">⚠️ Users Needing Attention</h3>
+        <div class="space-y-3">
+            {% for user in users_needing_help %}
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {{ loop.index }}
+                    </div>
+                    <div>
+                        <a href="{{ url_for('user_detail', user_id=user.id) }}" class="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {{ user.name }}
+                        </a>
+                        <p class="text-xs text-gray-500">{{ user.completed }}/{{ user.total }} tasks</p>
+                    </div>
+                </div>
+                <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                    {{ user.rate }}%
+                </span>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No data yet (min 3 tasks required)</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Cohort Retention -->
+<div class="bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">📊 Cohort Retention</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cohort Week</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Week 1</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Week 2</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Week 3</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for cohort in cohort_retention %}
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ cohort.week }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">{{ cohort.users }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full {% if cohort.week1 >= 50 %}bg-green-100 text-green-800{% elif cohort.week1 >= 25 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ cohort.week1 }}%
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full {% if cohort.week2 >= 40 %}bg-green-100 text-green-800{% elif cohort.week2 >= 20 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ cohort.week2 }}%
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs rounded-full {% if cohort.week3 >= 30 %}bg-green-100 text-green-800{% elif cohort.week3 >= 15 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ cohort.week3 }}%
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-4 py-3 text-sm text-gray-500 text-center">No cohort data yet</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dailyData = {{ daily_north_star | tojson }};
+    const weeklyData = {{ weekly_north_star | tojson }};
+
+    // Daily North Star Chart
+    new Chart(document.getElementById('dailyNorthStarChart'), {
+        type: 'line',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [{
+                label: 'Completion Rate',
+                data: dailyData.map(d => d.ratio),
+                borderColor: 'rgb(139, 92, 246)',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+        }
+    });
+
+    // Weekly Chart
+    new Chart(document.getElementById('weeklyChart'), {
+        type: 'line',
+        data: {
+            labels: weeklyData.map(d => d.week.slice(5)),
+            datasets: [{
+                label: 'Completion Rate',
+                data: weeklyData.map(d => d.ratio),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+        }
+    });
+
+    // Tasks Comparison Chart
+    new Chart(document.getElementById('tasksComparisonChart'), {
+        type: 'bar',
+        data: {
+            labels: dailyData.map(d => d.date.slice(5)),
+            datasets: [
+                {
+                    label: 'Created',
+                    data: dailyData.map(d => d.created),
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                },
+                {
+                    label: 'Completed',
+                    data: dailyData.map(d => d.completed),
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+</script>
+{% endblock %}

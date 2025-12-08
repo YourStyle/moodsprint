@@ -254,6 +254,57 @@ def decompose_task(task_id: int):
 # Subtask endpoints
 
 
+@api_bp.route("/tasks/<int:task_id>/subtasks", methods=["POST"])
+@jwt_required()
+def create_subtask(task_id: int):
+    """
+    Create a new subtask for a task.
+
+    Request body:
+    {
+        "title": "Subtask title",
+        "estimated_minutes": 15  // optional, default 10
+    }
+    """
+    user_id = int(get_jwt_identity())
+
+    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    if not task:
+        return not_found("Task not found")
+
+    data = request.get_json()
+    if not data:
+        return validation_error({"body": "Request body is required"})
+
+    title = data.get("title", "").strip()
+    if not title:
+        return validation_error({"title": "Title is required"})
+
+    if len(title) > 500:
+        return validation_error({"title": "Title must be less than 500 characters"})
+
+    # Get max order
+    max_order = db.session.query(db.func.max(Subtask.order)).filter_by(task_id=task_id).scalar() or 0
+
+    estimated_minutes = data.get("estimated_minutes", 10)
+    try:
+        estimated_minutes = max(1, min(120, int(estimated_minutes)))
+    except (ValueError, TypeError):
+        estimated_minutes = 10
+
+    subtask = Subtask(
+        task_id=task.id,
+        title=title,
+        estimated_minutes=estimated_minutes,
+        order=max_order + 1,
+    )
+
+    db.session.add(subtask)
+    db.session.commit()
+
+    return success_response({"subtask": subtask.to_dict()}, status_code=201)
+
+
 @api_bp.route("/subtasks/<int:subtask_id>", methods=["PUT"])
 @jwt_required()
 def update_subtask(subtask_id: int):

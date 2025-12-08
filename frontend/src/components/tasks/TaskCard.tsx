@@ -32,8 +32,8 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3
-              className={`font-medium text-gray-900 ${
-                isCompleted ? 'line-through text-gray-500' : ''
+              className={`font-medium text-white ${
+                isCompleted ? 'line-through text-gray-400' : ''
               }`}
             >
               {task.title}

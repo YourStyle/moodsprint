@@ -348,30 +348,30 @@ ACHIEVEMENTS = [
 ]
 
 
-# Level names for display
+# Level names for display (Russian)
 LEVEL_NAMES = {
-    1: "Beginner",
-    2: "Starter",
-    3: "Explorer",
-    4: "Achiever",
-    5: "Focused",
-    6: "Consistent",
-    7: "Dedicated",
-    8: "Skilled",
-    9: "Expert",
-    10: "Master",
-    11: "Champion",
-    12: "Legend",
-    13: "Guru",
-    14: "Sage",
-    15: "Enlightened",
+    1: "Новичок",
+    2: "Стартер",
+    3: "Исследователь",
+    4: "Достигатор",
+    5: "Сфокусированный",
+    6: "Стабильный",
+    7: "Преданный",
+    8: "Опытный",
+    9: "Эксперт",
+    10: "Мастер",
+    11: "Чемпион",
+    12: "Легенда",
+    13: "Гуру",
+    14: "Мудрец",
+    15: "Просветлённый",
 }
 
 
 def get_level_name(level: int) -> str:
     """Get display name for a level."""
     if level <= 0:
-        return "Novice"
+        return "Ученик"
     if level > 15:
-        return f"Transcendent {level - 15}"
-    return LEVEL_NAMES.get(level, f"Level {level}")
+        return f"Трансцендент {level - 15}"
+    return LEVEL_NAMES.get(level, f"Уровень {level}")
