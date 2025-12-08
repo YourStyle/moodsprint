@@ -98,7 +98,8 @@ def dashboard():
         ORDER BY date
     """)).fetchall()
 
-    return render_template('dashboard.html',
+    return render_template(
+        'dashboard.html',
         total_users=total_users,
         active_today=active_today or 0,
         total_tasks=total_tasks or 0,
@@ -145,7 +146,8 @@ def users():
 
     total_pages = (total + per_page - 1) // per_page
 
-    return render_template('users.html',
+    return render_template(
+        'users.html',
         users=[dict(row._mapping) for row in users_data],
         page=page,
         total_pages=total_pages,
@@ -193,7 +195,8 @@ def user_detail(user_id: int):
         {'uid': user_id}
     ).fetchall()
 
-    return render_template('user_detail.html',
+    return render_template(
+        'user_detail.html',
         user=dict(user._mapping),
         tasks=[dict(row._mapping) for row in tasks],
         activity=[dict(row._mapping) for row in activity] if activity else [],
@@ -223,7 +226,8 @@ def activity_log():
     total = db.session.execute(text("SELECT COUNT(*) FROM user_activity_logs")).scalar() or 0
     total_pages = (total + per_page - 1) // per_page
 
-    return render_template('activity.html',
+    return render_template(
+        'activity.html',
         logs=[dict(row._mapping) for row in logs],
         page=page,
         total_pages=total_pages
@@ -312,7 +316,8 @@ def metrics():
         ORDER BY d.date
     """)).fetchall()
 
-    return render_template('metrics.html',
+    return render_template(
+        'metrics.html',
         day1_retention=round(day1_retention, 1),
         avg_session=round(avg_session, 1),
         completion_rate=round(completion_rate, 1),

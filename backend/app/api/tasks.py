@@ -306,8 +306,8 @@ def update_subtask(subtask_id: int):
     achievements_unlocked = []
 
     was_completed = (
-        old_status != SubtaskStatus.COMPLETED.value and
-        subtask.status == SubtaskStatus.COMPLETED.value
+        old_status != SubtaskStatus.COMPLETED.value
+        and subtask.status == SubtaskStatus.COMPLETED.value
     )
 
     if was_completed:

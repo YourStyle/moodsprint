@@ -137,7 +137,8 @@ Return ONLY valid JSON, no other text.
     def get_personalized_message(self, profile: dict[str, Any]) -> str:
         """Generate a personalized welcome message based on profile."""
         productivity_type = profile.get('productivity_type', 'steady_pace')
-        work_style = profile.get('work_style', 'flexible')
+        # work_style can be used for more personalized messages in the future
+        _ = profile.get('work_style', 'flexible')
 
         messages = {
             'morning_bird': "Early bird gets the worm! Let's make your mornings count.",

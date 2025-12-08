@@ -217,12 +217,11 @@ def get_leaderboard():
 
     if leaderboard_type == 'weekly':
         # Weekly leaderboard based on XP earned this week
-        week_start = datetime.combine(
-            date.today() - timedelta(days=date.today().weekday()),
-            datetime.min.time()
-        )
-
-        # For simplicity, using total XP (in production, track weekly XP separately)
+        # TODO: In production, track weekly XP separately using week_start filter
+        # week_start = datetime.combine(
+        #     date.today() - timedelta(days=date.today().weekday()),
+        #     datetime.min.time()
+        # )
         users = User.query.order_by(User.xp.desc()).limit(limit).all()
     else:
         # All-time leaderboard

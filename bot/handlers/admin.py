@@ -156,7 +156,7 @@ async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
                     caption=data.get('text')
                 )
             sent += 1
-        except Exception as e:
+        except Exception:
             failed += 1
 
     await state.clear()
