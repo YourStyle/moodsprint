@@ -10,7 +10,8 @@ class Config:
 
     # Telegram
     BOT_TOKEN: str = field(
-        default_factory=lambda: os.environ.get("BOT_TOKEN", "") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        default_factory=lambda: os.environ.get("BOT_TOKEN", "")
+        or os.environ.get("TELEGRAM_BOT_TOKEN", "")
     )
     WEBAPP_URL: str = field(
         default_factory=lambda: os.environ.get("WEBAPP_URL", "https://staging.moodsprint.ru")
