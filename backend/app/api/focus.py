@@ -1,5 +1,5 @@
 """Focus session API endpoints."""
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func

@@ -1,7 +1,6 @@
 """Notification handlers and scheduled tasks."""
 from aiogram import Router, Bot
-from aiogram.types import Message
-from datetime import datetime, time
+from datetime import datetime
 import asyncio
 import logging
 

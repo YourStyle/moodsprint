@@ -1,5 +1,5 @@
 """Achievement checking service."""
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from app import db
 from app.models import User, Achievement, UserAchievement, Task, FocusSession, MoodCheck
 from app.models.task import TaskStatus

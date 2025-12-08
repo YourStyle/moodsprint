@@ -1,7 +1,6 @@
 """Main bot entry point."""
 import asyncio
 import logging
-from datetime import datetime
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
