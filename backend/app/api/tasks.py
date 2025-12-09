@@ -7,24 +7,69 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models import MoodCheck, Subtask, Task, User
+from app.models import MoodCheck, PostponeLog, Subtask, Task, User, UserProfile
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskPriority, TaskStatus
-from app.services import AchievementChecker, AIDecomposer, XPCalculator
+from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCalculator
 from app.utils import not_found, success_response, validation_error
+
+
+def get_current_time_slot() -> str:
+    """Get current time slot based on hour."""
+    hour = datetime.now().hour
+    if 6 <= hour < 12:
+        return "morning"
+    elif 12 <= hour < 18:
+        return "afternoon"
+    elif 18 <= hour < 22:
+        return "evening"
+    else:
+        return "night"
+
+
+def calculate_task_score(
+    task: Task,
+    current_time_slot: str,
+    user_favorite_types: list[str] | None,
+    today: date,
+) -> int:
+    """Calculate sorting score for a task."""
+    score = 0
+
+    # Priority weight (HIGH=100, MEDIUM=50, LOW=0)
+    priority_weights = {"high": 100, "medium": 50, "low": 0}
+    score += priority_weights.get(task.priority, 50)
+
+    # Time match (+30 if preferred time matches current time slot)
+    if task.preferred_time and task.preferred_time == current_time_slot:
+        score += 30
+
+    # Type match (+20 if task type is in user's favorites)
+    if user_favorite_types and task.task_type in user_favorite_types:
+        score += 20
+
+    # Postponed count (+15 per postponement)
+    score += (task.postponed_count or 0) * 15
+
+    # Overdue bonus (+50 if task is overdue)
+    if task.due_date and task.due_date < today and task.status != TaskStatus.COMPLETED.value:
+        score += 50
+
+    return score
 
 
 @api_bp.route("/tasks", methods=["GET"])
 @jwt_required()
 def get_tasks():
     """
-    Get all tasks for current user.
+    Get all tasks for current user with smart sorting.
 
     Query params:
     - status: filter by status (pending, in_progress, completed)
     - due_date: filter by due date (YYYY-MM-DD format)
     - limit: max results (default 50)
     - offset: pagination offset (default 0)
+    - smart_sort: enable smart sorting (default true)
     """
     user_id = int(get_jwt_identity())
 
@@ -45,16 +90,43 @@ def get_tasks():
         except ValueError:
             pass
 
-    # Order by created_at desc
-    query = query.order_by(Task.created_at.desc())
-
     # Get total count before pagination
     total = query.count()
 
     # Pagination
     limit = min(int(request.args.get("limit", 50)), 100)
     offset = int(request.args.get("offset", 0))
-    tasks = query.offset(offset).limit(limit).all()
+
+    # Check if smart sorting is enabled (default: true)
+    smart_sort = request.args.get("smart_sort", "true").lower() != "false"
+
+    if smart_sort:
+        # Get all tasks for smart sorting
+        all_tasks = query.all()
+
+        # Get user profile for favorite task types
+        user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+        favorite_types = user_profile.favorite_task_types if user_profile else None
+
+        # Get current time slot and today's date
+        current_time_slot = get_current_time_slot()
+        today = date.today()
+
+        # Sort tasks by score (descending), then by due_date (ascending)
+        sorted_tasks = sorted(
+            all_tasks,
+            key=lambda t: (
+                -calculate_task_score(t, current_time_slot, favorite_types, today),
+                t.due_date or date.max,
+            ),
+        )
+
+        # Apply pagination
+        tasks = sorted_tasks[offset : offset + limit]
+    else:
+        # Simple ordering by created_at desc
+        query = query.order_by(Task.created_at.desc())
+        tasks = query.offset(offset).limit(limit).all()
 
     return success_response({"tasks": [t.to_dict() for t in tasks], "total": total})
 
@@ -99,16 +171,30 @@ def create_task():
         except ValueError:
             pass
 
+    description = data.get("description")
+
     task = Task(
         user_id=user_id,
         title=title,
-        description=data.get("description"),
+        description=description,
         priority=priority,
         due_date=due_date_value,
+        original_due_date=due_date_value,
     )
 
     db.session.add(task)
     db.session.commit()
+
+    # Classify task asynchronously (non-blocking)
+    try:
+        classifier = TaskClassifier()
+        classification = classifier.classify_task(title, description)
+        task.task_type = classification.get("task_type")
+        task.preferred_time = classification.get("preferred_time")
+        db.session.commit()
+    except Exception:
+        # Classification is optional, don't fail task creation
+        pass
 
     return success_response({"task": task.to_dict()}, status_code=201)
 
@@ -279,6 +365,52 @@ def decompose_task(task_id: int):
             "message": decomposer.get_strategy_message(strategy),
         }
     )
+
+
+@api_bp.route("/tasks/postpone-status", methods=["GET"])
+@jwt_required()
+def get_postpone_status():
+    """
+    Get the latest postpone log for the current user.
+
+    Returns info about tasks postponed today for display notification.
+    """
+    user_id = int(get_jwt_identity())
+    today = date.today()
+
+    # Get today's postpone log
+    log = (
+        PostponeLog.query.filter_by(user_id=user_id, date=today)
+        .first()
+    )
+
+    if not log or log.tasks_postponed == 0:
+        return success_response({
+            "has_postponed": False,
+            "tasks_postponed": 0,
+            "priority_changes": [],
+            "message": None,
+        })
+
+    # Mark as notified
+    if not log.notified:
+        log.notified = True
+        db.session.commit()
+
+    # Build message
+    if log.tasks_postponed == 1:
+        message = "Перенесена 1 задача с прошлых дней"
+    elif log.tasks_postponed < 5:
+        message = f"Перенесено {log.tasks_postponed} задачи с прошлых дней"
+    else:
+        message = f"Перенесено {log.tasks_postponed} задач с прошлых дней"
+
+    return success_response({
+        "has_postponed": True,
+        "tasks_postponed": log.tasks_postponed,
+        "priority_changes": log.priority_changes or [],
+        "message": message,
+    })
 
 
 # Subtask endpoints

@@ -36,7 +36,24 @@ interface DecomposeResponse {
   message: string;
 }
 
+interface PostponeStatusResponse {
+  has_postponed: boolean;
+  tasks_postponed: number;
+  priority_changes: Array<{
+    task_id: number;
+    task_title: string;
+    old_priority: string;
+    new_priority: string;
+    postponed_count: number;
+  }>;
+  message: string | null;
+}
+
 export const tasksService = {
+  async getPostponeStatus(): Promise<ApiResponse<PostponeStatusResponse>> {
+    return api.get<PostponeStatusResponse>('/tasks/postpone-status');
+  },
+
   async getTasks(params?: {
     status?: string;
     due_date?: string;

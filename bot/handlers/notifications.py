@@ -5,7 +5,16 @@ from datetime import datetime
 import asyncio
 import logging
 
-from database import get_users_with_notifications_enabled, get_user_stats
+from database import (
+    get_users_with_notifications_enabled,
+    get_user_stats,
+    get_overdue_tasks_by_user,
+    postpone_task,
+    update_task_priority,
+    create_postpone_log,
+    get_unnotified_postpone_logs_for_time,
+    mark_postpone_log_notified,
+)
 from keyboards import get_webapp_button
 
 router = Router()
@@ -153,3 +162,144 @@ class NotificationService:
             )
         except Exception as e:
             logger.error(f"Failed to send focus notification to {telegram_id}: {e}")
+
+    async def postpone_overdue_tasks(self):
+        """
+        Postpone all overdue tasks to today (without sending notifications).
+
+        Notifications will be sent later based on user's preferred time.
+        This runs as a cron job at midnight.
+        """
+        logger.info("Starting overdue tasks postponement...")
+
+        # Get all overdue tasks grouped by user
+        users_tasks = await get_overdue_tasks_by_user()
+
+        if not users_tasks:
+            logger.info("No overdue tasks found.")
+            return
+
+        total_postponed = 0
+
+        for user_id, tasks in users_tasks.items():
+            priority_changes = []
+
+            for task in tasks:
+                task_id = task["id"]
+                old_priority = task["priority"]
+
+                # Postpone task
+                new_postponed_count = await postpone_task(task_id)
+                total_postponed += 1
+
+                # Check if priority should be increased (after 2+ postponements)
+                if new_postponed_count >= 2 and old_priority != "high":
+                    # Simple rule-based priority increase
+                    if new_postponed_count >= 3:
+                        new_priority = "high" if old_priority == "medium" else "medium"
+                        await update_task_priority(task_id, new_priority)
+
+                        priority_changes.append({
+                            "task_id": task_id,
+                            "task_title": task["title"][:50],
+                            "old_priority": old_priority,
+                            "new_priority": new_priority,
+                            "postponed_count": new_postponed_count,
+                        })
+
+            # Create postpone log (notification will be sent later)
+            await create_postpone_log(
+                user_id=user_id,
+                tasks_postponed=len(tasks),
+                priority_changes=priority_changes if priority_changes else None,
+            )
+
+        logger.info(f"Postponement complete: {total_postponed} tasks for {len(users_tasks)} users.")
+
+    async def send_postpone_notifications(self, time_slot: str):
+        """
+        Send friendly postpone notifications to users who prefer this time slot.
+
+        time_slot: 'morning', 'afternoon', 'evening', or 'night'
+        """
+        logger.info(f"Sending postpone notifications for time slot: {time_slot}")
+
+        # Friendly messages based on time of day
+        greetings = {
+            "morning": [
+                "☀️ Доброе утро! ",
+                "🌅 Новый день — новые возможности! ",
+                "✨ Привет! Начинаем день? ",
+            ],
+            "afternoon": [
+                "👋 Привет! ",
+                "🌤️ Добрый день! ",
+                "💪 Отличное время для продуктивности! ",
+            ],
+            "evening": [
+                "🌆 Добрый вечер! ",
+                "🌙 Привет! Ещё есть время сделать что-то важное. ",
+                "✨ Вечер — отличное время закрыть дела! ",
+            ],
+            "night": [
+                "🌙 Привет, полуночник! ",
+                "🦉 Ночная продуктивность? Уважаю! ",
+                "⭐ Тихий вечер для важных дел. ",
+            ],
+        }
+
+        import random
+
+        # Get unnotified logs for this time slot
+        logs = await get_unnotified_postpone_logs_for_time(time_slot)
+
+        if not logs:
+            logger.info(f"No unnotified postpone logs for {time_slot}.")
+            return
+
+        users_notified = 0
+
+        for log in logs:
+            telegram_id = log["telegram_id"]
+            first_name = log.get("first_name") or "друг"
+            tasks_count = log["tasks_postponed"]
+            priority_changes = log.get("priority_changes") or []
+
+            try:
+                # Build friendly message
+                greeting = random.choice(greetings.get(time_slot, greetings["morning"]))
+
+                if tasks_count == 1:
+                    count_text = "У тебя есть 1 задача"
+                elif tasks_count < 5:
+                    count_text = f"У тебя есть {tasks_count} задачи"
+                else:
+                    count_text = f"У тебя есть {tasks_count} задач"
+
+                message = f"{greeting}{first_name}!\n\n"
+                message += f"📋 {count_text} с прошлых дней — я перенёс их на сегодня."
+
+                if priority_changes:
+                    message += "\n\n⬆️ Кстати, повысил приоритет для:"
+                    for change in priority_changes[:3]:
+                        message += f"\n• {change['task_title']}"
+                    message += "\n\nЭти задачи откладывались несколько раз — возможно, стоит начать с них?"
+
+                message += "\n\n💪 Давай сделаем этот день продуктивным!"
+
+                await self.bot.send_message(
+                    telegram_id,
+                    message,
+                    reply_markup=get_webapp_button(),
+                )
+
+                # Mark as notified
+                await mark_postpone_log_notified(log["log_id"])
+                users_notified += 1
+
+            except Exception as e:
+                logger.error(f"Failed to send postpone notification to {telegram_id}: {e}")
+
+            await asyncio.sleep(0.05)  # Rate limiting
+
+        logger.info(f"Postpone notifications sent: {users_notified} users for {time_slot}.")

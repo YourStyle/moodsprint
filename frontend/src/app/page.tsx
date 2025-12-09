@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight, ArrowUp, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
@@ -138,6 +138,7 @@ export default function HomePage() {
   const [moodLoading, setMoodLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
 
   const selectedDateStr = formatDateForAPI(selectedDate);
 
@@ -204,6 +205,14 @@ export default function HomePage() {
     enabled: !!user,
   });
 
+  // Check for postponed tasks notification
+  const { data: postponeData } = useQuery({
+    queryKey: ['tasks', 'postpone-status'],
+    queryFn: () => tasksService.getPostponeStatus(),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
   const handleMoodSubmit = async (mood: MoodLevel, energy: EnergyLevel, note?: string) => {
     setMoodLoading(true);
     try {
@@ -258,6 +267,8 @@ export default function HomePage() {
   const stats = statsData?.data;
   const goals = goalsData?.data;
   const tasks = tasksData?.data?.tasks || [];
+  const postponeStatus = postponeData?.data;
+  const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
   const incompleteTasks = tasks.filter(t => t.status !== 'completed');
   const completedTasks = tasks.filter(t => t.status === 'completed');
 
@@ -279,6 +290,29 @@ export default function HomePage() {
     <div className="min-h-screen p-4 space-y-6 safe-area-top safe-area-bottom">
       {/* Daily Bonus Modal */}
       <DailyBonus />
+
+      {/* Postponed Tasks Notification */}
+      {showPostponeNotification && postponeStatus && (
+        <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-3 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/30 flex items-center justify-center flex-shrink-0">
+            <ArrowUp className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-amber-200">{postponeStatus.message}</p>
+            {postponeStatus.priority_changes && postponeStatus.priority_changes.length > 0 && (
+              <div className="mt-1 text-xs text-amber-400/80">
+                Приоритет повышен: {postponeStatus.priority_changes.map(c => c.task_title).join(', ')}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setPostponeNotificationDismissed(true)}
+            className="p-1 text-amber-400 hover:text-amber-300 transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

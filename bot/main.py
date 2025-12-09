@@ -58,6 +58,46 @@ async def main():
         id="weekly_summary",
     )
 
+    # Postpone overdue tasks at 00:05 AM daily (just postpones, no notifications)
+    scheduler.add_job(
+        notification_service.postpone_overdue_tasks,
+        CronTrigger(hour=0, minute=5),
+        id="postpone_overdue_tasks",
+    )
+
+    # Send postpone notifications based on user's preferred time
+    # Morning users at 9:10 AM
+    scheduler.add_job(
+        notification_service.send_postpone_notifications,
+        CronTrigger(hour=9, minute=10),
+        args=["morning"],
+        id="postpone_notify_morning",
+    )
+
+    # Afternoon users at 13:00
+    scheduler.add_job(
+        notification_service.send_postpone_notifications,
+        CronTrigger(hour=13, minute=0),
+        args=["afternoon"],
+        id="postpone_notify_afternoon",
+    )
+
+    # Evening users at 18:10
+    scheduler.add_job(
+        notification_service.send_postpone_notifications,
+        CronTrigger(hour=18, minute=10),
+        args=["evening"],
+        id="postpone_notify_evening",
+    )
+
+    # Night users at 21:00
+    scheduler.add_job(
+        notification_service.send_postpone_notifications,
+        CronTrigger(hour=21, minute=0),
+        args=["night"],
+        id="postpone_notify_night",
+    )
+
     scheduler.start()
 
     # Set bot commands

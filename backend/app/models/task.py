@@ -43,6 +43,14 @@ class Task(db.Model):
     status = db.Column(db.String(20), default=TaskStatus.PENDING.value, nullable=False)
     due_date = db.Column(db.Date, default=date.today, nullable=True, index=True)
 
+    # AI classification
+    task_type = db.Column(db.String(50), nullable=True)  # creative, analytical, etc.
+    preferred_time = db.Column(db.String(20), nullable=True)  # morning, afternoon, evening, night
+
+    # Postpone tracking
+    postponed_count = db.Column(db.Integer, default=0, nullable=False)
+    original_due_date = db.Column(db.Date, nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(
@@ -107,6 +115,12 @@ class Task(db.Model):
             "priority": self.priority,
             "status": self.status,
             "due_date": self.due_date.isoformat() if self.due_date else None,
+            "task_type": self.task_type,
+            "preferred_time": self.preferred_time,
+            "postponed_count": self.postponed_count,
+            "original_due_date": (
+                self.original_due_date.isoformat() if self.original_due_date else None
+            ),
             "subtasks_count": self.subtasks_count,
             "subtasks_completed": self.subtasks_completed,
             "progress_percent": self.progress_percent,
