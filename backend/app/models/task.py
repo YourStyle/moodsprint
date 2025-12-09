@@ -45,7 +45,9 @@ class Task(db.Model):
 
     # AI classification
     task_type = db.Column(db.String(50), nullable=True)  # creative, analytical, etc.
-    preferred_time = db.Column(db.String(20), nullable=True)  # morning, afternoon, evening, night
+    preferred_time = db.Column(
+        db.String(20), nullable=True
+    )  # morning, afternoon, evening, night
 
     # Postpone tracking
     postponed_count = db.Column(db.Integer, default=0, nullable=False)

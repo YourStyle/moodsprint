@@ -18,14 +18,14 @@ class TaskClassifier:
 
     # Valid task types (matching onboarding options)
     TASK_TYPES = [
-        "creative",       # Творческие
-        "analytical",     # Аналитические
+        "creative",  # Творческие
+        "analytical",  # Аналитические
         "communication",  # Общение
-        "physical",       # Физические
-        "learning",       # Обучение
-        "planning",       # Планирование
-        "coding",         # Программирование
-        "writing",        # Письмо
+        "physical",  # Физические
+        "learning",  # Обучение
+        "planning",  # Планирование
+        "coding",  # Программирование
+        "writing",  # Письмо
     ]
 
     # Valid time slots
@@ -33,26 +33,93 @@ class TaskClassifier:
 
     # Keywords for fallback classification
     KEYWORDS = {
-        "creative": ["дизайн", "рисовать", "создать", "креатив", "идея", "design", "create"],
-        "analytical": ["анализ", "отчёт", "данные", "исследование", "analyze", "report", "data"],
-        "communication": ["позвонить", "встреча", "написать", "связаться", "call", "meeting", "email"],
-        "physical": ["спорт", "тренировка", "уборка", "прогулка", "exercise", "workout", "clean"],
-        "learning": ["учить", "курс", "читать", "изучить", "learn", "study", "read", "course"],
-        "planning": ["план", "организовать", "расписание", "список", "plan", "organize", "schedule"],
-        "coding": ["код", "программа", "баг", "фикс", "разработка", "code", "bug", "fix", "develop"],
-        "writing": ["статья", "документ", "текст", "написать", "article", "document", "write"],
+        "creative": [
+            "дизайн",
+            "рисовать",
+            "создать",
+            "креатив",
+            "идея",
+            "design",
+            "create",
+        ],
+        "analytical": [
+            "анализ",
+            "отчёт",
+            "данные",
+            "исследование",
+            "analyze",
+            "report",
+            "data",
+        ],
+        "communication": [
+            "позвонить",
+            "встреча",
+            "написать",
+            "связаться",
+            "call",
+            "meeting",
+            "email",
+        ],
+        "physical": [
+            "спорт",
+            "тренировка",
+            "уборка",
+            "прогулка",
+            "exercise",
+            "workout",
+            "clean",
+        ],
+        "learning": [
+            "учить",
+            "курс",
+            "читать",
+            "изучить",
+            "learn",
+            "study",
+            "read",
+            "course",
+        ],
+        "planning": [
+            "план",
+            "организовать",
+            "расписание",
+            "список",
+            "plan",
+            "organize",
+            "schedule",
+        ],
+        "coding": [
+            "код",
+            "программа",
+            "баг",
+            "фикс",
+            "разработка",
+            "code",
+            "bug",
+            "fix",
+            "develop",
+        ],
+        "writing": [
+            "статья",
+            "документ",
+            "текст",
+            "написать",
+            "article",
+            "document",
+            "write",
+        ],
     }
 
     # Default time preferences for task types
     TYPE_TIME_MAPPING = {
-        "creative": "morning",       # Творческие лучше утром
-        "analytical": "morning",     # Аналитика требует свежей головы
+        "creative": "morning",  # Творческие лучше утром
+        "analytical": "morning",  # Аналитика требует свежей головы
         "communication": "afternoon",  # Коммуникации в рабочее время
-        "physical": "evening",       # Физические после работы
-        "learning": "evening",       # Учёба вечером
-        "planning": "morning",       # Планирование с утра
-        "coding": "afternoon",       # Кодинг в середине дня
-        "writing": "morning",        # Писательство утром
+        "physical": "evening",  # Физические после работы
+        "learning": "evening",  # Учёба вечером
+        "planning": "morning",  # Планирование с утра
+        "coding": "afternoon",  # Кодинг в середине дня
+        "writing": "morning",  # Писательство утром
     }
 
     def __init__(self):

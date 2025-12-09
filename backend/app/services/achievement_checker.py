@@ -60,21 +60,30 @@ class AchievementChecker:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
-        # Task master 10
-        achievement = Achievement.query.filter_by(code="task_master_10").first()
+        # Tasks 5
+        achievement = Achievement.query.filter_by(code="tasks_5").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
-            user_ach.progress = min(completed_tasks, achievement.progress_max or 10)
-            if completed_tasks >= 10 and not user_ach.is_unlocked:
+            user_ach.progress = min(completed_tasks, achievement.progress_max or 5)
+            if completed_tasks >= 5 and not user_ach.is_unlocked:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
-        # Task master 50
-        achievement = Achievement.query.filter_by(code="task_master_50").first()
+        # Tasks 25
+        achievement = Achievement.query.filter_by(code="tasks_25").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
-            user_ach.progress = min(completed_tasks, achievement.progress_max or 50)
-            if completed_tasks >= 50 and not user_ach.is_unlocked:
+            user_ach.progress = min(completed_tasks, achievement.progress_max or 25)
+            if completed_tasks >= 25 and not user_ach.is_unlocked:
+                user_ach.unlock()
+                unlocked.append(achievement)
+
+        # Tasks 100
+        achievement = Achievement.query.filter_by(code="tasks_100").first()
+        if achievement:
+            user_ach = self._get_or_create_user_achievement(achievement)
+            user_ach.progress = min(completed_tasks, achievement.progress_max or 100)
+            if completed_tasks >= 100 and not user_ach.is_unlocked:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
@@ -97,12 +106,21 @@ class AchievementChecker:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
-        # Focus master 10
-        achievement = Achievement.query.filter_by(code="focus_master_10").first()
+        # Focus 5
+        achievement = Achievement.query.filter_by(code="focus_5").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
-            user_ach.progress = min(completed_sessions, achievement.progress_max or 10)
-            if completed_sessions >= 10 and not user_ach.is_unlocked:
+            user_ach.progress = min(completed_sessions, achievement.progress_max or 5)
+            if completed_sessions >= 5 and not user_ach.is_unlocked:
+                user_ach.unlock()
+                unlocked.append(achievement)
+
+        # Focus 25
+        achievement = Achievement.query.filter_by(code="focus_25").first()
+        if achievement:
+            user_ach = self._get_or_create_user_achievement(achievement)
+            user_ach.progress = min(completed_sessions, achievement.progress_max or 25)
+            if completed_sessions >= 25 and not user_ach.is_unlocked:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
@@ -134,7 +152,12 @@ class AchievementChecker:
         unlocked = []
         streak = self.user.streak_days
 
-        streak_achievements = [("streak_3", 3), ("streak_7", 7), ("streak_30", 30)]
+        streak_achievements = [
+            ("streak_3", 3),
+            ("streak_7", 7),
+            ("streak_14", 14),
+            ("streak_30", 30),
+        ]
 
         for code, required_streak in streak_achievements:
             achievement = Achievement.query.filter_by(code=code).first()
@@ -155,21 +178,29 @@ class AchievementChecker:
 
         mood_count = MoodCheck.query.filter_by(user_id=self.user.id).count()
 
-        # Mood tracker 10
-        achievement = Achievement.query.filter_by(code="mood_tracker").first()
-        if achievement:
+        # First mood
+        achievement = Achievement.query.filter_by(code="first_mood").first()
+        if achievement and mood_count >= 1:
             user_ach = self._get_or_create_user_achievement(achievement)
-            user_ach.progress = min(mood_count, achievement.progress_max or 10)
-            if mood_count >= 10 and not user_ach.is_unlocked:
+            if not user_ach.is_unlocked:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
-        # Mood master 50
-        achievement = Achievement.query.filter_by(code="mood_master").first()
+        # Mood tracker 5
+        achievement = Achievement.query.filter_by(code="mood_tracker_5").first()
         if achievement:
             user_ach = self._get_or_create_user_achievement(achievement)
-            user_ach.progress = min(mood_count, achievement.progress_max or 50)
-            if mood_count >= 50 and not user_ach.is_unlocked:
+            user_ach.progress = min(mood_count, achievement.progress_max or 5)
+            if mood_count >= 5 and not user_ach.is_unlocked:
+                user_ach.unlock()
+                unlocked.append(achievement)
+
+        # Mood tracker 20
+        achievement = Achievement.query.filter_by(code="mood_tracker_20").first()
+        if achievement:
+            user_ach = self._get_or_create_user_achievement(achievement)
+            user_ach.progress = min(mood_count, achievement.progress_max or 20)
+            if mood_count >= 20 and not user_ach.is_unlocked:
                 user_ach.unlock()
                 unlocked.append(achievement)
 
@@ -180,7 +211,7 @@ class AchievementChecker:
         unlocked = []
         level = self.user.level
 
-        level_achievements = [("level_5", 5), ("level_10", 10)]
+        level_achievements = [("level_3", 3), ("level_5", 5), ("level_10", 10)]
 
         for code, required_level in level_achievements:
             achievement = Achievement.query.filter_by(code=code).first()

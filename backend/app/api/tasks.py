@@ -52,7 +52,11 @@ def calculate_task_score(
     score += (task.postponed_count or 0) * 15
 
     # Overdue bonus (+50 if task is overdue)
-    if task.due_date and task.due_date < today and task.status != TaskStatus.COMPLETED.value:
+    if (
+        task.due_date
+        and task.due_date < today
+        and task.status != TaskStatus.COMPLETED.value
+    ):
         score += 50
 
     return score
@@ -122,7 +126,7 @@ def get_tasks():
         )
 
         # Apply pagination
-        tasks = sorted_tasks[offset:offset + limit]
+        tasks = sorted_tasks[offset : offset + limit]
     else:
         # Simple ordering by created_at desc
         query = query.order_by(Task.created_at.desc())
@@ -379,18 +383,17 @@ def get_postpone_status():
     today = date.today()
 
     # Get today's postpone log
-    log = (
-        PostponeLog.query.filter_by(user_id=user_id, date=today)
-        .first()
-    )
+    log = PostponeLog.query.filter_by(user_id=user_id, date=today).first()
 
     if not log or log.tasks_postponed == 0:
-        return success_response({
-            "has_postponed": False,
-            "tasks_postponed": 0,
-            "priority_changes": [],
-            "message": None,
-        })
+        return success_response(
+            {
+                "has_postponed": False,
+                "tasks_postponed": 0,
+                "priority_changes": [],
+                "message": None,
+            }
+        )
 
     # Mark as notified
     if not log.notified:
@@ -405,12 +408,14 @@ def get_postpone_status():
     else:
         message = f"Перенесено {log.tasks_postponed} задач с прошлых дней"
 
-    return success_response({
-        "has_postponed": True,
-        "tasks_postponed": log.tasks_postponed,
-        "priority_changes": log.priority_changes or [],
-        "message": message,
-    })
+    return success_response(
+        {
+            "has_postponed": True,
+            "tasks_postponed": log.tasks_postponed,
+            "priority_changes": log.priority_changes or [],
+            "message": message,
+        }
+    )
 
 
 # Subtask endpoints

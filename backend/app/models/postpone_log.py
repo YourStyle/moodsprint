@@ -19,7 +19,9 @@ class PostponeLog(db.Model):
     )
     date = db.Column(db.Date, default=date.today, nullable=False, index=True)
     tasks_postponed = db.Column(db.Integer, default=0, nullable=False)
-    priority_changes = db.Column(db.JSON, nullable=True)  # [{task_id, old, new, reason}]
+    priority_changes = db.Column(
+        db.JSON, nullable=True
+    )  # [{task_id, old, new, reason}]
     notified = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
