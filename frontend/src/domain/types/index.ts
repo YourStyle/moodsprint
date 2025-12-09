@@ -309,6 +309,8 @@ export interface TelegramWebApp {
     secondary_bg_color?: string;
   };
   isExpanded: boolean;
+  isFullscreen: boolean;
+  isClosingConfirmationEnabled: boolean;
   viewportHeight: number;
   viewportStableHeight: number;
   headerColor: string;
@@ -316,6 +318,10 @@ export interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  requestFullscreen: () => void;
+  exitFullscreen: () => void;
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
   MainButton: {
     text: string;
     color: string;

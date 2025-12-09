@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Wand2, Trash2, Plus, Play, Check } from 'lucide-react';
@@ -9,7 +9,7 @@ import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { tasksService, focusService, moodService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback } from '@/lib/telegram';
+import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { PRIORITY_COLORS } from '@/domain/constants';
 import type { MoodLevel, EnergyLevel } from '@/domain/types';
 
@@ -25,6 +25,17 @@ export default function TaskDetailPage() {
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
+
+  // Show Telegram back button
+  useEffect(() => {
+    const handleBack = () => {
+      router.push('/tasks');
+    };
+    showBackButton(handleBack);
+    return () => {
+      hideBackButton();
+    };
+  }, [router]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['task', taskId],

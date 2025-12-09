@@ -10,6 +10,8 @@ import {
   isTelegramWebApp,
   readyTelegramWebApp,
   expandTelegramWebApp,
+  requestFullscreen,
+  enableClosingConfirmation,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 
@@ -39,6 +41,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
       if (isTelegramWebApp()) {
         readyTelegramWebApp();
         expandTelegramWebApp();
+        requestFullscreen();
+        enableClosingConfirmation();
       }
 
       try {

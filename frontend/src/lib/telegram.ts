@@ -43,6 +43,34 @@ export function expandTelegramWebApp() {
   }
 }
 
+export function requestFullscreen() {
+  const webApp = getTelegramWebApp();
+  if (webApp && !webApp.isFullscreen && webApp.requestFullscreen) {
+    webApp.requestFullscreen();
+  }
+}
+
+export function exitFullscreen() {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.isFullscreen && webApp.exitFullscreen) {
+    webApp.exitFullscreen();
+  }
+}
+
+export function enableClosingConfirmation() {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.enableClosingConfirmation) {
+    webApp.enableClosingConfirmation();
+  }
+}
+
+export function disableClosingConfirmation() {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.disableClosingConfirmation) {
+    webApp.disableClosingConfirmation();
+  }
+}
+
 export function readyTelegramWebApp() {
   const webApp = getTelegramWebApp();
   webApp?.ready();
@@ -117,15 +145,29 @@ export function hideMainButton() {
   webApp?.MainButton.hide();
 }
 
+let backButtonCallback: (() => void) | null = null;
+
 export function showBackButton(onClick: () => void) {
   const webApp = getTelegramWebApp();
   if (!webApp) return;
 
+  // Remove previous callback if exists
+  if (backButtonCallback) {
+    webApp.BackButton.offClick(backButtonCallback);
+  }
+
+  backButtonCallback = onClick;
   webApp.BackButton.onClick(onClick);
   webApp.BackButton.show();
 }
 
 export function hideBackButton() {
   const webApp = getTelegramWebApp();
-  webApp?.BackButton.hide();
+  if (!webApp) return;
+
+  if (backButtonCallback) {
+    webApp.BackButton.offClick(backButtonCallback);
+    backButtonCallback = null;
+  }
+  webApp.BackButton.hide();
 }

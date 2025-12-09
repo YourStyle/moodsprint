@@ -98,6 +98,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Prepare deployment directory
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            sudo mkdir -p /opt/moodsprint/nginx
+            sudo chown -R $USER:$USER /opt/moodsprint
+
       - name: Copy configs to staging server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -154,6 +164,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Prepare deployment directory
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            sudo mkdir -p /opt/moodsprint/nginx
+            sudo chown -R $USER:$USER /opt/moodsprint
 
       - name: Copy configs to production server
         uses: appleboy/scp-action@v0.1.7
