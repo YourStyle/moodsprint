@@ -75,7 +75,7 @@ def start_focus_session():
         user_id=user_id,
         subtask_id=subtask_id,
         task_id=task_id if task else None,
-        planned_duration_minutes=duration
+        planned_duration_minutes=duration,
     )
 
     # Update subtask status if linked

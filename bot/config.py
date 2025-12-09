@@ -14,13 +14,16 @@ class Config:
         or os.environ.get("TELEGRAM_BOT_TOKEN", "")
     )
     WEBAPP_URL: str = field(
-        default_factory=lambda: os.environ.get("WEBAPP_URL", "https://staging.moodsprint.ru")
+        default_factory=lambda: os.environ.get(
+            "WEBAPP_URL", "https://staging.moodsprint.ru"
+        )
     )
 
     # Database
     DATABASE_URL: str = field(
         default_factory=lambda: os.environ.get(
-            "DATABASE_URL", "postgresql+asyncpg://moodsprint:moodsprint@db:5432/moodsprint"
+            "DATABASE_URL",
+            "postgresql+asyncpg://moodsprint:moodsprint@db:5432/moodsprint",
         )
     )
 

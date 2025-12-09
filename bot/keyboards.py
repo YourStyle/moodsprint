@@ -88,11 +88,7 @@ def get_admin_keyboard() -> InlineKeyboardMarkup:
                     text="📊 Статистика пользователей", callback_data="admin:stats"
                 )
             ],
-            [
-                InlineKeyboardButton(
-                    text="📢 Рассылка", callback_data="admin:broadcast"
-                )
-            ],
+            [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin:broadcast")],
             [
                 InlineKeyboardButton(
                     text="👥 Активные пользователи", callback_data="admin:active_users"

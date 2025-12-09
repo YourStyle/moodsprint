@@ -314,7 +314,10 @@ def create_subtask(task_id: int):
         return validation_error({"title": "Title must be less than 500 characters"})
 
     # Get max order
-    max_order = db.session.query(db.func.max(Subtask.order)).filter_by(task_id=task_id).scalar() or 0
+    max_order = (
+        db.session.query(db.func.max(Subtask.order)).filter_by(task_id=task_id).scalar()
+        or 0
+    )
 
     estimated_minutes = data.get("estimated_minutes", 10)
     try:
