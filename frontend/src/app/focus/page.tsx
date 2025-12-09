@@ -171,6 +171,7 @@ export default function FocusPage() {
             isLoading={startMutation.isPending}
             className="w-full"
           >
+            <Play className="w-5 h-5 mr-2" />
             Начать без задачи
           </Button>
         )}
@@ -217,10 +218,10 @@ export default function FocusPage() {
             <button
               key={subtask.id}
               onClick={() => startMutation.mutate(subtask.id)}
-              className="w-full p-3 text-left rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="w-full p-3 text-left rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
             >
-              <p className="font-medium text-gray-900">{subtask.title}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{subtask.taskTitle}</p>
+              <p className="font-medium text-white">{subtask.title}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{subtask.taskTitle}</p>
             </button>
           ))}
         </div>

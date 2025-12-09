@@ -16,19 +16,23 @@ export function AchievementCard({ achievement }: AchievementCardProps) {
     <Card
       className={`${
         isUnlocked
-          ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
-          : 'opacity-60'
+          ? 'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30'
+          : 'opacity-50'
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div
-          className={`text-3xl ${isUnlocked ? '' : 'grayscale opacity-50'}`}
+          className={`text-2xl flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg ${
+            isUnlocked ? 'bg-yellow-500/20' : 'bg-gray-700 grayscale opacity-50'
+          }`}
         >
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900">{achievement.title}</h4>
-          <p className="text-sm text-gray-500 mt-0.5">{achievement.description}</p>
+          <h4 className={`font-semibold ${isUnlocked ? 'text-white' : 'text-gray-400'}`}>
+            {achievement.title}
+          </h4>
+          <p className="text-sm text-gray-400 mt-0.5 line-clamp-1">{achievement.description}</p>
 
           {!isUnlocked && achievement.progress_max && (
             <div className="mt-2">
@@ -37,14 +41,14 @@ export function AchievementCard({ achievement }: AchievementCardProps) {
                 max={achievement.progress_max}
                 size="sm"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {achievement.progress}/{achievement.progress_max}
               </p>
             </div>
           )}
 
           {isUnlocked && (
-            <p className="text-xs text-yellow-600 mt-2">
+            <p className="text-xs text-yellow-400 mt-1 font-medium">
               +{achievement.xp_reward} XP
             </p>
           )}

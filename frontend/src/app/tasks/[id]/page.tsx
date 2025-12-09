@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Wand2, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Wand2, Trash2, Plus, Play, Check } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -91,6 +91,36 @@ export default function TaskDetailPage() {
     },
   });
 
+  const startTaskFocusMutation = useMutation({
+    mutationFn: () =>
+      focusService.startSession({
+        task_id: taskId,
+        planned_duration_minutes: 25,
+      }),
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        setActiveSession(result.data.session);
+        router.push('/focus');
+        hapticFeedback('success');
+      }
+    },
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: () =>
+      tasksService.updateTask(taskId, { status: 'completed' }),
+    onSuccess: (result) => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['daily', 'goals'] });
+      if (result.data?.xp_earned) {
+        showXPAnimation(result.data.xp_earned);
+      }
+      hapticFeedback('success');
+    },
+  });
+
   const handleDecompose = () => {
     if (!latestMood) {
       setShowMoodModal(true);
@@ -164,9 +194,20 @@ export default function TaskDetailPage() {
       {/* Task Info */}
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
-            {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
+              {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
+            </span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              task.status === 'completed'
+                ? 'bg-green-500/20 text-green-400'
+                : task.status === 'in_progress'
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-gray-500/20 text-gray-400'
+            }`}>
+              {task.status === 'completed' ? 'Выполнена' : task.status === 'in_progress' ? 'В работе' : 'Ожидает'}
+            </span>
+          </div>
           <span className="text-sm text-gray-500">
             {task.progress_percent}% выполнено
           </span>
@@ -177,8 +218,32 @@ export default function TaskDetailPage() {
         )}
       </Card>
 
+      {/* Action Buttons */}
+      {task.status !== 'completed' && (
+        <div className="flex gap-3">
+          <Button
+            variant="primary"
+            onClick={() => startTaskFocusMutation.mutate()}
+            isLoading={startTaskFocusMutation.isPending}
+            className="flex-1"
+          >
+            <Play className="w-4 h-4 mr-2" />
+            Начать фокус
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => completeTaskMutation.mutate()}
+            isLoading={completeTaskMutation.isPending}
+            className="flex-1"
+          >
+            <Check className="w-4 h-4 mr-2" />
+            Завершить
+          </Button>
+        </div>
+      )}
+
       {/* Decompose Button */}
-      {subtasks.length === 0 && (
+      {subtasks.length === 0 && task.status !== 'completed' && (
         <Button
           onClick={handleDecompose}
           isLoading={decomposeMutation.isPending}

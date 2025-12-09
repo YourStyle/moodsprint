@@ -47,7 +47,7 @@ export default function ProfilePage() {
         {user.photo_url ? (
           <img
             src={user.photo_url}
-            alt={user.first_name || user.username || 'User'}
+            alt={user.first_name || user.username || 'Профиль'}
             className="w-20 h-20 mx-auto rounded-full object-cover mb-3"
           />
         ) : (

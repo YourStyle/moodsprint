@@ -76,7 +76,7 @@ function WeekCalendar({ selectedDate, onDateSelect }: WeekCalendarProps) {
   );
 }
 
-function TaskCardNew({
+function TaskCardCompact({
   task,
   onClick,
   onStart,
@@ -89,34 +89,31 @@ function TaskCardNew({
   const hasSubtasks = task.subtasks_count > 0;
 
   return (
-    <Card
-      variant="gradient"
-      padding="md"
-      hover
-      className={`relative overflow-hidden ${isCompleted ? 'opacity-60' : ''}`}
+    <div
+      className={`bg-dark-700/50 rounded-xl p-3 border border-gray-800 ${isCompleted ? 'opacity-50' : ''}`}
     >
-      <div className="flex items-center justify-between mb-3" onClick={onClick}>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isCompleted ? 'bg-green-500/20' : 'bg-purple-500/20'
-          }`}>
-            {isCompleted ? (
-              <span className="text-lg">✓</span>
-            ) : (
-              <Sparkles className="w-5 h-5 text-purple-400" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className={`font-semibold truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}`}>
-              {task.title}
-            </h3>
-            {task.estimated_minutes && task.estimated_minutes > 0 && (
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <Clock className="w-3 h-3" />
-                <span>{task.estimated_minutes} мин</span>
-              </div>
-            )}
-          </div>
+      <div className="flex items-center gap-3" onClick={onClick}>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          isCompleted ? 'bg-green-500/20' : 'bg-purple-500/20'
+        }`}>
+          {isCompleted ? (
+            <span className="text-sm text-green-400">✓</span>
+          ) : (
+            <Sparkles className="w-4 h-4 text-purple-400" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className={`text-sm font-medium truncate ${isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
+            {task.title}
+          </h3>
+          {!isCompleted && hasSubtasks && (
+            <div className="mt-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary-500 rounded-full transition-all"
+                style={{ width: `${task.progress_percent}%` }}
+              />
+            </div>
+          )}
         </div>
         {!isCompleted && onStart && (
           <button
@@ -124,26 +121,13 @@ function TaskCardNew({
               e.stopPropagation();
               onStart();
             }}
-            className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0 ml-2"
+            className="w-8 h-8 rounded-lg bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0"
           >
-            <Play className="w-5 h-5 text-white" fill="white" />
+            <Play className="w-4 h-4 text-white" fill="white" />
           </button>
         )}
-        {isCompleted && (
-          <span className="text-green-400 text-sm font-medium">Готово</span>
-        )}
       </div>
-
-      {/* Progress bar */}
-      {!isCompleted && hasSubtasks && (
-        <div className="progress-bar h-1.5" onClick={onClick}>
-          <div
-            className="progress-bar-fill h-full"
-            style={{ width: `${task.progress_percent}%` }}
-          />
-        </div>
-      )}
-    </Card>
+    </div>
   );
 }
 
@@ -295,10 +279,10 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-white">
             {getGreeting()},
           </h1>
-          <p className="text-gray-400">{user.first_name || 'there'}</p>
+          <p className="text-gray-400">{user.first_name || 'друг'}</p>
         </div>
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-          {(user.first_name?.[0] || 'U').toUpperCase()}
+          {(user.first_name?.[0] || '?').toUpperCase()}
         </div>
       </div>
 
@@ -326,44 +310,24 @@ export default function HomePage() {
             ))}
           </div>
         ) : tasks.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Incomplete tasks first */}
-            {incompleteTasks.map((task, index) => (
-              <div
+            {incompleteTasks.map((task) => (
+              <TaskCardCompact
                 key={task.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <TaskCardNew
-                  task={{
-                    ...task,
-                    estimated_minutes: task.subtasks?.reduce((acc, s) => acc + (s.estimated_minutes || 0), 0) || 0,
-                  }}
-                  onClick={() => router.push(`/tasks/${task.id}`)}
-                  onStart={() => startFocusMutation.mutate(task.id)}
-                />
-              </div>
+                task={task}
+                onClick={() => router.push(`/tasks/${task.id}`)}
+                onStart={() => startFocusMutation.mutate(task.id)}
+              />
             ))}
             {/* Completed tasks */}
-            {completedTasks.length > 0 && (
-              <>
-                {completedTasks.map((task, index) => (
-                  <div
-                    key={task.id}
-                    className="animate-slide-up"
-                    style={{ animationDelay: `${(incompleteTasks.length + index) * 50}ms` }}
-                  >
-                    <TaskCardNew
-                      task={{
-                        ...task,
-                        estimated_minutes: 0,
-                      }}
-                      onClick={() => router.push(`/tasks/${task.id}`)}
-                    />
-                  </div>
-                ))}
-              </>
-            )}
+            {completedTasks.map((task) => (
+              <TaskCardCompact
+                key={task.id}
+                task={task}
+                onClick={() => router.push(`/tasks/${task.id}`)}
+              />
+            ))}
           </div>
         ) : (
           <Card variant="glass" className="text-center py-8">
