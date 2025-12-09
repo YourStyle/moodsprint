@@ -81,40 +81,40 @@ class AIDecomposer:
         min_minutes, max_minutes = strategy_config["step_range"]
         max_steps = strategy_config["max_steps"]
 
-        prompt = f"""Break down this task into small, actionable steps.
+        prompt = f"""Разбей эту задачу на небольшие, конкретные шаги.
 
-Task: {task_title}
-{f'Description: {task_description}' if task_description else ''}
+Задача: {task_title}
+{f'Описание: {task_description}' if task_description else ''}
 
-Requirements:
-- Create {max_steps-2} to {max_steps} concrete steps
-- Each step should take {min_minutes}-{max_minutes} minutes
-- Steps should be specific and actionable (start with a verb)
-- Steps should be achievable in one sitting
-- Order steps logically
+Требования:
+- Создай от {max_steps-2} до {max_steps} конкретных шагов
+- Каждый шаг должен занимать {min_minutes}-{max_minutes} минут
+- Шаги должны быть конкретными и выполнимыми (начинай с глагола)
+- Шаги должны быть выполнимы за один подход
+- Расположи шаги в логическом порядке
 
-Return ONLY a JSON array with objects containing:
-- "title": step description (string, max 100 chars)
-- "estimated_minutes": time estimate (integer between {min_minutes} and {max_minutes})
+Верни ТОЛЬКО JSON массив с объектами:
+- "title": описание шага на русском (строка, макс 100 символов)
+- "estimated_minutes": оценка времени (целое число от {min_minutes} до {max_minutes})
 
-Example format:
+Пример формата:
 [
-  {{"title": "Open project and review requirements", "estimated_minutes": 10}},
-  {{"title": "Create basic file structure", "estimated_minutes": 15}}
+  {{"title": "Открыть проект и изучить требования", "estimated_minutes": 10}},
+  {{"title": "Создать базовую структуру файлов", "estimated_minutes": 15}}
 ]
 """
 
         response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-5-mini-2025-08-07",
+            reasoning_effort="minimal",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a productivity assistant that breaks down tasks into manageable steps. Always respond with valid JSON only.",
+                    "content": "Ты помощник по продуктивности, который разбивает задачи на выполнимые шаги. Всегда отвечай только валидным JSON на русском языке.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.7,
-            max_tokens=500,
+            max_completion_tokens=1000,
         )
 
         content = response.choices[0].message.content.strip()
@@ -155,11 +155,11 @@ Example format:
 
         # Generic steps based on common task patterns
         generic_steps = [
-            f"Review and understand: {task_title}",
-            "Gather necessary resources and information",
-            "Start working on the main part",
-            "Continue with remaining work",
-            "Review and finalize",
+            f"Изучить и понять: {task_title}",
+            "Собрать необходимые ресурсы и информацию",
+            "Начать работу над основной частью",
+            "Продолжить работу над оставшимся",
+            "Проверить и завершить",
         ]
 
         max_steps = strategy_config["max_steps"]
@@ -173,9 +173,9 @@ Example format:
     def get_strategy_message(self, strategy: str) -> str:
         """Get user-friendly message about the decomposition strategy."""
         messages = {
-            "micro": "Task broken into very small steps for your current energy level. Take breaks often!",
-            "gentle": "Task broken into manageable steps with gentle pacing.",
-            "careful": "Task broken into medium steps. Remember to take breaks!",
-            "standard": "Task broken into standard productivity steps.",
+            "micro": "Задача разбита на очень маленькие шаги для твоего текущего уровня энергии. Делай перерывы чаще!",
+            "gentle": "Задача разбита на выполнимые шаги с мягким темпом.",
+            "careful": "Задача разбита на средние шаги. Не забывай делать перерывы!",
+            "standard": "Задача разбита на стандартные шаги продуктивности.",
         }
         return messages.get(strategy, messages["standard"])
