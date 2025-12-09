@@ -5,23 +5,14 @@ from typing import Any
 
 from flask import current_app
 
-try:
-    from openai import OpenAI
-
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
+from app.services.openai_client import get_openai_client
 
 
 class ProfileAnalyzer:
     """Service for analyzing user responses and creating productivity profile."""
 
     def __init__(self):
-        self.client = None
-        if OPENAI_AVAILABLE:
-            api_key = current_app.config.get("OPENAI_API_KEY")
-            if api_key:
-                self.client = OpenAI(api_key=api_key)
+        self.client = get_openai_client()
 
     def analyze_onboarding(self, responses: dict[str, Any]) -> dict[str, Any]:
         """

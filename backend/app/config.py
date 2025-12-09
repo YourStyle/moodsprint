@@ -31,6 +31,9 @@ class Config:
 
     # OpenAI
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    OPENAI_PROXY = os.environ.get(
+        "OPENAI_PROXY", ""
+    )  # e.g., http://user:pass@host:port
 
     # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
