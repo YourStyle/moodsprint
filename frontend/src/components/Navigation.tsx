@@ -25,7 +25,7 @@ export function Navigation() {
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 z-50 pb-4 safe-area-bottom"
+      className="fixed bottom-1.5 left-0 right-0 z-50 pb-4 safe-area-bottom"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}

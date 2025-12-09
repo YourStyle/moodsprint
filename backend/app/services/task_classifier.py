@@ -178,9 +178,9 @@ class TaskClassifier:
 {{"task_type": "тип", "preferred_time": "время"}}
 """
 
+        current_app.logger.info(f"AI classifying task: {task_title}")
         response = self.client.chat.completions.create(
-            model="gpt-5-mini-2025-08-07",
-            reasoning_effort="minimal",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -188,8 +188,9 @@ class TaskClassifier:
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_completion_tokens=200,
+            max_tokens=200,
         )
+        current_app.logger.info(f"AI classification result: {response.choices[0].message.content}")
 
         content = response.choices[0].message.content.strip()
 

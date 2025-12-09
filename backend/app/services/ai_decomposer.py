@@ -176,9 +176,9 @@ class AIDecomposer:
 ]
 """
 
+        current_app.logger.info(f"AI decomposing task: {task_title}")
         response = self.client.chat.completions.create(
-            model="gpt-5-mini-2025-08-07",
-            reasoning_effort="minimal",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -189,8 +189,9 @@ class AIDecomposer:
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_completion_tokens=1000,
+            max_tokens=1000,
         )
+        current_app.logger.info(f"AI decomposition result: {response.choices[0].message.content}")
 
         content = response.choices[0].message.content.strip()
 
