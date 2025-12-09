@@ -18,14 +18,14 @@ class TaskClassifier:
 
     # Valid task types (matching onboarding options)
     TASK_TYPES = [
-        "creative",      # Творческие
-        "analytical",    # Аналитические
-        "communication", # Общение
-        "physical",      # Физические
-        "learning",      # Обучение
-        "planning",      # Планирование
-        "coding",        # Программирование
-        "writing",       # Письмо
+        "creative",       # Творческие
+        "analytical",     # Аналитические
+        "communication",  # Общение
+        "physical",       # Физические
+        "learning",       # Обучение
+        "planning",       # Планирование
+        "coding",         # Программирование
+        "writing",        # Письмо
     ]
 
     # Valid time slots
@@ -45,14 +45,14 @@ class TaskClassifier:
 
     # Default time preferences for task types
     TYPE_TIME_MAPPING = {
-        "creative": "morning",      # Творческие лучше утром
-        "analytical": "morning",    # Аналитика требует свежей головы
-        "communication": "afternoon", # Коммуникации в рабочее время
-        "physical": "evening",      # Физические после работы
-        "learning": "evening",      # Учёба вечером
-        "planning": "morning",      # Планирование с утра
-        "coding": "afternoon",      # Кодинг в середине дня
-        "writing": "morning",       # Писательство утром
+        "creative": "morning",       # Творческие лучше утром
+        "analytical": "morning",     # Аналитика требует свежей головы
+        "communication": "afternoon",  # Коммуникации в рабочее время
+        "physical": "evening",       # Физические после работы
+        "learning": "evening",       # Учёба вечером
+        "planning": "morning",       # Планирование с утра
+        "coding": "afternoon",       # Кодинг в середине дня
+        "writing": "morning",        # Писательство утром
     }
 
     def __init__(self):

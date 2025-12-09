@@ -122,7 +122,7 @@ def get_tasks():
         )
 
         # Apply pagination
-        tasks = sorted_tasks[offset : offset + limit]
+        tasks = sorted_tasks[offset:offset + limit]
     else:
         # Simple ordering by created_at desc
         query = query.order_by(Task.created_at.desc())

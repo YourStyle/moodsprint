@@ -192,7 +192,9 @@ async def create_postpone_log(
     async with async_session() as session:
         import json
 
-        priority_changes_json = json.dumps(priority_changes) if priority_changes else None
+        priority_changes_json = (
+            json.dumps(priority_changes) if priority_changes else None
+        )
 
         await session.execute(
             text(

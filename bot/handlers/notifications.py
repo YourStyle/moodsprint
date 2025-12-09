@@ -199,13 +199,15 @@ class NotificationService:
                         new_priority = "high" if old_priority == "medium" else "medium"
                         await update_task_priority(task_id, new_priority)
 
-                        priority_changes.append({
-                            "task_id": task_id,
-                            "task_title": task["title"][:50],
-                            "old_priority": old_priority,
-                            "new_priority": new_priority,
-                            "postponed_count": new_postponed_count,
-                        })
+                        priority_changes.append(
+                            {
+                                "task_id": task_id,
+                                "task_title": task["title"][:50],
+                                "old_priority": old_priority,
+                                "new_priority": new_priority,
+                                "postponed_count": new_postponed_count,
+                            }
+                        )
 
             # Create postpone log (notification will be sent later)
             await create_postpone_log(
@@ -214,7 +216,9 @@ class NotificationService:
                 priority_changes=priority_changes if priority_changes else None,
             )
 
-        logger.info(f"Postponement complete: {total_postponed} tasks for {len(users_tasks)} users.")
+        logger.info(
+            f"Postponement complete: {total_postponed} tasks for {len(users_tasks)} users."
+        )
 
     async def send_postpone_notifications(self, time_slot: str):
         """
@@ -298,8 +302,12 @@ class NotificationService:
                 users_notified += 1
 
             except Exception as e:
-                logger.error(f"Failed to send postpone notification to {telegram_id}: {e}")
+                logger.error(
+                    f"Failed to send postpone notification to {telegram_id}: {e}"
+                )
 
             await asyncio.sleep(0.05)  # Rate limiting
 
-        logger.info(f"Postpone notifications sent: {users_notified} users for {time_slot}.")
+        logger.info(
+            f"Postpone notifications sent: {users_notified} users for {time_slot}."
+        )
