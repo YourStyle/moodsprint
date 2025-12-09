@@ -104,7 +104,7 @@ export function FocusTimer({
       <div className="flex items-center gap-4 mt-8">
         <Button
           variant="ghost"
-          size="lg"
+          iconOnly
           onClick={onCancel}
           className="w-14 h-14 rounded-full"
         >
@@ -113,7 +113,7 @@ export function FocusTimer({
 
         <Button
           variant={isPaused ? 'primary' : 'secondary'}
-          size="lg"
+          iconOnly
           onClick={isPaused ? onResume : onPause}
           className="w-16 h-16 rounded-full"
         >
@@ -126,7 +126,7 @@ export function FocusTimer({
 
         <Button
           variant="primary"
-          size="lg"
+          iconOnly
           onClick={() => onComplete(true)}
           className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600"
         >
