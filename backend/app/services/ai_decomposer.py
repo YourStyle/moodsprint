@@ -191,7 +191,9 @@ class AIDecomposer:
             ],
             max_tokens=1000,
         )
-        current_app.logger.info(f"AI decomposition result: {response.choices[0].message.content}")
+        current_app.logger.info(
+            f"AI decomposition result: {response.choices[0].message.content}"
+        )
 
         content = response.choices[0].message.content.strip()
 
