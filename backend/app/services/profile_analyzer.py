@@ -69,6 +69,7 @@ Based on this information, provide a JSON response with:
 Return ONLY valid JSON, no other text.
 """
 
+        current_app.logger.info("AI analyzing user profile from onboarding")
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -80,6 +81,9 @@ Return ONLY valid JSON, no other text.
             ],
             temperature=0.7,
             max_tokens=500,
+        )
+        current_app.logger.info(
+            f"AI profile analysis result: {response.choices[0].message.content}"
         )
 
         content = response.choices[0].message.content.strip()
