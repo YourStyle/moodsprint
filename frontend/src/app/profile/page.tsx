@@ -41,7 +41,7 @@ export default function ProfilePage() {
   const achievements = achievementsData?.data;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pt-safe">
       {/* User Info */}
       <Card className="text-center">
         {user.photo_url ? (

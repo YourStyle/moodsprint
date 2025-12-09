@@ -12,6 +12,9 @@ import {
   expandTelegramWebApp,
   requestFullscreen,
   enableClosingConfirmation,
+  disableVerticalSwipes,
+  isMobileDevice,
+  applySafeAreaCSSVariables,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 
@@ -41,8 +44,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
       if (isTelegramWebApp()) {
         readyTelegramWebApp();
         expandTelegramWebApp();
-        requestFullscreen();
         enableClosingConfirmation();
+        applySafeAreaCSSVariables();
+
+        // Full screen and disable swipes only for mobile devices
+        if (isMobileDevice()) {
+          requestFullscreen();
+          disableVerticalSwipes();
+        }
       }
 
       try {

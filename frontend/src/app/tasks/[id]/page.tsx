@@ -182,7 +182,7 @@ export default function TaskDetailPage() {
   const subtasks = task.subtasks || [];
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pt-safe">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

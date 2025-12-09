@@ -2,11 +2,56 @@
  * Telegram WebApp SDK utilities.
  */
 
-import type { TelegramWebApp } from '@/domain/types';
+import type { TelegramWebApp, SafeAreaInsets } from '@/domain/types';
 
 export function getTelegramWebApp(): TelegramWebApp | null {
   if (typeof window === 'undefined') return null;
   return window.Telegram?.WebApp || null;
+}
+
+export function getSafeAreaInsets(): SafeAreaInsets {
+  const webApp = getTelegramWebApp();
+  if (webApp?.viewport?.safeAreaInsets) {
+    return webApp.viewport.safeAreaInsets();
+  }
+  return { top: 0, bottom: 0, left: 0, right: 0 };
+}
+
+export function getContentSafeAreaInsets(): SafeAreaInsets {
+  const webApp = getTelegramWebApp();
+  if (webApp?.viewport?.contentSafeAreaInsets) {
+    return webApp.viewport.contentSafeAreaInsets();
+  }
+  return { top: 0, bottom: 0, left: 0, right: 0 };
+}
+
+export function applySafeAreaCSSVariables() {
+  const webApp = getTelegramWebApp();
+  if (!webApp?.viewport) return;
+
+  const updateCSSVariables = () => {
+    const safeArea = getSafeAreaInsets();
+    const contentSafeArea = getContentSafeAreaInsets();
+
+    document.documentElement.style.setProperty('--tg-safe-area-top', `${safeArea.top}px`);
+    document.documentElement.style.setProperty('--tg-safe-area-bottom', `${safeArea.bottom}px`);
+    document.documentElement.style.setProperty('--tg-safe-area-left', `${safeArea.left}px`);
+    document.documentElement.style.setProperty('--tg-safe-area-right', `${safeArea.right}px`);
+
+    document.documentElement.style.setProperty('--tg-content-safe-area-top', `${contentSafeArea.top}px`);
+    document.documentElement.style.setProperty('--tg-content-safe-area-bottom', `${contentSafeArea.bottom}px`);
+    document.documentElement.style.setProperty('--tg-content-safe-area-left', `${contentSafeArea.left}px`);
+    document.documentElement.style.setProperty('--tg-content-safe-area-right', `${contentSafeArea.right}px`);
+  };
+
+  // Initial update
+  updateCSSVariables();
+
+  // Listen for viewport changes (fullscreen, keyboard, etc.)
+  webApp.onEvent('viewportChanged', updateCSSVariables);
+  webApp.onEvent('fullscreenChanged', updateCSSVariables);
+  webApp.onEvent('safeAreaChanged', updateCSSVariables);
+  webApp.onEvent('contentSafeAreaChanged', updateCSSVariables);
 }
 
 export function isTelegramWebApp(): boolean {
@@ -69,6 +114,30 @@ export function disableClosingConfirmation() {
   if (webApp && webApp.disableClosingConfirmation) {
     webApp.disableClosingConfirmation();
   }
+}
+
+export function disableVerticalSwipes() {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.disableVerticalSwipes) {
+    webApp.disableVerticalSwipes();
+  }
+}
+
+export function enableVerticalSwipes() {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.enableVerticalSwipes) {
+    webApp.enableVerticalSwipes();
+  }
+}
+
+export function isMobileDevice(): boolean {
+  const webApp = getTelegramWebApp();
+  if (!webApp) return false;
+
+  const platform = webApp.platform?.toLowerCase() || '';
+  // Mobile platforms: ios, android
+  // Non-mobile: tdesktop, macos, web, weba, webk, unigram
+  return platform === 'ios' || platform === 'android';
 }
 
 export function readyTelegramWebApp() {

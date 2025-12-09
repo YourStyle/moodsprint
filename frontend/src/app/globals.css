@@ -27,6 +27,16 @@
   --tg-theme-button-color: #7c3aed;
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #1a1433;
+
+  /* Telegram safe area (set dynamically via JS from TG viewport API) */
+  --tg-safe-area-top: 0px;
+  --tg-safe-area-bottom: 0px;
+  --tg-safe-area-left: 0px;
+  --tg-safe-area-right: 0px;
+  --tg-content-safe-area-top: 0px;
+  --tg-content-safe-area-bottom: 0px;
+  --tg-content-safe-area-left: 0px;
+  --tg-content-safe-area-right: 0px;
 }
 
 html {
@@ -45,13 +55,29 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Telegram WebApp safe area */
+/* Telegram WebApp safe area - using TG viewport API with CSS env fallback */
 .safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--tg-safe-area-top, env(safe-area-inset-top, 0px));
 }
 
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: var(--tg-safe-area-top, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(var(--tg-safe-area-bottom, env(safe-area-inset-bottom, 0px)), 24px);
+}
+
+.content-safe-area-top {
+  padding-top: var(--tg-content-safe-area-top, 0px);
+}
+
+.content-safe-area-bottom {
+  padding-bottom: var(--tg-content-safe-area-bottom, 0px);
 }
 
 /* Custom scrollbar - dark theme */

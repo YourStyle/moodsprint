@@ -116,7 +116,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 flex flex-col">
+    <div className="min-h-screen p-4 flex flex-col pt-safe pb-safe">
       {/* Progress */}
       <div className="flex gap-1 mb-6">
         {(['time', 'tasks', 'challenges', 'goals'] as const).map((s, i) => (

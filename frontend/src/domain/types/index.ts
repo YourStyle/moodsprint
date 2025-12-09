@@ -288,6 +288,29 @@ export interface TelegramUser {
   language_code?: string;
 }
 
+export interface SafeAreaInsets {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface TelegramViewport {
+  height: number;
+  stableHeight: number;
+  isExpanded: boolean;
+  safeAreaInsets: () => SafeAreaInsets;
+  contentSafeAreaInsets: () => SafeAreaInsets;
+  safeAreaInsetTop: () => number;
+  safeAreaInsetBottom: () => number;
+  safeAreaInsetLeft: () => number;
+  safeAreaInsetRight: () => number;
+  contentSafeAreaInsetTop: () => number;
+  contentSafeAreaInsetBottom: () => number;
+  contentSafeAreaInsetLeft: () => number;
+  contentSafeAreaInsetRight: () => number;
+}
+
 export interface TelegramWebApp {
   initData: string;
   initDataUnsafe: {
@@ -311,10 +334,12 @@ export interface TelegramWebApp {
   isExpanded: boolean;
   isFullscreen: boolean;
   isClosingConfirmationEnabled: boolean;
+  isVerticalSwipesEnabled: boolean;
   viewportHeight: number;
   viewportStableHeight: number;
   headerColor: string;
   backgroundColor: string;
+  viewport?: TelegramViewport;
   ready: () => void;
   expand: () => void;
   close: () => void;
@@ -322,6 +347,8 @@ export interface TelegramWebApp {
   exitFullscreen: () => void;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
+  enableVerticalSwipes: () => void;
+  disableVerticalSwipes: () => void;
   MainButton: {
     text: string;
     color: string;
@@ -362,6 +389,8 @@ export interface TelegramWebApp {
   }, callback?: (buttonId: string) => void) => void;
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
+  onEvent: (eventType: string, callback: () => void) => void;
+  offEvent: (eventType: string, callback: () => void) => void;
 }
 
 declare global {

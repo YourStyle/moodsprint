@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -23,6 +23,8 @@ export function Modal({
   className,
   fullScreen = false,
 }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -35,6 +37,29 @@ export function Modal({
     };
   }, [isOpen]);
 
+  // Handle keyboard appearance on mobile
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      if (modalRef.current && window.visualViewport) {
+        const viewport = window.visualViewport;
+        modalRef.current.style.maxHeight = `${viewport.height - 20}px`;
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      handleResize();
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -44,12 +69,13 @@ export function Modal({
         onClick={onClose}
       />
       <div
+        ref={modalRef}
         className={clsx(
-          'relative w-full glass-strong animate-slide-up',
+          'relative w-full glass-strong animate-slide-up overflow-y-auto',
           fullScreen
             ? 'h-full rounded-none'
-            : 'sm:w-auto sm:min-w-[320px] sm:max-w-md rounded-t-3xl sm:rounded-2xl',
-          'p-6 pb-24',
+            : 'sm:w-auto sm:min-w-[320px] sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[85vh]',
+          'p-6 pb-safe',
           className
         )}
       >

@@ -52,7 +52,7 @@ export default function TasksPage() {
   const tasks = data?.data?.tasks || [];
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pt-safe">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-white">Задачи</h1>
