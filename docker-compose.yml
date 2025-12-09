@@ -31,6 +31,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_PROXY: ${OPENAI_PROXY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     depends_on:
       db:
