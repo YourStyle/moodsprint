@@ -29,7 +29,7 @@
   --tg-theme-secondary-bg-color: #1a1433;
 
   /* Safe area - hardcoded for TMA mobile UI */
-  --safe-area-top: 75px;
+  --safe-area-top: 38px;
   --safe-area-bottom: 0px;
 }
 
