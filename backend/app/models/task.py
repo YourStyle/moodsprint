@@ -1,6 +1,6 @@
 """Task model."""
 
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
 
 from app import db
