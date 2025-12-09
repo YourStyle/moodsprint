@@ -261,6 +261,12 @@ export default function HomePage() {
   const incompleteTasks = tasks.filter(t => t.status !== 'completed');
   const completedTasks = tasks.filter(t => t.status === 'completed');
 
+  // Limit displayed tasks to 10
+  const MAX_DISPLAYED_TASKS = 10;
+  const allTasksSorted = [...incompleteTasks, ...completedTasks];
+  const displayedTasks = allTasksSorted.slice(0, MAX_DISPLAYED_TASKS);
+  const hasMoreTasks = allTasksSorted.length > MAX_DISPLAYED_TASKS;
+
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -291,7 +297,7 @@ export default function HomePage() {
       <WeekCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
 
       {/* Tasks Section - Moved to top */}
-      <div className="space-y-3">
+      <div className="space-y-3 min-h-[180px]">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate)}</h2>
           <Button
@@ -305,30 +311,29 @@ export default function HomePage() {
         </div>
 
         {tasksLoading && !tasksData ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[1, 2].map((i) => (
-              <Card key={i} variant="glass" className="h-20 animate-pulse bg-gray-700" />
+              <Card key={i} variant="glass" className="h-14 animate-pulse" />
             ))}
           </div>
         ) : tasks.length > 0 ? (
           <div className="space-y-2">
-            {/* Incomplete tasks first */}
-            {incompleteTasks.map((task) => (
+            {displayedTasks.map((task) => (
               <TaskCardCompact
                 key={task.id}
                 task={task}
                 onClick={() => router.push(`/tasks/${task.id}`)}
-                onStart={() => startFocusMutation.mutate(task.id)}
+                onStart={task.status !== 'completed' ? () => startFocusMutation.mutate(task.id) : undefined}
               />
             ))}
-            {/* Completed tasks */}
-            {completedTasks.map((task) => (
-              <TaskCardCompact
-                key={task.id}
-                task={task}
-                onClick={() => router.push(`/tasks/${task.id}`)}
-              />
-            ))}
+            {hasMoreTasks && (
+              <button
+                onClick={() => router.push('/tasks')}
+                className="w-full py-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Посмотреть все ({allTasksSorted.length})
+              </button>
+            )}
           </div>
         ) : (
           <Card variant="glass" className="text-center py-8">

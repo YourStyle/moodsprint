@@ -83,7 +83,7 @@ export default function TasksPage() {
       {isLoading && !data ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-24 animate-pulse bg-gray-700" />
+            <Card key={i} className="h-24 animate-pulse" />
           ))}
         </div>
       ) : tasks.length > 0 ? (

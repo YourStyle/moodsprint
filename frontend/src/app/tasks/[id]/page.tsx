@@ -152,7 +152,7 @@ export default function TaskDetailPage() {
   if (isLoading) {
     return (
       <div className="p-4">
-        <Card className="h-32 animate-pulse bg-gray-100" />
+        <Card className="h-32 animate-pulse" />
       </div>
     );
   }
