@@ -147,7 +147,6 @@ export default function FocusPage() {
           <Button
             onClick={() => setShowSelectSubtask(true)}
             className="w-full h-14"
-            size="lg"
           >
             <Target className="w-5 h-5 mr-2" />
             Начать с задачи
@@ -157,7 +156,6 @@ export default function FocusPage() {
             onClick={() => startMutation.mutate(undefined)}
             isLoading={startMutation.isPending}
             className="w-full h-14"
-            size="lg"
           >
             <Play className="w-5 h-5 mr-2" />
             Начать фокус-сессию

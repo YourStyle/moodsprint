@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
@@ -156,10 +156,11 @@ export default function HomePage() {
     }
   }, [user, latestMood, setLatestMood, setShowMoodModal]);
 
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+  const { data: tasksData, isLoading: tasksLoading, isFetching } = useQuery({
     queryKey: ['tasks', 'by_date', selectedDateStr],
     queryFn: () => tasksService.getTasks({ due_date: selectedDateStr, limit: 50 }),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -303,10 +304,10 @@ export default function HomePage() {
           </Button>
         </div>
 
-        {tasksLoading ? (
+        {tasksLoading && !tasksData ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <Card key={i} variant="glass" className="h-20 animate-pulse" />
+              <Card key={i} variant="glass" className="h-20 animate-pulse bg-gray-700" />
             ))}
           </div>
         ) : tasks.length > 0 ? (

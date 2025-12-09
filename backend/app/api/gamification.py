@@ -149,10 +149,13 @@ def get_user_achievements():
         if user_ach and user_ach.is_unlocked:
             result = achievement.to_dict()
             result["unlocked_at"] = user_ach.unlocked_at.isoformat()
+            result["is_unlocked"] = True
+            result["progress"] = user_ach.progress
             unlocked.append(result)
         else:
             result = achievement.to_dict()
             result["progress"] = user_ach.progress if user_ach else 0
+            result["is_unlocked"] = False
             in_progress.append(result)
 
     return success_response({"unlocked": unlocked, "in_progress": in_progress})
@@ -201,21 +204,21 @@ def get_daily_goals():
     goals = [
         {
             "type": "focus_minutes",
-            "title": "Focus Time",
+            "title": "Время фокуса",
             "target": 60,
             "current": min(focus_minutes, 60),
             "completed": focus_minutes >= 60,
         },
         {
             "type": "subtasks",
-            "title": "Complete Steps",
+            "title": "Выполнить шаги",
             "target": 5,
             "current": min(subtasks_completed, 5),
             "completed": subtasks_completed >= 5,
         },
         {
             "type": "mood_check",
-            "title": "Log Mood",
+            "title": "Отметить настроение",
             "target": 1,
             "current": min(mood_checks, 1),
             "completed": mood_checks >= 1,

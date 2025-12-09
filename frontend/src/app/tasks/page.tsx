@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Filter } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { TaskCard, TaskForm } from '@/components/tasks';
@@ -25,6 +25,7 @@ export default function TasksPage() {
     queryFn: () =>
       tasksService.getTasks(filterStatus !== 'all' ? { status: filterStatus } : {}),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -70,7 +71,7 @@ export default function TasksPage() {
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               filterStatus === filter.value
                 ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             {filter.label}
@@ -79,10 +80,10 @@ export default function TasksPage() {
       </div>
 
       {/* Task List */}
-      {isLoading ? (
+      {isLoading && !data ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-24 animate-pulse bg-gray-100" />
+            <Card key={i} className="h-24 animate-pulse bg-gray-700" />
           ))}
         </div>
       ) : tasks.length > 0 ? (
