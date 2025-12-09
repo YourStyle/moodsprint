@@ -2,7 +2,7 @@
 
 import { ChevronRight, Clock, CheckCircle2 } from 'lucide-react';
 import { Card, Progress } from '@/components/ui';
-import { PRIORITY_COLORS } from '@/domain/constants';
+import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_COLORS } from '@/domain/constants';
 import type { Task } from '@/domain/types';
 
 interface TaskCardProps {
@@ -38,11 +38,20 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             >
               {task.title}
             </h3>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}
-            >
-              {task.priority}
-            </span>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {task.task_type && (
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${TASK_TYPE_COLORS[task.task_type]}`}
+                >
+                  {TASK_TYPE_EMOJIS[task.task_type]}
+                </span>
+              )}
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}
+              >
+                {task.priority}
+              </span>
+            </div>
           </div>
 
           {task.description && (

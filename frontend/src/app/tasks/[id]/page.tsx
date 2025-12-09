@@ -10,8 +10,13 @@ import { MoodSelector } from '@/components/mood';
 import { tasksService, focusService, moodService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
-import { PRIORITY_COLORS } from '@/domain/constants';
-import type { MoodLevel, EnergyLevel } from '@/domain/types';
+import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS } from '@/domain/constants';
+import type { MoodLevel, EnergyLevel, TaskType } from '@/domain/types';
+
+const TASK_TYPES: TaskType[] = [
+  'creative', 'analytical', 'communication', 'physical',
+  'learning', 'planning', 'coding', 'writing'
+];
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -23,6 +28,7 @@ export default function TaskDetailPage() {
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
 
@@ -132,6 +138,17 @@ export default function TaskDetailPage() {
     },
   });
 
+  const updateTypeMutation = useMutation({
+    mutationFn: (taskType: TaskType) =>
+      tasksService.updateTask(taskId, { task_type: taskType }),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowTypeModal(false);
+      hapticFeedback('success');
+    },
+  });
+
   const handleDecompose = () => {
     if (!latestMood) {
       setShowMoodModal(true);
@@ -205,7 +222,23 @@ export default function TaskDetailPage() {
       {/* Task Info */}
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {task.task_type && (
+              <button
+                onClick={() => setShowTypeModal(true)}
+                className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${TASK_TYPE_COLORS[task.task_type]}`}
+              >
+                {TASK_TYPE_EMOJIS[task.task_type]} {TASK_TYPE_LABELS[task.task_type]}
+              </button>
+            )}
+            {!task.task_type && (
+              <button
+                onClick={() => setShowTypeModal(true)}
+                className="text-xs px-2 py-0.5 rounded-full bg-gray-600/50 text-gray-400 border border-dashed border-gray-500 hover:bg-gray-600"
+              >
+                + Тип
+              </button>
+            )}
             <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
               {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
             </span>
@@ -396,6 +429,34 @@ export default function TaskDetailPage() {
               Добавить
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Task Type Modal */}
+      <Modal
+        isOpen={showTypeModal}
+        onClose={() => setShowTypeModal(false)}
+        title="Тип задачи"
+      >
+        <p className="text-sm text-gray-500 mb-4">
+          Выбери тип задачи для более точной разбивки на шаги
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {TASK_TYPES.map((type) => (
+            <button
+              key={type}
+              onClick={() => updateTypeMutation.mutate(type)}
+              disabled={updateTypeMutation.isPending}
+              className={`p-3 rounded-xl text-left transition-all ${
+                task.task_type === type
+                  ? `${TASK_TYPE_COLORS[type]} ring-2 ring-offset-2 ring-offset-gray-900`
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              }`}
+            >
+              <span className="text-lg mr-2">{TASK_TYPE_EMOJIS[type]}</span>
+              <span className="text-sm font-medium">{TASK_TYPE_LABELS[type]}</span>
+            </button>
+          ))}
         </div>
       </Modal>
     </div>

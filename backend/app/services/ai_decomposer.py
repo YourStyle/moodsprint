@@ -51,11 +51,61 @@ class AIDecomposer:
             if api_key:
                 self.client = OpenAI(api_key=api_key)
 
+    # Task type context for better decomposition
+    TASK_TYPE_CONTEXT = {
+        "creative": {
+            "focus": "творческий процесс и вдохновение",
+            "steps_style": "этапы должны чередовать генерацию идей и их реализацию",
+            "examples": "набросок идей, создание черновика, доработка деталей",
+        },
+        "analytical": {
+            "focus": "анализ данных и систематизация",
+            "steps_style": "этапы должны идти от сбора данных к выводам",
+            "examples": "сбор информации, анализ, формирование выводов, оформление",
+        },
+        "communication": {
+            "focus": "подготовка и проведение коммуникации",
+            "steps_style": "этапы должны включать подготовку, основную часть и follow-up",
+            "examples": "подготовка тезисов, проведение встречи/звонка, фиксация договорённостей",
+        },
+        "physical": {
+            "focus": "физическая активность с разминкой и заминкой",
+            "steps_style": (
+                "этапы должны включать подготовку тела и увеличение нагрузки"
+            ),
+            "examples": "разминка, основная часть, заминка, отдых",
+        },
+        "learning": {
+            "focus": "усвоение нового материала",
+            "steps_style": "этапы должны чередовать изучение и практику",
+            "examples": "чтение/просмотр, конспектирование, практика, повторение",
+        },
+        "planning": {
+            "focus": "организация и структурирование",
+            "steps_style": "этапы должны идти от анализа к конкретному плану",
+            "examples": "сбор информации, приоритизация, составление плана, назначение сроков",
+        },
+        "coding": {
+            "focus": "разработка и тестирование кода",
+            "steps_style": "этапы должны следовать циклу разработки",
+            "examples": "анализ требований, написание кода, тестирование, рефакторинг",
+        },
+        "writing": {
+            "focus": "создание текстового контента",
+            "steps_style": "этапы должны идти от структуры к финальной версии",
+            "examples": "составление плана, написание черновика, редактирование, финализация",
+        },
+    }
+
     def decompose_task(
-        self, task_title: str, task_description: str | None, strategy: str
+        self,
+        task_title: str,
+        task_description: str | None,
+        strategy: str,
+        task_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Decompose a task into subtasks based on strategy.
+        Decompose a task into subtasks based on strategy and task type.
 
         Returns list of subtask dicts with:
         - title: str
@@ -63,34 +113,56 @@ class AIDecomposer:
         - order: int
         """
         strategy_config = self.STRATEGIES.get(strategy, self.STRATEGIES["standard"])
+        type_context = self.TASK_TYPE_CONTEXT.get(task_type) if task_type else None
 
         # Try AI decomposition first
         if self.client:
             try:
-                return self._ai_decompose(task_title, task_description, strategy_config)
+                return self._ai_decompose(
+                    task_title, task_description, strategy_config, type_context
+                )
             except Exception as e:
                 current_app.logger.error(f"AI decomposition failed: {e}")
 
         # Fallback to simple decomposition
-        return self._simple_decompose(task_title, task_description, strategy_config)
+        return self._simple_decompose(
+            task_title, task_description, strategy_config, task_type
+        )
 
     def _ai_decompose(
-        self, task_title: str, task_description: str | None, strategy_config: dict
+        self,
+        task_title: str,
+        task_description: str | None,
+        strategy_config: dict,
+        type_context: dict | None = None,
     ) -> list[dict[str, Any]]:
         """Use OpenAI to decompose task."""
         min_minutes, max_minutes = strategy_config["step_range"]
         max_steps = strategy_config["max_steps"]
 
+        # Build context-aware prompt
+        type_instructions = ""
+        if type_context:
+            type_instructions = f"""
+Контекст типа задачи:
+- Фокус: {type_context['focus']}
+- Стиль шагов: {type_context['steps_style']}
+- Примеры шагов: {type_context['examples']}
+
+"""
+
         prompt = f"""Разбей эту задачу на небольшие, конкретные шаги.
 
 Задача: {task_title}
 {f'Описание: {task_description}' if task_description else ''}
-
+{type_instructions}
 Требования:
 - Создай от {max_steps-2} до {max_steps} конкретных шагов
 - Каждый шаг должен занимать {min_minutes}-{max_minutes} минут
-- Шаги должны быть конкретными и выполнимыми (начинай с глагола)
+- Шаги должны быть конкретными и специфичными для ЭТОЙ задачи (не общие типа "начать работу")
+- Используй контекст названия и описания задачи для создания релевантных шагов
 - Шаги должны быть выполнимы за один подход
+- Начинай каждый шаг с глагола
 - Расположи шаги в логическом порядке
 
 Верни ТОЛЬКО JSON массив с объектами:
@@ -110,7 +182,10 @@ class AIDecomposer:
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты помощник по продуктивности, который разбивает задачи на выполнимые шаги. Всегда отвечай только валидным JSON на русском языке.",
+                    "content": (
+                        "Ты помощник по продуктивности, который разбивает задачи "
+                        "на выполнимые шаги. Отвечай только валидным JSON."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -146,24 +221,84 @@ class AIDecomposer:
 
         return result
 
+    # Type-specific fallback steps
+    FALLBACK_STEPS = {
+        "creative": [
+            "Собрать референсы и вдохновение",
+            "Сделать наброски идей",
+            "Выбрать лучшую идею и развить",
+            "Создать черновую версию",
+            "Доработать детали и финализировать",
+        ],
+        "analytical": [
+            "Собрать исходные данные",
+            "Систематизировать информацию",
+            "Провести анализ",
+            "Сформулировать выводы",
+            "Оформить результаты",
+        ],
+        "communication": [
+            "Подготовить тезисы и материалы",
+            "Провести встречу/звонок",
+            "Зафиксировать договорённости",
+            "Отправить follow-up",
+        ],
+        "physical": [
+            "Подготовиться и размяться",
+            "Выполнить основную часть",
+            "Сделать заминку",
+            "Отдохнуть и восстановиться",
+        ],
+        "learning": [
+            "Изучить теоретический материал",
+            "Сделать конспект ключевых моментов",
+            "Попрактиковаться на примерах",
+            "Повторить и закрепить",
+        ],
+        "planning": [
+            "Собрать всю информацию",
+            "Определить приоритеты",
+            "Составить план действий",
+            "Назначить сроки и ответственных",
+        ],
+        "coding": [
+            "Изучить требования и контекст",
+            "Написать код",
+            "Протестировать решение",
+            "Сделать код-ревью и рефакторинг",
+        ],
+        "writing": [
+            "Составить план текста",
+            "Написать черновик",
+            "Отредактировать и улучшить",
+            "Финальная проверка",
+        ],
+    }
+
     def _simple_decompose(
-        self, task_title: str, task_description: str | None, strategy_config: dict
+        self,
+        task_title: str,
+        task_description: str | None,
+        strategy_config: dict,
+        task_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """Simple rule-based decomposition as fallback."""
         min_minutes, max_minutes = strategy_config["step_range"]
         avg_minutes = (min_minutes + max_minutes) // 2
-
-        # Generic steps based on common task patterns
-        generic_steps = [
-            f"Изучить и понять: {task_title}",
-            "Собрать необходимые ресурсы и информацию",
-            "Начать работу над основной частью",
-            "Продолжить работу над оставшимся",
-            "Проверить и завершить",
-        ]
-
         max_steps = strategy_config["max_steps"]
-        steps = generic_steps[:max_steps]
+
+        # Use type-specific steps if available
+        if task_type and task_type in self.FALLBACK_STEPS:
+            steps = self.FALLBACK_STEPS[task_type][:max_steps]
+        else:
+            # Generic steps as last resort
+            steps = [
+                f"Изучить и понять: {task_title}",
+                "Собрать необходимые ресурсы",
+                "Выполнить основную работу",
+                "Проверить результат",
+                "Завершить и закрыть задачу",
+            ][:max_steps]
 
         return [
             {"title": step, "estimated_minutes": avg_minutes, "order": i + 1}
@@ -173,9 +308,12 @@ class AIDecomposer:
     def get_strategy_message(self, strategy: str) -> str:
         """Get user-friendly message about the decomposition strategy."""
         messages = {
-            "micro": "Задача разбита на очень маленькие шаги для твоего текущего уровня энергии. Делай перерывы чаще!",
+            "micro": (
+                "Задача разбита на очень маленькие шаги для твоего текущего "
+                "уровня энергии. Делай перерывы чаще!"
+            ),
             "gentle": "Задача разбита на выполнимые шаги с мягким темпом.",
-            "careful": "Задача разбита на средние шаги. Не забывай делать перерывы!",
+            "careful": "Задача разбита на средние шаги. Не забывай перерывы!",
             "standard": "Задача разбита на стандартные шаги продуктивности.",
         }
         return messages.get(strategy, messages["standard"])

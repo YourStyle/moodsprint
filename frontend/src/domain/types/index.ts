@@ -25,6 +25,15 @@ export interface User {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskType =
+  | 'creative'
+  | 'analytical'
+  | 'communication'
+  | 'physical'
+  | 'learning'
+  | 'planning'
+  | 'coding'
+  | 'writing';
 
 export interface Task {
   id: number;
@@ -34,6 +43,8 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   due_date: string | null;
+  task_type: TaskType | null;
+  preferred_time: string | null;
   subtasks_count: number;
   subtasks_completed: number;
   progress_percent: number;
@@ -56,6 +67,7 @@ export interface UpdateTaskInput {
   priority?: TaskPriority;
   status?: TaskStatus;
   due_date?: string;
+  task_type?: TaskType;
 }
 
 // ============ Subtasks ============

@@ -40,6 +40,39 @@ export const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-red-500/20 text-red-400 border border-red-500/30',
 };
 
+export const TASK_TYPE_EMOJIS: Record<string, string> = {
+  creative: '🎨',
+  analytical: '📊',
+  communication: '💬',
+  physical: '💪',
+  learning: '📚',
+  planning: '📋',
+  coding: '💻',
+  writing: '✍️',
+};
+
+export const TASK_TYPE_LABELS: Record<string, string> = {
+  creative: 'Творческая',
+  analytical: 'Аналитическая',
+  communication: 'Общение',
+  physical: 'Физическая',
+  learning: 'Обучение',
+  planning: 'Планирование',
+  coding: 'Программирование',
+  writing: 'Письмо',
+};
+
+export const TASK_TYPE_COLORS: Record<string, string> = {
+  creative: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  analytical: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  communication: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+  physical: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+  learning: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  planning: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+  coding: 'bg-pink-500/20 text-pink-400 border border-pink-500/30',
+  writing: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+};
+
 export const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
   in_progress: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',

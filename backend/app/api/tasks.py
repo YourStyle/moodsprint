@@ -228,7 +228,8 @@ def update_task(task_id: int):
         "description": "New description",
         "priority": "low|medium|high",
         "status": "pending|in_progress|completed",
-        "due_date": "YYYY-MM-DD"
+        "due_date": "YYYY-MM-DD",
+        "task_type": "creative|analytical|communication|physical|learning|planning|coding|writing"
     }
     """
     user_id = int(get_jwt_identity())
@@ -263,6 +264,20 @@ def update_task(task_id: int):
             task.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()
         except (ValueError, TypeError):
             pass
+
+    # Update task_type if provided
+    valid_task_types = [
+        "creative",
+        "analytical",
+        "communication",
+        "physical",
+        "learning",
+        "planning",
+        "coding",
+        "writing",
+    ]
+    if "task_type" in data and data["task_type"] in valid_task_types:
+        task.task_type = data["task_type"]
 
     db.session.commit()
 
@@ -344,9 +359,11 @@ def decompose_task(task_id: int):
     # Clear existing subtasks
     Subtask.query.filter_by(task_id=task.id).delete()
 
-    # Decompose task
+    # Decompose task with type context
     decomposer = AIDecomposer()
-    subtask_data = decomposer.decompose_task(task.title, task.description, strategy)
+    subtask_data = decomposer.decompose_task(
+        task.title, task.description, strategy, task.task_type
+    )
 
     # Create subtasks
     subtasks = []
