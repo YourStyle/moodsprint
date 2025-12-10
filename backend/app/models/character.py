@@ -1,0 +1,281 @@
+"""Character stats and battle models for gamification."""
+
+from datetime import datetime
+
+from app import db
+
+# Genre themes for quests
+GENRE_THEMES = {
+    "magic": {
+        "name": "Магия",
+        "description": "Волшебный мир как в Гарри Поттере",
+        "emoji": "🧙‍♂️",
+        "quest_prefix": ["Заклинание", "Зелье", "Магический"],
+        "stat_names": {
+            "strength": "Сила заклинаний",
+            "agility": "Ловкость волшебника",
+            "intelligence": "Мудрость",
+        },
+        "monsters": ["Тёмный маг", "Дементор", "Василиск", "Оборотень", "Горгулья"],
+    },
+    "fantasy": {
+        "name": "Фэнтези",
+        "description": "Эпический мир как Властелин Колец",
+        "emoji": "⚔️",
+        "quest_prefix": ["Поход", "Битва", "Легендарный"],
+        "stat_names": {
+            "strength": "Сила воина",
+            "agility": "Скорость эльфа",
+            "intelligence": "Мудрость волшебника",
+        },
+        "monsters": ["Орк", "Тролль", "Назгул", "Дракон", "Балрог"],
+    },
+    "scifi": {
+        "name": "Научная фантастика",
+        "description": "Космические приключения",
+        "emoji": "🚀",
+        "quest_prefix": ["Миссия", "Операция", "Протокол"],
+        "stat_names": {
+            "strength": "Мощность",
+            "agility": "Рефлексы",
+            "intelligence": "Интеллект",
+        },
+        "monsters": ["Киборг", "Инопланетянин", "Дрон", "Мутант", "Робот-страж"],
+    },
+    "cyberpunk": {
+        "name": "Киберпанк",
+        "description": "Мир высоких технологий и хакеров",
+        "emoji": "🌆",
+        "quest_prefix": ["Взлом", "Операция", "Контракт"],
+        "stat_names": {
+            "strength": "Кибер-сила",
+            "agility": "Нейро-рефлексы",
+            "intelligence": "Хакинг",
+        },
+        "monsters": [
+            "Корпоративный дрон",
+            "Хакер",
+            "Киллер-бот",
+            "Мутант",
+            "Босс корпорации",
+        ],
+    },
+    "anime": {
+        "name": "Аниме",
+        "description": "Мир японских приключений",
+        "emoji": "🎌",
+        "quest_prefix": ["Тренировка", "Испытание", "Путь"],
+        "stat_names": {
+            "strength": "Сила духа",
+            "agility": "Скорость",
+            "intelligence": "Чакра",
+        },
+        "monsters": ["Демон", "Ниндзя", "Каджу", "Тёмный самурай", "Древний дух"],
+    },
+}
+
+
+class CharacterStats(db.Model):
+    """Character stats for user's avatar."""
+
+    __tablename__ = "character_stats"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+
+    # Base stats (0-100)
+    strength = db.Column(db.Integer, default=10, nullable=False)
+    agility = db.Column(db.Integer, default=10, nullable=False)
+    intelligence = db.Column(db.Integer, default=10, nullable=False)
+
+    # Battle stats
+    max_hp = db.Column(db.Integer, default=100, nullable=False)
+    current_hp = db.Column(db.Integer, default=100, nullable=False)
+    battles_won = db.Column(db.Integer, default=0, nullable=False)
+    battles_lost = db.Column(db.Integer, default=0, nullable=False)
+
+    # Stat points to distribute
+    available_stat_points = db.Column(db.Integer, default=0, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationship
+    user = db.relationship("User", backref=db.backref("character", uselist=False))
+
+    @property
+    def total_stats(self) -> int:
+        """Total stat points distributed."""
+        return self.strength + self.agility + self.intelligence
+
+    @property
+    def attack_power(self) -> int:
+        """Calculate attack power based on stats."""
+        return self.strength * 2 + self.agility
+
+    @property
+    def defense(self) -> int:
+        """Calculate defense based on stats."""
+        return self.strength + self.intelligence
+
+    @property
+    def speed(self) -> int:
+        """Calculate speed based on stats."""
+        return self.agility * 2 + self.intelligence // 2
+
+    def heal(self, amount: int = None):
+        """Heal character. If no amount, full heal."""
+        if amount is None:
+            self.current_hp = self.max_hp
+        else:
+            self.current_hp = min(self.max_hp, self.current_hp + amount)
+
+    def take_damage(self, amount: int) -> int:
+        """Take damage and return actual damage taken."""
+        actual_damage = max(1, amount - self.defense // 10)
+        self.current_hp = max(0, self.current_hp - actual_damage)
+        return actual_damage
+
+    def add_stat_points(self, points: int):
+        """Add stat points from completing tasks."""
+        self.available_stat_points += points
+
+    def distribute_stat(self, stat_name: str, points: int) -> bool:
+        """Distribute available points to a stat."""
+        if points > self.available_stat_points:
+            return False
+        if stat_name not in ["strength", "agility", "intelligence"]:
+            return False
+
+        current_value = getattr(self, stat_name)
+        if current_value + points > 100:
+            return False
+
+        setattr(self, stat_name, current_value + points)
+        self.available_stat_points -= points
+
+        # Update max HP based on new stats
+        self.max_hp = 100 + self.strength * 2 + self.intelligence
+
+        return True
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "strength": self.strength,
+            "agility": self.agility,
+            "intelligence": self.intelligence,
+            "max_hp": self.max_hp,
+            "current_hp": self.current_hp,
+            "attack_power": self.attack_power,
+            "defense": self.defense,
+            "speed": self.speed,
+            "battles_won": self.battles_won,
+            "battles_lost": self.battles_lost,
+            "available_stat_points": self.available_stat_points,
+            "total_stats": self.total_stats,
+        }
+
+
+class Monster(db.Model):
+    """Monsters for battle arena."""
+
+    __tablename__ = "monsters"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    genre = db.Column(db.String(50), nullable=False)  # magic, fantasy, scifi, etc.
+
+    # Stats
+    level = db.Column(db.Integer, default=1, nullable=False)
+    hp = db.Column(db.Integer, default=50, nullable=False)
+    attack = db.Column(db.Integer, default=10, nullable=False)
+    defense = db.Column(db.Integer, default=5, nullable=False)
+    speed = db.Column(db.Integer, default=10, nullable=False)
+
+    # Rewards
+    xp_reward = db.Column(db.Integer, default=20, nullable=False)
+    stat_points_reward = db.Column(db.Integer, default=1, nullable=False)
+
+    # Visual
+    sprite_url = db.Column(db.String(512), nullable=True)
+    emoji = db.Column(db.String(10), default="👾")
+
+    is_boss = db.Column(db.Boolean, default=False)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "genre": self.genre,
+            "level": self.level,
+            "hp": self.hp,
+            "attack": self.attack,
+            "defense": self.defense,
+            "speed": self.speed,
+            "xp_reward": self.xp_reward,
+            "stat_points_reward": self.stat_points_reward,
+            "sprite_url": self.sprite_url,
+            "emoji": self.emoji,
+            "is_boss": self.is_boss,
+        }
+
+
+class BattleLog(db.Model):
+    """Log of battles."""
+
+    __tablename__ = "battle_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    monster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("monsters.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Battle result
+    won = db.Column(db.Boolean, nullable=False)
+    rounds = db.Column(db.Integer, default=0)
+    damage_dealt = db.Column(db.Integer, default=0)
+    damage_taken = db.Column(db.Integer, default=0)
+
+    # Rewards earned
+    xp_earned = db.Column(db.Integer, default=0)
+    stat_points_earned = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship("User", backref=db.backref("battles", lazy="dynamic"))
+    monster = db.relationship("Monster")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "monster": self.monster.to_dict() if self.monster else None,
+            "won": self.won,
+            "rounds": self.rounds,
+            "damage_dealt": self.damage_dealt,
+            "damage_taken": self.damage_taken,
+            "xp_earned": self.xp_earned,
+            "stat_points_earned": self.stat_points_earned,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

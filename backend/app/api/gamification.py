@@ -18,10 +18,12 @@ from app.models import (
     UserAchievement,
 )
 from app.models.achievement import get_level_name
+from app.models.character import GENRE_THEMES
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskStatus
-from app.utils import success_response
+from app.models.user_profile import UserProfile
+from app.utils import not_found, success_response, validation_error
 
 
 @api_bp.route("/user/stats", methods=["GET"])
@@ -503,5 +505,344 @@ def get_productivity_patterns():
                 }
                 for h in range(24)
             ],
+        }
+    )
+
+
+# ============ Genre Preferences ============
+
+
+@api_bp.route("/genres", methods=["GET"])
+@jwt_required()
+def get_genres():
+    """Get available genre themes."""
+    genres = [
+        {
+            "id": key,
+            "name": value["name"],
+            "description": value["description"],
+            "emoji": value["emoji"],
+        }
+        for key, value in GENRE_THEMES.items()
+    ]
+    return success_response({"genres": genres})
+
+
+@api_bp.route("/profile/genre", methods=["PUT"])
+@jwt_required()
+def set_genre():
+    """
+    Set user's favorite genre.
+
+    Request body:
+    {
+        "genre": "magic" | "fantasy" | "scifi" | "cyberpunk" | "anime"
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    genre = data.get("genre")
+    if genre not in GENRE_THEMES:
+        return validation_error(
+            {"genre": f"Invalid genre. Choose from: {list(GENRE_THEMES.keys())}"}
+        )
+
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.session.add(profile)
+
+    profile.favorite_genre = genre
+    db.session.commit()
+
+    return success_response(
+        {
+            "genre": genre,
+            "genre_info": {
+                "name": GENRE_THEMES[genre]["name"],
+                "description": GENRE_THEMES[genre]["description"],
+                "emoji": GENRE_THEMES[genre]["emoji"],
+            },
+        }
+    )
+
+
+# ============ Daily Quests ============
+
+
+@api_bp.route("/quests", methods=["GET"])
+@jwt_required()
+def get_daily_quests():
+    """Get today's daily quests."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.quest_service import QuestService
+
+    service = QuestService()
+    quests = service.get_user_quests(user_id)
+
+    return success_response(
+        {
+            "quests": [q.to_dict() for q in quests],
+            "completed_count": sum(1 for q in quests if q.completed),
+            "total_count": len(quests),
+        }
+    )
+
+
+@api_bp.route("/quests/<int:quest_id>/claim", methods=["POST"])
+@jwt_required()
+def claim_quest_reward(quest_id: int):
+    """Claim reward for completed quest."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.quest_service import QuestService
+
+    service = QuestService()
+    reward = service.claim_quest_reward(user_id, quest_id)
+
+    if not reward:
+        return validation_error(
+            {"quest": "Quest not found, not completed, or already claimed"}
+        )
+
+    return success_response(
+        {
+            "reward": reward,
+            "message": "Награда получена!",
+        }
+    )
+
+
+# ============ Character Stats ============
+
+
+@api_bp.route("/character", methods=["GET"])
+@jwt_required()
+def get_character():
+    """Get user's character stats."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    character = service.get_or_create_character(user_id)
+
+    # Get genre-specific stat names
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    genre = profile.favorite_genre if profile else "fantasy"
+    if not genre:
+        genre = "fantasy"
+    genre_info = GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"])
+
+    return success_response(
+        {
+            "character": character.to_dict(),
+            "stat_names": genre_info.get(
+                "stat_names",
+                {
+                    "strength": "Сила",
+                    "agility": "Ловкость",
+                    "intelligence": "Интеллект",
+                },
+            ),
+            "genre": genre,
+        }
+    )
+
+
+@api_bp.route("/character/distribute", methods=["POST"])
+@jwt_required()
+def distribute_stat_points():
+    """
+    Distribute available stat points.
+
+    Request body:
+    {
+        "stat": "strength" | "agility" | "intelligence",
+        "points": 1
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    stat = data.get("stat")
+    points = data.get("points", 1)
+
+    if stat not in ["strength", "agility", "intelligence"]:
+        return validation_error({"stat": "Invalid stat name"})
+
+    try:
+        points = int(points)
+        if points < 1:
+            return validation_error({"points": "Points must be positive"})
+    except (ValueError, TypeError):
+        return validation_error({"points": "Invalid points value"})
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    result = service.distribute_stat_points(user_id, stat, points)
+
+    if not result["success"]:
+        return validation_error(
+            {"error": result.get("error", "Failed to distribute points")}
+        )
+
+    return success_response(result)
+
+
+@api_bp.route("/character/heal", methods=["POST"])
+@jwt_required()
+def heal_character():
+    """
+    Heal character HP.
+
+    Request body (optional):
+    {
+        "amount": 50  // if not provided, full heal
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    amount = data.get("amount")
+    if amount is not None:
+        try:
+            amount = int(amount)
+        except (ValueError, TypeError):
+            amount = None
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    character = service.heal_character(user_id, amount)
+
+    return success_response(
+        {
+            "character": character.to_dict(),
+            "message": "Здоровье восстановлено!",
+        }
+    )
+
+
+# ============ Battle Arena ============
+
+
+@api_bp.route("/arena/monsters", methods=["GET"])
+@jwt_required()
+def get_arena_monsters():
+    """Get available monsters for battle."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    monsters = service.get_available_monsters(user_id)
+
+    return success_response(
+        {
+            "monsters": [m.to_dict() for m in monsters],
+        }
+    )
+
+
+@api_bp.route("/arena/battle", methods=["POST"])
+@jwt_required()
+def start_battle():
+    """
+    Start a battle with a monster.
+
+    Request body:
+    {
+        "monster_id": 1
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    monster_id = data.get("monster_id")
+    if not monster_id:
+        return validation_error({"monster_id": "Monster ID is required"})
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    result = service.execute_battle(user_id, monster_id)
+
+    if "error" in result:
+        return validation_error(result)
+
+    return success_response(result)
+
+
+@api_bp.route("/arena/history", methods=["GET"])
+@jwt_required()
+def get_battle_history():
+    """Get recent battle history."""
+    user_id = int(get_jwt_identity())
+    limit = request.args.get("limit", 10, type=int)
+
+    from app.services.battle_service import BattleService
+
+    service = BattleService()
+    battles = service.get_battle_history(user_id, min(limit, 50))
+
+    return success_response(
+        {
+            "battles": [b.to_dict() for b in battles],
+        }
+    )
+
+
+# ============ Boss Tasks ============
+
+
+@api_bp.route("/tasks/<int:task_id>/boss-info", methods=["GET"])
+@jwt_required()
+def get_boss_task_info(task_id: int):
+    """
+    Check if task qualifies as a boss task and get boss info.
+
+    Boss tasks are:
+    - Tasks with estimated time > 60 min
+    - Tasks with > 5 subtasks
+    """
+    user_id = int(get_jwt_identity())
+
+    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    if not task:
+        return not_found("Task not found")
+
+    # Calculate total time from subtasks
+    total_time = sum(s.estimated_minutes for s in task.subtasks) if task.subtasks else 0
+    subtask_count = len(task.subtasks) if task.subtasks else 0
+
+    # Check if boss task
+    is_boss = total_time >= 60 or subtask_count >= 5
+
+    # Get genre-specific boss info
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    genre = profile.favorite_genre if profile else "fantasy"
+    if not genre:
+        genre = "fantasy"
+
+    boss_titles = {
+        "magic": "Магическое испытание",
+        "fantasy": "Эпический квест",
+        "scifi": "Критическая миссия",
+        "cyberpunk": "Опасный контракт",
+        "anime": "Последний босс",
+    }
+
+    return success_response(
+        {
+            "is_boss": is_boss,
+            "total_time": total_time,
+            "subtask_count": subtask_count,
+            "boss_title": boss_titles.get(genre, "Босс-задача") if is_boss else None,
+            "xp_multiplier": 3 if is_boss else 1,
+            "stat_points_bonus": 2 if is_boss else 0,
         }
     )

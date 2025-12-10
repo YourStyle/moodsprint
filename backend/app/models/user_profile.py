@@ -46,6 +46,11 @@ class UserProfile(db.Model):
     # Goals
     productivity_goals = db.Column(db.JSON, nullable=True)
 
+    # Gamification genre preference
+    favorite_genre = db.Column(
+        db.String(50), nullable=True
+    )  # magic, fantasy, scifi, cyberpunk, anime
+
     # Raw GPT response
     gpt_analysis = db.Column(db.JSON, nullable=True)
 
@@ -91,6 +96,7 @@ class UserProfile(db.Model):
             "work_end_time": self.work_end_time,
             "work_days": self.work_days,
             "timezone": self.timezone,
+            "favorite_genre": self.favorite_genre,
         }
 
     def __repr__(self) -> str:
