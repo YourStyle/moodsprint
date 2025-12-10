@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from sqlalchemy import func, extract
+from sqlalchemy import func
 
 from app import db
 from app.api import api_bp

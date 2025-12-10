@@ -20,9 +20,6 @@ from database import (
     mark_daily_suggestion_sent,
     get_scheduled_tasks_for_reminder,
     mark_reminder_sent,
-    snooze_task_reminder,
-    reschedule_task_to_tomorrow,
-    delete_task,
 )
 from keyboards import get_webapp_button, get_task_suggestion_keyboard, get_task_reminder_keyboard
 
@@ -486,7 +483,7 @@ class NotificationService:
 
             try:
                 text = f"⏰ Привет, {first_name}!\n\n"
-                text += f"Напоминаю о задаче:\n\n"
+                text += "Напоминаю о задаче:\n\n"
                 text += f"{priority_emoji} <b>{title}</b>\n\n"
                 text += "Готов начать?"
 
