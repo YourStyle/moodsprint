@@ -9,8 +9,16 @@ from keyboards import (
     get_webapp_button,
     get_settings_keyboard,
     get_start_inline_button,
+    get_freetime_keyboard,
+    get_task_suggestion_keyboard,
 )
-from database import get_user_by_telegram_id, get_user_stats, update_user_notifications
+from database import (
+    get_user_by_telegram_id,
+    get_user_stats,
+    update_user_notifications,
+    get_task_suggestions,
+    get_subtask_suggestions,
+)
 
 router = Router()
 
@@ -120,3 +128,120 @@ async def back_to_main(callback: CallbackQuery):
     """Back to main menu."""
     await callback.message.delete()
     await callback.answer()
+
+
+# Store last selected time for refresh
+_user_last_time: dict[int, int] = {}
+
+
+@router.message(Command("freetime"))
+async def cmd_freetime(message: Message):
+    """Handle /freetime command - suggest tasks for free time."""
+    await message.answer(
+        "⏰ Сколько у тебя свободного времени?\n\n"
+        "Выбери, и я подберу подходящие задачи:",
+        reply_markup=get_freetime_keyboard(),
+    )
+
+
+@router.message(F.text.in_(["Есть время", "Свободное время", "Free time"]))
+async def freetime_button(message: Message):
+    """Handle free time button press."""
+    await cmd_freetime(message)
+
+
+@router.callback_query(F.data.startswith("freetime:"))
+async def handle_freetime_callback(callback: CallbackQuery):
+    """Handle free time selection."""
+    action = callback.data.split(":")[1]
+
+    if action == "refresh":
+        # Use last selected time
+        minutes = _user_last_time.get(callback.from_user.id, 30)
+    else:
+        minutes = int(action)
+        _user_last_time[callback.from_user.id] = minutes
+
+    await callback.answer("Подбираю задачи...")
+
+    # Get suggestions
+    suggestions = await get_task_suggestions(callback.from_user.id, minutes)
+
+    if not suggestions:
+        # Try subtasks
+        subtask_suggestions = await get_subtask_suggestions(
+            callback.from_user.id, minutes
+        )
+        if subtask_suggestions:
+            # Format subtask suggestions
+            text = f"⏰ У тебя {minutes} минут. Вот подходящие шаги:\n\n"
+            for i, s in enumerate(subtask_suggestions, 1):
+                priority_emoji = (
+                    "🔴"
+                    if s["priority"] == "high"
+                    else "🟡" if s["priority"] == "medium" else "🟢"
+                )
+                text += f"{i}. {priority_emoji} {s['subtask_title']}\n"
+                text += f"   📋 из задачи: {s['task_title'][:30]}...\n"
+                text += f"   ⏱️ ~{s['estimated_minutes']} мин\n\n"
+
+            text += "Открой приложение, чтобы начать! 👇"
+            await callback.message.edit_text(text, reply_markup=get_webapp_button())
+        else:
+            await callback.message.edit_text(
+                f"🤔 Не нашёл задач, которые вписались бы в {minutes} минут.\n\n"
+                "Попробуй выбрать больше времени или создай новую задачу!",
+                reply_markup=get_freetime_keyboard(),
+            )
+        return
+
+    # Format suggestions
+    if len(suggestions) == 1:
+        # Single best suggestion - show prominently
+        s = suggestions[0]
+        priority_emoji = (
+            "🔴"
+            if s["priority"] == "high"
+            else "🟡" if s["priority"] == "medium" else "🟢"
+        )
+        fit_text = (
+            "идеально подходит" if s["fit_quality"] == "perfect" else "хорошо впишется"
+        )
+
+        text = f"⚡ Предлагаю задачу, которая {fit_text}:\n\n"
+        text += f"{priority_emoji} <b>{s['task_title']}</b>\n"
+        text += f"⏱️ ~{s['estimated_minutes']} мин"
+        if s["subtasks_count"]:
+            text += f" • {s['subtasks_count']} шагов"
+        text += "\n\nНачнём?"
+
+        await callback.message.edit_text(
+            text,
+            reply_markup=get_task_suggestion_keyboard(
+                s["task_id"], s["estimated_minutes"]
+            ),
+            parse_mode="HTML",
+        )
+    else:
+        # Multiple suggestions
+        text = f"⏰ У тебя {minutes} минут. Вот что подойдёт:\n\n"
+
+        for i, s in enumerate(suggestions, 1):
+            priority_emoji = (
+                "🔴"
+                if s["priority"] == "high"
+                else "🟡" if s["priority"] == "medium" else "🟢"
+            )
+            fit_badge = "✨" if s["fit_quality"] == "perfect" else ""
+
+            text += f"{i}. {priority_emoji} {s['task_title'][:40]}"
+            if len(s["task_title"]) > 40:
+                text += "..."
+            text += f"\n   ⏱️ ~{s['estimated_minutes']} мин {fit_badge}"
+            if s["subtasks_count"]:
+                text += f" • {s['subtasks_count']} шагов"
+            text += "\n\n"
+
+        text += "Выбери задачу в приложении! 👇"
+
+        await callback.message.edit_text(text, reply_markup=get_webapp_button())

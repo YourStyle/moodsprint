@@ -105,9 +105,10 @@ async def main():
 
     await bot.set_my_commands(
         [
-            BotCommand(command="start", description="Start the bot"),
-            BotCommand(command="app", description="Open MoodSprint"),
-            BotCommand(command="admin", description="Admin panel (admins only)"),
+            BotCommand(command="start", description="Начать"),
+            BotCommand(command="app", description="Открыть MoodSprint"),
+            BotCommand(command="freetime", description="Есть свободное время?"),
+            BotCommand(command="admin", description="Админ-панель"),
         ]
     )
 

@@ -112,3 +112,43 @@ def get_broadcast_confirm_keyboard() -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+def get_freetime_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for selecting available free time."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="15 мин", callback_data="freetime:15"),
+                InlineKeyboardButton(text="30 мин", callback_data="freetime:30"),
+                InlineKeyboardButton(text="45 мин", callback_data="freetime:45"),
+            ],
+            [
+                InlineKeyboardButton(text="1 час", callback_data="freetime:60"),
+                InlineKeyboardButton(text="1.5 часа", callback_data="freetime:90"),
+                InlineKeyboardButton(text="2 часа", callback_data="freetime:120"),
+            ],
+        ]
+    )
+
+
+def get_task_suggestion_keyboard(
+    task_id: int, estimated_minutes: int
+) -> InlineKeyboardMarkup:
+    """Keyboard to start a suggested task."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"▶️ Начать ({estimated_minutes} мин)",
+                    web_app=WebAppInfo(url=f"{config.WEBAPP_URL}/tasks/{task_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔄 Другие варианты",
+                    callback_data="freetime:refresh",
+                )
+            ],
+        ]
+    )

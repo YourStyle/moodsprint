@@ -304,3 +304,135 @@ async def mark_postpone_log_notified(log_id: int):
             {"log_id": log_id},
         )
         await session.commit()
+
+
+async def get_task_suggestions(telegram_id: int, available_minutes: int) -> list[dict]:
+    """
+    Get task suggestions for a user based on available time.
+
+    Returns tasks/subtasks that fit within the available time,
+    sorted by priority and best fit.
+    """
+    async with async_session() as session:
+        # First get user_id
+        user_result = await session.execute(
+            text("SELECT id FROM users WHERE telegram_id = :tid"),
+            {"tid": telegram_id},
+        )
+        user_row = user_result.fetchone()
+        if not user_row:
+            return []
+
+        user_id = user_row._mapping["id"]
+
+        # Get incomplete tasks with their subtasks info
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    t.id as task_id,
+                    t.title as task_title,
+                    t.priority,
+                    t.task_type,
+                    t.preferred_time,
+                    t.postponed_count,
+                    t.due_date,
+                    COALESCE(
+                        (SELECT SUM(s.estimated_minutes)
+                         FROM subtasks s
+                         WHERE s.task_id = t.id AND s.status != 'completed'),
+                        30
+                    ) as estimated_minutes,
+                    (SELECT COUNT(*)
+                     FROM subtasks s
+                     WHERE s.task_id = t.id AND s.status != 'completed') as subtasks_count
+                FROM tasks t
+                WHERE t.user_id = :user_id
+                AND t.status != 'completed'
+                ORDER BY
+                    CASE t.priority
+                        WHEN 'high' THEN 3
+                        WHEN 'medium' THEN 2
+                        ELSE 1
+                    END DESC,
+                    COALESCE(t.postponed_count, 0) DESC,
+                    t.due_date ASC NULLS LAST
+                LIMIT 10
+            """
+            ),
+            {"user_id": user_id},
+        )
+        tasks = [dict(row._mapping) for row in result.fetchall()]
+
+        suggestions = []
+        for task in tasks:
+            estimated = task["estimated_minutes"] or 30
+
+            if estimated <= available_minutes:
+                # Task fits
+                fit_quality = (
+                    "perfect" if estimated >= available_minutes * 0.7 else "good"
+                )
+                suggestions.append(
+                    {
+                        "task_id": task["task_id"],
+                        "task_title": task["task_title"],
+                        "priority": task["priority"],
+                        "estimated_minutes": estimated,
+                        "subtasks_count": task["subtasks_count"] or 0,
+                        "fit_quality": fit_quality,
+                    }
+                )
+
+        return suggestions[:5]  # Return top 5
+
+
+async def get_subtask_suggestions(
+    telegram_id: int, available_minutes: int
+) -> list[dict]:
+    """
+    Get individual subtask suggestions that fit the available time.
+    """
+    async with async_session() as session:
+        # First get user_id
+        user_result = await session.execute(
+            text("SELECT id FROM users WHERE telegram_id = :tid"),
+            {"tid": telegram_id},
+        )
+        user_row = user_result.fetchone()
+        if not user_row:
+            return []
+
+        user_id = user_row._mapping["id"]
+
+        # Get incomplete subtasks that fit
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    s.id as subtask_id,
+                    s.title as subtask_title,
+                    s.estimated_minutes,
+                    t.id as task_id,
+                    t.title as task_title,
+                    t.priority
+                FROM subtasks s
+                JOIN tasks t ON s.task_id = t.id
+                WHERE t.user_id = :user_id
+                AND t.status != 'completed'
+                AND s.status != 'completed'
+                AND s.estimated_minutes <= :available_minutes
+                ORDER BY
+                    CASE t.priority
+                        WHEN 'high' THEN 3
+                        WHEN 'medium' THEN 2
+                        ELSE 1
+                    END DESC,
+                    s.estimated_minutes DESC,
+                    s."order" ASC
+                LIMIT 5
+            """
+            ),
+            {"user_id": user_id, "available_minutes": available_minutes},
+        )
+        return [dict(row._mapping) for row in result.fetchall()]
