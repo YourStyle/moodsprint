@@ -1,6 +1,7 @@
 """Notification handlers and scheduled tasks."""
 
 from aiogram import Router, Bot
+from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from datetime import datetime
 import asyncio
 import logging
@@ -48,22 +49,33 @@ class NotificationService:
         import random
 
         message = random.choice(messages)
+        sent = 0
+        failed = 0
 
         for user in users:
             try:
                 await self.bot.send_message(
                     user["telegram_id"], f"{message}", reply_markup=get_webapp_button()
                 )
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
+                # User blocked bot or chat not found - skip silently
+                failed += 1
             except Exception as e:
                 logger.error(
                     f"Failed to send morning reminder to {user['telegram_id']}: {e}"
                 )
+                failed += 1
 
             await asyncio.sleep(0.05)  # Rate limiting
+
+        logger.info(f"Morning reminders: {sent} sent, {failed} failed")
 
     async def send_streak_reminder(self):
         """Send reminder to users who might lose their streak."""
         users = await get_users_with_notifications_enabled()
+        sent = 0
+        failed = 0
 
         for user in users:
             streak = user.get("streak_days", 0)
@@ -86,16 +98,24 @@ class NotificationService:
                             "Выполни хотя бы один маленький шаг, чтобы сохранить её.",
                             reply_markup=get_webapp_button(),
                         )
+                        sent += 1
+                    except (TelegramForbiddenError, TelegramBadRequest):
+                        failed += 1
                     except Exception as e:
                         logger.error(
                             f"Failed to send streak reminder to {user['telegram_id']}: {e}"
                         )
+                        failed += 1
 
                     await asyncio.sleep(0.05)
+
+        logger.info(f"Streak reminders: {sent} sent, {failed} failed")
 
     async def send_weekly_summary(self):
         """Send weekly summary to users."""
         users = await get_users_with_notifications_enabled()
+        sent = 0
+        failed = 0
 
         for user in users:
             try:
@@ -117,12 +137,18 @@ class NotificationService:
                 await self.bot.send_message(
                     user["telegram_id"], text, reply_markup=get_webapp_button()
                 )
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
+                failed += 1
             except Exception as e:
                 logger.error(
                     f"Failed to send weekly summary to {user['telegram_id']}: {e}"
                 )
+                failed += 1
 
             await asyncio.sleep(0.05)
+
+        logger.info(f"Weekly summaries: {sent} sent, {failed} failed")
 
     async def send_achievement_notification(
         self, telegram_id: int, achievement_title: str, xp_reward: int
@@ -137,6 +163,9 @@ class NotificationService:
                 "Открой MoodSprint, чтобы увидеть свой прогресс!",
                 reply_markup=get_webapp_button(),
             )
+        except (TelegramForbiddenError, TelegramBadRequest):
+            # User blocked bot or chat not found - ignore
+            pass
         except Exception as e:
             logger.error(
                 f"Failed to send achievement notification to {telegram_id}: {e}"
@@ -152,6 +181,8 @@ class NotificationService:
                 "Продолжай в том же духе! 🚀",
                 reply_markup=get_webapp_button(),
             )
+        except (TelegramForbiddenError, TelegramBadRequest):
+            pass
         except Exception as e:
             logger.error(f"Failed to send level up notification to {telegram_id}: {e}")
 
@@ -168,6 +199,8 @@ class NotificationService:
                 "Отличный фокус! Сделай небольшой перерыв. ☕",
                 reply_markup=get_webapp_button(),
             )
+        except (TelegramForbiddenError, TelegramBadRequest):
+            pass
         except Exception as e:
             logger.error(f"Failed to send focus notification to {telegram_id}: {e}")
 
@@ -313,14 +346,16 @@ class NotificationService:
                     ),
                     parse_mode="HTML",
                 )
-
-                # Mark as sent
-                await mark_daily_suggestion_sent(user["user_id"])
                 suggestions_sent += 1
 
+            except (TelegramForbiddenError, TelegramBadRequest):
+                # User blocked bot - skip silently
+                pass
             except Exception as e:
                 logger.error(f"Failed to send daily suggestion to {telegram_id}: {e}")
 
+            # Always mark as sent to prevent retry spam
+            await mark_daily_suggestion_sent(user["user_id"])
             await asyncio.sleep(0.05)  # Rate limiting
 
         logger.info(f"Daily suggestions sent: {suggestions_sent} for {time_slot}")
@@ -401,16 +436,18 @@ class NotificationService:
                     message,
                     reply_markup=get_webapp_button(),
                 )
-
-                # Mark as notified
-                await mark_postpone_log_notified(log["log_id"])
                 users_notified += 1
 
+            except (TelegramForbiddenError, TelegramBadRequest):
+                # User blocked bot - skip silently
+                pass
             except Exception as e:
                 logger.error(
                     f"Failed to send postpone notification to {telegram_id}: {e}"
                 )
 
+            # Always mark as notified to prevent retry spam
+            await mark_postpone_log_notified(log["log_id"])
             await asyncio.sleep(0.05)  # Rate limiting
 
         logger.info(
@@ -432,6 +469,7 @@ class NotificationService:
             return
 
         reminders_sent = 0
+        reminders_failed = 0
 
         for task in tasks:
             telegram_id = task["telegram_id"]
@@ -459,14 +497,31 @@ class NotificationService:
                     parse_mode="HTML",
                 )
 
-                await mark_reminder_sent(task_id)
                 reminders_sent += 1
 
+            except TelegramForbiddenError:
+                # User blocked the bot or chat doesn't exist
+                logger.warning(
+                    f"User {telegram_id} blocked the bot or chat not found, marking reminder as sent"
+                )
+                reminders_failed += 1
+
+            except TelegramBadRequest as e:
+                # Chat not found or other bad request
+                logger.warning(
+                    f"Bad request for user {telegram_id}: {e}, marking reminder as sent"
+                )
+                reminders_failed += 1
+
             except Exception as e:
+                # Other errors - still mark as sent to prevent spam
                 logger.error(
                     f"Failed to send task reminder to {telegram_id}: {e}"
                 )
+                reminders_failed += 1
 
+            # Always mark reminder as sent to prevent retry spam
+            await mark_reminder_sent(task_id)
             await asyncio.sleep(0.05)  # Rate limiting
 
-        logger.info(f"Task reminders sent: {reminders_sent}")
+        logger.info(f"Task reminders: {reminders_sent} sent, {reminders_failed} failed")

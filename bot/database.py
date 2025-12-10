@@ -595,6 +595,24 @@ async def reschedule_task_to_tomorrow(task_id: int):
         await session.commit()
 
 
+async def reschedule_task_to_days(task_id: int, days: int):
+    """Reschedule task to N days from now at 9:00."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                f"""
+                UPDATE tasks
+                SET scheduled_at = (CURRENT_DATE + INTERVAL '{days} days' + INTERVAL '9 hours'),
+                    reminder_sent = false,
+                    due_date = CURRENT_DATE + INTERVAL '{days} days'
+                WHERE id = :task_id
+            """
+            ),
+            {"task_id": task_id},
+        )
+        await session.commit()
+
+
 async def delete_task(task_id: int):
     """Delete a task."""
     async with async_session() as session:

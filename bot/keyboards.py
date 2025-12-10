@@ -180,9 +180,24 @@ def get_task_reminder_keyboard(task_id: int) -> InlineKeyboardMarkup:
                     callback_data=f"reminder:tomorrow:{task_id}",
                 ),
                 InlineKeyboardButton(
+                    text="📆 На N дней",
+                    callback_data=f"reminder:postpone_days:{task_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="❌ Удалить",
                     callback_data=f"reminder:delete:{task_id}",
                 ),
             ],
+        ]
+    )
+
+
+def get_cancel_keyboard() -> InlineKeyboardMarkup:
+    """Cancel action keyboard."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_state")]
         ]
     )

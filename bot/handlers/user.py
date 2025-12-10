@@ -3,6 +3,8 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from keyboards import (
     get_main_keyboard,
@@ -11,6 +13,7 @@ from keyboards import (
     get_start_inline_button,
     get_freetime_keyboard,
     get_task_suggestion_keyboard,
+    get_cancel_keyboard,
 )
 from database import (
     get_user_by_telegram_id,
@@ -20,10 +23,16 @@ from database import (
     get_subtask_suggestions,
     snooze_task_reminder,
     reschedule_task_to_tomorrow,
+    reschedule_task_to_days,
     delete_task,
 )
 
 router = Router()
+
+
+class PostponeDaysState(StatesGroup):
+    """State for postponing task by N days."""
+    waiting_for_days = State()
 
 
 @router.message(CommandStart())
@@ -251,7 +260,7 @@ async def handle_freetime_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("reminder:"))
-async def handle_reminder_callback(callback: CallbackQuery):
+async def handle_reminder_callback(callback: CallbackQuery, state: FSMContext):
     """Handle task reminder actions."""
     parts = callback.data.split(":")
     action = parts[1]
@@ -273,6 +282,17 @@ async def handle_reminder_callback(callback: CallbackQuery):
             "📅 Задача перенесена на завтра в 9:00.",
         )
 
+    elif action == "postpone_days":
+        task_id = int(parts[2])
+        await state.set_state(PostponeDaysState.waiting_for_days)
+        await state.update_data(task_id=task_id)
+        await callback.answer()
+        await callback.message.edit_text(
+            "📆 На сколько дней отложить задачу?\n\n"
+            "Напиши число от 1 до 30:",
+            reply_markup=get_cancel_keyboard(),
+        )
+
     elif action == "delete":
         task_id = int(parts[2])
         await delete_task(task_id)
@@ -280,3 +300,58 @@ async def handle_reminder_callback(callback: CallbackQuery):
         await callback.message.edit_text(
             "❌ Задача удалена.",
         )
+
+
+@router.callback_query(F.data == "cancel_state")
+async def cancel_state(callback: CallbackQuery, state: FSMContext):
+    """Cancel current state."""
+    await state.clear()
+    await callback.answer("Отменено")
+    await callback.message.edit_text("❌ Действие отменено.")
+
+
+@router.message(PostponeDaysState.waiting_for_days)
+async def process_postpone_days(message: Message, state: FSMContext):
+    """Process postpone days input."""
+    text = message.text.strip()
+
+    # Try to parse number
+    try:
+        days = int(text)
+    except ValueError:
+        await message.answer(
+            "⚠️ Пожалуйста, введи число от 1 до 30.",
+            reply_markup=get_cancel_keyboard(),
+        )
+        return
+
+    # Validate range
+    if days < 1 or days > 30:
+        await message.answer(
+            "⚠️ Число должно быть от 1 до 30.",
+            reply_markup=get_cancel_keyboard(),
+        )
+        return
+
+    # Get task_id from state
+    data = await state.get_data()
+    task_id = data.get("task_id")
+
+    if not task_id:
+        await state.clear()
+        await message.answer("⚠️ Произошла ошибка. Попробуй ещё раз.")
+        return
+
+    # Reschedule task
+    await reschedule_task_to_days(task_id, days)
+    await state.clear()
+
+    # Format response
+    if days == 1:
+        days_text = "1 день"
+    elif days < 5:
+        days_text = f"{days} дня"
+    else:
+        days_text = f"{days} дней"
+
+    await message.answer(f"📆 Задача перенесена на {days_text} (в 9:00).")
