@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity } from 'lucide-react';
+import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -34,6 +34,11 @@ export default function TaskDetailPage() {
   const [selectedDuration, setSelectedDuration] = useState<number | null>(DEFAULT_FOCUS_DURATION);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
+  const [showEditTask, setShowEditTask] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [showEditSubtask, setShowEditSubtask] = useState(false);
+  const [editingSubtask, setEditingSubtask] = useState<{ id: number; title: string; estimated_minutes: number } | null>(null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -173,6 +178,29 @@ export default function TaskDetailPage() {
     },
   });
 
+  const updateTaskMutation = useMutation({
+    mutationFn: (data: { title?: string; description?: string }) =>
+      tasksService.updateTask(taskId, data),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowEditTask(false);
+      hapticFeedback('success');
+    },
+  });
+
+  const updateSubtaskMutation = useMutation({
+    mutationFn: ({ subtaskId, data }: { subtaskId: number; data: { title?: string; estimated_minutes?: number } }) =>
+      tasksService.updateSubtask(subtaskId, data),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowEditSubtask(false);
+      setEditingSubtask(null);
+      hapticFeedback('success');
+    },
+  });
+
   const handleDecompose = () => {
     if (!latestMood) {
       setShowMoodModal(true);
@@ -236,8 +264,18 @@ export default function TaskDetailPage() {
           <h1 className="text-lg font-bold text-white truncate">{task.title}</h1>
         </div>
         <button
+          onClick={() => {
+            setEditTitle(task.title);
+            setEditDescription(task.description || '');
+            setShowEditTask(true);
+          }}
+          className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white"
+        >
+          <Pencil className="w-5 h-5" />
+        </button>
+        <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500"
+          className="p-2 hover:bg-red-500/20 rounded-full text-gray-400 hover:text-red-500"
         >
           <Trash2 className="w-5 h-5" />
         </button>
@@ -281,9 +319,6 @@ export default function TaskDetailPage() {
           </span>
         </div>
         <Progress value={task.progress_percent} color="primary" />
-        {task.description && (
-          <p className="text-sm text-gray-400 mt-3">{task.description}</p>
-        )}
       </Card>
 
       {/* Action Buttons */}
@@ -322,6 +357,13 @@ export default function TaskDetailPage() {
         </Button>
       )}
 
+      {/* Description */}
+      {task.description && (
+        <div className="bg-gray-800/50 rounded-xl p-3">
+          <p className="text-sm text-gray-300 whitespace-pre-wrap">{task.description}</p>
+        </div>
+      )}
+
       {/* Subtasks */}
       {subtasks.length > 0 && (
         <div className="space-y-3">
@@ -356,6 +398,14 @@ export default function TaskDetailPage() {
                   })
                 }
                 onFocus={() => handleStartFocus(subtask.id)}
+                onEdit={() => {
+                  setEditingSubtask({
+                    id: subtask.id,
+                    title: subtask.title,
+                    estimated_minutes: subtask.estimated_minutes,
+                  });
+                  setShowEditSubtask(true);
+                }}
                 disabled={toggleSubtaskMutation.isPending}
               />
             ))}
@@ -415,6 +465,61 @@ export default function TaskDetailPage() {
         </div>
       </Modal>
 
+      {/* Edit Task Modal */}
+      <Modal
+        isOpen={showEditTask}
+        onClose={() => setShowEditTask(false)}
+        title="Редактировать задачу"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Название
+            </label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Название задачи"
+              className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Описание
+            </label>
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Описание задачи (необязательно)"
+              rows={4}
+              className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setShowEditTask(false)}
+              className="flex-1"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => updateTaskMutation.mutate({
+                title: editTitle.trim(),
+                description: editDescription.trim() || undefined,
+              })}
+              isLoading={updateTaskMutation.isPending}
+              disabled={!editTitle.trim()}
+              className="flex-1"
+            >
+              Сохранить
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Add Subtask Modal */}
       <Modal
         isOpen={showAddSubtask}
@@ -454,6 +559,73 @@ export default function TaskDetailPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Subtask Modal */}
+      <Modal
+        isOpen={showEditSubtask}
+        onClose={() => {
+          setShowEditSubtask(false);
+          setEditingSubtask(null);
+        }}
+        title="Редактировать шаг"
+      >
+        {editingSubtask && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Название
+              </label>
+              <input
+                type="text"
+                value={editingSubtask.title}
+                onChange={(e) => setEditingSubtask({ ...editingSubtask, title: e.target.value })}
+                placeholder="Название шага"
+                className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Время (минуты)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={480}
+                value={editingSubtask.estimated_minutes}
+                onChange={(e) => setEditingSubtask({ ...editingSubtask, estimated_minutes: Math.max(1, parseInt(e.target.value) || 1) })}
+                className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowEditSubtask(false);
+                  setEditingSubtask(null);
+                }}
+                className="flex-1"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={() => updateSubtaskMutation.mutate({
+                  subtaskId: editingSubtask.id,
+                  data: {
+                    title: editingSubtask.title.trim(),
+                    estimated_minutes: editingSubtask.estimated_minutes,
+                  },
+                })}
+                isLoading={updateSubtaskMutation.isPending}
+                disabled={!editingSubtask.title.trim()}
+                className="flex-1"
+              >
+                Сохранить
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Task Type Modal */}
