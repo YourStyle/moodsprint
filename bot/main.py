@@ -131,6 +131,13 @@ async def main():
         id="daily_suggestion_night",
     )
 
+    # Task reminders - check every minute
+    scheduler.add_job(
+        notification_service.send_scheduled_task_reminders,
+        CronTrigger(minute="*"),  # Every minute
+        id="scheduled_task_reminders",
+    )
+
     scheduler.start()
 
     # Set bot commands

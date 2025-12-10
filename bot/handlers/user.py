@@ -18,6 +18,9 @@ from database import (
     update_user_notifications,
     get_task_suggestions,
     get_subtask_suggestions,
+    snooze_task_reminder,
+    reschedule_task_to_tomorrow,
+    delete_task,
 )
 
 router = Router()
@@ -245,3 +248,35 @@ async def handle_freetime_callback(callback: CallbackQuery):
         text += "Выбери задачу в приложении! 👇"
 
         await callback.message.edit_text(text, reply_markup=get_webapp_button())
+
+
+@router.callback_query(F.data.startswith("reminder:"))
+async def handle_reminder_callback(callback: CallbackQuery):
+    """Handle task reminder actions."""
+    parts = callback.data.split(":")
+    action = parts[1]
+
+    if action == "snooze":
+        task_id = int(parts[2])
+        minutes = int(parts[3])
+        await snooze_task_reminder(task_id, minutes)
+        await callback.answer(f"Напомню через {minutes} мин")
+        await callback.message.edit_text(
+            f"⏰ Хорошо! Напомню через {minutes} минут.",
+        )
+
+    elif action == "tomorrow":
+        task_id = int(parts[2])
+        await reschedule_task_to_tomorrow(task_id)
+        await callback.answer("Перенесено на завтра")
+        await callback.message.edit_text(
+            "📅 Задача перенесена на завтра в 9:00.",
+        )
+
+    elif action == "delete":
+        task_id = int(parts[2])
+        await delete_task(task_id)
+        await callback.answer("Задача удалена")
+        await callback.message.edit_text(
+            "❌ Задача удалена.",
+        )

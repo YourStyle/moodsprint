@@ -360,6 +360,7 @@ async def get_task_suggestions(telegram_id: int, available_minutes: int) -> list
                 FROM tasks t
                 WHERE t.user_id = :user_id
                 AND t.status != 'completed'
+                AND t.preferred_time IS NOT NULL
                 ORDER BY
                     CASE t.priority
                         WHEN 'high' THEN 3
@@ -512,5 +513,93 @@ async def mark_daily_suggestion_sent(user_id: int):
             """
             ),
             {"user_id": user_id},
+        )
+        await session.commit()
+
+
+async def get_scheduled_tasks_for_reminder() -> list[dict]:
+    """
+    Get tasks that are scheduled and need reminder notification.
+
+    Returns tasks where:
+    - scheduled_at <= NOW()
+    - reminder_sent = false
+    - status != completed
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    t.id as task_id,
+                    t.title,
+                    t.priority,
+                    t.scheduled_at,
+                    u.telegram_id,
+                    u.first_name
+                FROM tasks t
+                JOIN users u ON t.user_id = u.id
+                WHERE t.scheduled_at <= NOW()
+                AND t.reminder_sent = false
+                AND t.status != 'completed'
+                ORDER BY t.scheduled_at ASC
+                LIMIT 100
+            """
+            )
+        )
+        return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def mark_reminder_sent(task_id: int):
+    """Mark task reminder as sent."""
+    async with async_session() as session:
+        await session.execute(
+            text("UPDATE tasks SET reminder_sent = true WHERE id = :task_id"),
+            {"task_id": task_id},
+        )
+        await session.commit()
+
+
+async def snooze_task_reminder(task_id: int, minutes: int):
+    """Snooze task reminder by specified minutes."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                UPDATE tasks
+                SET scheduled_at = NOW() + INTERVAL ':minutes minutes',
+                    reminder_sent = false
+                WHERE id = :task_id
+            """.replace(":minutes", str(minutes))
+            ),
+            {"task_id": task_id},
+        )
+        await session.commit()
+
+
+async def reschedule_task_to_tomorrow(task_id: int):
+    """Reschedule task to tomorrow at 9:00."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                UPDATE tasks
+                SET scheduled_at = (CURRENT_DATE + INTERVAL '1 day' + INTERVAL '9 hours'),
+                    reminder_sent = false,
+                    due_date = CURRENT_DATE + INTERVAL '1 day'
+                WHERE id = :task_id
+            """
+            ),
+            {"task_id": task_id},
+        )
+        await session.commit()
+
+
+async def delete_task(task_id: int):
+    """Delete a task."""
+    async with async_session() as session:
+        await session.execute(
+            text("DELETE FROM tasks WHERE id = :task_id"),
+            {"task_id": task_id},
         )
         await session.commit()

@@ -62,6 +62,7 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
   due_date?: string;
   preferred_time?: PreferredTime;
+  scheduled_at?: string;
 }
 
 export interface UpdateTaskInput {

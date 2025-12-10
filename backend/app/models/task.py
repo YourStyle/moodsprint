@@ -53,6 +53,10 @@ class Task(db.Model):
     postponed_count = db.Column(db.Integer, default=0, nullable=False)
     original_due_date = db.Column(db.Date, nullable=True)
 
+    # Scheduled reminder
+    scheduled_at = db.Column(db.DateTime, nullable=True, index=True)
+    reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(
@@ -122,6 +126,9 @@ class Task(db.Model):
             "postponed_count": self.postponed_count,
             "original_due_date": (
                 self.original_due_date.isoformat() if self.original_due_date else None
+            ),
+            "scheduled_at": (
+                self.scheduled_at.isoformat() if self.scheduled_at else None
             ),
             "subtasks_count": self.subtasks_count,
             "subtasks_completed": self.subtasks_completed,

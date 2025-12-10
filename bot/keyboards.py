@@ -152,3 +152,37 @@ def get_task_suggestion_keyboard(
             ],
         ]
     )
+
+
+def get_task_reminder_keyboard(task_id: int) -> InlineKeyboardMarkup:
+    """Keyboard for task reminder with actions."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="▶️ Начать",
+                    web_app=WebAppInfo(url=f"{config.WEBAPP_URL}/tasks/{task_id}"),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⏰ Через 30 мин",
+                    callback_data=f"reminder:snooze:{task_id}:30",
+                ),
+                InlineKeyboardButton(
+                    text="⏰ Через 1 час",
+                    callback_data=f"reminder:snooze:{task_id}:60",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📅 На завтра",
+                    callback_data=f"reminder:tomorrow:{task_id}",
+                ),
+                InlineKeyboardButton(
+                    text="❌ Удалить",
+                    callback_data=f"reminder:delete:{task_id}",
+                ),
+            ],
+        ]
+    )

@@ -29,7 +29,7 @@ export default function TasksPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string; preferred_time?: PreferredTime }) =>
+    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string; preferred_time?: PreferredTime; scheduled_at?: string }) =>
       tasksService.createTask(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -38,8 +38,8 @@ export default function TasksPage() {
     },
   });
 
-  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime) => {
-    createMutation.mutate({ title, description, priority, due_date: dueDate, preferred_time: preferredTime });
+  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime, scheduledAt?: string) => {
+    createMutation.mutate({ title, description, priority, due_date: dueDate, preferred_time: preferredTime, scheduled_at: scheduledAt });
   };
 
   const filters: { value: FilterStatus; label: string }[] = [

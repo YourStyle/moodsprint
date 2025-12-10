@@ -1,18 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Bell } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import type { TaskPriority, PreferredTime } from '@/domain/types';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime) => void;
+  onSubmit: (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime, scheduledAt?: string) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
   initialPriority?: TaskPriority;
   initialDueDate?: string;
   initialPreferredTime?: PreferredTime;
+  initialScheduledAt?: string;
   submitLabel?: string;
 }
 
@@ -40,6 +41,7 @@ export function TaskForm({
   initialPriority = 'medium',
   initialDueDate,
   initialPreferredTime,
+  initialScheduledAt,
   submitLabel = 'Создать задачу',
 }: TaskFormProps) {
   const [title, setTitle] = useState(initialTitle);
@@ -47,11 +49,13 @@ export function TaskForm({
   const [priority, setPriority] = useState<TaskPriority>(initialPriority);
   const [dueDate, setDueDate] = useState(initialDueDate || formatDateForInput(new Date()));
   const [preferredTime, setPreferredTime] = useState<PreferredTime | undefined>(initialPreferredTime);
+  const [scheduledAt, setScheduledAt] = useState<string>(initialScheduledAt || '');
+  const [showReminder, setShowReminder] = useState(!!initialScheduledAt);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), priority, dueDate, preferredTime);
+      onSubmit(title.trim(), description.trim(), priority, dueDate, preferredTime, showReminder ? scheduledAt : undefined);
     }
   };
 
@@ -158,6 +162,46 @@ export function TaskForm({
             />
           </label>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          <Bell className="w-4 h-4 inline mr-1" />
+          Напоминание
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            setShowReminder(!showReminder);
+            if (!showReminder && !scheduledAt) {
+              // Set default to today at next hour
+              const now = new Date();
+              now.setHours(now.getHours() + 1, 0, 0, 0);
+              setScheduledAt(now.toISOString().slice(0, 16));
+            }
+          }}
+          className={`w-full py-2 px-3 text-sm font-medium rounded-xl transition-all mb-2 ${
+            showReminder
+              ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          {showReminder ? '🔔 Напомнить в заданное время' : '🔕 Без напоминания'}
+        </button>
+        {showReminder && (
+          <div className="mt-2">
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              min={new Date().toISOString().slice(0, 16)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Бот напомнит о задаче в указанное время
+            </p>
+          </div>
+        )}
       </div>
 
       <div>

@@ -17,8 +17,13 @@ from database import (
     get_task_suggestions,
     get_users_for_daily_suggestion,
     mark_daily_suggestion_sent,
+    get_scheduled_tasks_for_reminder,
+    mark_reminder_sent,
+    snooze_task_reminder,
+    reschedule_task_to_tomorrow,
+    delete_task,
 )
-from keyboards import get_webapp_button, get_task_suggestion_keyboard
+from keyboards import get_webapp_button, get_task_suggestion_keyboard, get_task_reminder_keyboard
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -411,3 +416,57 @@ class NotificationService:
         logger.info(
             f"Postpone notifications sent: {users_notified} users for {time_slot}."
         )
+
+    async def send_scheduled_task_reminders(self):
+        """
+        Send reminders for scheduled tasks.
+
+        Runs every minute to check for tasks that need reminders.
+        """
+        logger.info("Checking scheduled task reminders...")
+
+        tasks = await get_scheduled_tasks_for_reminder()
+
+        if not tasks:
+            logger.info("No scheduled tasks need reminders.")
+            return
+
+        reminders_sent = 0
+
+        for task in tasks:
+            telegram_id = task["telegram_id"]
+            first_name = task.get("first_name") or "друг"
+            task_id = task["task_id"]
+            title = task["title"]
+            priority = task["priority"]
+
+            priority_emoji = (
+                "🔴" if priority == "high"
+                else "🟡" if priority == "medium"
+                else "🟢"
+            )
+
+            try:
+                text = f"⏰ Привет, {first_name}!\n\n"
+                text += f"Напоминаю о задаче:\n\n"
+                text += f"{priority_emoji} <b>{title}</b>\n\n"
+                text += "Готов начать?"
+
+                await self.bot.send_message(
+                    telegram_id,
+                    text,
+                    reply_markup=get_task_reminder_keyboard(task_id),
+                    parse_mode="HTML",
+                )
+
+                await mark_reminder_sent(task_id)
+                reminders_sent += 1
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to send task reminder to {telegram_id}: {e}"
+                )
+
+            await asyncio.sleep(0.05)  # Rate limiting
+
+        logger.info(f"Task reminders sent: {reminders_sent}")

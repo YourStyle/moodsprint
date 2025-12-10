@@ -183,6 +183,15 @@ def create_task():
     if preferred_time and preferred_time not in valid_times:
         preferred_time = None
 
+    # Parse scheduled_at for reminders
+    scheduled_at = None
+    scheduled_at_str = data.get("scheduled_at")
+    if scheduled_at_str:
+        try:
+            scheduled_at = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+
     task = Task(
         user_id=user_id,
         title=title,
@@ -191,6 +200,7 @@ def create_task():
         due_date=due_date_value,
         original_due_date=due_date_value,
         preferred_time=preferred_time,
+        scheduled_at=scheduled_at,
     )
 
     db.session.add(task)
@@ -624,9 +634,11 @@ def get_task_suggestions():
     suggestions = []
 
     # Get incomplete tasks with subtasks
+    # Only tasks with preferred_time set (marked for "free time" suggestions)
     tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.status != TaskStatus.COMPLETED.value,
+        Task.preferred_time.isnot(None),
     ).all()
 
     for task in tasks:
