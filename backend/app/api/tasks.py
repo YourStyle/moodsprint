@@ -176,6 +176,12 @@ def create_task():
             pass
 
     description = data.get("description")
+    preferred_time = data.get("preferred_time")
+
+    # Validate preferred_time if provided
+    valid_times = ["morning", "afternoon", "evening", "night"]
+    if preferred_time and preferred_time not in valid_times:
+        preferred_time = None
 
     task = Task(
         user_id=user_id,
@@ -184,21 +190,32 @@ def create_task():
         priority=priority,
         due_date=due_date_value,
         original_due_date=due_date_value,
+        preferred_time=preferred_time,
     )
 
     db.session.add(task)
     db.session.commit()
 
-    # Classify task asynchronously (non-blocking)
-    try:
-        classifier = TaskClassifier()
-        classification = classifier.classify_task(title, description)
-        task.task_type = classification.get("task_type")
-        task.preferred_time = classification.get("preferred_time")
-        db.session.commit()
-    except Exception:
-        # Classification is optional, don't fail task creation
-        pass
+    # Classify task asynchronously (non-blocking) - only if preferred_time not set by user
+    if not preferred_time:
+        try:
+            classifier = TaskClassifier()
+            classification = classifier.classify_task(title, description)
+            task.task_type = classification.get("task_type")
+            task.preferred_time = classification.get("preferred_time")
+            db.session.commit()
+        except Exception:
+            # Classification is optional, don't fail task creation
+            pass
+    else:
+        # Still classify task_type even if preferred_time is manually set
+        try:
+            classifier = TaskClassifier()
+            classification = classifier.classify_task(title, description)
+            task.task_type = classification.get("task_type")
+            db.session.commit()
+        except Exception:
+            pass
 
     return success_response({"task": task.to_dict()}, status_code=201)
 

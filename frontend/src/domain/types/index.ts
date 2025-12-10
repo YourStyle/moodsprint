@@ -54,11 +54,14 @@ export interface Task {
   subtasks?: Subtask[];
 }
 
+export type PreferredTime = 'morning' | 'afternoon' | 'evening' | 'night';
+
 export interface CreateTaskInput {
   title: string;
   description?: string;
   priority?: TaskPriority;
   due_date?: string;
+  preferred_time?: PreferredTime;
 }
 
 export interface UpdateTaskInput {

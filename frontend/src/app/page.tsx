@@ -13,7 +13,7 @@ import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamific
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, gamificationService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
-import type { MoodLevel, EnergyLevel, TaskPriority, TaskSuggestion } from '@/domain/types';
+import type { MoodLevel, EnergyLevel, TaskPriority, TaskSuggestion, PreferredTime } from '@/domain/types';
 
 const formatDateForAPI = (date: Date): string => {
   return date.toISOString().split('T')[0];
@@ -300,7 +300,7 @@ export default function HomePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string }) =>
+    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string; preferred_time?: PreferredTime }) =>
       tasksService.createTask(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -324,8 +324,8 @@ export default function HomePage() {
     },
   });
 
-  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string) => {
-    createMutation.mutate({ title, description, priority, due_date: dueDate });
+  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime) => {
+    createMutation.mutate({ title, description, priority, due_date: dueDate, preferred_time: preferredTime });
   };
 
   const handleSelectSuggestion = (suggestion: TaskSuggestion) => {

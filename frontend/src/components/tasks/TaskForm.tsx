@@ -1,17 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
-import type { TaskPriority } from '@/domain/types';
+import type { TaskPriority, PreferredTime } from '@/domain/types';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, priority: TaskPriority, dueDate: string) => void;
+  onSubmit: (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
   initialPriority?: TaskPriority;
   initialDueDate?: string;
+  initialPreferredTime?: PreferredTime;
   submitLabel?: string;
 }
 
@@ -38,17 +39,19 @@ export function TaskForm({
   initialDescription = '',
   initialPriority = 'medium',
   initialDueDate,
+  initialPreferredTime,
   submitLabel = 'Создать задачу',
 }: TaskFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [priority, setPriority] = useState<TaskPriority>(initialPriority);
   const [dueDate, setDueDate] = useState(initialDueDate || formatDateForInput(new Date()));
+  const [preferredTime, setPreferredTime] = useState<PreferredTime | undefined>(initialPreferredTime);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), priority, dueDate);
+      onSubmit(title.trim(), description.trim(), priority, dueDate, preferredTime);
     }
   };
 
@@ -59,6 +62,13 @@ export function TaskForm({
     { value: 'low', label: 'Низкий', color: 'bg-green-500/20 text-green-400 ring-green-500' },
     { value: 'medium', label: 'Средний', color: 'bg-yellow-500/20 text-yellow-400 ring-yellow-500' },
     { value: 'high', label: 'Высокий', color: 'bg-red-500/20 text-red-400 ring-red-500' },
+  ];
+
+  const timeSlots: { value: PreferredTime; label: string; icon: string }[] = [
+    { value: 'morning', label: 'Утро', icon: '🌅' },
+    { value: 'afternoon', label: 'День', icon: '☀️' },
+    { value: 'evening', label: 'Вечер', icon: '🌆' },
+    { value: 'night', label: 'Ночь', icon: '🌙' },
   ];
 
   return (
@@ -148,6 +158,33 @@ export function TaskForm({
             />
           </label>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          <Clock className="w-4 h-4 inline mr-1" />
+          Предпочтительное время (для &quot;Есть время?&quot;)
+        </label>
+        <div className="flex gap-2">
+          {timeSlots.map((slot) => (
+            <button
+              key={slot.value}
+              type="button"
+              onClick={() => setPreferredTime(preferredTime === slot.value ? undefined : slot.value)}
+              className={`flex-1 py-2 px-2 text-sm font-medium rounded-xl transition-all ${
+                preferredTime === slot.value
+                  ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <span className="block text-base">{slot.icon}</span>
+              <span className="text-xs">{slot.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Когда лучше предлагать эту задачу
+        </p>
       </div>
 
       <Button
