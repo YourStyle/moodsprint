@@ -118,7 +118,9 @@ class FocusSession(db.Model):
             "is_overtime": self.is_overtime,
             "status": self.status,
             # Add 'Z' suffix to indicate UTC timezone
-            "started_at": f"{self.started_at.isoformat()}Z" if self.started_at else None,
+            "started_at": (
+                f"{self.started_at.isoformat()}Z" if self.started_at else None
+            ),
             "ended_at": f"{self.ended_at.isoformat()}Z" if self.ended_at else None,
         }
 

@@ -21,7 +21,11 @@ from database import (
     get_scheduled_tasks_for_reminder,
     mark_reminder_sent,
 )
-from keyboards import get_webapp_button, get_task_suggestion_keyboard, get_task_reminder_keyboard
+from keyboards import (
+    get_webapp_button,
+    get_task_suggestion_keyboard,
+    get_task_reminder_keyboard,
+)
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -476,9 +480,7 @@ class NotificationService:
             priority = task["priority"]
 
             priority_emoji = (
-                "🔴" if priority == "high"
-                else "🟡" if priority == "medium"
-                else "🟢"
+                "🔴" if priority == "high" else "🟡" if priority == "medium" else "🟢"
             )
 
             try:
@@ -512,9 +514,7 @@ class NotificationService:
 
             except Exception as e:
                 # Other errors - still mark as sent to prevent spam
-                logger.error(
-                    f"Failed to send task reminder to {telegram_id}: {e}"
-                )
+                logger.error(f"Failed to send task reminder to {telegram_id}: {e}")
                 reminders_failed += 1
 
             # Always mark reminder as sent to prevent retry spam

@@ -61,9 +61,7 @@ class UserProfile(db.Model):
     # Work schedule preferences
     work_start_time = db.Column(db.String(5), default="09:00")  # HH:MM format
     work_end_time = db.Column(db.String(5), default="18:00")  # HH:MM format
-    work_days = db.Column(
-        db.JSON, default=[1, 2, 3, 4, 5]
-    )  # 1=Mon, 2=Tue, ..., 7=Sun
+    work_days = db.Column(db.JSON, default=[1, 2, 3, 4, 5])  # 1=Mon, 2=Tue, ..., 7=Sun
     timezone = db.Column(db.String(50), default="Europe/Moscow")
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

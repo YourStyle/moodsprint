@@ -188,7 +188,9 @@ def create_task():
     scheduled_at_str = data.get("scheduled_at")
     if scheduled_at_str:
         try:
-            scheduled_at = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
+            scheduled_at = datetime.fromisoformat(
+                scheduled_at_str.replace("Z", "+00:00")
+            )
         except ValueError:
             pass
 

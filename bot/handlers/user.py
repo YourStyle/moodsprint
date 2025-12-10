@@ -32,6 +32,7 @@ router = Router()
 
 class PostponeDaysState(StatesGroup):
     """State for postponing task by N days."""
+
     waiting_for_days = State()
 
 
@@ -288,8 +289,7 @@ async def handle_reminder_callback(callback: CallbackQuery, state: FSMContext):
         await state.update_data(task_id=task_id)
         await callback.answer()
         await callback.message.edit_text(
-            "📆 На сколько дней отложить задачу?\n\n"
-            "Напиши число от 1 до 30:",
+            "📆 На сколько дней отложить задачу?\n\n" "Напиши число от 1 до 30:",
             reply_markup=get_cancel_keyboard(),
         )
 

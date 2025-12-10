@@ -570,7 +570,9 @@ async def snooze_task_reminder(task_id: int, minutes: int):
                 SET scheduled_at = NOW() + INTERVAL ':minutes minutes',
                     reminder_sent = false
                 WHERE id = :task_id
-            """.replace(":minutes", str(minutes))
+            """.replace(
+                    ":minutes", str(minutes)
+                )
             ),
             {"task_id": task_id},
         )
