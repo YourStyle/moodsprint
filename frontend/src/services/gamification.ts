@@ -55,6 +55,148 @@ interface DailyBonusClaimResponse {
   next_bonus_at?: string;
 }
 
+// Genre types
+export type Genre = 'magic' | 'fantasy' | 'scifi' | 'cyberpunk' | 'anime';
+
+export interface GenreInfo {
+  id: Genre;
+  name: string;
+  description: string;
+  emoji: string;
+}
+
+interface GenresResponse {
+  genres: GenreInfo[];
+}
+
+// Quest types
+export interface DailyQuest {
+  id: number;
+  quest_type: string;
+  title: string;
+  description: string;
+  themed_description: string;
+  target_count: number;
+  current_count: number;
+  progress_percent: number;
+  xp_reward: number;
+  stat_points_reward: number;
+  date: string;
+  completed: boolean;
+  completed_at: string | null;
+  claimed: boolean;
+}
+
+interface QuestsResponse {
+  quests: DailyQuest[];
+}
+
+interface QuestRewardResponse {
+  success: boolean;
+  reward?: {
+    xp: number;
+    stat_points: number;
+    xp_info?: {
+      level_up?: boolean;
+      new_level?: number;
+    };
+  };
+}
+
+// Character types
+export interface CharacterStats {
+  id: number;
+  user_id: number;
+  strength: number;
+  agility: number;
+  intelligence: number;
+  max_hp: number;
+  current_hp: number;
+  attack_power: number;
+  defense: number;
+  speed: number;
+  battles_won: number;
+  battles_lost: number;
+  available_stat_points: number;
+  total_stats: number;
+}
+
+interface CharacterResponse {
+  character: CharacterStats;
+}
+
+interface DistributeStatResponse {
+  success: boolean;
+  character?: CharacterStats;
+  error?: string;
+  available?: number;
+}
+
+// Monster types
+export interface Monster {
+  id: number;
+  name: string;
+  genre: string;
+  level: number;
+  hp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  xp_reward: number;
+  stat_points_reward: number;
+  sprite_url: string | null;
+  emoji: string;
+  is_boss: boolean;
+}
+
+interface MonstersResponse {
+  monsters: Monster[];
+}
+
+// Battle types
+export interface BattleLogEntry {
+  round: number;
+  actor: 'player' | 'monster';
+  damage: number;
+}
+
+export interface BattleResult {
+  won: boolean;
+  rounds: number;
+  damage_dealt: number;
+  damage_taken: number;
+  battle_log: BattleLogEntry[];
+  xp_earned: number;
+  stat_points_earned: number;
+  level_up: boolean;
+  character: CharacterStats;
+  monster: Monster;
+}
+
+export interface BattleHistory {
+  id: number;
+  monster: Monster | null;
+  won: boolean;
+  rounds: number;
+  damage_dealt: number;
+  damage_taken: number;
+  xp_earned: number;
+  stat_points_earned: number;
+  created_at: string;
+}
+
+interface BattleHistoryResponse {
+  battles: BattleHistory[];
+}
+
+// Boss task types
+export interface BossTaskInfo {
+  is_boss: boolean;
+  reason?: string;
+  xp_multiplier?: number;
+  bonus_stat_points?: number;
+}
+
 export const gamificationService = {
   async getUserStats(): Promise<ApiResponse<UserStatsResponse>> {
     return api.get<UserStatsResponse>('/user/stats');
@@ -89,5 +231,57 @@ export const gamificationService = {
 
   async getProductivityPatterns(): Promise<ApiResponse<ProductivityPatterns>> {
     return api.get<ProductivityPatterns>('/user/productivity-patterns');
+  },
+
+  // Genre endpoints
+  async getGenres(): Promise<ApiResponse<GenresResponse>> {
+    return api.get<GenresResponse>('/genres');
+  },
+
+  async setGenre(genre: Genre): Promise<ApiResponse<{ success: boolean; genre: Genre }>> {
+    return api.put<{ success: boolean; genre: Genre }>('/profile/genre', { genre });
+  },
+
+  // Quest endpoints
+  async getQuests(): Promise<ApiResponse<QuestsResponse>> {
+    return api.get<QuestsResponse>('/quests');
+  },
+
+  async claimQuestReward(questId: number): Promise<ApiResponse<QuestRewardResponse>> {
+    return api.post<QuestRewardResponse>(`/quests/${questId}/claim`);
+  },
+
+  // Character endpoints
+  async getCharacter(): Promise<ApiResponse<CharacterResponse>> {
+    return api.get<CharacterResponse>('/character');
+  },
+
+  async distributeStat(
+    stat: 'strength' | 'agility' | 'intelligence',
+    points: number
+  ): Promise<ApiResponse<DistributeStatResponse>> {
+    return api.post<DistributeStatResponse>('/character/distribute', { stat, points });
+  },
+
+  async healCharacter(full?: boolean): Promise<ApiResponse<CharacterResponse>> {
+    return api.post<CharacterResponse>('/character/heal', { full: full ?? true });
+  },
+
+  // Arena endpoints
+  async getMonsters(): Promise<ApiResponse<MonstersResponse>> {
+    return api.get<MonstersResponse>('/arena/monsters');
+  },
+
+  async battle(monsterId: number): Promise<ApiResponse<BattleResult>> {
+    return api.post<BattleResult>('/arena/battle', { monster_id: monsterId });
+  },
+
+  async getBattleHistory(limit: number = 10): Promise<ApiResponse<BattleHistoryResponse>> {
+    return api.get<BattleHistoryResponse>(`/arena/history?limit=${limit}`);
+  },
+
+  // Boss task info
+  async getBossTaskInfo(taskId: number): Promise<ApiResponse<BossTaskInfo>> {
+    return api.get<BossTaskInfo>(`/tasks/${taskId}/boss-info`);
   },
 };

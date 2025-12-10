@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset } from 'lucide-react';
-import { Card, Progress } from '@/components/ui';
-import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
+import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll } from 'lucide-react';
+import { Card, Progress, Button } from '@/components/ui';
+import { XPBar, StreakBadge, AchievementCard, DailyQuests, CharacterStats } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
 import { gamificationService } from '@/services';
 import { authService } from '@/services';
@@ -31,6 +31,18 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
+  const { data: questsData } = useQuery({
+    queryKey: ['quests'],
+    queryFn: () => gamificationService.getQuests(),
+    enabled: !!user,
+  });
+
+  const { data: characterData } = useQuery({
+    queryKey: ['character'],
+    queryFn: () => gamificationService.getCharacter(),
+    enabled: !!user,
+  });
+
   const handleLogout = () => {
     authService.logout();
     setUser(null);
@@ -48,6 +60,8 @@ export default function ProfilePage() {
   const stats = statsData?.data;
   const achievements = achievementsData?.data;
   const patterns = patternsData?.data;
+  const quests = questsData?.data?.quests || [];
+  const character = characterData?.data?.character;
 
   const getProductivityIcon = (time: string) => {
     switch (time) {
@@ -131,6 +145,24 @@ export default function ProfilePage() {
             <p className="text-xs text-gray-400">Лучшая серия</p>
           </Card>
         </div>
+      )}
+
+      {/* Daily Quests */}
+      {quests.length > 0 && <DailyQuests quests={quests} />}
+
+      {/* Character Stats & Arena */}
+      {character && (
+        <>
+          <CharacterStats character={character} />
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push('/arena')}
+          >
+            <Swords className="w-5 h-5 mr-2" />
+            Перейти на арену
+          </Button>
+        </>
       )}
 
       {/* Productivity Patterns */}

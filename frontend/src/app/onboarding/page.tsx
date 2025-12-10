@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, Card } from '@/components/ui';
-import { onboardingService } from '@/services';
+import { onboardingService, gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import type { OnboardingInput } from '@/domain/types';
+import type { Genre } from '@/services/gamification';
 
-type Step = 'time' | 'tasks' | 'challenges' | 'goals' | 'result';
+type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'goals' | 'result';
 
 const timeOptions = [
   { value: 'morning', label: 'Утро', emoji: '🌅', desc: '6:00 - 12:00' },
@@ -41,10 +42,44 @@ const challengeOptions = [
   { value: 'finishing', label: 'Не довожу до конца', emoji: '🏁' },
 ];
 
+const genreOptions: { value: Genre; label: string; emoji: string; desc: string }[] = [
+  {
+    value: 'magic',
+    label: 'Магия',
+    emoji: '🧙‍♂️',
+    desc: 'Как в Гарри Поттере',
+  },
+  {
+    value: 'fantasy',
+    label: 'Фэнтези',
+    emoji: '⚔️',
+    desc: 'Как Властелин Колец',
+  },
+  {
+    value: 'scifi',
+    label: 'Научная фантастика',
+    emoji: '🚀',
+    desc: 'Космические приключения',
+  },
+  {
+    value: 'cyberpunk',
+    label: 'Киберпанк',
+    emoji: '🌆',
+    desc: 'Мир хакеров и технологий',
+  },
+  {
+    value: 'anime',
+    label: 'Аниме',
+    emoji: '🎌',
+    desc: 'Японские приключения',
+  },
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { onboardingCompleted, setOnboardingCompleted } = useAppStore();
   const [step, setStep] = useState<Step>('time');
+  const [selectedGenre, setSelectedGenre] = useState<Genre>('fantasy');
   const [data, setData] = useState<OnboardingInput>({
     productive_time: 'morning',
     favorite_tasks: [],
@@ -70,8 +105,20 @@ export default function OnboardingPage() {
     }
   }, [statusData?.data?.completed, onboardingCompleted, router]);
 
+  const genreMutation = useMutation({
+    mutationFn: (genre: Genre) => gamificationService.setGenre(genre),
+    onSuccess: () => {
+      hapticFeedback('light');
+    },
+  });
+
   const completeMutation = useMutation({
-    mutationFn: (input: OnboardingInput) => onboardingService.complete(input),
+    mutationFn: async (input: OnboardingInput) => {
+      // First save genre preference
+      await gamificationService.setGenre(selectedGenre);
+      // Then complete onboarding
+      return onboardingService.complete(input);
+    },
     onSuccess: (response) => {
       if (response.success && response.data) {
         setResult({
@@ -107,6 +154,11 @@ export default function OnboardingPage() {
     hapticFeedback('light');
   };
 
+  const handleGenreSelect = (genre: Genre) => {
+    setSelectedGenre(genre);
+    hapticFeedback('light');
+  };
+
   const handleComplete = () => {
     completeMutation.mutate(data);
   };
@@ -115,16 +167,18 @@ export default function OnboardingPage() {
     router.push('/');
   };
 
+  const progressSteps = ['time', 'tasks', 'challenges', 'genre', 'goals'] as const;
+  const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
+
   return (
     <div className="min-h-screen p-4 flex flex-col pt-safe pb-safe">
       {/* Progress */}
       <div className="flex gap-1 mb-6">
-        {(['time', 'tasks', 'challenges', 'goals'] as const).map((s, i) => (
+        {progressSteps.map((s, i) => (
           <div
             key={s}
             className={`flex-1 h-1 rounded-full transition-colors ${
-              ['time', 'tasks', 'challenges', 'goals'].indexOf(step) >= i ||
-              step === 'result'
+              currentStepIndex >= i || step === 'result'
                 ? 'bg-primary-500'
                 : 'bg-gray-700'
             }`}
@@ -243,9 +297,54 @@ export default function OnboardingPage() {
             </Button>
             <Button
               className="flex-1"
-              onClick={() => setStep('goals')}
+              onClick={() => setStep('genre')}
               disabled={data.challenges.length === 0}
             >
+              Далее
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step: Genre */}
+      {step === 'genre' && (
+        <div className="flex-1 flex flex-col">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Выбери свой жанр
+            </h1>
+            <p className="text-gray-400">
+              Это определит стиль твоих квестов и приключений
+            </p>
+          </div>
+
+          <div className="space-y-3 flex-1">
+            {genreOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleGenreSelect(opt.value)}
+                className={`w-full p-4 rounded-2xl text-left transition-all ${
+                  selectedGenre === opt.value
+                    ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                    : 'bg-gray-800 hover:bg-gray-700'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <div>
+                    <p className="font-medium text-white">{opt.label}</p>
+                    <p className="text-sm text-gray-400">{opt.desc}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <Button variant="secondary" onClick={() => setStep('challenges')}>
+              Назад
+            </Button>
+            <Button className="flex-1" onClick={() => setStep('goals')}>
               Далее
             </Button>
           </div>
@@ -293,7 +392,7 @@ export default function OnboardingPage() {
           </div>
 
           <div className="flex gap-3 mt-6">
-            <Button variant="secondary" onClick={() => setStep('challenges')}>
+            <Button variant="secondary" onClick={() => setStep('genre')}>
               Назад
             </Button>
             <Button
