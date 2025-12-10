@@ -117,8 +117,9 @@ class FocusSession(db.Model):
             "remaining_minutes": self.remaining_minutes,
             "is_overtime": self.is_overtime,
             "status": self.status,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
+            # Add 'Z' suffix to indicate UTC timezone
+            "started_at": f"{self.started_at.isoformat()}Z" if self.started_at else None,
+            "ended_at": f"{self.ended_at.isoformat()}Z" if self.ended_at else None,
         }
 
         if self.subtask:

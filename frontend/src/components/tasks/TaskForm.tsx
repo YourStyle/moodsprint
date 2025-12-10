@@ -55,7 +55,15 @@ export function TaskForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), priority, dueDate, preferredTime, showReminder ? scheduledAt : undefined);
+      // Convert local datetime to UTC ISO string for server
+      let scheduledAtUtc: string | undefined;
+      if (showReminder && scheduledAt) {
+        // scheduledAt is in local time format "YYYY-MM-DDTHH:mm"
+        // Convert to UTC ISO string
+        const localDate = new Date(scheduledAt);
+        scheduledAtUtc = localDate.toISOString();
+      }
+      onSubmit(title.trim(), description.trim(), priority, dueDate, preferredTime, scheduledAtUtc);
     }
   };
 
@@ -174,10 +182,16 @@ export function TaskForm({
           onClick={() => {
             setShowReminder(!showReminder);
             if (!showReminder && !scheduledAt) {
-              // Set default to today at next hour
+              // Set default to today at next hour (local time for datetime-local input)
               const now = new Date();
               now.setHours(now.getHours() + 1, 0, 0, 0);
-              setScheduledAt(now.toISOString().slice(0, 16));
+              // Format as local datetime string for datetime-local input
+              const year = now.getFullYear();
+              const month = String(now.getMonth() + 1).padStart(2, '0');
+              const day = String(now.getDate()).padStart(2, '0');
+              const hours = String(now.getHours()).padStart(2, '0');
+              const minutes = String(now.getMinutes()).padStart(2, '0');
+              setScheduledAt(`${year}-${month}-${day}T${hours}:${minutes}`);
             }
           }}
           className={`w-full py-2 px-3 text-sm font-medium rounded-xl transition-all mb-2 ${
@@ -195,7 +209,15 @@ export function TaskForm({
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-xl text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              min={new Date().toISOString().slice(0, 16)}
+              min={(() => {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+              })()}
             />
             <p className="text-xs text-gray-500 mt-1">
               Бот напомнит о задаче в указанное время
