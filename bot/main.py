@@ -98,6 +98,39 @@ async def main():
         id="postpone_notify_night",
     )
 
+    # Daily task suggestions based on user's preferred time
+    # Morning users at 9:30 AM
+    scheduler.add_job(
+        notification_service.send_daily_task_suggestion,
+        CronTrigger(hour=9, minute=30),
+        args=["morning"],
+        id="daily_suggestion_morning",
+    )
+
+    # Afternoon users at 13:30
+    scheduler.add_job(
+        notification_service.send_daily_task_suggestion,
+        CronTrigger(hour=13, minute=30),
+        args=["afternoon"],
+        id="daily_suggestion_afternoon",
+    )
+
+    # Evening users at 18:30
+    scheduler.add_job(
+        notification_service.send_daily_task_suggestion,
+        CronTrigger(hour=18, minute=30),
+        args=["evening"],
+        id="daily_suggestion_evening",
+    )
+
+    # Night users at 21:30
+    scheduler.add_job(
+        notification_service.send_daily_task_suggestion,
+        CronTrigger(hour=21, minute=30),
+        args=["night"],
+        id="daily_suggestion_night",
+    )
+
     scheduler.start()
 
     # Set bot commands

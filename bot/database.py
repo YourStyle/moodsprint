@@ -37,7 +37,14 @@ async def get_users_with_notifications_enabled() -> list[dict]:
     """Get users who have notifications enabled."""
     async with async_session() as session:
         result = await session.execute(
-            text("SELECT * FROM users WHERE notifications_enabled = true")
+            text(
+                """
+                SELECT u.*, up.notifications_enabled
+                FROM users u
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE COALESCE(up.notifications_enabled, true) = true
+            """
+            )
         )
         return [dict(row._mapping) for row in result.fetchall()]
 
@@ -47,7 +54,10 @@ async def update_user_notifications(telegram_id: int, enabled: bool):
     async with async_session() as session:
         await session.execute(
             text(
-                "UPDATE users SET notifications_enabled = :enabled WHERE telegram_id = :tid"
+                """
+                UPDATE user_profiles SET notifications_enabled = :enabled
+                WHERE user_id = (SELECT id FROM users WHERE telegram_id = :tid)
+            """
             ),
             {"enabled": enabled, "tid": telegram_id},
         )
@@ -260,19 +270,20 @@ async def get_unnotified_postpone_logs_for_time(time_slot: str) -> list[dict]:
                 """
                 WITH user_preferred_times AS (
                     SELECT
-                        user_id,
+                        u.id as user_id,
                         COALESCE(
                             (SELECT preferred_time
                              FROM tasks t2
-                             WHERE t2.user_id = users.id
+                             WHERE t2.user_id = u.id
                              AND t2.preferred_time IS NOT NULL
                              GROUP BY preferred_time
                              ORDER BY COUNT(*) DESC
                              LIMIT 1),
                             'morning'
                         ) as preferred_time
-                    FROM users
-                    WHERE notifications_enabled = true
+                    FROM users u
+                    LEFT JOIN user_profiles up ON up.user_id = u.id
+                    WHERE COALESCE(up.notifications_enabled, true) = true
                 )
                 SELECT
                     pl.id as log_id,
@@ -436,3 +447,70 @@ async def get_subtask_suggestions(
             {"user_id": user_id, "available_minutes": available_minutes},
         )
         return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def get_users_for_daily_suggestion(time_slot: str) -> list[dict]:
+    """
+    Get users who should receive daily task suggestion at this time slot.
+
+    Returns users who:
+    - Have notifications enabled
+    - Prefer the given time slot based on their tasks
+    - Haven't received a daily suggestion today
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                WITH user_preferred_times AS (
+                    SELECT
+                        u.id as user_id,
+                        u.telegram_id,
+                        u.first_name,
+                        COALESCE(
+                            (SELECT preferred_time
+                             FROM tasks t2
+                             WHERE t2.user_id = u.id
+                             AND t2.preferred_time IS NOT NULL
+                             GROUP BY preferred_time
+                             ORDER BY COUNT(*) DESC
+                             LIMIT 1),
+                            'morning'
+                        ) as preferred_time
+                    FROM users u
+                    LEFT JOIN user_profiles up ON up.user_id = u.id
+                    WHERE COALESCE(up.notifications_enabled, true) = true
+                )
+                SELECT
+                    upt.user_id,
+                    upt.telegram_id,
+                    upt.first_name,
+                    upt.preferred_time
+                FROM user_preferred_times upt
+                WHERE upt.preferred_time = :time_slot
+                AND NOT EXISTS (
+                    SELECT 1 FROM daily_suggestion_logs dsl
+                    WHERE dsl.user_id = upt.user_id
+                    AND dsl.date = CURRENT_DATE
+                )
+            """
+            ),
+            {"time_slot": time_slot},
+        )
+        return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def mark_daily_suggestion_sent(user_id: int):
+    """Mark that daily suggestion was sent to user today."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO daily_suggestion_logs (user_id, date, created_at)
+                VALUES (:user_id, CURRENT_DATE, NOW())
+                ON CONFLICT (user_id, date) DO NOTHING
+            """
+            ),
+            {"user_id": user_id},
+        )
+        await session.commit()

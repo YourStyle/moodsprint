@@ -14,8 +14,11 @@ from database import (
     create_postpone_log,
     get_unnotified_postpone_logs_for_time,
     mark_postpone_log_notified,
+    get_task_suggestions,
+    get_users_for_daily_suggestion,
+    mark_daily_suggestion_sent,
 )
-from keyboards import get_webapp_button
+from keyboards import get_webapp_button, get_task_suggestion_keyboard
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -219,6 +222,103 @@ class NotificationService:
         logger.info(
             f"Postponement complete: {total_postponed} tasks for {len(users_tasks)} users."
         )
+
+    async def send_daily_task_suggestion(self, time_slot: str):
+        """
+        Send daily task suggestion to users based on their preferred time.
+
+        Sends one task suggestion per day to help users stay productive.
+        """
+        logger.info(f"Sending daily task suggestions for time slot: {time_slot}")
+
+        import random
+
+        greetings = {
+            "morning": [
+                "☀️ Доброе утро! ",
+                "🌅 Отличное утро для продуктивности! ",
+                "✨ Начнём день с пользой? ",
+            ],
+            "afternoon": [
+                "👋 Привет! ",
+                "🌤️ Есть минутка? ",
+                "💪 Время для небольшого рывка! ",
+            ],
+            "evening": [
+                "🌆 Добрый вечер! ",
+                "🌙 Можно успеть ещё одно дело! ",
+                "✨ Вечерняя продуктивность? ",
+            ],
+            "night": [
+                "🦉 Привет, полуночник! ",
+                "🌙 Ночное вдохновение? ",
+                "⭐ Тихий вечер для важных дел! ",
+            ],
+        }
+
+        # Get users who should receive suggestion now and haven't received one today
+        users = await get_users_for_daily_suggestion(time_slot)
+
+        if not users:
+            logger.info(f"No users for daily suggestion at {time_slot}")
+            return
+
+        suggestions_sent = 0
+
+        for user in users:
+            telegram_id = user["telegram_id"]
+            first_name = user.get("first_name") or "друг"
+
+            try:
+                # Get task suggestions (30 min default)
+                suggestions = await get_task_suggestions(telegram_id, 30)
+
+                if not suggestions:
+                    # Try with more time
+                    suggestions = await get_task_suggestions(telegram_id, 60)
+
+                if not suggestions:
+                    continue  # Skip if no tasks
+
+                # Pick the best suggestion
+                suggestion = suggestions[0]
+                greeting = random.choice(greetings.get(time_slot, greetings["morning"]))
+
+                priority_emoji = (
+                    "🔴"
+                    if suggestion["priority"] == "high"
+                    else "🟡" if suggestion["priority"] == "medium" else "🟢"
+                )
+
+                text = f"{greeting}{first_name}!\n\n"
+                text += "📋 Предлагаю задачу на сегодня:\n\n"
+                text += f"{priority_emoji} <b>{suggestion['task_title']}</b>\n"
+                text += f"⏱️ ~{suggestion['estimated_minutes']} мин"
+
+                if suggestion["subtasks_count"]:
+                    text += f" • {suggestion['subtasks_count']} шагов"
+
+                text += "\n\nНачнём? 👇"
+
+                await self.bot.send_message(
+                    telegram_id,
+                    text,
+                    reply_markup=get_task_suggestion_keyboard(
+                        suggestion["task_id"], suggestion["estimated_minutes"]
+                    ),
+                    parse_mode="HTML",
+                )
+
+                # Mark as sent
+                await mark_daily_suggestion_sent(user["user_id"])
+                suggestions_sent += 1
+
+            except Exception as e:
+                logger.error(f"Failed to send daily suggestion to {telegram_id}: {e}")
+
+            await asyncio.sleep(0.05)  # Rate limiting
+
+        logger.info(f"Daily suggestions sent: {suggestions_sent} for {time_slot}")
 
     async def send_postpone_notifications(self, time_slot: str):
         """
