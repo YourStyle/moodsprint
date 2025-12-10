@@ -383,26 +383,35 @@ def decompose_task(task_id: int):
     if not mood_check:
         # Use default strategy if no mood
         strategy = "standard"
+        mood_value = None
+        energy_value = None
     else:
         strategy = mood_check.decomposition_strategy
+        mood_value = mood_check.mood
+        energy_value = mood_check.energy
 
     # Clear existing subtasks
     Subtask.query.filter_by(task_id=task.id).delete()
 
-    # Decompose task with type context
+    # Decompose task with type context and user state
     decomposer = AIDecomposer()
     subtask_data = decomposer.decompose_task(
-        task.title, task.description, strategy, task.task_type
+        task.title,
+        task.description,
+        strategy,
+        task.task_type,
+        mood=mood_value,
+        energy=energy_value,
     )
 
     # Create subtasks
     subtasks = []
-    for data in subtask_data:
+    for subtask_info in subtask_data:
         subtask = Subtask(
             task_id=task.id,
-            title=data["title"],
-            estimated_minutes=data["estimated_minutes"],
-            order=data["order"],
+            title=subtask_info["title"],
+            estimated_minutes=subtask_info["estimated_minutes"],
+            order=subtask_info["order"],
         )
         db.session.add(subtask)
         subtasks.append(subtask)

@@ -94,9 +94,11 @@ class AIDecomposer:
         task_description: str | None,
         strategy: str,
         task_type: str | None = None,
+        mood: int | None = None,
+        energy: int | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Decompose a task into subtasks based on strategy and task type.
+        Decompose a task into subtasks based on strategy, task type, and user state.
 
         Returns list of subtask dicts with:
         - title: str
@@ -110,7 +112,13 @@ class AIDecomposer:
         if self.client:
             try:
                 return self._ai_decompose(
-                    task_title, task_description, strategy_config, type_context
+                    task_title,
+                    task_description,
+                    strategy_config,
+                    type_context,
+                    strategy,
+                    mood,
+                    energy,
                 )
             except Exception as e:
                 current_app.logger.error(f"AI decomposition failed: {e}")
@@ -120,16 +128,34 @@ class AIDecomposer:
             task_title, task_description, strategy_config, task_type
         )
 
+    # Mood/energy labels for AI context
+    MOOD_LABELS_RU = {
+        1: "очень плохое",
+        2: "плохое",
+        3: "нормальное",
+        4: "хорошее",
+        5: "отличное",
+    }
+    ENERGY_LABELS_RU = {
+        1: "очень низкая (истощён)",
+        2: "низкая (устал)",
+        3: "нормальная",
+        4: "высокая (бодрый)",
+        5: "максимальная (на пике)",
+    }
+
     def _ai_decompose(
         self,
         task_title: str,
         task_description: str | None,
         strategy_config: dict,
         type_context: dict | None = None,
+        strategy: str | None = None,
+        mood: int | None = None,
+        energy: int | None = None,
     ) -> list[dict[str, Any]]:
         """Use OpenAI to decompose task."""
         min_minutes, max_minutes = strategy_config["step_range"]
-        max_steps = strategy_config["max_steps"]
 
         # Build context-aware prompt
         type_instructions = ""
@@ -139,29 +165,68 @@ class AIDecomposer:
 - Фокус: {type_context['focus']}
 - Стиль шагов: {type_context['steps_style']}
 - Примеры шагов: {type_context['examples']}
-
 """
 
-        prompt = f"""Разбей эту задачу на конкретные, полезные шаги.
+        # Build user state context
+        user_state_instructions = ""
+        if mood is not None or energy is not None:
+            mood_text = (
+                self.MOOD_LABELS_RU.get(mood, "не указано") if mood else "не указано"
+            )
+            energy_text = (
+                self.ENERGY_LABELS_RU.get(energy, "не указана")
+                if energy
+                else "не указана"
+            )
+            user_state_instructions = f"""
+Состояние пользователя:
+- Настроение: {mood_text}
+- Энергия: {energy_text}
+"""
+            if strategy == "micro":
+                user_state_instructions += """
+ВАЖНО: У пользователя сейчас низкая энергия/плохое настроение!
+- Делай шаги ОЧЕНЬ маленькими и простыми (5-15 мин каждый)
+- Больше шагов, но каждый легко выполнимый
+- Добавь мотивирующие формулировки
+- Предложи 6-8 микрошагов
+"""
+            elif strategy == "gentle":
+                user_state_instructions += """
+Пользователь не в лучшей форме:
+- Шаги должны быть комфортными (10-20 мин)
+- Предложи 4-6 шагов умеренной сложности
+"""
+            elif strategy == "careful":
+                user_state_instructions += """
+У пользователя мало энергии:
+- Шаги средние по размеру (10-20 мин)
+- Предложи 4-6 шагов с учётом усталости
+"""
+
+        prompt = f"""Разбей эту задачу на конкретные, выполнимые шаги.
 
 Задача: {task_title}
 {f'Описание: {task_description}' if task_description else ''}
-{type_instructions}
-ВАЖНО - Будь креативным помощником:
-- Если задача про путешествие/прогулку — предложи конкретные места, достопримечательности, маршруты
-- Если задача про обучение — предложи конкретные ресурсы, темы, упражнения
-- Если задача про покупки — предложи конкретный список или магазины
-- Если задача про готовку — предложи рецепт или ингредиенты
-- Используй свои знания чтобы ОБОГАТИТЬ задачу полезной информацией
+{type_instructions}{user_state_instructions}
+ВАЖНО - Подстрой декомпозицию под задачу:
+- Простая задача (купить молоко, позвонить другу) → 2-3 шага
+- Средняя задача (написать отчёт, убрать квартиру) → 4-6 шагов
+- Сложная задача (организовать мероприятие, изучить новую тему) → 6-10 шагов
+
+Креативность:
+- Если задача про путешествие/прогулку — предложи конкретные места
+- Если задача про обучение — предложи ресурсы, темы
+- Если задача про покупки — предложи список
+- Используй свои знания чтобы ОБОГАТИТЬ задачу
 
 Требования к шагам:
-- Создай от {max_steps - 2} до {max_steps} шагов
+- Количество шагов зависит от сложности задачи (от 2 до 10)
 - Оценивай время РЕАЛИСТИЧНО: быстрые действия 2-5 мин, средние 10-20 мин, сложные 30-60+ мин
 - НЕ делай все шаги одинаковыми по времени — разные шаги занимают разное время!
-- Шаги должны быть КОНКРЕТНЫМИ и ПОЛЕЗНЫМИ (не "подготовиться", а что именно сделать)
+- Шаги должны быть КОНКРЕТНЫМИ (не "подготовиться", а что именно сделать)
 - НЕ добавляй разминку/заминку если это не спортивная тренировка
 - Начинай каждый шаг с глагола
-- Добавляй реальные названия мест, ресурсов, инструментов где это уместно
 
 Верни ТОЛЬКО JSON массив:
 [
@@ -200,9 +265,9 @@ class AIDecomposer:
 
         steps = json.loads(content)
 
-        # Validate and format
+        # Validate and format (allow up to 12 steps for complex tasks)
         result = []
-        for i, step in enumerate(steps[:max_steps]):
+        for i, step in enumerate(steps[:12]):
             # Allow realistic time estimates from AI (2-180 min range)
             estimated = int(step.get("estimated_minutes", 15))
             estimated = max(2, min(180, estimated))  # Clamp to reasonable bounds
