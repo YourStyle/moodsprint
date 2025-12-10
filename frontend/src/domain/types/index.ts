@@ -296,6 +296,8 @@ export interface UserProfile {
   work_end_time: string | null;
   work_days: number[] | null;
   timezone: string | null;
+  // Gamification
+  favorite_genre: 'magic' | 'fantasy' | 'scifi' | 'cyberpunk' | 'anime' | null;
 }
 
 export interface GptAnalysis {

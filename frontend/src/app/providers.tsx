@@ -16,6 +16,7 @@ import {
   isMobileDevice,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
+import { GenreSelectionModal } from '@/components/GenreSelectionModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -141,6 +142,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <AuthProvider>
         {children}
         <XPPopup />
+        <GenreSelectionModal />
       </AuthProvider>
     </QueryClientProvider>
   );
