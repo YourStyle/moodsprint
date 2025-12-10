@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Wand2, Trash2, Plus, Play, Check } from 'lucide-react';
+import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { tasksService, focusService, moodService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
-import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS } from '@/domain/constants';
+import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
 import type { MoodLevel, EnergyLevel, TaskType } from '@/domain/types';
 
 const TASK_TYPES: TaskType[] = [
@@ -29,6 +29,9 @@ export default function TaskDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [showDurationModal, setShowDurationModal] = useState(false);
+  const [pendingFocusSubtaskId, setPendingFocusSubtaskId] = useState<number | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<number | null>(DEFAULT_FOCUS_DURATION);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
 
@@ -94,14 +97,17 @@ export default function TaskDetailPage() {
   });
 
   const startFocusMutation = useMutation({
-    mutationFn: (subtaskId: number) =>
+    mutationFn: ({ subtaskId, duration }: { subtaskId: number; duration: number | null }) =>
       focusService.startSession({
         subtask_id: subtaskId,
-        planned_duration_minutes: 25,
+        // null duration means "work without timer" - use very long duration
+        planned_duration_minutes: duration ?? 480,
       }),
     onSuccess: (result) => {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
+        setShowDurationModal(false);
+        setPendingFocusSubtaskId(null);
         router.push('/focus');
         hapticFeedback('success');
       }
@@ -109,19 +115,37 @@ export default function TaskDetailPage() {
   });
 
   const startTaskFocusMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (duration: number | null) =>
       focusService.startSession({
         task_id: taskId,
-        planned_duration_minutes: 25,
+        // null duration means "work without timer" - use very long duration
+        planned_duration_minutes: duration ?? 480,
       }),
     onSuccess: (result) => {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
+        setShowDurationModal(false);
         router.push('/focus');
         hapticFeedback('success');
       }
     },
   });
+
+  // Open duration modal before starting focus
+  const handleStartFocus = (subtaskId?: number) => {
+    setPendingFocusSubtaskId(subtaskId ?? null);
+    setSelectedDuration(DEFAULT_FOCUS_DURATION);
+    setShowDurationModal(true);
+  };
+
+  // Confirm duration and start focus
+  const confirmStartFocus = () => {
+    if (pendingFocusSubtaskId !== null) {
+      startFocusMutation.mutate({ subtaskId: pendingFocusSubtaskId, duration: selectedDuration });
+    } else {
+      startTaskFocusMutation.mutate(selectedDuration);
+    }
+  };
 
   const completeTaskMutation = useMutation({
     mutationFn: () =>
@@ -267,7 +291,7 @@ export default function TaskDetailPage() {
         <div className="flex gap-3">
           <Button
             variant="primary"
-            onClick={() => startTaskFocusMutation.mutate()}
+            onClick={() => handleStartFocus()}
             isLoading={startTaskFocusMutation.isPending}
             className="flex-1"
           >
@@ -331,7 +355,7 @@ export default function TaskDetailPage() {
                     completed: subtask.status !== 'completed',
                   })
                 }
-                onFocus={() => startFocusMutation.mutate(subtask.id)}
+                onFocus={() => handleStartFocus(subtask.id)}
                 disabled={toggleSubtaskMutation.isPending}
               />
             ))}
@@ -457,6 +481,56 @@ export default function TaskDetailPage() {
               <span className="text-sm font-medium">{TASK_TYPE_LABELS[type]}</span>
             </button>
           ))}
+        </div>
+      </Modal>
+
+      {/* Duration Selection Modal */}
+      <Modal
+        isOpen={showDurationModal}
+        onClose={() => {
+          setShowDurationModal(false);
+          setPendingFocusSubtaskId(null);
+        }}
+        title="Выбери длительность"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {[15, 25, 45, 60].map((d) => (
+              <button
+                key={d}
+                onClick={() => setSelectedDuration(d)}
+                className={`p-3 rounded-xl text-center transition-all ${
+                  selectedDuration === d
+                    ? 'bg-primary-500 text-white ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-900'
+                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                }`}
+              >
+                <Timer className="w-5 h-5 mx-auto mb-1" />
+                <span className="text-sm font-medium">{d} мин</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setSelectedDuration(null)}
+            className={`w-full p-3 rounded-xl text-center transition-all ${
+              selectedDuration === null
+                ? 'bg-primary-500 text-white ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-900'
+                : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+            }`}
+          >
+            <Infinity className="w-5 h-5 mx-auto mb-1" />
+            <span className="text-sm font-medium">Без таймера</span>
+          </button>
+
+          <Button
+            onClick={confirmStartFocus}
+            isLoading={startFocusMutation.isPending || startTaskFocusMutation.isPending}
+            className="w-full"
+          >
+            <Play className="w-4 h-4 mr-2" />
+            Начать
+          </Button>
         </div>
       </Modal>
     </div>

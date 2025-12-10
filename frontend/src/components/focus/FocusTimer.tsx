@@ -66,9 +66,11 @@ export function FocusTimer({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
+  // 480 minutes (8 hours) means "no timer" mode
+  const isNoTimerMode = session.planned_duration_minutes >= 480;
   const remaining = planned - elapsed;
-  const isOvertime = remaining < 0;
-  const progress = Math.min(100, (elapsed / planned) * 100);
+  const isOvertime = !isNoTimerMode && remaining < 0;
+  const progress = isNoTimerMode ? 0 : Math.min(100, (elapsed / planned) * 100);
 
   // Circle progress
   const radius = 120;
@@ -123,10 +125,18 @@ export function FocusTimer({
             isOvertime ? 'text-red-500' : 'text-white'
           }`}>
             {isOvertime && '+'}
-            {formatTime(isOvertime ? -remaining : remaining)}
+            {isNoTimerMode
+              ? formatTime(elapsed)
+              : formatTime(isOvertime ? -remaining : remaining)
+            }
           </span>
           <span className="text-sm text-gray-500 mt-2">
-            {isOvertime ? 'сверхурочно' : 'осталось'}
+            {isNoTimerMode
+              ? 'прошло'
+              : isOvertime
+                ? 'сверхурочно'
+                : 'осталось'
+            }
           </span>
         </div>
       </div>
