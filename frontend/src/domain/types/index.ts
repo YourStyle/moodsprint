@@ -92,6 +92,24 @@ export interface UpdateSubtaskInput {
   estimated_minutes?: number;
 }
 
+export interface SubtaskSuggestion {
+  subtask_id: number;
+  title: string;
+  estimated_minutes: number;
+}
+
+export interface TaskSuggestion {
+  type: 'task' | 'subtasks';
+  task_id: number;
+  task_title: string;
+  priority: TaskPriority;
+  estimated_minutes: number;
+  subtasks_count?: number;
+  subtasks?: SubtaskSuggestion[];
+  score: number;
+  fit_quality: 'perfect' | 'good' | 'partial' | 'estimated';
+}
+
 // ============ Mood ============
 
 export type MoodLevel = 1 | 2 | 3 | 4 | 5;

@@ -577,6 +577,150 @@ def update_subtask(subtask_id: int):
     return success_response(response_data)
 
 
+@api_bp.route("/tasks/suggestions", methods=["GET"])
+@jwt_required()
+def get_task_suggestions():
+    """
+    Get task suggestions based on available time.
+
+    Query params:
+    - available_minutes: how much time the user has (required)
+    - include_subtasks: whether to include individual subtasks (default: true)
+
+    Returns tasks/subtasks that fit within the available time,
+    sorted by priority and best fit.
+    """
+    user_id = int(get_jwt_identity())
+
+    available_minutes = request.args.get("available_minutes", type=int)
+    if not available_minutes or available_minutes < 5:
+        return validation_error({"available_minutes": "Must be at least 5 minutes"})
+
+    include_subtasks = request.args.get("include_subtasks", "true").lower() != "false"
+
+    # Get user profile for preferences
+    user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+    favorite_types = user_profile.favorite_task_types if user_profile else None
+    current_time_slot = get_current_time_slot()
+    today = date.today()
+
+    suggestions = []
+
+    # Get incomplete tasks with subtasks
+    tasks = Task.query.filter(
+        Task.user_id == user_id,
+        Task.status != TaskStatus.COMPLETED.value,
+    ).all()
+
+    for task in tasks:
+        task_score = calculate_task_score(
+            task, current_time_slot, favorite_types, today
+        )
+
+        # Check if task has incomplete subtasks
+        incomplete_subtasks = [
+            s for s in task.subtasks if s.status != SubtaskStatus.COMPLETED.value
+        ]
+
+        if incomplete_subtasks and include_subtasks:
+            # Calculate total remaining time for this task
+            total_remaining = sum(s.estimated_minutes for s in incomplete_subtasks)
+
+            # If all subtasks fit, suggest the whole task
+            if total_remaining <= available_minutes:
+                suggestions.append(
+                    {
+                        "type": "task",
+                        "task_id": task.id,
+                        "task_title": task.title,
+                        "priority": task.priority,
+                        "estimated_minutes": total_remaining,
+                        "subtasks_count": len(incomplete_subtasks),
+                        "score": task_score + 50,  # Bonus for completing full task
+                        "fit_quality": (
+                            "perfect"
+                            if total_remaining >= available_minutes * 0.8
+                            else "good"
+                        ),
+                    }
+                )
+            else:
+                # Find subtasks that fit
+                fitting_subtasks = []
+                remaining_time = available_minutes
+
+                # Sort subtasks by order
+                sorted_subtasks = sorted(incomplete_subtasks, key=lambda s: s.order)
+
+                for subtask in sorted_subtasks:
+                    if subtask.estimated_minutes <= remaining_time:
+                        fitting_subtasks.append(
+                            {
+                                "subtask_id": subtask.id,
+                                "title": subtask.title,
+                                "estimated_minutes": subtask.estimated_minutes,
+                            }
+                        )
+                        remaining_time -= subtask.estimated_minutes
+
+                if fitting_subtasks:
+                    total_fitting_time = sum(
+                        s["estimated_minutes"] for s in fitting_subtasks
+                    )
+                    suggestions.append(
+                        {
+                            "type": "subtasks",
+                            "task_id": task.id,
+                            "task_title": task.title,
+                            "priority": task.priority,
+                            "subtasks": fitting_subtasks,
+                            "estimated_minutes": total_fitting_time,
+                            "score": task_score + len(fitting_subtasks) * 5,
+                            "fit_quality": (
+                                "perfect"
+                                if total_fitting_time >= available_minutes * 0.8
+                                else "partial"
+                            ),
+                        }
+                    )
+
+        elif not task.subtasks:
+            # Task without subtasks - estimate based on priority
+            estimated = (
+                30
+                if task.priority == "high"
+                else 20 if task.priority == "medium" else 15
+            )
+
+            if estimated <= available_minutes:
+                suggestions.append(
+                    {
+                        "type": "task",
+                        "task_id": task.id,
+                        "task_title": task.title,
+                        "priority": task.priority,
+                        "estimated_minutes": estimated,
+                        "subtasks_count": 0,
+                        "score": task_score,
+                        "fit_quality": "estimated",
+                    }
+                )
+
+    # Sort by score (highest first)
+    suggestions.sort(key=lambda x: (-x["score"], x["estimated_minutes"]))
+
+    # Limit to top 5 suggestions
+    suggestions = suggestions[:5]
+
+    return success_response(
+        {
+            "suggestions": suggestions,
+            "available_minutes": available_minutes,
+            "suggestions_count": len(suggestions),
+        }
+    )
+
+
 @api_bp.route("/subtasks/reorder", methods=["POST"])
 @jwt_required()
 def reorder_subtasks():

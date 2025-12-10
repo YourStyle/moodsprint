@@ -9,6 +9,7 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   UpdateSubtaskInput,
+  TaskSuggestion,
   ApiResponse,
   XPReward,
 } from '@/domain/types';
@@ -47,6 +48,12 @@ interface PostponeStatusResponse {
     postponed_count: number;
   }>;
   message: string | null;
+}
+
+interface SuggestionsResponse {
+  suggestions: TaskSuggestion[];
+  available_minutes: number;
+  suggestions_count: number;
 }
 
 export const tasksService = {
@@ -111,5 +118,9 @@ export const tasksService = {
       task_id: taskId,
       subtask_ids: subtaskIds,
     });
+  },
+
+  async getSuggestions(availableMinutes: number): Promise<ApiResponse<SuggestionsResponse>> {
+    return api.get<SuggestionsResponse>(`/tasks/suggestions?available_minutes=${availableMinutes}`);
   },
 };
