@@ -140,8 +140,8 @@ jobs:
             # Reload nginx with new config
             docker exec moodsprint-nginx nginx -s reload || true
 
-            # Run migrations
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend flask db upgrade || true
+            # Run migrations (use --index 1 to run on first replica only)
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
 
             # Cleanup old images
             docker image prune -af --filter "until=24h"
@@ -210,8 +210,8 @@ jobs:
             # Reload nginx with new config
             docker exec moodsprint-nginx nginx -s reload || true
 
-            # Run migrations
-            docker compose exec -T backend flask db upgrade || true
+            # Run migrations (use --index 1 to run on first replica only)
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
 
             # Cleanup
             docker image prune -af --filter "until=24h"
