@@ -117,12 +117,49 @@ See [API.md](./API.md) for full API specification.
 3. Set the Mini App URL to your deployed frontend
 4. Add the bot token to `.env`
 
+## Development Setup
+
+### Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) for code quality checks. **This is required for all developers.**
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks (run once after cloning)
+pre-commit install
+
+# (Optional) Run on all files
+pre-commit run --all-files
+```
+
+The hooks will automatically:
+- Format Python code with `black`
+- Sort imports with `isort`
+- Check for lint errors with `flake8`
+
+### Manual Linting
+
+```bash
+# Backend
+cd backend
+python -m black app
+python -m flake8 app --max-line-length=100
+
+# Bot
+cd bot
+python -m black .
+python -m flake8 . --max-line-length=100
+```
+
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. **Set up pre-commit hooks** (see above)
+3. Create a feature branch
+4. Make your changes
+5. Submit a pull request
 
 ## License
 
