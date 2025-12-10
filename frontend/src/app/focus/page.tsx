@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Play, Clock, Target } from 'lucide-react';
@@ -18,6 +18,22 @@ export default function FocusPage() {
   const { activeSession, setActiveSession, showXPAnimation } = useAppStore();
   const [showSelectSubtask, setShowSelectSubtask] = useState(false);
   const [duration, setDuration] = useState(DEFAULT_FOCUS_DURATION);
+
+  // Load active session from server on mount to restore state after navigation
+  const { data: activeSessionData } = useQuery({
+    queryKey: ['focus', 'active'],
+    queryFn: () => focusService.getActiveSession(),
+  });
+
+  // Sync active session from server to store
+  useEffect(() => {
+    if (activeSessionData?.data?.session) {
+      setActiveSession(activeSessionData.data.session);
+    } else if (activeSessionData?.success && !activeSessionData.data?.session) {
+      // No active session on server - clear local state
+      setActiveSession(null);
+    }
+  }, [activeSessionData, setActiveSession]);
 
   const { data: tasksData } = useQuery({
     queryKey: ['tasks', 'in_progress'],
@@ -38,6 +54,7 @@ export default function FocusPage() {
     onSuccess: (result) => {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
         setShowSelectSubtask(false);
         hapticFeedback('success');
       }
@@ -74,6 +91,7 @@ export default function FocusPage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         setActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
       }
     },
   });
@@ -83,6 +101,7 @@ export default function FocusPage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         setActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
       }
     },
   });

@@ -117,7 +117,7 @@ export function MoodSelector({ onSubmit, isLoading }: MoodSelectorProps) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Необязательно: что у тебя на уме?"
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-gray-900 placeholder:text-gray-400"
             rows={3}
             maxLength={500}
           />

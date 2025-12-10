@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Pause, Play, X, Check } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import type { FocusSession } from '@/domain/types';
@@ -13,6 +13,17 @@ interface FocusTimerProps {
   onResume: () => void;
 }
 
+/**
+ * Calculate elapsed seconds based on session start time.
+ * This ensures correct time even after page navigation.
+ */
+function calculateElapsedSeconds(session: FocusSession): number {
+  const startedAt = new Date(session.started_at).getTime();
+  const now = Date.now();
+  const elapsedMs = now - startedAt;
+  return Math.floor(elapsedMs / 1000);
+}
+
 export function FocusTimer({
   session,
   onComplete,
@@ -20,19 +31,34 @@ export function FocusTimer({
   onPause,
   onResume,
 }: FocusTimerProps) {
-  const [elapsed, setElapsed] = useState(session.elapsed_minutes * 60);
+  // Calculate initial elapsed from started_at for accuracy after navigation
+  const initialElapsed = useMemo(() => {
+    if (session.status === 'paused') {
+      // When paused, use server-provided elapsed time
+      return session.elapsed_minutes * 60;
+    }
+    // When active, calculate from start time
+    return calculateElapsedSeconds(session);
+  }, [session.started_at, session.status, session.elapsed_minutes]);
+
+  const [elapsed, setElapsed] = useState(initialElapsed);
   const isPaused = session.status === 'paused';
   const planned = session.planned_duration_minutes * 60;
+
+  // Sync elapsed when session changes (e.g., after pause/resume)
+  useEffect(() => {
+    setElapsed(initialElapsed);
+  }, [initialElapsed]);
 
   useEffect(() => {
     if (isPaused) return;
 
     const interval = setInterval(() => {
-      setElapsed((e) => e + 1);
+      setElapsed(calculateElapsedSeconds(session));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, session.started_at]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(Math.abs(seconds) / 60);
@@ -51,15 +77,19 @@ export function FocusTimer({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      {session.subtask_title && (
-        <Card className="mb-6 w-full max-w-sm text-center">
-          <p className="text-sm text-gray-400">Работаю над</p>
-          <p className="font-semibold text-white mt-1">{session.subtask_title}</p>
-          {session.task_title && (
-            <p className="text-xs text-gray-400 mt-1">{session.task_title}</p>
-          )}
-        </Card>
-      )}
+      <Card className="mb-6 w-full max-w-sm text-center">
+        <p className="text-sm text-gray-400">Работаю над</p>
+        {session.subtask_title ? (
+          <>
+            <p className="font-semibold text-white mt-1">{session.subtask_title}</p>
+            {session.task_title && (
+              <p className="text-xs text-gray-400 mt-1">{session.task_title}</p>
+            )}
+          </>
+        ) : (
+          <p className="font-semibold text-white mt-1">Свободный фокус</p>
+        )}
+      </Card>
 
       <div className="relative w-72 h-72">
         <svg className="w-full h-full transform -rotate-90">

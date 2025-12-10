@@ -27,8 +27,8 @@ export const MOOD_EMOJIS: Record<number, string> = {
 };
 
 export const ENERGY_EMOJIS: Record<number, string> = {
-  1: '🔋',
-  2: '🪫',
+  1: '🪫',
+  2: '🔋',
   3: '⚡',
   4: '💪',
   5: '🚀',
