@@ -15,8 +15,9 @@ from app.utils import not_found, success_response, validation_error
 
 
 def get_current_time_slot() -> str:
-    """Get current time slot based on hour."""
-    hour = datetime.now().hour
+    """Get current time slot based on hour (Moscow time, UTC+3)."""
+    # Server is UTC, Moscow is UTC+3
+    hour = (datetime.utcnow().hour + 3) % 24
     if 6 <= hour < 12:
         return "morning"
     elif 12 <= hour < 18:

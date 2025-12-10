@@ -1,8 +1,8 @@
 """Database connection for bot."""
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import text
 from config import config
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 engine = create_async_engine(config.DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -209,8 +209,11 @@ async def create_postpone_log(
         await session.execute(
             text(
                 """
-                INSERT INTO postpone_logs (user_id, date, tasks_postponed, priority_changes, notified, created_at)
-                VALUES (:user_id, CURRENT_DATE, :tasks_postponed, :priority_changes::jsonb, false, NOW())
+                INSERT INTO postpone_logs
+                    (user_id, date, tasks_postponed, priority_changes, notified, created_at)
+                VALUES
+                    (:user_id, CURRENT_DATE, :tasks_postponed,
+                     :priority_changes::jsonb, false, NOW())
                 ON CONFLICT (user_id, date)
                 DO UPDATE SET
                     tasks_postponed = :tasks_postponed,
@@ -580,13 +583,13 @@ async def snooze_task_reminder(task_id: int, minutes: int):
 
 
 async def reschedule_task_to_tomorrow(task_id: int):
-    """Reschedule task to tomorrow at 9:00."""
+    """Reschedule task to tomorrow at 9:00 Moscow time (6:00 UTC)."""
     async with async_session() as session:
         await session.execute(
             text(
                 """
                 UPDATE tasks
-                SET scheduled_at = (CURRENT_DATE + INTERVAL '1 day' + INTERVAL '9 hours'),
+                SET scheduled_at = (CURRENT_DATE + INTERVAL '1 day' + INTERVAL '6 hours'),
                     reminder_sent = false,
                     due_date = CURRENT_DATE + INTERVAL '1 day'
                 WHERE id = :task_id
@@ -598,13 +601,13 @@ async def reschedule_task_to_tomorrow(task_id: int):
 
 
 async def reschedule_task_to_days(task_id: int, days: int):
-    """Reschedule task to N days from now at 9:00."""
+    """Reschedule task to N days from now at 9:00 Moscow time (6:00 UTC)."""
     async with async_session() as session:
         await session.execute(
             text(
                 f"""
                 UPDATE tasks
-                SET scheduled_at = (CURRENT_DATE + INTERVAL '{days} days' + INTERVAL '9 hours'),
+                SET scheduled_at = (CURRENT_DATE + INTERVAL '{days} days' + INTERVAL '6 hours'),
                     reminder_sent = false,
                     due_date = CURRENT_DATE + INTERVAL '{days} days'
                 WHERE id = :task_id

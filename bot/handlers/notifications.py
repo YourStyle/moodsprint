@@ -1,30 +1,30 @@
 """Notification handlers and scheduled tasks."""
 
-from aiogram import Router, Bot
-from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
-from datetime import datetime
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 
+from aiogram import Bot, Router
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from database import (
-    get_users_with_notifications_enabled,
-    get_user_stats,
+    create_postpone_log,
     get_overdue_tasks_by_user,
+    get_scheduled_tasks_for_reminder,
+    get_task_suggestions,
+    get_unnotified_postpone_logs_for_time,
+    get_user_stats,
+    get_users_for_daily_suggestion,
+    get_users_with_notifications_enabled,
+    mark_daily_suggestion_sent,
+    mark_postpone_log_notified,
+    mark_reminder_sent,
     postpone_task,
     update_task_priority,
-    create_postpone_log,
-    get_unnotified_postpone_logs_for_time,
-    mark_postpone_log_notified,
-    get_task_suggestions,
-    get_users_for_daily_suggestion,
-    mark_daily_suggestion_sent,
-    get_scheduled_tasks_for_reminder,
-    mark_reminder_sent,
 )
 from keyboards import (
-    get_webapp_button,
-    get_task_suggestion_keyboard,
     get_task_reminder_keyboard,
+    get_task_suggestion_keyboard,
+    get_webapp_button,
 )
 
 router = Router()
@@ -89,7 +89,9 @@ class NotificationService:
                     if isinstance(last_activity, str)
                     else last_activity
                 )
-                today = datetime.now().date()
+                # Use Moscow timezone (UTC+3)
+                moscow_tz = timezone(timedelta(hours=3))
+                today = datetime.now(moscow_tz).date()
 
                 if last_date < today:
                     try:
@@ -428,7 +430,10 @@ class NotificationService:
                     message += "\n\n⬆️ Кстати, повысил приоритет для:"
                     for change in priority_changes[:3]:
                         message += f"\n• {change['task_title']}"
-                    message += "\n\nЭти задачи откладывались несколько раз — возможно, стоит начать с них?"
+                    message += (
+                        "\n\nЭти задачи откладывались несколько раз — "
+                        "возможно, стоит начать с них?"
+                    )
 
                 message += "\n\n💪 Давай сделаем этот день продуктивным!"
 
@@ -501,14 +506,16 @@ class NotificationService:
             except TelegramForbiddenError:
                 # User blocked the bot or chat doesn't exist
                 logger.warning(
-                    f"User {telegram_id} blocked the bot or chat not found, marking reminder as sent"
+                    f"User {telegram_id} blocked the bot or chat not found, "
+                    "marking reminder as sent"
                 )
                 reminders_failed += 1
 
             except TelegramBadRequest as e:
                 # Chat not found or other bad request
                 logger.warning(
-                    f"Bad request for user {telegram_id}: {e}, marking reminder as sent"
+                    f"Bad request for user {telegram_id}: {e}, "
+                    "marking reminder as sent"
                 )
                 reminders_failed += 1
 
