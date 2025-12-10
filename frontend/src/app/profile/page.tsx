@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings } from 'lucide-react';
+import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset } from 'lucide-react';
 import { Card, Progress } from '@/components/ui';
 import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
@@ -25,6 +25,12 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
+  const { data: patternsData } = useQuery({
+    queryKey: ['user', 'productivity-patterns'],
+    queryFn: () => gamificationService.getProductivityPatterns(),
+    enabled: !!user,
+  });
+
   const handleLogout = () => {
     authService.logout();
     setUser(null);
@@ -41,6 +47,27 @@ export default function ProfilePage() {
 
   const stats = statsData?.data;
   const achievements = achievementsData?.data;
+  const patterns = patternsData?.data;
+
+  const getProductivityIcon = (time: string) => {
+    switch (time) {
+      case 'morning': return <Sunrise className="w-5 h-5 text-yellow-500" />;
+      case 'afternoon': return <Sun className="w-5 h-5 text-orange-500" />;
+      case 'evening': return <Sunset className="w-5 h-5 text-purple-500" />;
+      case 'night': return <Moon className="w-5 h-5 text-blue-500" />;
+      default: return <Clock className="w-5 h-5 text-gray-500" />;
+    }
+  };
+
+  const getProductivityLabel = (time: string) => {
+    switch (time) {
+      case 'morning': return 'Утро (5:00-12:00)';
+      case 'afternoon': return 'День (12:00-17:00)';
+      case 'evening': return 'Вечер (17:00-21:00)';
+      case 'night': return 'Ночь (21:00-5:00)';
+      default: return 'Разное время';
+    }
+  };
 
   return (
     <div className="p-4 space-y-4 pt-safe">
@@ -104,6 +131,49 @@ export default function ProfilePage() {
             <p className="text-xs text-gray-400">Лучшая серия</p>
           </Card>
         </div>
+      )}
+
+      {/* Productivity Patterns */}
+      {patterns && patterns.total_sessions > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-5 h-5 text-primary-500" />
+            <h2 className="font-semibold text-white">Аналитика продуктивности</h2>
+          </div>
+
+          {/* Best productivity time */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-700/50 rounded-xl">
+            {getProductivityIcon(patterns.productivity_time)}
+            <div>
+              <p className="text-sm text-gray-400">Лучшее время для работы</p>
+              <p className="font-medium text-white">{getProductivityLabel(patterns.productivity_time)}</p>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="text-center p-2 bg-gray-700/30 rounded-lg">
+              <p className="text-lg font-bold text-white">{patterns.total_sessions}</p>
+              <p className="text-xs text-gray-400">Сессий</p>
+            </div>
+            <div className="text-center p-2 bg-gray-700/30 rounded-lg">
+              <p className="text-lg font-bold text-green-500">{patterns.overall_success_rate}%</p>
+              <p className="text-xs text-gray-400">Завершено</p>
+            </div>
+            <div className="text-center p-2 bg-gray-700/30 rounded-lg">
+              <p className="text-lg font-bold text-white">{patterns.avg_session_duration}</p>
+              <p className="text-xs text-gray-400">мин/сессия</p>
+            </div>
+          </div>
+
+          {/* Best day */}
+          {patterns.best_day && patterns.best_day.sessions > 0 && (
+            <div className="text-sm text-gray-400">
+              <span className="text-white font-medium">{patterns.best_day.day_name}</span>
+              {' — '}ваш самый продуктивный день ({patterns.best_day.success_rate}% успешных сессий)
+            </div>
+          )}
+        </Card>
       )}
 
       {/* Achievements */}

@@ -88,6 +88,76 @@
     </div>
 </div>
 
+<!-- Productivity Patterns -->
+<div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Productivity Patterns (Last 30 days)</h3>
+
+    {% if productivity.best_hour is not none or productivity.best_day %}
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        {% if productivity.best_hour is not none %}
+        <div class="p-4 bg-blue-50 rounded-lg">
+            <p class="text-sm text-blue-600">Best Hour</p>
+            <p class="text-2xl font-bold text-blue-900">{{ productivity.best_hour }}:00</p>
+            <p class="text-sm text-blue-600">{{ productivity.best_hour_success }}% success rate</p>
+        </div>
+        {% endif %}
+        {% if productivity.best_day %}
+        <div class="p-4 bg-green-50 rounded-lg">
+            <p class="text-sm text-green-600">Best Day</p>
+            <p class="text-2xl font-bold text-green-900">{{ productivity.best_day }}</p>
+            <p class="text-sm text-green-600">{{ productivity.best_day_success }}% success rate</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Hour Distribution -->
+    <div class="mb-6">
+        <h4 class="text-sm font-medium text-gray-600 mb-2">Sessions by Hour</h4>
+        <div class="flex items-end gap-1 h-24">
+            {% for h in productivity.hour_data %}
+            {% set max_sessions = productivity.hour_data | map(attribute='total') | max %}
+            {% set height = (h.total / max_sessions * 100) if max_sessions > 0 else 0 %}
+            <div class="flex-1 flex flex-col items-center group relative">
+                <div class="w-full rounded-t transition-all
+                    {% if h.total > 0 %}bg-blue-500{% else %}bg-gray-200{% endif %}"
+                    style="height: {{ height }}%;">
+                </div>
+                {% if h.hour % 4 == 0 %}
+                <span class="text-xs text-gray-400 mt-1">{{ h.hour }}</span>
+                {% endif %}
+                <!-- Tooltip -->
+                <div class="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                    {{ h.hour }}:00 - {{ h.total }} sessions, {{ h.completed }} completed
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Day Distribution -->
+    <div>
+        <h4 class="text-sm font-medium text-gray-600 mb-2">Sessions by Day of Week</h4>
+        <div class="flex items-end gap-2 h-20">
+            {% for d in productivity.day_data %}
+            {% set max_sessions = productivity.day_data | map(attribute='total') | max %}
+            {% set height = (d.total / max_sessions * 100) if max_sessions > 0 else 0 %}
+            <div class="flex-1 flex flex-col items-center group relative">
+                <div class="w-full rounded-t transition-all
+                    {% if d.total > 0 %}bg-green-500{% else %}bg-gray-200{% endif %}"
+                    style="height: {{ height }}%;">
+                </div>
+                <span class="text-xs text-gray-600 mt-1">{{ d.name }}</span>
+                <!-- Tooltip -->
+                <div class="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                    {{ d.total }} sessions, {{ d.completed }} completed
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
 <!-- Activity Log -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Log</h3>

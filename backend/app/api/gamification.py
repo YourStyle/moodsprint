@@ -1,10 +1,10 @@
 """Gamification API endpoints."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from sqlalchemy import func
+from sqlalchemy import func, extract
 
 from app import db
 from app.api import api_bp
@@ -352,3 +352,156 @@ def get_leaderboard():
         )
 
     return success_response({"type": leaderboard_type, "leaderboard": leaderboard})
+
+
+@api_bp.route("/user/productivity-patterns", methods=["GET"])
+@jwt_required()
+def get_productivity_patterns():
+    """
+    Get user productivity patterns based on focus sessions and task completions.
+
+    Analyzes:
+    - Best hours of day for focus
+    - Best days of week
+    - Average session duration
+    - Success rate by time slot
+    """
+    user_id = int(get_jwt_identity())
+
+    # Get completed focus sessions from last 30 days
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    completed_sessions = FocusSession.query.filter(
+        FocusSession.user_id == user_id,
+        FocusSession.status == FocusSessionStatus.COMPLETED.value,
+        FocusSession.started_at >= thirty_days_ago,
+    ).all()
+
+    all_sessions = FocusSession.query.filter(
+        FocusSession.user_id == user_id,
+        FocusSession.started_at >= thirty_days_ago,
+    ).all()
+
+    # Analyze hour distribution (0-23)
+    hour_stats = {}
+    for hour in range(24):
+        hour_stats[hour] = {"completed": 0, "total": 0, "total_minutes": 0}
+
+    for session in all_sessions:
+        hour = session.started_at.hour
+        hour_stats[hour]["total"] += 1
+        if session.status == FocusSessionStatus.COMPLETED.value:
+            hour_stats[hour]["completed"] += 1
+            hour_stats[hour]["total_minutes"] += session.actual_duration_minutes or 0
+
+    # Find best hours (hours with highest completion rate and activity)
+    best_hours = []
+    for hour, stats in hour_stats.items():
+        if stats["total"] >= 2:  # At least 2 sessions to be significant
+            success_rate = (
+                stats["completed"] / stats["total"] if stats["total"] > 0 else 0
+            )
+            avg_minutes = (
+                stats["total_minutes"] / stats["completed"]
+                if stats["completed"] > 0
+                else 0
+            )
+            best_hours.append(
+                {
+                    "hour": hour,
+                    "sessions": stats["total"],
+                    "completed": stats["completed"],
+                    "success_rate": round(success_rate * 100),
+                    "avg_minutes": round(avg_minutes),
+                }
+            )
+
+    best_hours.sort(key=lambda x: (x["success_rate"], x["sessions"]), reverse=True)
+
+    # Analyze day of week distribution (0=Monday, 6=Sunday)
+    day_stats = {}
+    day_names = [
+        "Понедельник",
+        "Вторник",
+        "Среда",
+        "Четверг",
+        "Пятница",
+        "Суббота",
+        "Воскресенье",
+    ]
+    for day in range(7):
+        day_stats[day] = {"completed": 0, "total": 0, "total_minutes": 0}
+
+    for session in all_sessions:
+        day = session.started_at.weekday()
+        day_stats[day]["total"] += 1
+        if session.status == FocusSessionStatus.COMPLETED.value:
+            day_stats[day]["completed"] += 1
+            day_stats[day]["total_minutes"] += session.actual_duration_minutes or 0
+
+    day_distribution = []
+    for day, stats in day_stats.items():
+        success_rate = stats["completed"] / stats["total"] if stats["total"] > 0 else 0
+        avg_minutes = (
+            stats["total_minutes"] / stats["completed"] if stats["completed"] > 0 else 0
+        )
+        day_distribution.append(
+            {
+                "day": day,
+                "day_name": day_names[day],
+                "sessions": stats["total"],
+                "completed": stats["completed"],
+                "success_rate": round(success_rate * 100),
+                "avg_minutes": round(avg_minutes),
+            }
+        )
+
+    # Find best day
+    best_day = max(
+        day_distribution,
+        key=lambda x: (x["success_rate"], x["sessions"]),
+        default=None,
+    )
+
+    # Overall statistics
+    total_sessions = len(all_sessions)
+    total_completed = len(completed_sessions)
+    total_minutes = sum(s.actual_duration_minutes or 0 for s in completed_sessions)
+    overall_success_rate = total_completed / total_sessions if total_sessions > 0 else 0
+    avg_session_duration = total_minutes / total_completed if total_completed > 0 else 0
+
+    # Determine productivity type based on best hours
+    productivity_time = "varies"
+    if best_hours:
+        top_hour = best_hours[0]["hour"]
+        if 5 <= top_hour < 12:
+            productivity_time = "morning"
+        elif 12 <= top_hour < 17:
+            productivity_time = "afternoon"
+        elif 17 <= top_hour < 21:
+            productivity_time = "evening"
+        else:
+            productivity_time = "night"
+
+    return success_response(
+        {
+            "period_days": 30,
+            "total_sessions": total_sessions,
+            "total_completed": total_completed,
+            "total_focus_minutes": total_minutes,
+            "overall_success_rate": round(overall_success_rate * 100),
+            "avg_session_duration": round(avg_session_duration),
+            "productivity_time": productivity_time,
+            "best_hours": best_hours[:5],  # Top 5 hours
+            "best_day": best_day,
+            "day_distribution": day_distribution,
+            "hour_distribution": [
+                {
+                    "hour": h,
+                    "sessions": hour_stats[h]["total"],
+                    "completed": hour_stats[h]["completed"],
+                }
+                for h in range(24)
+            ],
+        }
+    )

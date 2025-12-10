@@ -207,6 +207,37 @@ export interface UserStats {
   };
 }
 
+export interface HourStats {
+  hour: number;
+  sessions: number;
+  completed: number;
+  success_rate?: number;
+  avg_minutes?: number;
+}
+
+export interface DayStats {
+  day: number;
+  day_name: string;
+  sessions: number;
+  completed: number;
+  success_rate: number;
+  avg_minutes: number;
+}
+
+export interface ProductivityPatterns {
+  period_days: number;
+  total_sessions: number;
+  total_completed: number;
+  total_focus_minutes: number;
+  overall_success_rate: number;
+  avg_session_duration: number;
+  productivity_time: 'morning' | 'afternoon' | 'evening' | 'night' | 'varies';
+  best_hours: HourStats[];
+  best_day: DayStats | null;
+  day_distribution: DayStats[];
+  hour_distribution: HourStats[];
+}
+
 export interface LeaderboardEntry {
   rank: number;
   user_id: number;

@@ -9,6 +9,7 @@ import type {
   UserAchievement,
   DailyGoal,
   LeaderboardEntry,
+  ProductivityPatterns,
   ApiResponse,
 } from '@/domain/types';
 
@@ -84,5 +85,9 @@ export const gamificationService = {
 
   async claimDailyBonus(): Promise<ApiResponse<DailyBonusClaimResponse>> {
     return api.post<DailyBonusClaimResponse>('/daily-bonus');
+  },
+
+  async getProductivityPatterns(): Promise<ApiResponse<ProductivityPatterns>> {
+    return api.get<ProductivityPatterns>('/user/productivity-patterns');
   },
 };

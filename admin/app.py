@@ -218,12 +218,105 @@ def user_detail(user_id: int):
         {"uid": user_id},
     ).fetchall()
 
+    # Get productivity patterns
+    productivity_patterns = db.session.execute(
+        text(
+            """
+            SELECT
+                EXTRACT(HOUR FROM started_at)::int as hour,
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'completed') as completed
+            FROM focus_sessions
+            WHERE user_id = :uid
+                AND started_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY EXTRACT(HOUR FROM started_at)
+            ORDER BY hour
+        """
+        ),
+        {"uid": user_id},
+    ).fetchall()
+
+    # Get day of week patterns
+    day_patterns = db.session.execute(
+        text(
+            """
+            SELECT
+                EXTRACT(DOW FROM started_at)::int as day,
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'completed') as completed
+            FROM focus_sessions
+            WHERE user_id = :uid
+                AND started_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY EXTRACT(DOW FROM started_at)
+            ORDER BY day
+        """
+        ),
+        {"uid": user_id},
+    ).fetchall()
+
+    # Format productivity data
+    hour_data = {
+        r[0]: {"total": r[1], "completed": r[2]} for r in productivity_patterns
+    }
+    day_data = {r[0]: {"total": r[1], "completed": r[2]} for r in day_patterns}
+
+    # Find best hour
+    best_hour = None
+    max_success = 0
+    for hour, data in hour_data.items():
+        if data["total"] >= 2:
+            success_rate = data["completed"] / data["total"]
+            if success_rate > max_success or (
+                success_rate == max_success
+                and data["total"] > hour_data.get(best_hour, {}).get("total", 0)
+            ):
+                max_success = success_rate
+                best_hour = hour
+
+    # Find best day
+    day_names = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+    best_day = None
+    max_day_success = 0
+    for day, data in day_data.items():
+        if data["total"] >= 2:
+            success_rate = data["completed"] / data["total"]
+            if success_rate > max_day_success:
+                max_day_success = success_rate
+                best_day = day
+
     return render_template(
         "user_detail.html",
         user=dict(user._mapping),
         tasks=[dict(row._mapping) for row in tasks],
         activity=[dict(row._mapping) for row in activity] if activity else [],
         sessions=[dict(row._mapping) for row in sessions],
+        productivity={
+            "hour_data": [
+                {
+                    "hour": h,
+                    "total": hour_data.get(h, {}).get("total", 0),
+                    "completed": hour_data.get(h, {}).get("completed", 0),
+                }
+                for h in range(24)
+            ],
+            "day_data": [
+                {
+                    "day": d,
+                    "name": day_names[d],
+                    "total": day_data.get(d, {}).get("total", 0),
+                    "completed": day_data.get(d, {}).get("completed", 0),
+                }
+                for d in range(7)
+            ],
+            "best_hour": best_hour,
+            "best_day": day_names[best_day] if best_day is not None else None,
+            "best_hour_success": (
+                round(max_success * 100) if best_hour is not None else 0
+            ),
+            "best_day_success": (
+                round(max_day_success * 100) if best_day is not None else 0
+            ),
+        },
     )
 
 
@@ -406,24 +499,28 @@ def metrics():
 def business_metrics():
     """Business metrics page with North Star metric."""
     # North Star: Completed Tasks / Created Tasks ratio
-    north_star = db.session.execute(
-        text(
-            """
+    north_star = (
+        db.session.execute(
+            text(
+                """
         SELECT
             COUNT(*) FILTER (WHERE status = 'completed')::float /
             NULLIF(COUNT(*), 0) * 100 as ratio
         FROM tasks
         """
-        )
-    ).scalar() or 0
+            )
+        ).scalar()
+        or 0
+    )
 
     # Tasks created vs completed
-    total_created = db.session.execute(
-        text("SELECT COUNT(*) FROM tasks")
-    ).scalar() or 0
-    total_completed = db.session.execute(
-        text("SELECT COUNT(*) FROM tasks WHERE status = 'completed'")
-    ).scalar() or 0
+    total_created = db.session.execute(text("SELECT COUNT(*) FROM tasks")).scalar() or 0
+    total_completed = (
+        db.session.execute(
+            text("SELECT COUNT(*) FROM tasks WHERE status = 'completed'")
+        ).scalar()
+        or 0
+    )
 
     # Weekly North Star trend
     weekly_north_star = db.session.execute(
