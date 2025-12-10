@@ -47,6 +47,10 @@ export const onboardingService = {
     notifications_enabled?: boolean;
     daily_reminder_time?: string;
     preferred_session_duration?: number;
+    work_start_time?: string;
+    work_end_time?: string;
+    work_days?: number[];
+    timezone?: string;
   }) {
     return api.put<ProfileResponse>('/onboarding/profile', settings);
   },

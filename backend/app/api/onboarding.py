@@ -128,7 +128,11 @@ def update_profile():
     {
         "notifications_enabled": true,
         "daily_reminder_time": "09:00",
-        "preferred_session_duration": 25
+        "preferred_session_duration": 25,
+        "work_start_time": "09:00",
+        "work_end_time": "18:00",
+        "work_days": [1, 2, 3, 4, 5],
+        "timezone": "Europe/Moscow"
     }
     """
     user_id = int(get_jwt_identity())
@@ -148,6 +152,22 @@ def update_profile():
     if "preferred_session_duration" in data:
         duration = int(data["preferred_session_duration"])
         profile.preferred_session_duration = max(5, min(120, duration))
+
+    # Work schedule settings
+    if "work_start_time" in data:
+        profile.work_start_time = data["work_start_time"]
+
+    if "work_end_time" in data:
+        profile.work_end_time = data["work_end_time"]
+
+    if "work_days" in data:
+        work_days = data["work_days"]
+        if isinstance(work_days, list):
+            # Validate days are 1-7
+            profile.work_days = [d for d in work_days if 1 <= d <= 7]
+
+    if "timezone" in data:
+        profile.timezone = data["timezone"]
 
     db.session.commit()
 

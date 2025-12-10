@@ -1,7 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut } from 'lucide-react';
+import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings } from 'lucide-react';
 import { Card, Progress } from '@/components/ui';
 import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
@@ -9,6 +10,7 @@ import { gamificationService } from '@/services';
 import { authService } from '@/services';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, setUser } = useAppStore();
 
   const { data: statsData } = useQuery({
@@ -136,14 +138,23 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
-      >
-        <LogOut className="w-4 h-4" />
-        <span>Выйти</span>
-      </button>
+      {/* Settings & Logout */}
+      <div className="space-y-2">
+        <button
+          onClick={() => router.push('/settings')}
+          className="w-full flex items-center justify-center gap-2 py-3 text-gray-300 hover:text-white transition-colors bg-gray-800 rounded-xl"
+        >
+          <Settings className="w-4 h-4" />
+          <span>Настройки</span>
+        </button>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Выйти</span>
+        </button>
+      </div>
     </div>
   );
 }

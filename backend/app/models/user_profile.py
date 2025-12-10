@@ -58,6 +58,14 @@ class UserProfile(db.Model):
     daily_reminder_time = db.Column(db.String(5), default="09:00")  # HH:MM format
     preferred_session_duration = db.Column(db.Integer, default=25)  # minutes
 
+    # Work schedule preferences
+    work_start_time = db.Column(db.String(5), default="09:00")  # HH:MM format
+    work_end_time = db.Column(db.String(5), default="18:00")  # HH:MM format
+    work_days = db.Column(
+        db.JSON, default=[1, 2, 3, 4, 5]
+    )  # 1=Mon, 2=Tue, ..., 7=Sun
+    timezone = db.Column(db.String(50), default="Europe/Moscow")
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -81,6 +89,10 @@ class UserProfile(db.Model):
             "notifications_enabled": self.notifications_enabled,
             "daily_reminder_time": self.daily_reminder_time,
             "preferred_session_duration": self.preferred_session_duration,
+            "work_start_time": self.work_start_time,
+            "work_end_time": self.work_end_time,
+            "work_days": self.work_days,
+            "timezone": self.timezone,
         }
 
     def __repr__(self) -> str:

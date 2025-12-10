@@ -238,6 +238,11 @@ export interface UserProfile {
   onboarding_completed: boolean;
   onboarding_completed_at: string | null;
   gpt_analysis: GptAnalysis | null;
+  // Work schedule preferences
+  work_start_time: string | null;
+  work_end_time: string | null;
+  work_days: number[] | null;
+  timezone: string | null;
 }
 
 export interface GptAnalysis {
