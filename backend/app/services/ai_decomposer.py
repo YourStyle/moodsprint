@@ -156,7 +156,8 @@ class AIDecomposer:
 
 Требования к шагам:
 - Создай от {max_steps - 2} до {max_steps} шагов
-- Каждый шаг {min_minutes}-{max_minutes} минут
+- Оценивай время РЕАЛИСТИЧНО: быстрые действия 2-5 мин, средние 10-20 мин, сложные 30-60+ мин
+- НЕ делай все шаги одинаковыми по времени — разные шаги занимают разное время!
 - Шаги должны быть КОНКРЕТНЫМИ и ПОЛЕЗНЫМИ (не "подготовиться", а что именно сделать)
 - НЕ добавляй разминку/заминку если это не спортивная тренировка
 - Начинай каждый шаг с глагола
@@ -202,15 +203,13 @@ class AIDecomposer:
         # Validate and format
         result = []
         for i, step in enumerate(steps[:max_steps]):
+            # Allow realistic time estimates from AI (2-180 min range)
+            estimated = int(step.get("estimated_minutes", 15))
+            estimated = max(2, min(180, estimated))  # Clamp to reasonable bounds
             result.append(
                 {
                     "title": str(step.get("title", f"Step {i+1}"))[:500],
-                    "estimated_minutes": max(
-                        min_minutes,
-                        min(
-                            max_minutes, int(step.get("estimated_minutes", min_minutes))
-                        ),
-                    ),
+                    "estimated_minutes": estimated,
                     "order": i + 1,
                 }
             )

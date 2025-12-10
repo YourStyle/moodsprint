@@ -27,7 +27,12 @@ class XPCalculator:
         """
         XP for completing a focus session.
         Bonus XP for longer sessions.
+        No XP for sessions under 5 minutes (prevents abuse).
         """
+        # No XP for very short sessions (under 5 minutes)
+        if duration_minutes < 5:
+            return 0
+
         base_xp = cls.XP_FOCUS_SESSION
 
         # Bonus for longer sessions
