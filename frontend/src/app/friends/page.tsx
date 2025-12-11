@@ -170,6 +170,26 @@ export default function FriendsPage() {
   const pendingRequestsCount = requests.length;
   const pendingTradesCount = receivedTrades.filter((t) => t.status === 'pending').length;
 
+  // Handle Telegram back button for trade form
+  // Must be before conditional return to follow React hooks rules
+  useEffect(() => {
+    if (showTradeForm) {
+      hideBackButton();
+      showBackButton(() => {
+        setShowTradeForm(false);
+        setSelectedFriend(null);
+        setSelectedMyCard(null);
+        setSelectedFriendCard(null);
+        setTradeMessage('');
+      });
+    } else {
+      hideBackButton();
+    }
+    return () => {
+      hideBackButton();
+    };
+  }, [showTradeForm]);
+
   if (!user) {
     return (
       <div className="p-4 text-center">
@@ -197,18 +217,6 @@ export default function FriendsPage() {
     setSelectedFriendCard(null);
     setTradeMessage('');
   };
-
-  // Handle Telegram back button for trade form
-  useEffect(() => {
-    if (showTradeForm) {
-      showBackButton(handleCloseTrade);
-    } else {
-      hideBackButton();
-    }
-    return () => {
-      hideBackButton();
-    };
-  }, [showTradeForm]);
 
   const renderCardMini = (card: CardType | null, onClick?: () => void, isSelected?: boolean) => {
     if (!card) {
