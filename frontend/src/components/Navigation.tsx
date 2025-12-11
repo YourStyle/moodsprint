@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ListTodo, Timer, User, Swords, Trophy } from 'lucide-react';
+import { Home, ListTodo, Timer, User, Swords } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
@@ -11,7 +11,6 @@ const navItems = [
   { href: '/', icon: Home, label: 'Главная' },
   { href: '/tasks', icon: ListTodo, label: 'Задачи' },
   { href: '/arena', icon: Swords, label: 'Арена' },
-  { href: '/leaderboard', icon: Trophy, label: 'Топ' },
   { href: '/focus', icon: Timer, label: 'Фокус' },
   { href: '/profile', icon: User, label: 'Профиль' },
 ];
@@ -35,7 +34,7 @@ export function Navigation() {
       <div className="max-w-md mx-auto px-4">
         <nav className="flex items-center justify-center">
           <motion.div
-            className="relative rounded-full px-4 py-2.5 flex items-center justify-center gap-1 overflow-hidden"
+            className="relative rounded-full px-6 py-3 flex items-center justify-center gap-2 overflow-hidden"
             style={{
               background: 'rgba(17, 24, 39, 0.85)',
               backdropFilter: 'blur(20px) saturate(180%)',
@@ -63,7 +62,7 @@ export function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 relative group min-w-[50px] z-10',
+                    'flex flex-col items-center gap-1 relative group min-w-[60px] z-10',
                     isActive ? 'text-white' : 'text-gray-400 hover:text-gray-300'
                   )}
                 >

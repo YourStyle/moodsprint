@@ -187,22 +187,32 @@ class CharacterStats(db.Model):
 
 
 class Monster(db.Model):
-    """Monsters for battle arena."""
+    """Monsters for battle arena (template monsters)."""
 
     __tablename__ = "monsters"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)  # AI-generated description
     genre = db.Column(db.String(50), nullable=False)  # magic, fantasy, scifi, etc.
 
-    # Stats
+    # Base stats (will be scaled for players)
+    base_level = db.Column(db.Integer, default=1, nullable=False)
+    base_hp = db.Column(db.Integer, default=50, nullable=False)
+    base_attack = db.Column(db.Integer, default=10, nullable=False)
+    base_defense = db.Column(db.Integer, default=5, nullable=False)
+    base_speed = db.Column(db.Integer, default=10, nullable=False)
+
+    # Legacy columns for backwards compatibility
     level = db.Column(db.Integer, default=1, nullable=False)
     hp = db.Column(db.Integer, default=50, nullable=False)
     attack = db.Column(db.Integer, default=10, nullable=False)
     defense = db.Column(db.Integer, default=5, nullable=False)
     speed = db.Column(db.Integer, default=10, nullable=False)
 
-    # Rewards
+    # Base rewards (scaled for player level)
+    base_xp_reward = db.Column(db.Integer, default=20, nullable=False)
+    base_stat_points_reward = db.Column(db.Integer, default=1, nullable=False)
     xp_reward = db.Column(db.Integer, default=20, nullable=False)
     stat_points_reward = db.Column(db.Integer, default=1, nullable=False)
 
@@ -212,11 +222,16 @@ class Monster(db.Model):
 
     is_boss = db.Column(db.Boolean, default=False)
 
+    # Generation tracking
+    ai_generated = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "id": self.id,
             "name": self.name,
+            "description": self.description,
             "genre": self.genre,
             "level": self.level,
             "hp": self.hp,
@@ -229,6 +244,50 @@ class Monster(db.Model):
             "emoji": self.emoji,
             "is_boss": self.is_boss,
         }
+
+    def get_scaled_stats(self, player_level: int) -> dict:
+        """Get monster stats scaled to player level."""
+        # Scale factor: slightly easier than player level
+        scale = 0.8 + (player_level * 0.15)
+
+        return {
+            "level": max(1, int(self.base_level * scale)),
+            "hp": max(20, int(self.base_hp * scale)),
+            "attack": max(5, int(self.base_attack * scale)),
+            "defense": max(2, int(self.base_defense * scale)),
+            "speed": max(5, int(self.base_speed * scale)),
+            "xp_reward": max(10, int(self.base_xp_reward * scale)),
+            "stat_points_reward": max(
+                1, int(self.base_stat_points_reward * (scale * 0.5))
+            ),
+        }
+
+
+class DailyMonster(db.Model):
+    """Daily monsters shown to players per genre."""
+
+    __tablename__ = "daily_monsters"
+
+    id = db.Column(db.Integer, primary_key=True)
+    monster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("monsters.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    genre = db.Column(db.String(50), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    slot_number = db.Column(db.Integer, default=1)  # 1-6 monsters per day
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    monster = db.relationship("Monster")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "genre", "date", "slot_number", name="unique_daily_monster"
+        ),
+    )
 
 
 class BattleLog(db.Model):

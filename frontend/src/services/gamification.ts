@@ -136,6 +136,7 @@ interface DistributeStatResponse {
 export interface Monster {
   id: number;
   name: string;
+  description?: string;
   genre: string;
   level: number;
   hp: number;
@@ -157,7 +158,11 @@ interface MonstersResponse {
 export interface BattleLogEntry {
   round: number;
   actor: 'player' | 'monster';
+  action?: 'attack' | 'critical' | 'combo' | 'critical_combo' | 'special' | 'miss' | 'prepare';
   damage: number;
+  is_critical?: boolean;
+  is_combo?: boolean;
+  message?: string;
 }
 
 export interface BattleResult {

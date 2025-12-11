@@ -2,7 +2,7 @@
 
 from app.models.achievement import Achievement, UserAchievement
 from app.models.activity_log import ActivityType, UserActivityLog
-from app.models.character import BattleLog, CharacterStats, Monster
+from app.models.character import BattleLog, CharacterStats, DailyMonster, Monster
 from app.models.focus_session import FocusSession
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
@@ -26,6 +26,7 @@ __all__ = [
     "PostponeLog",
     "CharacterStats",
     "Monster",
+    "DailyMonster",
     "BattleLog",
     "DailyQuest",
 ]
