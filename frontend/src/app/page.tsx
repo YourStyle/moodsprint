@@ -12,6 +12,7 @@ import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamific
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, gamificationService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
+import { MOOD_EMOJIS } from '@/domain/constants';
 import type { MoodLevel, EnergyLevel, TaskPriority, TaskSuggestion, PreferredTime } from '@/domain/types';
 
 const formatDateForAPI = (date: Date): string => {
@@ -479,7 +480,7 @@ export default function HomePage() {
           >
             {latestMood ? (
               <span className="text-lg">
-                {latestMood.mood === 5 ? '😄' : latestMood.mood === 4 ? '🙂' : latestMood.mood === 3 ? '😐' : latestMood.mood === 2 ? '😔' : '😢'}
+                {MOOD_EMOJIS[latestMood.mood as keyof typeof MOOD_EMOJIS]}
               </span>
             ) : (
               <Smile className="w-5 h-5 text-gray-400" />

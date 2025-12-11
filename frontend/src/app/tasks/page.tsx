@@ -49,7 +49,30 @@ export default function TasksPage() {
     { value: 'completed', label: 'Готово' },
   ];
 
-  const tasks = data?.data?.tasks || [];
+  const rawTasks = data?.data?.tasks || [];
+
+  // Sort tasks: by priority (high > medium > low), completed tasks at the end
+  const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+  const tasks = [...rawTasks].sort((a, b) => {
+    // Completed tasks go to the end
+    if (a.status === 'completed' && b.status !== 'completed') return 1;
+    if (a.status !== 'completed' && b.status === 'completed') return -1;
+
+    // Sort by priority (high first)
+    const priorityA = priorityOrder[a.priority] ?? 1;
+    const priorityB = priorityOrder[b.priority] ?? 1;
+    if (priorityA !== priorityB) return priorityA - priorityB;
+
+    // Then by due date (earliest first)
+    if (a.due_date && b.due_date) {
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    }
+    if (a.due_date) return -1;
+    if (b.due_date) return 1;
+
+    return 0;
+  });
 
   return (
     <div className="p-4 space-y-4 pt-safe">

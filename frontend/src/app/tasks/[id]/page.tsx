@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil } from 'lucide-react';
+import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, Heart, Swords, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -12,6 +12,35 @@ import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
 import type { MoodLevel, EnergyLevel, TaskType } from '@/domain/types';
+
+// Card type for earned card modal
+interface EarnedCard {
+  id: number;
+  name: string;
+  description: string;
+  genre: string;
+  rarity: string;
+  hp: number;
+  attack: number;
+  emoji: string;
+}
+
+// Rarity colors and labels
+const RARITY_COLORS: Record<string, string> = {
+  common: 'from-gray-500 to-gray-600',
+  uncommon: 'from-green-500 to-green-600',
+  rare: 'from-blue-500 to-blue-600',
+  epic: 'from-purple-500 to-purple-600',
+  legendary: 'from-yellow-500 to-orange-500',
+};
+
+const RARITY_LABELS: Record<string, string> = {
+  common: 'Обычная',
+  uncommon: 'Необычная',
+  rare: 'Редкая',
+  epic: 'Эпическая',
+  legendary: 'Легендарная',
+};
 
 const TASK_TYPES: TaskType[] = [
   'creative', 'analytical', 'communication', 'physical',
@@ -39,6 +68,9 @@ export default function TaskDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [showEditSubtask, setShowEditSubtask] = useState(false);
   const [editingSubtask, setEditingSubtask] = useState<{ id: number; title: string; estimated_minutes: number } | null>(null);
+  const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -75,8 +107,14 @@ export default function TaskDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['daily', 'goals'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
       if (result.data?.xp_earned) {
         showXPAnimation(result.data.xp_earned);
+      }
+      // Show card earned modal if card was generated
+      if (result.data?.card_earned) {
+        setEarnedCard(result.data.card_earned);
+        setShowCardModal(true);
       }
       hapticFeedback('success');
     },
@@ -160,8 +198,14 @@ export default function TaskDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['daily', 'goals'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
       if (result.data?.xp_earned) {
         showXPAnimation(result.data.xp_earned);
+      }
+      // Show card earned modal if card was generated
+      if (result.data?.card_earned) {
+        setEarnedCard(result.data.card_earned);
+        setShowCardModal(true);
       }
       hapticFeedback('success');
     },
@@ -174,6 +218,17 @@ export default function TaskDetailPage() {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setShowTypeModal(false);
+      hapticFeedback('success');
+    },
+  });
+
+  const updatePriorityMutation = useMutation({
+    mutationFn: (priority: 'low' | 'medium' | 'high') =>
+      tasksService.updateTask(taskId, { priority }),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowPriorityModal(false);
       hapticFeedback('success');
     },
   });
@@ -301,9 +356,12 @@ export default function TaskDetailPage() {
                 + Тип
               </button>
             )}
-            <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
+            <button
+              onClick={() => setShowPriorityModal(true)}
+              className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${PRIORITY_COLORS[task.priority]}`}
+            >
               {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
-            </span>
+            </button>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               task.status === 'completed'
                 ? 'bg-green-500/20 text-green-400'
@@ -704,6 +762,110 @@ export default function TaskDetailPage() {
             Начать
           </Button>
         </div>
+      </Modal>
+
+      {/* Priority Modal */}
+      <Modal
+        isOpen={showPriorityModal}
+        onClose={() => setShowPriorityModal(false)}
+        title="Приоритет задачи"
+      >
+        <div className="space-y-2">
+          {([
+            { value: 'high' as const, label: 'Высокий', icon: <ChevronUp className="w-4 h-4" /> },
+            { value: 'medium' as const, label: 'Средний', icon: null },
+            { value: 'low' as const, label: 'Низкий', icon: <ChevronDown className="w-4 h-4" /> },
+          ]).map((priority) => (
+            <button
+              key={priority.value}
+              onClick={() => updatePriorityMutation.mutate(priority.value)}
+              disabled={updatePriorityMutation.isPending}
+              className={`w-full p-3 rounded-xl text-left flex items-center gap-3 transition-all ${
+                task.priority === priority.value
+                  ? `${PRIORITY_COLORS[priority.value]} ring-2 ring-offset-2 ring-offset-gray-900`
+                  : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+              }`}
+            >
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center ${PRIORITY_COLORS[priority.value]}`}>
+                {priority.icon || <span className="w-2 h-2 rounded-full bg-current" />}
+              </span>
+              <span className="font-medium">{priority.label}</span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Card Earned Modal */}
+      <Modal
+        isOpen={showCardModal}
+        onClose={() => {
+          setShowCardModal(false);
+          setEarnedCard(null);
+        }}
+        title="Новая карта!"
+      >
+        {earnedCard && (
+          <div className="space-y-4">
+            {/* Card Preview */}
+            <div className={`relative rounded-2xl p-4 bg-gradient-to-br ${RARITY_COLORS[earnedCard.rarity] || RARITY_COLORS.common} overflow-hidden`}>
+              {/* Sparkle effect for rare cards */}
+              {['rare', 'epic', 'legendary'].includes(earnedCard.rarity) && (
+                <div className="absolute inset-0 overflow-hidden">
+                  <Sparkles className="absolute top-2 right-2 w-6 h-6 text-white/30 animate-pulse" />
+                  <Sparkles className="absolute bottom-4 left-4 w-4 h-4 text-white/20 animate-pulse delay-300" />
+                </div>
+              )}
+
+              <div className="relative z-10 text-center">
+                {/* Emoji */}
+                <div className="text-6xl mb-3 animate-bounce">
+                  {earnedCard.emoji}
+                </div>
+
+                {/* Name */}
+                <h3 className="text-xl font-bold text-white mb-1">
+                  {earnedCard.name}
+                </h3>
+
+                {/* Rarity */}
+                <span className="inline-block px-3 py-1 rounded-full bg-black/20 text-white/90 text-sm mb-3">
+                  {RARITY_LABELS[earnedCard.rarity] || 'Обычная'}
+                </span>
+
+                {/* Description */}
+                {earnedCard.description && (
+                  <p className="text-white/80 text-sm mb-3">
+                    {earnedCard.description}
+                  </p>
+                )}
+
+                {/* Stats */}
+                <div className="flex justify-center gap-6 mt-4">
+                  <div className="flex items-center gap-2 bg-black/20 px-3 py-2 rounded-lg">
+                    <Heart className="w-5 h-5 text-red-300" />
+                    <span className="text-white font-bold">{earnedCard.hp}</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-black/20 px-3 py-2 rounded-lg">
+                    <Swords className="w-5 h-5 text-orange-300" />
+                    <span className="text-white font-bold">{earnedCard.attack}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <Button
+              onClick={() => {
+                setShowCardModal(false);
+                setEarnedCard(null);
+              }}
+              className="w-full"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Отлично!
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );

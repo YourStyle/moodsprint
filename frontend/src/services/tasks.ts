@@ -23,13 +23,29 @@ interface TaskResponse {
   task: Task;
 }
 
-interface TaskWithXP extends TaskResponse, Partial<XPReward> {}
+// Card type for earned cards
+interface CardEarned {
+  id: number;
+  name: string;
+  description: string;
+  genre: string;
+  rarity: string;
+  hp: number;
+  attack: number;
+  emoji: string;
+}
+
+interface TaskWithXP extends TaskResponse, Partial<XPReward> {
+  card_earned?: CardEarned;
+}
 
 interface SubtaskResponse {
   subtask: Subtask;
 }
 
-interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {}
+interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {
+  card_earned?: CardEarned;
+}
 
 interface DecomposeResponse {
   subtasks: Subtask[];
