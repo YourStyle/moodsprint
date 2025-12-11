@@ -238,9 +238,7 @@ class CardService:
         emojis = GENRE_CARD_EMOJIS.get(genre, GENRE_CARD_EMOJIS["fantasy"])
         emoji = random.choice(emojis)
 
-        # Generate image using Stability AI
-        image_url = self._generate_card_image(name, genre, rarity)
-
+        # Card created without image - image will be generated async
         return UserCard(
             user_id=user_id,
             template_id=None,  # AI generated, no template
@@ -252,7 +250,7 @@ class CardService:
             hp=hp,
             attack=attack,
             current_hp=hp,
-            image_url=image_url,
+            image_url=None,  # Will be generated async
             emoji=emoji,
         )
 
@@ -317,6 +315,32 @@ class CardService:
         except Exception as e:
             logger.error(f"Failed to generate card image: {e}")
             return None
+
+    def generate_card_image_async(self, card_id: int, user_id: int) -> dict:
+        """Generate image for an existing card (called async after card creation)."""
+        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
+
+        if not card:
+            return {"success": False, "error": "card_not_found"}
+
+        if card.image_url:
+            return {
+                "success": True,
+                "image_url": card.image_url,
+                "already_exists": True,
+            }
+
+        # Generate image
+        rarity = CardRarity(card.rarity)
+        image_url = self._generate_card_image(card.name, card.genre, rarity)
+
+        if image_url:
+            card.image_url = image_url
+            db.session.commit()
+            logger.info(f"Generated image for card {card_id}: {image_url}")
+            return {"success": True, "image_url": image_url}
+        else:
+            return {"success": False, "error": "generation_failed"}
 
     def _generate_card_text(
         self, genre: str, genre_info: dict, rarity: CardRarity, task_title: str

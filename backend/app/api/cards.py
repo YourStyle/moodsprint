@@ -61,6 +61,21 @@ def get_card_details(card_id: int):
     return success_response({"card": card.to_dict()})
 
 
+@api_bp.route("/cards/<int:card_id>/generate-image", methods=["POST"])
+@jwt_required()
+def generate_card_image(card_id: int):
+    """Generate image for a card (async, called after card is shown to user)."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.generate_card_image_async(card_id, user_id)
+
+    if result.get("success"):
+        return success_response(result)
+    else:
+        return validation_error(result.get("error", "Unknown error"))
+
+
 # ============ Deck Management ============
 
 

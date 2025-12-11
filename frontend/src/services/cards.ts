@@ -201,6 +201,11 @@ class CardsService {
   async cancelTrade(tradeId: number): Promise<ApiResponse<{ message: string }>> {
     return api.post<{ message: string }>(`/trades/${tradeId}/cancel`);
   }
+
+  // Image generation (async, called after card is shown)
+  async generateCardImage(cardId: number): Promise<ApiResponse<{ image_url?: string; already_exists?: boolean }>> {
+    return api.post<{ image_url?: string; already_exists?: boolean }>(`/cards/${cardId}/generate-image`);
+  }
 }
 
 export const cardsService = new CardsService();

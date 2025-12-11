@@ -7,7 +7,7 @@ import { ArrowLeft, Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, S
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
-import { tasksService, focusService, moodService } from '@/services';
+import { tasksService, focusService, moodService, cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
@@ -47,6 +47,121 @@ const TASK_TYPES: TaskType[] = [
   'creative', 'analytical', 'communication', 'physical',
   'learning', 'planning', 'coding', 'writing'
 ];
+
+// CardEarnedModal component with async image generation
+function CardEarnedModal({
+  isOpen,
+  card,
+  onClose
+}: {
+  isOpen: boolean;
+  card: EarnedCard | null;
+  onClose: () => void;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Trigger async image generation when modal opens with a card
+  useEffect(() => {
+    if (isOpen && card && !card.image_url && !isGenerating) {
+      setIsGenerating(true);
+      setImageUrl(null);
+
+      // Call the async image generation endpoint
+      cardsService.generateCardImage(card.id)
+        .then((result) => {
+          if (result.success && result.data?.image_url) {
+            setImageUrl(result.data.image_url);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to generate card image:', err);
+        })
+        .finally(() => {
+          setIsGenerating(false);
+        });
+    } else if (card?.image_url) {
+      setImageUrl(card.image_url);
+    }
+  }, [isOpen, card]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setImageUrl(null);
+      setIsGenerating(false);
+    }
+  }, [isOpen]);
+
+  if (!card) return null;
+
+  const displayImageUrl = imageUrl || card.image_url;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Новая карта!">
+      <div className="flex flex-col items-center">
+        {/* Card Preview */}
+        <div className={`w-48 h-64 rounded-2xl bg-gradient-to-br ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} p-1 mb-4`}>
+          <div className="w-full h-full bg-gray-900 rounded-xl flex flex-col overflow-hidden">
+            {/* Card Image or Emoji */}
+            <div className="flex-1 flex items-center justify-center bg-gray-800 relative">
+              {displayImageUrl ? (
+                <img
+                  src={displayImageUrl}
+                  alt={card.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-5xl">{card.emoji}</span>
+                  {isGenerating && (
+                    <div className="absolute bottom-2 left-0 right-0 text-center">
+                      <span className="text-xs text-gray-400 animate-pulse">
+                        Облик скоро появится...
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Card Info */}
+            <div className="p-2 space-y-1">
+              <p className="text-white font-bold text-sm truncate">{card.name}</p>
+              <p className="text-gray-400 text-xs truncate">{card.description}</p>
+
+              {/* Stats */}
+              <div className="flex justify-between text-xs pt-1">
+                <span className="text-red-400 flex items-center gap-1">
+                  <Heart className="w-3 h-3" /> {card.hp}
+                </span>
+                <span className="text-orange-400 flex items-center gap-1">
+                  <Swords className="w-3 h-3" /> {card.attack}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Rarity Badge */}
+        <div className={`px-4 py-1 rounded-full bg-gradient-to-r ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} mb-4`}>
+          <span className="text-white font-bold text-sm flex items-center gap-1">
+            <Sparkles className="w-4 h-4" />
+            {RARITY_LABELS[card.rarity] || card.rarity}
+          </span>
+        </div>
+
+        <p className="text-gray-400 text-sm text-center mb-4">
+          Карта добавлена в твою коллекцию!
+        </p>
+
+        <Button onClick={onClose} className="w-full">
+          Отлично!
+        </Button>
+      </div>
+    </Modal>
+  );
+}
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -797,87 +912,14 @@ export default function TaskDetailPage() {
       </Modal>
 
       {/* Card Earned Modal */}
-      <Modal
+      <CardEarnedModal
         isOpen={showCardModal}
+        card={earnedCard}
         onClose={() => {
           setShowCardModal(false);
           setEarnedCard(null);
         }}
-        title="Новая карта!"
-      >
-        {earnedCard && (
-          <div className="space-y-4">
-            {/* Card Preview */}
-            <div className={`relative rounded-2xl p-4 bg-gradient-to-br ${RARITY_COLORS[earnedCard.rarity] || RARITY_COLORS.common} overflow-hidden`}>
-              {/* Sparkle effect for rare cards */}
-              {['rare', 'epic', 'legendary'].includes(earnedCard.rarity) && (
-                <div className="absolute inset-0 overflow-hidden">
-                  <Sparkles className="absolute top-2 right-2 w-6 h-6 text-white/30 animate-pulse" />
-                  <Sparkles className="absolute bottom-4 left-4 w-4 h-4 text-white/20 animate-pulse delay-300" />
-                </div>
-              )}
-
-              <div className="relative z-10 text-center">
-                {/* Card Image or Emoji */}
-                {earnedCard.image_url ? (
-                  <div className="w-32 h-32 mx-auto mb-3 rounded-xl overflow-hidden border-2 border-white/30 shadow-lg">
-                    <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}${earnedCard.image_url}`}
-                      alt={earnedCard.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-6xl mb-3 animate-bounce">
-                    {earnedCard.emoji}
-                  </div>
-                )}
-
-                {/* Name */}
-                <h3 className="text-xl font-bold text-white mb-1">
-                  {earnedCard.name}
-                </h3>
-
-                {/* Rarity */}
-                <span className="inline-block px-3 py-1 rounded-full bg-black/20 text-white/90 text-sm mb-3">
-                  {RARITY_LABELS[earnedCard.rarity] || 'Обычная'}
-                </span>
-
-                {/* Description */}
-                {earnedCard.description && (
-                  <p className="text-white/80 text-sm mb-3">
-                    {earnedCard.description}
-                  </p>
-                )}
-
-                {/* Stats */}
-                <div className="flex justify-center gap-6 mt-4">
-                  <div className="flex items-center gap-2 bg-black/20 px-3 py-2 rounded-lg">
-                    <Heart className="w-5 h-5 text-red-300" />
-                    <span className="text-white font-bold">{earnedCard.hp}</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-black/20 px-3 py-2 rounded-lg">
-                    <Swords className="w-5 h-5 text-orange-300" />
-                    <span className="text-white font-bold">{earnedCard.attack}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Button */}
-            <Button
-              onClick={() => {
-                setShowCardModal(false);
-                setEarnedCard(null);
-              }}
-              className="w-full"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Отлично!
-            </Button>
-          </div>
-        )}
-      </Modal>
+      />
     </div>
   );
 }
