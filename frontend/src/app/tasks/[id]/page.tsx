@@ -23,6 +23,7 @@ interface EarnedCard {
   hp: number;
   attack: number;
   emoji: string;
+  image_url?: string | null;
 }
 
 // Rarity colors and labels
@@ -817,10 +818,20 @@ export default function TaskDetailPage() {
               )}
 
               <div className="relative z-10 text-center">
-                {/* Emoji */}
-                <div className="text-6xl mb-3 animate-bounce">
-                  {earnedCard.emoji}
-                </div>
+                {/* Card Image or Emoji */}
+                {earnedCard.image_url ? (
+                  <div className="w-32 h-32 mx-auto mb-3 rounded-xl overflow-hidden border-2 border-white/30 shadow-lg">
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '')}${earnedCard.image_url}`}
+                      alt={earnedCard.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-6xl mb-3 animate-bounce">
+                    {earnedCard.emoji}
+                  </div>
+                )}
 
                 {/* Name */}
                 <h3 className="text-xl font-bold text-white mb-1">

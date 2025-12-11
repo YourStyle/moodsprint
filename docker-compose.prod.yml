@@ -18,6 +18,8 @@ services:
   backend:
     image: ghcr.io/yourstyle/moodsprint/backend:main
     restart: always
+    volumes:
+      - card_images:/app/static/card_images
     deploy:
       replicas: 2
       resources:
@@ -119,3 +121,4 @@ services:
 
 volumes:
   redis_data:
+  card_images:

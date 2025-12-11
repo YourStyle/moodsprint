@@ -32,7 +32,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_PROXY: ${OPENAI_PROXY:-}
+      STABILITY_API_KEY: ${STABILITY_API_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    volumes:
+      - card_images:/app/static/card_images
     depends_on:
       db:
         condition: service_healthy
@@ -119,3 +122,4 @@ networks:
 
 volumes:
   postgres_data:
+  card_images:

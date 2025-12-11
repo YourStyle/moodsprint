@@ -3,7 +3,10 @@
 import logging
 import os
 import random
+import uuid
+from pathlib import Path
 
+import requests
 from openai import OpenAI
 
 from app import db
@@ -51,11 +54,38 @@ GENRE_CARD_EMOJIS = {
 class CardService:
     """Service for card generation and management."""
 
+    # Stability AI API config
+    STABILITY_API_URL = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
+
+    # Genre-specific art style prompts
+    GENRE_ART_STYLES = {
+        "magic": "mystical wizard, magical aura, glowing runes, fantasy art style",
+        "fantasy": "medieval knight warrior, epic armor, fantasy art style",
+        "scifi": "futuristic space pilot, sci-fi armor, cybernetic enhancements",
+        "cyberpunk": "neon cyberpunk hacker, futuristic city, digital aesthetic",
+        "anime": "anime hero character, dynamic pose, vibrant colors, anime art style",
+    }
+
+    # Rarity visual modifiers
+    RARITY_MODIFIERS = {
+        "common": "simple design, basic colors",
+        "uncommon": "detailed design, subtle glow",
+        "rare": "intricate design, blue magical aura, detailed armor",
+        "epic": "epic design, purple magical aura, legendary equipment, dramatic lighting",
+        "legendary": "divine design, golden aura, celestial light, ultimate power",
+    }
+
     def __init__(self):
         self.openai_client = None
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
             self.openai_client = OpenAI(api_key=openai_key)
+
+        self.stability_api_key = os.getenv("STABILITY_API_KEY")
+
+        # Ensure images directory exists
+        self.images_dir = Path("/app/static/card_images")
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_genre(self, user_id: int) -> str:
         """Get user's preferred genre."""
@@ -208,6 +238,9 @@ class CardService:
         emojis = GENRE_CARD_EMOJIS.get(genre, GENRE_CARD_EMOJIS["fantasy"])
         emoji = random.choice(emojis)
 
+        # Generate image using Stability AI
+        image_url = self._generate_card_image(name, genre, rarity)
+
         return UserCard(
             user_id=user_id,
             template_id=None,  # AI generated, no template
@@ -219,9 +252,71 @@ class CardService:
             hp=hp,
             attack=attack,
             current_hp=hp,
-            image_url=None,  # AI cards don't have images initially
+            image_url=image_url,
             emoji=emoji,
         )
+
+    def _generate_card_image(
+        self, name: str, genre: str, rarity: CardRarity
+    ) -> str | None:
+        """Generate card image using Stability AI."""
+        if not self.stability_api_key:
+            logger.warning(
+                "Stability API key not configured, skipping image generation"
+            )
+            return None
+
+        try:
+            # Build prompt from genre and rarity
+            art_style = self.GENRE_ART_STYLES.get(
+                genre, self.GENRE_ART_STYLES["fantasy"]
+            )
+            rarity_modifier = self.RARITY_MODIFIERS.get(
+                rarity.value, self.RARITY_MODIFIERS["common"]
+            )
+
+            prompt = (
+                f"Trading card game character portrait, {name}, {art_style}, "
+                f"{rarity_modifier}, high quality digital art, centered composition"
+            )
+
+            logger.info(f"Generating card image with prompt: {prompt[:100]}...")
+
+            response = requests.post(
+                self.STABILITY_API_URL,
+                headers={
+                    "authorization": f"Bearer {self.stability_api_key}",
+                    "accept": "image/*",
+                },
+                files={"none": ""},
+                data={
+                    "prompt": prompt,
+                    "model": "sd3.5-large-turbo",
+                    "output_format": "png",
+                    "aspect_ratio": "1:1",
+                },
+                timeout=60,
+            )
+
+            if response.status_code == 200:
+                # Save image to file
+                filename = f"{uuid.uuid4()}.png"
+                filepath = self.images_dir / filename
+                filepath.write_bytes(response.content)
+
+                # Return URL path for the image
+                image_url = f"/static/card_images/{filename}"
+                logger.info(f"Card image generated successfully: {image_url}")
+                return image_url
+            else:
+                logger.error(
+                    f"Stability AI API error: {response.status_code} - {response.text}"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(f"Failed to generate card image: {e}")
+            return None
 
     def _generate_card_text(
         self, genre: str, genre_info: dict, rarity: CardRarity, task_title: str

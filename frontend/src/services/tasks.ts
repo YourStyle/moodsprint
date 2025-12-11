@@ -33,6 +33,7 @@ interface CardEarned {
   hp: number;
   attack: number;
   emoji: string;
+  image_url?: string | null;
 }
 
 interface TaskWithXP extends TaskResponse, Partial<XPReward> {
