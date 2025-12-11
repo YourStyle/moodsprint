@@ -48,6 +48,9 @@ class Task(db.Model):
     preferred_time = db.Column(
         db.String(20), nullable=True
     )  # morning, afternoon, evening, night
+    difficulty = db.Column(
+        db.String(20), nullable=True
+    )  # easy, medium, hard, very_hard - for card generation
 
     # Postpone tracking
     postponed_count = db.Column(db.Integer, default=0, nullable=False)
@@ -123,6 +126,7 @@ class Task(db.Model):
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "task_type": self.task_type,
             "preferred_time": self.preferred_time,
+            "difficulty": self.difficulty,
             "postponed_count": self.postponed_count,
             "original_due_date": (
                 self.original_due_date.isoformat() if self.original_due_date else None

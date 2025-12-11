@@ -1,0 +1,552 @@
+"""Card system API endpoints."""
+
+from flask import request
+from flask_jwt_extended import get_jwt_identity, jwt_required
+
+from app import db
+from app.api import api_bp
+from app.models.card import CardTemplate, CardTrade, Friendship, UserCard
+from app.models.user import User
+from app.services.card_service import CardService
+from app.utils import not_found, success_response, validation_error
+
+# ============ Card Collection ============
+
+
+@api_bp.route("/cards", methods=["GET"])
+@jwt_required()
+def get_user_cards():
+    """
+    Get user's card collection.
+
+    Query params:
+    - genre: filter by genre (optional)
+    - in_deck: filter by deck status (optional, "true" or "false")
+    """
+    user_id = int(get_jwt_identity())
+    genre = request.args.get("genre")
+    in_deck = request.args.get("in_deck")
+
+    service = CardService()
+    cards = service.get_user_cards(user_id, genre=genre)
+
+    if in_deck is not None:
+        in_deck_bool = in_deck.lower() == "true"
+        cards = [c for c in cards if c.is_in_deck == in_deck_bool]
+
+    # Group by rarity for stats
+    rarity_counts = {}
+    for card in cards:
+        rarity_counts[card.rarity] = rarity_counts.get(card.rarity, 0) + 1
+
+    return success_response(
+        {
+            "cards": [c.to_dict() for c in cards],
+            "total": len(cards),
+            "rarity_counts": rarity_counts,
+        }
+    )
+
+
+@api_bp.route("/cards/<int:card_id>", methods=["GET"])
+@jwt_required()
+def get_card_details(card_id: int):
+    """Get details of a specific card."""
+    user_id = int(get_jwt_identity())
+
+    card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
+    if not card:
+        return not_found("Card not found")
+
+    return success_response({"card": card.to_dict()})
+
+
+# ============ Deck Management ============
+
+
+@api_bp.route("/deck", methods=["GET"])
+@jwt_required()
+def get_deck():
+    """Get user's active battle deck."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    deck = service.get_user_deck(user_id)
+
+    # Calculate deck stats
+    total_hp = sum(c.hp for c in deck)
+    total_attack = sum(c.attack for c in deck)
+    genres = list(set(c.genre for c in deck))
+
+    return success_response(
+        {
+            "deck": [c.to_dict() for c in deck],
+            "size": len(deck),
+            "max_size": 5,
+            "stats": {
+                "total_hp": total_hp,
+                "total_attack": total_attack,
+                "genres": genres,
+            },
+        }
+    )
+
+
+@api_bp.route("/deck/add", methods=["POST"])
+@jwt_required()
+def add_to_deck():
+    """
+    Add a card to battle deck.
+
+    Request body:
+    {
+        "card_id": 1
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    card_id = data.get("card_id")
+    if not card_id:
+        return validation_error({"card_id": "Card ID is required"})
+
+    service = CardService()
+    result = service.add_to_deck(user_id, card_id)
+
+    if not result["success"]:
+        error_messages = {
+            "card_not_found": "Карта не найдена",
+            "card_destroyed": "Карта уничтожена",
+            "already_in_deck": "Карта уже в колоде",
+            "deck_full": f"Колода полная (максимум {result.get('max_size', 5)} карт)",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(result)
+
+
+@api_bp.route("/deck/remove", methods=["POST"])
+@jwt_required()
+def remove_from_deck():
+    """
+    Remove a card from battle deck.
+
+    Request body:
+    {
+        "card_id": 1
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    card_id = data.get("card_id")
+    if not card_id:
+        return validation_error({"card_id": "Card ID is required"})
+
+    service = CardService()
+    result = service.remove_from_deck(user_id, card_id)
+
+    if not result["success"]:
+        return validation_error({"error": result["error"]})
+
+    return success_response({"message": "Карта убрана из колоды"})
+
+
+# ============ Card Healing ============
+
+
+@api_bp.route("/cards/<int:card_id>/heal", methods=["POST"])
+@jwt_required()
+def heal_card(card_id: int):
+    """Heal a specific card to full HP."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.heal_card(card_id, user_id)
+
+    if not result["success"]:
+        error_messages = {
+            "card_not_found": "Карта не найдена",
+            "card_destroyed": "Карта уничтожена и не может быть вылечена",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(
+        {
+            "card": result["card"],
+            "message": "Карта вылечена!",
+        }
+    )
+
+
+@api_bp.route("/cards/heal-all", methods=["POST"])
+@jwt_required()
+def heal_all_cards():
+    """Heal all user's cards."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    healed_count = service.heal_all_cards(user_id)
+
+    return success_response(
+        {
+            "healed_count": healed_count,
+            "message": f"Вылечено карт: {healed_count}",
+        }
+    )
+
+
+# ============ Card Templates ============
+
+
+@api_bp.route("/card-templates", methods=["GET"])
+@jwt_required()
+def get_card_templates():
+    """
+    Get available card templates.
+
+    Query params:
+    - genre: filter by genre (optional)
+    """
+    genre = request.args.get("genre")
+
+    query = CardTemplate.query.filter_by(is_active=True)
+    if genre:
+        query = query.filter_by(genre=genre)
+
+    templates = query.all()
+
+    return success_response(
+        {
+            "templates": [t.to_dict() for t in templates],
+            "total": len(templates),
+        }
+    )
+
+
+# ============ Friends System ============
+
+
+@api_bp.route("/friends", methods=["GET"])
+@jwt_required()
+def get_friends():
+    """Get user's friends list."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    friends = service.get_friends(user_id)
+
+    # Enrich with user info
+    for friend in friends:
+        user = User.query.get(friend["friend_id"])
+        if user:
+            friend["username"] = user.username
+            friend["first_name"] = user.first_name
+            friend["level"] = user.level
+
+    return success_response(
+        {
+            "friends": friends,
+            "total": len(friends),
+        }
+    )
+
+
+@api_bp.route("/friends/requests", methods=["GET"])
+@jwt_required()
+def get_friend_requests():
+    """Get pending friend requests."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    requests = service.get_pending_requests(user_id)
+
+    result = []
+    for req in requests:
+        user = User.query.get(req.user_id)
+        result.append(
+            {
+                "id": req.id,
+                "from_user_id": req.user_id,
+                "username": user.username if user else None,
+                "first_name": user.first_name if user else None,
+                "created_at": req.created_at.isoformat() if req.created_at else None,
+            }
+        )
+
+    return success_response(
+        {
+            "requests": result,
+            "total": len(result),
+        }
+    )
+
+
+@api_bp.route("/friends/request", methods=["POST"])
+@jwt_required()
+def send_friend_request():
+    """
+    Send a friend request.
+
+    Request body:
+    {
+        "user_id": 123  // or
+        "username": "friend_username"
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    friend_id = data.get("user_id")
+    username = data.get("username")
+
+    if not friend_id and not username:
+        return validation_error({"error": "user_id or username is required"})
+
+    # Find friend by username if needed
+    if not friend_id and username:
+        friend = User.query.filter_by(username=username).first()
+        if not friend:
+            return not_found("Пользователь не найден")
+        friend_id = friend.id
+
+    service = CardService()
+    result = service.send_friend_request(user_id, friend_id)
+
+    if not result["success"]:
+        error_messages = {
+            "cannot_friend_self": "Нельзя добавить себя в друзья",
+            "already_friends": "Вы уже друзья",
+            "request_pending": "Запрос уже отправлен",
+            "blocked": "Пользователь заблокирован",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(
+        {
+            "message": "Запрос в друзья отправлен!",
+            "friendship": result["friendship"],
+        }
+    )
+
+
+@api_bp.route("/friends/accept/<int:request_id>", methods=["POST"])
+@jwt_required()
+def accept_friend_request(request_id: int):
+    """Accept a friend request."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.accept_friend_request(user_id, request_id)
+
+    if not result["success"]:
+        return not_found("Запрос не найден")
+
+    return success_response(
+        {
+            "message": "Запрос принят! Теперь вы друзья.",
+            "friendship": result["friendship"],
+        }
+    )
+
+
+@api_bp.route("/friends/reject/<int:request_id>", methods=["POST"])
+@jwt_required()
+def reject_friend_request(request_id: int):
+    """Reject a friend request."""
+    user_id = int(get_jwt_identity())
+
+    friendship = Friendship.query.filter_by(
+        id=request_id, friend_id=user_id, status="pending"
+    ).first()
+
+    if not friendship:
+        return not_found("Запрос не найден")
+
+    db.session.delete(friendship)
+    db.session.commit()
+
+    return success_response({"message": "Запрос отклонён"})
+
+
+# ============ Card Trading ============
+
+
+@api_bp.route("/trades", methods=["GET"])
+@jwt_required()
+def get_trades():
+    """Get user's pending trades (sent and received)."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    trades = service.get_pending_trades(user_id)
+
+    sent = []
+    received = []
+
+    for trade in trades:
+        trade_dict = trade.to_dict()
+
+        # Add user info
+        sender = User.query.get(trade.sender_id)
+        receiver = User.query.get(trade.receiver_id)
+        trade_dict["sender_name"] = sender.first_name if sender else None
+        trade_dict["receiver_name"] = receiver.first_name if receiver else None
+
+        if trade.sender_id == user_id:
+            sent.append(trade_dict)
+        else:
+            received.append(trade_dict)
+
+    return success_response(
+        {
+            "sent": sent,
+            "received": received,
+        }
+    )
+
+
+@api_bp.route("/trades/create", methods=["POST"])
+@jwt_required()
+def create_trade():
+    """
+    Create a trade offer.
+
+    Request body:
+    {
+        "receiver_id": 123,
+        "sender_card_id": 1,
+        "receiver_card_id": 2,  // optional, for exchange
+        "message": "Trade message"  // optional
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    receiver_id = data.get("receiver_id")
+    sender_card_id = data.get("sender_card_id")
+    receiver_card_id = data.get("receiver_card_id")
+    message = data.get("message")
+
+    if not receiver_id or not sender_card_id:
+        return validation_error(
+            {"error": "receiver_id and sender_card_id are required"}
+        )
+
+    service = CardService()
+    result = service.create_trade_offer(
+        user_id, receiver_id, sender_card_id, receiver_card_id, message
+    )
+
+    if not result["success"]:
+        error_messages = {
+            "not_friends": "Вы можете обмениваться только с друзьями",
+            "sender_card_invalid": "Ваша карта недоступна для обмена",
+            "receiver_card_invalid": "Карта получателя недоступна для обмена",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(
+        {
+            "message": "Предложение обмена отправлено!",
+            "trade": result["trade"],
+        }
+    )
+
+
+@api_bp.route("/trades/<int:trade_id>/accept", methods=["POST"])
+@jwt_required()
+def accept_trade(trade_id: int):
+    """Accept a trade offer."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.accept_trade(user_id, trade_id)
+
+    if not result["success"]:
+        return not_found("Предложение не найдено")
+
+    return success_response(
+        {
+            "message": "Обмен завершён!",
+            "trade": result["trade"],
+        }
+    )
+
+
+@api_bp.route("/trades/<int:trade_id>/reject", methods=["POST"])
+@jwt_required()
+def reject_trade(trade_id: int):
+    """Reject a trade offer."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.reject_trade(user_id, trade_id)
+
+    if not result["success"]:
+        return not_found("Предложение не найдено")
+
+    return success_response({"message": "Предложение отклонено"})
+
+
+@api_bp.route("/trades/<int:trade_id>/cancel", methods=["POST"])
+@jwt_required()
+def cancel_trade(trade_id: int):
+    """Cancel a trade offer (sender only)."""
+    user_id = int(get_jwt_identity())
+
+    trade = CardTrade.query.filter_by(
+        id=trade_id, sender_id=user_id, status="pending"
+    ).first()
+
+    if not trade:
+        return not_found("Предложение не найдено")
+
+    trade.status = "cancelled"
+    db.session.commit()
+
+    return success_response({"message": "Предложение отменено"})
+
+
+# ============ Friend's Cards (for trading) ============
+
+
+@api_bp.route("/friends/<int:friend_id>/cards", methods=["GET"])
+@jwt_required()
+def get_friend_cards(friend_id: int):
+    """Get friend's tradeable cards."""
+    user_id = int(get_jwt_identity())
+
+    # Check if they are friends
+    is_friend = Friendship.query.filter(
+        (
+            (Friendship.user_id == user_id) & (Friendship.friend_id == friend_id)
+            | (Friendship.user_id == friend_id) & (Friendship.friend_id == user_id)
+        )
+        & (Friendship.status == "accepted")
+    ).first()
+
+    if not is_friend:
+        return validation_error({"error": "Вы не являетесь друзьями"})
+
+    # Get friend's tradeable cards
+    cards = UserCard.query.filter_by(
+        user_id=friend_id,
+        is_tradeable=True,
+        is_destroyed=False,
+    ).all()
+
+    return success_response(
+        {
+            "cards": [c.to_dict() for c in cards],
+            "total": len(cards),
+        }
+    )

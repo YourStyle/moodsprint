@@ -727,23 +727,28 @@ def heal_character():
     )
 
 
-# ============ Battle Arena ============
+# ============ Battle Arena (Card-based) ============
 
 
 @api_bp.route("/arena/monsters", methods=["GET"])
 @jwt_required()
 def get_arena_monsters():
-    """Get available monsters for battle."""
+    """Get available monsters for battle with required card info."""
     user_id = int(get_jwt_identity())
 
-    from app.services.battle_service import BattleService
+    from app.services.card_battle_service import CardBattleService
 
-    service = BattleService()
+    service = CardBattleService()
     monsters = service.get_available_monsters(user_id)
+
+    # Also return user's deck for convenience
+    deck = service.get_user_deck(user_id)
 
     return success_response(
         {
-            "monsters": [m.to_dict() for m in monsters],
+            "monsters": monsters,
+            "deck": [c.to_dict() for c in deck],
+            "deck_size": len(deck),
         }
     )
 
@@ -752,24 +757,30 @@ def get_arena_monsters():
 @jwt_required()
 def start_battle():
     """
-    Start a battle with a monster.
+    Start a card-based battle with a monster.
 
     Request body:
     {
-        "monster_id": 1
+        "monster_id": 1,
+        "card_ids": [1, 2, 3]  // IDs of cards to use in battle
     }
     """
     user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     monster_id = data.get("monster_id")
+    card_ids = data.get("card_ids", [])
+
     if not monster_id:
         return validation_error({"monster_id": "Monster ID is required"})
 
-    from app.services.battle_service import BattleService
+    if not card_ids:
+        return validation_error({"card_ids": "Select cards for battle"})
 
-    service = BattleService()
-    result = service.execute_battle(user_id, monster_id)
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    result = service.execute_card_battle(user_id, monster_id, card_ids)
 
     if "error" in result:
         return validation_error(result)
@@ -784,9 +795,9 @@ def get_battle_history():
     user_id = int(get_jwt_identity())
     limit = request.args.get("limit", 10, type=int)
 
-    from app.services.battle_service import BattleService
+    from app.services.card_battle_service import CardBattleService
 
-    service = BattleService()
+    service = CardBattleService()
     battles = service.get_battle_history(user_id, min(limit, 50))
 
     return success_response(

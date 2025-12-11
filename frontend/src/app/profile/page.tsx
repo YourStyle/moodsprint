@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll } from 'lucide-react';
+import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users } from 'lucide-react';
 import { Card, Progress, Button } from '@/components/ui';
 import { XPBar, StreakBadge, AchievementCard, DailyQuests, CharacterStats } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
@@ -154,14 +154,24 @@ export default function ProfilePage() {
       {character && (
         <>
           <CharacterStats character={character} />
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => router.push('/arena')}
-          >
-            <Swords className="w-5 h-5 mr-2" />
-            Перейти на арену
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => router.push('/arena')}
+            >
+              <Swords className="w-5 h-5 mr-2" />
+              Арена
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => router.push('/friends')}
+            >
+              <Users className="w-5 h-5 mr-2" />
+              Друзья
+            </Button>
+          </div>
         </>
       )}
 

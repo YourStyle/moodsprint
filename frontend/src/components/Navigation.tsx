@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ListTodo, Timer, User, Swords } from 'lucide-react';
+import { Home, ListTodo, Timer, User, Swords, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
@@ -10,8 +10,8 @@ import { useAppStore } from '@/lib/store';
 const navItems = [
   { href: '/', icon: Home, label: 'Главная' },
   { href: '/tasks', icon: ListTodo, label: 'Задачи' },
+  { href: '/deck', icon: Layers, label: 'Колода' },
   { href: '/arena', icon: Swords, label: 'Арена' },
-  { href: '/focus', icon: Timer, label: 'Фокус' },
   { href: '/profile', icon: User, label: 'Профиль' },
 ];
 
@@ -55,7 +55,7 @@ export function Navigation() {
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
-              const showBadge = item.href === '/focus' && activeSession;
+              const showFocusBadge = item.href === '/focus' && activeSession;
 
               return (
                 <Link
@@ -74,7 +74,7 @@ export function Navigation() {
                   >
                     <Icon className="w-6 h-6" />
                     <AnimatePresence>
-                      {showBadge && (
+                      {showFocusBadge && (
                         <motion.span
                           className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full"
                           initial={{ scale: 0 }}

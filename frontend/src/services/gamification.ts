@@ -148,21 +148,59 @@ export interface Monster {
   sprite_url: string | null;
   emoji: string;
   is_boss: boolean;
+  required_cards?: {
+    min_cards: number;
+    max_cards: number;
+    min_genres?: number;
+    same_genre_bonus: boolean;
+    description: string;
+  };
+}
+
+// Card types for battle
+export interface BattleCard {
+  id: number;
+  name: string;
+  description?: string;
+  genre: string;
+  rarity: string;
+  hp: number;
+  attack: number;
+  current_hp: number;
+  emoji: string;
+  image_url?: string;
+  rarity_color: string;
+  is_in_deck: boolean;
 }
 
 interface MonstersResponse {
   monsters: Monster[];
+  deck: BattleCard[];
+  deck_size: number;
 }
 
 // Battle types
 export interface BattleLogEntry {
   round: number;
-  actor: 'player' | 'monster';
-  action?: 'attack' | 'critical' | 'combo' | 'critical_combo' | 'special' | 'miss' | 'prepare';
+  actor: 'card' | 'monster' | 'system';
+  action?: 'attack' | 'critical' | 'combo' | 'critical_combo' | 'special' | 'miss' | 'prepare' | 'card_destroyed';
   damage: number;
   is_critical?: boolean;
   is_combo?: boolean;
   message?: string;
+  card_id?: number;
+  card_name?: string;
+  card_emoji?: string;
+  target?: string;
+  target_card_id?: number;
+  target_card_name?: string;
+}
+
+export interface CardBattleState {
+  id: number;
+  name: string;
+  hp: number;
+  max_hp: number;
 }
 
 export interface BattleResult {
@@ -174,8 +212,11 @@ export interface BattleResult {
   xp_earned: number;
   stat_points_earned: number;
   level_up: boolean;
-  character: CharacterStats;
+  cards_used: BattleCard[];
+  cards_lost: number[];
+  cards_remaining: CardBattleState[];
   monster: Monster;
+  reward_card?: BattleCard | null;
 }
 
 export interface BattleHistory {
@@ -277,8 +318,8 @@ export const gamificationService = {
     return api.get<MonstersResponse>('/arena/monsters');
   },
 
-  async battle(monsterId: number): Promise<ApiResponse<BattleResult>> {
-    return api.post<BattleResult>('/arena/battle', { monster_id: monsterId });
+  async battle(monsterId: number, cardIds: number[]): Promise<ApiResponse<BattleResult>> {
+    return api.post<BattleResult>('/arena/battle', { monster_id: monsterId, card_ids: cardIds });
   },
 
   async getBattleHistory(limit: number = 10): Promise<ApiResponse<BattleHistoryResponse>> {

@@ -2,6 +2,15 @@
 
 from app.models.achievement import Achievement, UserAchievement
 from app.models.activity_log import ActivityType, UserActivityLog
+from app.models.card import (
+    CardRarity,
+    CardTemplate,
+    CardTrade,
+    CoopBattle,
+    CoopBattleParticipant,
+    Friendship,
+    UserCard,
+)
 from app.models.character import BattleLog, CharacterStats, DailyMonster, Monster
 from app.models.focus_session import FocusSession
 from app.models.mood import MoodCheck
@@ -29,4 +38,12 @@ __all__ = [
     "DailyMonster",
     "BattleLog",
     "DailyQuest",
+    # Card system
+    "CardTemplate",
+    "UserCard",
+    "CardRarity",
+    "Friendship",
+    "CardTrade",
+    "CoopBattle",
+    "CoopBattleParticipant",
 ]

@@ -108,5 +108,421 @@ def init_monsters_command(genre, no_images):
     click.echo("Done!")
 
 
+@app.cli.command("init-card-templates")
+@click.option("--genre", default=None, help="Generate for specific genre only")
+def init_card_templates_command(genre):
+    """Initialize base card templates for all genres (10 per genre)."""
+    from app.models.card import CardTemplate
+    from app.models.character import GENRE_THEMES
+
+    # Base card templates for each genre
+    CARD_TEMPLATES = {
+        "magic": [
+            {
+                "name": "Ученик волшебника",
+                "description": "Начинающий маг, изучающий основы магии",
+                "base_hp": 45,
+                "base_attack": 12,
+                "emoji": "🧙",
+            },
+            {
+                "name": "Алхимик",
+                "description": "Мастер зелий и трансмутации",
+                "base_hp": 50,
+                "base_attack": 15,
+                "emoji": "⚗️",
+            },
+            {
+                "name": "Чародей огня",
+                "description": "Повелевает огненной стихией",
+                "base_hp": 40,
+                "base_attack": 20,
+                "emoji": "🔥",
+            },
+            {
+                "name": "Ледяная ведьма",
+                "description": "Хозяйка вечной мерзлоты",
+                "base_hp": 55,
+                "base_attack": 16,
+                "emoji": "❄️",
+            },
+            {
+                "name": "Некромант",
+                "description": "Владеет тёмными искусствами",
+                "base_hp": 35,
+                "base_attack": 22,
+                "emoji": "💀",
+            },
+            {
+                "name": "Друид леса",
+                "description": "Хранитель древних рощ",
+                "base_hp": 60,
+                "base_attack": 14,
+                "emoji": "🌿",
+            },
+            {
+                "name": "Мастер рун",
+                "description": "Высекает руны силы",
+                "base_hp": 48,
+                "base_attack": 18,
+                "emoji": "🔮",
+            },
+            {
+                "name": "Звёздный маг",
+                "description": "Черпает силу из созвездий",
+                "base_hp": 42,
+                "base_attack": 19,
+                "emoji": "✨",
+            },
+            {
+                "name": "Архимаг",
+                "description": "Познавший все школы магии",
+                "base_hp": 65,
+                "base_attack": 25,
+                "emoji": "⚡",
+            },
+            {
+                "name": "Феникс",
+                "description": "Возрождается из пепла",
+                "base_hp": 70,
+                "base_attack": 28,
+                "emoji": "🦅",
+            },
+        ],
+        "fantasy": [
+            {
+                "name": "Оруженосец",
+                "description": "Верный спутник рыцаря",
+                "base_hp": 50,
+                "base_attack": 12,
+                "emoji": "🛡️",
+            },
+            {
+                "name": "Охотник",
+                "description": "Мастер ловушек и лука",
+                "base_hp": 45,
+                "base_attack": 18,
+                "emoji": "🏹",
+            },
+            {
+                "name": "Паладин",
+                "description": "Святой воин света",
+                "base_hp": 65,
+                "base_attack": 16,
+                "emoji": "⚔️",
+            },
+            {
+                "name": "Варвар",
+                "description": "Дикая ярость севера",
+                "base_hp": 70,
+                "base_attack": 22,
+                "emoji": "🪓",
+            },
+            {
+                "name": "Эльф-лучник",
+                "description": "Меткий страж лесов",
+                "base_hp": 40,
+                "base_attack": 20,
+                "emoji": "🧝",
+            },
+            {
+                "name": "Гном-кузнец",
+                "description": "Создатель легендарного оружия",
+                "base_hp": 60,
+                "base_attack": 15,
+                "emoji": "🔨",
+            },
+            {
+                "name": "Разбойник",
+                "description": "Бесшумный охотник за сокровищами",
+                "base_hp": 35,
+                "base_attack": 24,
+                "emoji": "🗡️",
+            },
+            {
+                "name": "Жрица луны",
+                "description": "Благословлённая богиней",
+                "base_hp": 55,
+                "base_attack": 17,
+                "emoji": "🌙",
+            },
+            {
+                "name": "Рыцарь дракона",
+                "description": "Укротитель драконов",
+                "base_hp": 75,
+                "base_attack": 26,
+                "emoji": "🐲",
+            },
+            {
+                "name": "Король-воин",
+                "description": "Защитник королевства",
+                "base_hp": 80,
+                "base_attack": 30,
+                "emoji": "👑",
+            },
+        ],
+        "scifi": [
+            {
+                "name": "Курсант",
+                "description": "Новобранец космофлота",
+                "base_hp": 45,
+                "base_attack": 14,
+                "emoji": "🚀",
+            },
+            {
+                "name": "Инженер",
+                "description": "Чинит и улучшает технику",
+                "base_hp": 55,
+                "base_attack": 12,
+                "emoji": "🔧",
+            },
+            {
+                "name": "Пилот истребителя",
+                "description": "Ас космических боёв",
+                "base_hp": 40,
+                "base_attack": 20,
+                "emoji": "✈️",
+            },
+            {
+                "name": "Киборг",
+                "description": "Слияние человека и машины",
+                "base_hp": 60,
+                "base_attack": 18,
+                "emoji": "🦾",
+            },
+            {
+                "name": "Псионик",
+                "description": "Владеет силой разума",
+                "base_hp": 35,
+                "base_attack": 22,
+                "emoji": "🧠",
+            },
+            {
+                "name": "Солдат штурма",
+                "description": "Элита космодесанта",
+                "base_hp": 65,
+                "base_attack": 19,
+                "emoji": "🎖️",
+            },
+            {
+                "name": "Ксенобиолог",
+                "description": "Изучает инопланетную жизнь",
+                "base_hp": 50,
+                "base_attack": 16,
+                "emoji": "👽",
+            },
+            {
+                "name": "Хакер",
+                "description": "Взламывает любые системы",
+                "base_hp": 38,
+                "base_attack": 21,
+                "emoji": "💻",
+            },
+            {
+                "name": "Командор",
+                "description": "Лидер космической эскадры",
+                "base_hp": 70,
+                "base_attack": 25,
+                "emoji": "⭐",
+            },
+            {
+                "name": "Искусственный интеллект",
+                "description": "Совершенный разум",
+                "base_hp": 75,
+                "base_attack": 28,
+                "emoji": "🤖",
+            },
+        ],
+        "cyberpunk": [
+            {
+                "name": "Уличный самурай",
+                "description": "Клинок в неоновых тенях",
+                "base_hp": 50,
+                "base_attack": 18,
+                "emoji": "⚔️",
+            },
+            {
+                "name": "Нетраннер",
+                "description": "Погружается в сеть",
+                "base_hp": 35,
+                "base_attack": 22,
+                "emoji": "🖥️",
+            },
+            {
+                "name": "Медтехник",
+                "description": "Лечит тело и душу",
+                "base_hp": 55,
+                "base_attack": 12,
+                "emoji": "💉",
+            },
+            {
+                "name": "Техник",
+                "description": "Создаёт и ремонтирует импланты",
+                "base_hp": 48,
+                "base_attack": 15,
+                "emoji": "🔩",
+            },
+            {
+                "name": "Наёмник",
+                "description": "Деньги решают всё",
+                "base_hp": 60,
+                "base_attack": 20,
+                "emoji": "🎯",
+            },
+            {
+                "name": "Фиксер",
+                "description": "Знает все связи города",
+                "base_hp": 45,
+                "base_attack": 16,
+                "emoji": "🤝",
+            },
+            {
+                "name": "Рокербой",
+                "description": "Бунтарь с гитарой",
+                "base_hp": 40,
+                "base_attack": 19,
+                "emoji": "🎸",
+            },
+            {
+                "name": "Корпорат",
+                "description": "Хозяин мегакорпорации",
+                "base_hp": 42,
+                "base_attack": 23,
+                "emoji": "💼",
+            },
+            {
+                "name": "Легенда улиц",
+                "description": "Имя, которое знают все",
+                "base_hp": 65,
+                "base_attack": 26,
+                "emoji": "🌆",
+            },
+            {
+                "name": "Призрак сети",
+                "description": "Существует только в киберпространстве",
+                "base_hp": 70,
+                "base_attack": 30,
+                "emoji": "👻",
+            },
+        ],
+        "anime": [
+            {
+                "name": "Юный герой",
+                "description": "Только начал свой путь",
+                "base_hp": 45,
+                "base_attack": 15,
+                "emoji": "⭐",
+            },
+            {
+                "name": "Ниндзя-новичок",
+                "description": "Постигает путь тени",
+                "base_hp": 40,
+                "base_attack": 18,
+                "emoji": "🥷",
+            },
+            {
+                "name": "Маг-целитель",
+                "description": "Защищает друзей",
+                "base_hp": 55,
+                "base_attack": 12,
+                "emoji": "💖",
+            },
+            {
+                "name": "Мечник",
+                "description": "Путь меча бесконечен",
+                "base_hp": 50,
+                "base_attack": 20,
+                "emoji": "⚔️",
+            },
+            {
+                "name": "Призыватель духов",
+                "description": "Дружит с потусторонним",
+                "base_hp": 42,
+                "base_attack": 22,
+                "emoji": "👻",
+            },
+            {
+                "name": "Боевой монах",
+                "description": "Сила тела и духа",
+                "base_hp": 60,
+                "base_attack": 17,
+                "emoji": "👊",
+            },
+            {
+                "name": "Принцесса-воин",
+                "description": "Благородство и отвага",
+                "base_hp": 48,
+                "base_attack": 19,
+                "emoji": "👸",
+            },
+            {
+                "name": "Мастер кунг-фу",
+                "description": "Непревзойдённый в бою",
+                "base_hp": 52,
+                "base_attack": 24,
+                "emoji": "🥋",
+            },
+            {
+                "name": "Легендарный сеннин",
+                "description": "Познал все техники",
+                "base_hp": 70,
+                "base_attack": 27,
+                "emoji": "🔥",
+            },
+            {
+                "name": "Избранный",
+                "description": "Спаситель мира",
+                "base_hp": 80,
+                "base_attack": 32,
+                "emoji": "🌟",
+            },
+        ],
+    }
+
+    click.echo("Initializing card templates...")
+
+    genres_to_process = [genre] if genre else list(GENRE_THEMES.keys())
+
+    for g in genres_to_process:
+        if g not in CARD_TEMPLATES:
+            click.echo(f"  {g}: no templates defined, skipping")
+            continue
+
+        # Check existing count
+        existing_count = CardTemplate.query.filter_by(genre=g, is_active=True).count()
+        if existing_count >= 10:
+            click.echo(f"  {g}: already has {existing_count} templates, skipping")
+            continue
+
+        templates = CARD_TEMPLATES[g]
+        created = 0
+
+        for template_data in templates:
+            # Check if template already exists
+            existing = CardTemplate.query.filter_by(
+                name=template_data["name"], genre=g
+            ).first()
+            if existing:
+                continue
+
+            template = CardTemplate(
+                name=template_data["name"],
+                description=template_data["description"],
+                genre=g,
+                base_hp=template_data["base_hp"],
+                base_attack=template_data["base_attack"],
+                emoji=template_data["emoji"],
+                ai_generated=False,
+                is_active=True,
+            )
+            db.session.add(template)
+            created += 1
+
+        db.session.commit()
+        click.echo(f"  {g}: {created} templates created")
+
+    click.echo("Done!")
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

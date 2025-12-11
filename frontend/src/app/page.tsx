@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight, ArrowUp, X, Zap, Timer } from 'lucide-react';
+import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight, ArrowUp, X, Zap, Timer, Smile } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
-import { AIBlob } from '@/components/AIBlob';
 import { TaskCard } from '@/components/tasks';
 import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
@@ -472,8 +471,24 @@ export default function HomePage() {
           </h1>
           <p className="text-gray-400">{user.first_name || 'друг'}</p>
         </div>
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-          {(user.first_name?.[0] || '?').toUpperCase()}
+        <div className="flex items-center gap-3">
+          {/* Mood Button */}
+          <button
+            onClick={() => setShowMoodModal(true)}
+            className="w-10 h-10 rounded-full bg-dark-700 border border-gray-700 flex items-center justify-center hover:bg-dark-600 transition-colors"
+          >
+            {latestMood ? (
+              <span className="text-lg">
+                {latestMood.mood === 5 ? '😄' : latestMood.mood === 4 ? '🙂' : latestMood.mood === 3 ? '😐' : latestMood.mood === 2 ? '😔' : '😢'}
+              </span>
+            ) : (
+              <Smile className="w-5 h-5 text-gray-400" />
+            )}
+          </button>
+          {/* Avatar */}
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+            {(user.first_name?.[0] || '?').toUpperCase()}
+          </div>
         </div>
       </div>
 
@@ -540,34 +555,6 @@ export default function HomePage() {
             </Button>
           </Card>
         )}
-      </div>
-
-      {/* AI Assistant Blob */}
-      <div className="relative">
-        <Card variant="glass" padding="lg" className="overflow-visible">
-          <div className="flex items-center gap-4">
-            <AIBlob size={80} className="flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-white mb-1">
-                Твой AI-помощник
-              </h2>
-              <p className="text-sm text-gray-400">
-                {latestMood
-                  ? 'Готов помочь с задачами на основе твоего настроения'
-                  : 'Отметь настроение, чтобы я мог подстроиться под тебя'}
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-purple-400"
-                onClick={() => setShowMoodModal(true)}
-              >
-                <Sparkles className="w-4 h-4 mr-1" />
-                {latestMood ? 'Обновить настроение' : 'Отметить настроение'}
-              </Button>
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* XP Bar */}

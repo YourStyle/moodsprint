@@ -11,6 +11,7 @@ from app.models import MoodCheck, PostponeLog, Subtask, Task, User, UserProfile
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskPriority, TaskStatus
 from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCalculator
+from app.services.card_service import CardService
 from app.utils import not_found, success_response, validation_error
 
 
@@ -146,9 +147,11 @@ def create_task():
     {
         "title": "Task title",
         "description": "Optional description",
-        "priority": "low|medium|high",
+        "priority": "low|medium|high",  // optional, AI will determine if not provided
         "due_date": "YYYY-MM-DD"  // optional, defaults to today
     }
+
+    Note: If priority is not provided, AI will analyze the task and set difficulty automatically.
     """
     user_id = int(get_jwt_identity())
     data = request.get_json()
@@ -163,9 +166,41 @@ def create_task():
     if len(title) > 500:
         return validation_error({"title": "Title must be less than 500 characters"})
 
-    priority = data.get("priority", TaskPriority.MEDIUM.value)
-    if priority not in [p.value for p in TaskPriority]:
-        priority = TaskPriority.MEDIUM.value
+    description = data.get("description")
+
+    # AI determines difficulty if not provided by user
+    priority = data.get("priority")
+    ai_difficulty = None
+
+    if not priority or priority not in [p.value for p in TaskPriority]:
+        # Use AI to determine difficulty
+        try:
+            card_service = CardService()
+            ai_difficulty = card_service.determine_task_difficulty(
+                title, description or ""
+            )
+
+            # Map AI difficulty to priority
+            difficulty_to_priority = {
+                "easy": TaskPriority.LOW.value,
+                "medium": TaskPriority.MEDIUM.value,
+                "hard": TaskPriority.HIGH.value,
+                "very_hard": TaskPriority.HIGH.value,
+            }
+            priority = difficulty_to_priority.get(
+                ai_difficulty, TaskPriority.MEDIUM.value
+            )
+        except Exception:
+            priority = TaskPriority.MEDIUM.value
+            ai_difficulty = "medium"
+    else:
+        # Map user-provided priority to difficulty for card generation
+        priority_to_difficulty = {
+            TaskPriority.LOW.value: "easy",
+            TaskPriority.MEDIUM.value: "medium",
+            TaskPriority.HIGH.value: "hard",
+        }
+        ai_difficulty = priority_to_difficulty.get(priority, "medium")
 
     # Parse due_date
     due_date_value = date.today()
@@ -176,7 +211,6 @@ def create_task():
         except ValueError:
             pass
 
-    description = data.get("description")
     preferred_time = data.get("preferred_time")
 
     # Validate preferred_time if provided
@@ -204,6 +238,7 @@ def create_task():
         original_due_date=due_date_value,
         preferred_time=preferred_time,
         scheduled_at=scheduled_at,
+        difficulty=ai_difficulty,  # Store AI-determined difficulty
     )
 
     db.session.add(task)
@@ -230,7 +265,13 @@ def create_task():
         except Exception:
             pass
 
-    return success_response({"task": task.to_dict()}, status_code=201)
+    return success_response(
+        {
+            "task": task.to_dict(),
+            "ai_difficulty": ai_difficulty,
+        },
+        status_code=201,
+    )
 
 
 @api_bp.route("/tasks/<int:task_id>", methods=["GET"])
@@ -314,6 +355,8 @@ def update_task(task_id: int):
     # Check achievements if task completed
     xp_info = None
     achievements_unlocked = []
+    generated_card = None
+
     if task.status == TaskStatus.COMPLETED.value:
         user = User.query.get(user_id)
         xp_info = user.add_xp(XPCalculator.task_completed())
@@ -321,6 +364,17 @@ def update_task(task_id: int):
 
         checker = AchievementChecker(user)
         achievements_unlocked = checker.check_all()
+
+        # Generate card for completing task
+        try:
+            card_service = CardService()
+            difficulty = task.difficulty or "medium"
+            generated_card = card_service.generate_card_for_task(
+                user_id, task.id, task.title, difficulty
+            )
+        except Exception:
+            # Card generation is optional, don't fail task completion
+            pass
 
         db.session.commit()
 
@@ -330,6 +384,8 @@ def update_task(task_id: int):
         response_data["achievements_unlocked"] = [
             a.to_dict() for a in achievements_unlocked
         ]
+    if generated_card:
+        response_data["card_earned"] = generated_card.to_dict()
 
     return success_response(response_data)
 
@@ -584,6 +640,7 @@ def update_subtask(subtask_id: int):
     # Calculate XP if completed
     xp_info = None
     achievements_unlocked = []
+    generated_card = None
 
     was_completed = (
         old_status != SubtaskStatus.COMPLETED.value
@@ -593,10 +650,23 @@ def update_subtask(subtask_id: int):
     if was_completed:
         user = User.query.get(user_id)
         xp_earned = XPCalculator.subtask_completed()
+        task = subtask.task
 
         # Bonus XP if all subtasks completed (task completed)
-        if subtask.task.status == TaskStatus.COMPLETED.value:
+        task_just_completed = task.status == TaskStatus.COMPLETED.value
+        if task_just_completed:
             xp_earned += XPCalculator.task_completed()
+
+            # Generate card for completing task
+            try:
+                card_service = CardService()
+                difficulty = task.difficulty or "medium"
+                generated_card = card_service.generate_card_for_task(
+                    user_id, task.id, task.title, difficulty
+                )
+            except Exception:
+                # Card generation is optional, don't fail task completion
+                pass
 
         xp_info = user.add_xp(xp_earned)
         user.update_streak()
@@ -612,6 +682,8 @@ def update_subtask(subtask_id: int):
         response_data["achievements_unlocked"] = [
             a.to_dict() for a in achievements_unlocked
         ]
+    if generated_card:
+        response_data["card_earned"] = generated_card.to_dict()
 
     return success_response(response_data)
 
