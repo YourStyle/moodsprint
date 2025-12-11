@@ -23,14 +23,26 @@ from app.models.user_profile import UserProfile
 
 logger = logging.getLogger(__name__)
 
-# Mapping task difficulty to card rarity
-DIFFICULTY_TO_RARITY = {
-    "easy": CardRarity.COMMON,
-    "medium": CardRarity.UNCOMMON,
-    "hard": CardRarity.RARE,
-    "very_hard": CardRarity.EPIC,
-    "boss": CardRarity.LEGENDARY,
-}
+# Probability-based rarity distribution (independent of task difficulty)
+# Each tuple is (rarity, cumulative_probability)
+# Common: 50%, Uncommon: 30%, Rare: 15%, Epic: 4%, Legendary: 1%
+RARITY_PROBABILITIES = [
+    (CardRarity.COMMON, 0.50),
+    (CardRarity.UNCOMMON, 0.80),
+    (CardRarity.RARE, 0.95),
+    (CardRarity.EPIC, 0.99),
+    (CardRarity.LEGENDARY, 1.00),
+]
+
+
+def get_random_rarity() -> CardRarity:
+    """Get a random rarity based on probability distribution."""
+    roll = random.random()
+    for rarity, cumulative_prob in RARITY_PROBABILITIES:
+        if roll <= cumulative_prob:
+            return rarity
+    return CardRarity.COMMON
+
 
 # Genre-specific card name prefixes for variety
 GENRE_CARD_PREFIXES = {
@@ -149,15 +161,20 @@ class CardService:
             return "medium"
 
     def generate_card_for_task(
-        self, user_id: int, task_id: int, task_title: str, difficulty: str
+        self,
+        user_id: int,
+        task_id: int | None,
+        task_title: str,
+        difficulty: str = "medium",
     ) -> UserCard | None:
         """
         Generate a card for completing a task.
 
+        Rarity is determined by random probability, not task difficulty.
         First tries to use an existing template, then falls back to AI generation.
         """
         genre = self.get_user_genre(user_id)
-        rarity = DIFFICULTY_TO_RARITY.get(difficulty, CardRarity.COMMON)
+        rarity = get_random_rarity()
 
         # Try to find an unused template for this genre
         template = self._get_random_template(genre)

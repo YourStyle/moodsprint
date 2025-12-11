@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Layers,
@@ -96,6 +96,46 @@ export default function DeckPage() {
   // Check if any card needs healing
   const cardsNeedHealing = cards.some((c) => c.current_hp < c.hp);
 
+  // Track which cards are generating images
+  const [generatingImages, setGeneratingImages] = useState<Set<number>>(new Set());
+  const generatedCardsRef = useRef<Set<number>>(new Set());
+
+  // Auto-generate images for cards without them
+  useEffect(() => {
+    const cardsWithoutImages = cards.filter(
+      (c) => !c.image_url && !generatingImages.has(c.id) && !generatedCardsRef.current.has(c.id)
+    );
+
+    if (cardsWithoutImages.length === 0) return;
+
+    // Generate images for up to 3 cards at a time
+    const cardsToGenerate = cardsWithoutImages.slice(0, 3);
+
+    cardsToGenerate.forEach((card) => {
+      setGeneratingImages((prev) => new Set(prev).add(card.id));
+      generatedCardsRef.current.add(card.id);
+
+      cardsService.generateCardImage(card.id)
+        .then((result) => {
+          if (result.success && result.data?.image_url) {
+            // Refresh cards data to get new image
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
+            queryClient.invalidateQueries({ queryKey: ['deck'] });
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to generate card image:', err);
+        })
+        .finally(() => {
+          setGeneratingImages((prev) => {
+            const next = new Set(prev);
+            next.delete(card.id);
+            return next;
+          });
+        });
+    });
+  }, [cards, generatingImages, queryClient]);
+
   if (!user) {
     return (
       <div className="p-4 text-center">
@@ -121,6 +161,7 @@ export default function DeckPage() {
     const rarityInfo = RARITY_INFO[card.rarity];
     const isSelected = selectedCard?.id === card.id;
     const healthPercent = (card.current_hp / card.hp) * 100;
+    const isGenerating = generatingImages.has(card.id);
 
     return (
       <div
@@ -152,10 +193,15 @@ export default function DeckPage() {
               />
             ) : (
               <div
-                className="w-14 h-14 rounded-lg flex items-center justify-center text-3xl"
+                className="w-14 h-14 rounded-lg flex items-center justify-center text-3xl relative"
                 style={{ backgroundColor: rarityInfo.color + '30' }}
               >
                 {card.emoji}
+                {isGenerating && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
             )}
             <div className="flex-1 min-w-0">

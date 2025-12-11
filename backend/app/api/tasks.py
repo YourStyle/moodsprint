@@ -14,6 +14,9 @@ from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCal
 from app.services.card_service import CardService
 from app.utils import not_found, success_response, validation_error
 
+# Minimum time (in minutes) after task creation before a card can be earned
+MIN_TASK_TIME_FOR_CARD = 10
+
 
 def get_current_time_slot() -> str:
     """Get current time slot based on hour (Moscow time, UTC+3)."""
@@ -365,16 +368,18 @@ def update_task(task_id: int):
         checker = AchievementChecker(user)
         achievements_unlocked = checker.check_all()
 
-        # Generate card for completing task
-        try:
-            card_service = CardService()
-            difficulty = task.difficulty or "medium"
-            generated_card = card_service.generate_card_for_task(
-                user_id, task.id, task.title, difficulty
-            )
-        except Exception:
-            # Card generation is optional, don't fail task completion
-            pass
+        # Generate card for completing task only if enough time passed since creation
+        task_age_minutes = (datetime.utcnow() - task.created_at).total_seconds() / 60
+        if task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
+            try:
+                card_service = CardService()
+                difficulty = task.difficulty or "medium"
+                generated_card = card_service.generate_card_for_task(
+                    user_id, task.id, task.title, difficulty
+                )
+            except Exception:
+                # Card generation is optional, don't fail task completion
+                pass
 
         db.session.commit()
 
@@ -657,16 +662,20 @@ def update_subtask(subtask_id: int):
         if task_just_completed:
             xp_earned += XPCalculator.task_completed()
 
-            # Generate card for completing task
-            try:
-                card_service = CardService()
-                difficulty = task.difficulty or "medium"
-                generated_card = card_service.generate_card_for_task(
-                    user_id, task.id, task.title, difficulty
-                )
-            except Exception:
-                # Card generation is optional, don't fail task completion
-                pass
+            # Generate card for completing task only if enough time passed since creation
+            task_age_minutes = (
+                datetime.utcnow() - task.created_at
+            ).total_seconds() / 60
+            if task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
+                try:
+                    card_service = CardService()
+                    difficulty = task.difficulty or "medium"
+                    generated_card = card_service.generate_card_for_task(
+                        user_id, task.id, task.title, difficulty
+                    )
+                except Exception:
+                    # Card generation is optional, don't fail task completion
+                    pass
 
         xp_info = user.add_xp(xp_earned)
         user.update_streak()

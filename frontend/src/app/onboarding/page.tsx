@@ -171,9 +171,9 @@ export default function OnboardingPage() {
   const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
 
   return (
-    <div className="min-h-screen p-4 flex flex-col pt-safe pb-safe">
-      {/* Progress */}
-      <div className="flex gap-1 mb-6">
+    <div className="h-screen flex flex-col pt-safe overflow-hidden">
+      {/* Progress - fixed at top */}
+      <div className="flex gap-1 px-4 pt-4 pb-2 flex-shrink-0">
         {progressSteps.map((s, i) => (
           <div
             key={s}
@@ -188,68 +188,73 @@ export default function OnboardingPage() {
 
       {/* Step: Time */}
       {step === 'time' && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Когда ты наиболее продуктивен?
-            </h1>
-            <p className="text-gray-400">
-              Это поможет нам лучше планировать твои задачи
-            </p>
-          </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Когда ты наиболее продуктивен?
+              </h1>
+              <p className="text-gray-400">
+                Это поможет нам лучше планировать твои задачи
+              </p>
+            </div>
 
-          <div className="space-y-3">
-            {timeOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleTimeSelect(opt.value)}
-                className={`w-full p-4 rounded-2xl text-left transition-all ${
-                  data.productive_time === opt.value
-                    ? 'bg-primary-500/20 ring-2 ring-primary-500'
-                    : 'bg-gray-800 hover:bg-gray-700'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <div>
-                    <p className="font-medium text-white">{opt.label}</p>
-                    <p className="text-sm text-gray-400">{opt.desc}</p>
+            <div className="space-y-3 pb-4">
+              {timeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleTimeSelect(opt.value)}
+                  className={`w-full p-4 rounded-2xl text-left transition-all ${
+                    data.productive_time === opt.value
+                      ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                      : 'bg-gray-800 hover:bg-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{opt.emoji}</span>
+                    <div>
+                      <p className="font-medium text-white">{opt.label}</p>
+                      <p className="text-sm text-gray-400">{opt.desc}</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Step: Tasks */}
       {step === 'tasks' && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Какие задачи тебе нравятся?
-            </h1>
-            <p className="text-gray-400">Выбери одну или несколько</p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Какие задачи тебе нравятся?
+              </h1>
+              <p className="text-gray-400">Выбери одну или несколько</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pb-4">
+              {taskOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleTaskToggle(opt.value)}
+                  className={`p-4 rounded-2xl text-center transition-all ${
+                    data.favorite_tasks.includes(opt.value)
+                      ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                      : 'bg-gray-800 hover:bg-gray-700'
+                  }`}
+                >
+                  <span className="text-2xl block mb-2">{opt.emoji}</span>
+                  <p className="text-sm font-medium text-white">{opt.label}</p>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 flex-1">
-            {taskOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleTaskToggle(opt.value)}
-                className={`p-4 rounded-2xl text-center transition-all ${
-                  data.favorite_tasks.includes(opt.value)
-                    ? 'bg-primary-500/20 ring-2 ring-primary-500'
-                    : 'bg-gray-800 hover:bg-gray-700'
-                }`}
-              >
-                <span className="text-2xl block mb-2">{opt.emoji}</span>
-                <p className="text-sm font-medium text-white">{opt.label}</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-3 mt-6">
+          {/* Fixed buttons */}
+          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
             <Button variant="secondary" onClick={() => setStep('time')}>
               Назад
             </Button>
@@ -266,32 +271,35 @@ export default function OnboardingPage() {
 
       {/* Step: Challenges */}
       {step === 'challenges' && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              С чем бывают сложности?
-            </h1>
-            <p className="text-gray-400">Выбери что актуально для тебя</p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                С чем бывают сложности?
+              </h1>
+              <p className="text-gray-400">Выбери что актуально для тебя</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pb-4">
+              {challengeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleChallengeToggle(opt.value)}
+                  className={`p-4 rounded-2xl text-center transition-all ${
+                    data.challenges.includes(opt.value)
+                      ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                      : 'bg-gray-800 hover:bg-gray-700'
+                  }`}
+                >
+                  <span className="text-2xl block mb-2">{opt.emoji}</span>
+                  <p className="text-sm font-medium text-white">{opt.label}</p>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 flex-1">
-            {challengeOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleChallengeToggle(opt.value)}
-                className={`p-4 rounded-2xl text-center transition-all ${
-                  data.challenges.includes(opt.value)
-                    ? 'bg-primary-500/20 ring-2 ring-primary-500'
-                    : 'bg-gray-800 hover:bg-gray-700'
-                }`}
-              >
-                <span className="text-2xl block mb-2">{opt.emoji}</span>
-                <p className="text-sm font-medium text-white">{opt.label}</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-3 mt-6">
+          {/* Fixed buttons */}
+          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
             <Button variant="secondary" onClick={() => setStep('tasks')}>
               Назад
             </Button>
@@ -308,39 +316,42 @@ export default function OnboardingPage() {
 
       {/* Step: Genre */}
       {step === 'genre' && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Выбери свой жанр
-            </h1>
-            <p className="text-gray-400">
-              Это определит стиль твоих квестов и приключений
-            </p>
-          </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Выбери свой жанр
+              </h1>
+              <p className="text-gray-400">
+                Это определит стиль твоих квестов и приключений
+              </p>
+            </div>
 
-          <div className="space-y-3 flex-1">
-            {genreOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleGenreSelect(opt.value)}
-                className={`w-full p-4 rounded-2xl text-left transition-all ${
-                  selectedGenre === opt.value
-                    ? 'bg-primary-500/20 ring-2 ring-primary-500'
-                    : 'bg-gray-800 hover:bg-gray-700'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <div>
-                    <p className="font-medium text-white">{opt.label}</p>
-                    <p className="text-sm text-gray-400">{opt.desc}</p>
+            <div className="space-y-3 pb-4">
+              {genreOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleGenreSelect(opt.value)}
+                  className={`w-full p-4 rounded-2xl text-left transition-all ${
+                    selectedGenre === opt.value
+                      ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                      : 'bg-gray-800 hover:bg-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{opt.emoji}</span>
+                    <div>
+                      <p className="font-medium text-white">{opt.label}</p>
+                      <p className="text-sm text-gray-400">{opt.desc}</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
+          {/* Fixed buttons */}
+          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
             <Button variant="secondary" onClick={() => setStep('challenges')}>
               Назад
             </Button>
@@ -353,45 +364,48 @@ export default function OnboardingPage() {
 
       {/* Step: Goals */}
       {step === 'goals' && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Чего ты хочешь достичь?
-            </h1>
-            <p className="text-gray-400">Необязательно, но поможет нам лучше</p>
-          </div>
-
-          <div className="space-y-4 flex-1">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">
-                Расскажи о своей работе или учёбе
-              </label>
-              <textarea
-                value={data.work_description}
-                onChange={(e) =>
-                  setData({ ...data, work_description: e.target.value })
-                }
-                placeholder="Например: работаю разработчиком, много задач параллельно..."
-                className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                rows={3}
-              />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Чего ты хочешь достичь?
+              </h1>
+              <p className="text-gray-400">Необязательно, но поможет нам лучше</p>
             </div>
 
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">
-                Твои цели в продуктивности
-              </label>
-              <textarea
-                value={data.goals}
-                onChange={(e) => setData({ ...data, goals: e.target.value })}
-                placeholder="Например: хочу лучше фокусироваться и меньше прокрастинировать..."
-                className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                rows={3}
-              />
+            <div className="space-y-4 pb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Расскажи о своей работе или учёбе
+                </label>
+                <textarea
+                  value={data.work_description}
+                  onChange={(e) =>
+                    setData({ ...data, work_description: e.target.value })
+                  }
+                  placeholder="Например: работаю разработчиком, много задач параллельно..."
+                  className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Твои цели в продуктивности
+                </label>
+                <textarea
+                  value={data.goals}
+                  onChange={(e) => setData({ ...data, goals: e.target.value })}
+                  placeholder="Например: хочу лучше фокусироваться и меньше прокрастинировать..."
+                  className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows={3}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
+          {/* Fixed buttons */}
+          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
             <Button variant="secondary" onClick={() => setStep('genre')}>
               Назад
             </Button>
@@ -408,30 +422,33 @@ export default function OnboardingPage() {
 
       {/* Step: Result */}
       {step === 'result' && result && (
-        <div className="flex-1 flex flex-col">
-          <div className="text-center mb-6">
-            <span className="text-5xl mb-4 block">🎉</span>
-            <h1 className="text-2xl font-bold text-white mb-2">Готово!</h1>
-            <p className="text-gray-400">{result.message}</p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <span className="text-5xl mb-4 block">🎉</span>
+              <h1 className="text-2xl font-bold text-white mb-2">Готово!</h1>
+              <p className="text-gray-400">{result.message}</p>
+            </div>
+
+            {result.tips.length > 0 && (
+              <Card className="mb-6">
+                <h3 className="font-medium text-white mb-3">
+                  Персональные советы:
+                </h3>
+                <ul className="space-y-2">
+                  {result.tips.map((tip, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-300">
+                      <span className="text-primary-400">•</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
           </div>
 
-          {result.tips.length > 0 && (
-            <Card className="mb-6">
-              <h3 className="font-medium text-white mb-3">
-                Персональные советы:
-              </h3>
-              <ul className="space-y-2">
-                {result.tips.map((tip, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-300">
-                    <span className="text-primary-400">•</span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          <div className="mt-auto">
+          {/* Fixed button */}
+          <div className="p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
             <Button className="w-full" onClick={handleFinish}>
               Начать работу
             </Button>

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users } from 'lucide-react';
 import { Card, Progress, Button } from '@/components/ui';
-import { XPBar, StreakBadge, AchievementCard, DailyQuests, CharacterStats } from '@/components/gamification';
+import { XPBar, StreakBadge, AchievementCard, DailyQuests } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
 import { gamificationService } from '@/services';
 import { authService } from '@/services';
@@ -37,12 +37,6 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  const { data: characterData } = useQuery({
-    queryKey: ['character'],
-    queryFn: () => gamificationService.getCharacter(),
-    enabled: !!user,
-  });
-
   const handleLogout = () => {
     authService.logout();
     setUser(null);
@@ -61,7 +55,6 @@ export default function ProfilePage() {
   const achievements = achievementsData?.data;
   const patterns = patternsData?.data;
   const quests = questsData?.data?.quests || [];
-  const character = characterData?.data?.character;
 
   const getProductivityIcon = (time: string) => {
     switch (time) {
@@ -150,30 +143,33 @@ export default function ProfilePage() {
       {/* Daily Quests */}
       {quests.length > 0 && <DailyQuests quests={quests} />}
 
-      {/* Character Stats & Arena */}
-      {character && (
-        <>
-          <CharacterStats character={character} />
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => router.push('/arena')}
-            >
-              <Swords className="w-5 h-5 mr-2" />
-              Арена
-            </Button>
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => router.push('/friends')}
-            >
-              <Users className="w-5 h-5 mr-2" />
-              Друзья
-            </Button>
-          </div>
-        </>
-      )}
+      {/* Deck, Arena & Friends buttons */}
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => router.push('/deck')}
+        >
+          <Scroll className="w-5 h-5 mr-2" />
+          Колода
+        </Button>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => router.push('/arena')}
+        >
+          <Swords className="w-5 h-5 mr-2" />
+          Арена
+        </Button>
+      </div>
+      <Button
+        variant="secondary"
+        className="w-full"
+        onClick={() => router.push('/friends')}
+      >
+        <Users className="w-5 h-5 mr-2" />
+        Друзья
+      </Button>
 
       {/* Productivity Patterns */}
       {patterns && patterns.total_sessions > 0 && (

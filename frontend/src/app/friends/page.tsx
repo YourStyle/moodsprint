@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,7 +10,6 @@ import {
   Search,
   Check,
   X,
-  ChevronLeft,
   Send,
   Clock,
   Inbox,
@@ -22,7 +21,7 @@ import {
 import { Card, Button, Progress } from '@/components/ui';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback } from '@/lib/telegram';
+import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Card as CardType, Friend, FriendRequest, Trade } from '@/services/cards';
 
@@ -199,6 +198,18 @@ export default function FriendsPage() {
     setTradeMessage('');
   };
 
+  // Handle Telegram back button for trade form
+  useEffect(() => {
+    if (showTradeForm) {
+      showBackButton(handleCloseTrade);
+    } else {
+      hideBackButton();
+    }
+    return () => {
+      hideBackButton();
+    };
+  }, [showTradeForm]);
+
   const renderCardMini = (card: CardType | null, onClick?: () => void, isSelected?: boolean) => {
     if (!card) {
       return (
@@ -260,13 +271,6 @@ export default function FriendsPage() {
   if (showTradeForm && selectedFriend) {
     return (
       <div className="min-h-screen p-4 pt-safe pb-24">
-        <div className="mb-4">
-          <Button variant="ghost" size="sm" onClick={handleCloseTrade}>
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Назад
-          </Button>
-        </div>
-
         <div className="text-center mb-6">
           <ArrowLeftRight className="w-10 h-10 text-purple-500 mx-auto mb-2" />
           <h1 className="text-xl font-bold text-white">Предложить обмен</h1>
@@ -284,9 +288,9 @@ export default function FriendsPage() {
               <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {myCards.length === 0 ? (
-                <p className="col-span-2 text-center text-gray-500 py-4">
+                <p className="text-center text-gray-500 py-4">
                   Нет карт для обмена
                 </p>
               ) : (
@@ -313,9 +317,9 @@ export default function FriendsPage() {
               <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {friendCards.length === 0 ? (
-                <p className="col-span-2 text-center text-gray-500 py-4">
+                <p className="text-center text-gray-500 py-4">
                   У друга нет карт для обмена
                 </p>
               ) : (
@@ -578,13 +582,15 @@ export default function FriendsPage() {
                             <span className="text-sm text-gray-400">От:</span>
                             <span className="text-white font-medium">{trade.sender_name}</span>
                           </div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="flex-1">
+                          <div className="space-y-3 mb-3">
+                            <div>
                               <p className="text-xs text-gray-500 mb-1">Предлагает</p>
                               {trade.sender_card && renderCardMini(trade.sender_card)}
                             </div>
-                            <ArrowLeftRight className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                            <div className="flex-1">
+                            <div className="flex justify-center">
+                              <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
+                            </div>
+                            <div>
                               <p className="text-xs text-gray-500 mb-1">Хочет</p>
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
@@ -645,13 +651,15 @@ export default function FriendsPage() {
                             <Clock className="w-4 h-4 text-yellow-500 ml-auto" />
                             <span className="text-xs text-yellow-500">Ожидает</span>
                           </div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="flex-1">
+                          <div className="space-y-3 mb-3">
+                            <div>
                               <p className="text-xs text-gray-500 mb-1">Ваша карта</p>
                               {trade.sender_card && renderCardMini(trade.sender_card)}
                             </div>
-                            <ArrowLeftRight className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                            <div className="flex-1">
+                            <div className="flex justify-center">
+                              <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
+                            </div>
+                            <div>
                               <p className="text-xs text-gray-500 mb-1">Взамен</p>
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
