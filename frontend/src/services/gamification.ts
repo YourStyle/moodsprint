@@ -181,28 +181,96 @@ interface MonstersResponse {
 
 // Battle types
 export interface BattleLogEntry {
-  round: number;
-  actor: 'card' | 'monster' | 'system';
-  action?: 'attack' | 'critical' | 'combo' | 'critical_combo' | 'special' | 'miss' | 'prepare' | 'card_destroyed';
-  damage: number;
+  round?: number;
+  actor: 'player' | 'monster' | 'system';
+  action?: 'attack' | 'critical' | 'card_destroyed';
+  damage?: number;
   is_critical?: boolean;
-  is_combo?: boolean;
   message?: string;
-  card_id?: number;
   card_name?: string;
   card_emoji?: string;
-  target?: string;
-  target_card_id?: number;
-  target_card_name?: string;
+  target_name?: string;
+  target_emoji?: string;
 }
 
 export interface CardBattleState {
-  id: number;
+  id: number | string;
   name: string;
+  emoji?: string;
+  image_url?: string;
   hp: number;
   max_hp: number;
+  attack: number;
+  rarity?: string;
+  genre?: string;
+  alive: boolean;
 }
 
+// Monster card in battle
+export interface MonsterCardState {
+  id: string;
+  name: string;
+  emoji: string;
+  hp: number;
+  max_hp: number;
+  attack: number;
+  alive: boolean;
+}
+
+// Active battle state
+export interface ActiveBattle {
+  id: number;
+  user_id: number;
+  monster_id: number;
+  monster: Monster | null;
+  state: {
+    player_cards: CardBattleState[];
+    monster_cards: MonsterCardState[];
+    current_turn: 'player' | 'monster';
+    battle_log: BattleLogEntry[];
+    damage_dealt: number;
+    damage_taken: number;
+    scaled_stats: {
+      hp: number;
+      attack: number;
+      defense: number;
+      xp_reward: number;
+      stat_points_reward: number;
+    };
+  };
+  status: 'active' | 'won' | 'lost';
+  current_round: number;
+  created_at: string;
+}
+
+// Start battle response
+export interface StartBattleResponse {
+  success: boolean;
+  battle: ActiveBattle;
+  message?: string;
+  error?: string;
+}
+
+// Turn result response
+export interface TurnResult {
+  success: boolean;
+  battle: ActiveBattle;
+  turn_log: BattleLogEntry[];
+  status: 'continue' | 'won' | 'lost';
+  result?: {
+    won: boolean;
+    rounds: number;
+    damage_dealt: number;
+    damage_taken: number;
+    xp_earned: number;
+    stat_points_earned: number;
+    level_up: boolean;
+    cards_lost: number[];
+    reward_card?: BattleCard | null;
+  };
+}
+
+// Legacy battle result for backwards compatibility
 export interface BattleResult {
   won: boolean;
   rounds: number;
@@ -318,6 +386,30 @@ export const gamificationService = {
     return api.get<MonstersResponse>('/arena/monsters');
   },
 
+  // Start a new turn-based battle
+  async startBattle(monsterId: number, cardIds: number[]): Promise<ApiResponse<StartBattleResponse>> {
+    return api.post<StartBattleResponse>('/arena/battle', { monster_id: monsterId, card_ids: cardIds });
+  },
+
+  // Get active battle if any
+  async getActiveBattle(): Promise<ApiResponse<{ battle: ActiveBattle | null }>> {
+    return api.get<{ battle: ActiveBattle | null }>('/arena/battle/active');
+  },
+
+  // Execute a turn in battle
+  async executeTurn(playerCardId: number, targetCardId: string): Promise<ApiResponse<TurnResult>> {
+    return api.post<TurnResult>('/arena/battle/turn', {
+      player_card_id: playerCardId,
+      target_card_id: targetCardId,
+    });
+  },
+
+  // Forfeit the current battle
+  async forfeitBattle(): Promise<ApiResponse<TurnResult>> {
+    return api.post<TurnResult>('/arena/battle/forfeit');
+  },
+
+  // Legacy battle method (for backwards compatibility)
   async battle(monsterId: number, cardIds: number[]): Promise<ApiResponse<BattleResult>> {
     return api.post<BattleResult>('/arena/battle', { monster_id: monsterId, card_ids: cardIds });
   },

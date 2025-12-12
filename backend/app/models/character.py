@@ -290,6 +290,104 @@ class DailyMonster(db.Model):
     )
 
 
+class MonsterCard(db.Model):
+    """Cards that belong to a monster's deck."""
+
+    __tablename__ = "monster_cards"
+
+    id = db.Column(db.Integer, primary_key=True)
+    monster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("monsters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    # Stats
+    hp = db.Column(db.Integer, default=50, nullable=False)
+    attack = db.Column(db.Integer, default=15, nullable=False)
+
+    # Visual
+    emoji = db.Column(db.String(10), default="👾")
+    image_url = db.Column(db.String(512), nullable=True)
+
+    # Rarity affects stats scaling
+    rarity = db.Column(db.String(20), default="common")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    monster = db.relationship(
+        "Monster", backref=db.backref("cards", lazy="dynamic", cascade="all, delete")
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "monster_id": self.monster_id,
+            "name": self.name,
+            "description": self.description,
+            "hp": self.hp,
+            "attack": self.attack,
+            "emoji": self.emoji,
+            "image_url": self.image_url,
+            "rarity": self.rarity,
+        }
+
+
+class ActiveBattle(db.Model):
+    """Active turn-based battle state."""
+
+    __tablename__ = "active_battles"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    monster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("monsters.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # Battle state stored as JSON
+    # Contains: player_cards, monster_cards, current_turn, battle_log
+    state = db.Column(db.JSON, nullable=False, default=dict)
+
+    # Status: active, won, lost
+    status = db.Column(db.String(20), default="active")
+
+    current_round = db.Column(db.Integer, default=1)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    user = db.relationship("User")
+    monster = db.relationship("Monster")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "monster_id": self.monster_id,
+            "monster": self.monster.to_dict() if self.monster else None,
+            "state": self.state,
+            "status": self.status,
+            "current_round": self.current_round,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class BattleLog(db.Model):
     """Log of battles."""
 

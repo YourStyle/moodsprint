@@ -757,13 +757,15 @@ def get_arena_monsters():
 @jwt_required()
 def start_battle():
     """
-    Start a card-based battle with a monster.
+    Start a turn-based card battle with a monster.
 
     Request body:
     {
         "monster_id": 1,
         "card_ids": [1, 2, 3]  // IDs of cards to use in battle
     }
+
+    Returns battle state with player and monster decks.
     """
     user_id = int(get_jwt_identity())
     data = request.get_json() or {}
@@ -780,7 +782,76 @@ def start_battle():
     from app.services.card_battle_service import CardBattleService
 
     service = CardBattleService()
-    result = service.execute_card_battle(user_id, monster_id, card_ids)
+    result = service.start_battle(user_id, monster_id, card_ids)
+
+    if "error" in result:
+        return validation_error(result)
+
+    return success_response(result)
+
+
+@api_bp.route("/arena/battle/active", methods=["GET"])
+@jwt_required()
+def get_active_battle():
+    """Get user's active battle if any."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    battle = service.get_active_battle(user_id)
+
+    if not battle:
+        return success_response({"battle": None})
+
+    return success_response({"battle": battle.to_dict()})
+
+
+@api_bp.route("/arena/battle/turn", methods=["POST"])
+@jwt_required()
+def execute_battle_turn():
+    """
+    Execute a turn in the active battle.
+
+    Request body:
+    {
+        "player_card_id": 1,        // ID of player's card to attack with
+        "target_card_id": "m_1_0"   // ID of monster's card to target
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    player_card_id = data.get("player_card_id")
+    target_card_id = data.get("target_card_id")
+
+    if not player_card_id:
+        return validation_error({"player_card_id": "Select a card to attack with"})
+
+    if not target_card_id:
+        return validation_error({"target_card_id": "Select a target to attack"})
+
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    result = service.execute_turn(user_id, player_card_id, target_card_id)
+
+    if "error" in result:
+        return validation_error(result)
+
+    return success_response(result)
+
+
+@api_bp.route("/arena/battle/forfeit", methods=["POST"])
+@jwt_required()
+def forfeit_battle():
+    """Forfeit the current battle."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    result = service.forfeit_battle(user_id)
 
     if "error" in result:
         return validation_error(result)

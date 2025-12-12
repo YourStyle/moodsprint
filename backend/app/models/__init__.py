@@ -11,7 +11,14 @@ from app.models.card import (
     Friendship,
     UserCard,
 )
-from app.models.character import BattleLog, CharacterStats, DailyMonster, Monster
+from app.models.character import (
+    ActiveBattle,
+    BattleLog,
+    CharacterStats,
+    DailyMonster,
+    Monster,
+    MonsterCard,
+)
 from app.models.focus_session import FocusSession
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
@@ -36,6 +43,8 @@ __all__ = [
     "CharacterStats",
     "Monster",
     "DailyMonster",
+    "MonsterCard",
+    "ActiveBattle",
     "BattleLog",
     "DailyQuest",
     # Card system

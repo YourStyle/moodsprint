@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Swords,
@@ -16,6 +16,8 @@ import {
   Check,
   AlertCircle,
   Sparkles,
+  X,
+  Target,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
 import { gamificationService } from '@/services';
@@ -24,9 +26,12 @@ import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type {
   Monster,
-  BattleResult,
-  BattleLogEntry,
   BattleCard,
+  ActiveBattle,
+  TurnResult,
+  CardBattleState,
+  MonsterCardState,
+  BattleLogEntry,
 } from '@/services/gamification';
 
 type Tab = 'battle' | 'leaderboard';
@@ -44,9 +49,12 @@ export default function ArenaPage() {
   const [gameState, setGameState] = useState<GameState>('select');
   const [selectedMonster, setSelectedMonster] = useState<Monster | null>(null);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
-  const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
-  const [currentLogIndex, setCurrentLogIndex] = useState(0);
-  const [showingLog, setShowingLog] = useState(false);
+  const [activeBattle, setActiveBattle] = useState<ActiveBattle | null>(null);
+  const [selectedPlayerCard, setSelectedPlayerCard] = useState<number | null>(null);
+  const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
+  const [lastTurnLog, setLastTurnLog] = useState<BattleLogEntry[]>([]);
+  const [battleResult, setBattleResult] = useState<TurnResult['result'] | null>(null);
+  const [showTurnAnimation, setShowTurnAnimation] = useState(false);
 
   // Leaderboard state
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('weekly');
@@ -58,6 +66,13 @@ export default function ArenaPage() {
     enabled: !!user && activeTab === 'battle',
   });
 
+  // Check for active battle on mount
+  const { data: activeBattleData } = useQuery({
+    queryKey: ['arena', 'active-battle'],
+    queryFn: () => gamificationService.getActiveBattle(),
+    enabled: !!user && activeTab === 'battle',
+  });
+
   // Leaderboard query
   const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery({
     queryKey: ['leaderboard', leaderboardType],
@@ -65,36 +80,65 @@ export default function ArenaPage() {
     enabled: !!user && activeTab === 'leaderboard',
   });
 
-  const battleMutation = useMutation({
+  // Resume active battle if exists
+  useEffect(() => {
+    if (activeBattleData?.data?.battle) {
+      setActiveBattle(activeBattleData.data.battle);
+      setGameState('battle');
+    }
+  }, [activeBattleData]);
+
+  // Start battle mutation
+  const startBattleMutation = useMutation({
     mutationFn: ({ monsterId, cardIds }: { monsterId: number; cardIds: number[] }) =>
-      gamificationService.battle(monsterId, cardIds),
+      gamificationService.startBattle(monsterId, cardIds),
     onSuccess: (response) => {
-      if (response.success && response.data) {
+      if (response.success && response.data?.battle) {
         hapticFeedback('medium');
-        setBattleResult(response.data);
-        setShowingLog(true);
-        setCurrentLogIndex(0);
+        setActiveBattle(response.data.battle);
         setGameState('battle');
-        animateBattle(response.data.battle_log);
       }
     },
   });
 
-  const animateBattle = (log: BattleLogEntry[]) => {
-    log.forEach((entry, index) => {
-      setTimeout(() => {
-        setCurrentLogIndex(index);
-        hapticFeedback('light');
-        if (index === log.length - 1) {
-          setTimeout(() => {
-            setShowingLog(false);
+  // Execute turn mutation
+  const executeTurnMutation = useMutation({
+    mutationFn: ({ playerCardId, targetCardId }: { playerCardId: number; targetCardId: string }) =>
+      gamificationService.executeTurn(playerCardId, targetCardId),
+    onSuccess: (response) => {
+      if (response.success && response.data) {
+        hapticFeedback('medium');
+        setLastTurnLog(response.data.turn_log);
+        setShowTurnAnimation(true);
+
+        // Animate turn log
+        setTimeout(() => {
+          setShowTurnAnimation(false);
+          setActiveBattle(response.data!.battle);
+          setSelectedPlayerCard(null);
+          setSelectedTargetCard(null);
+
+          if (response.data!.status === 'won' || response.data!.status === 'lost') {
+            setBattleResult(response.data!.result || null);
             setGameState('result');
-            hapticFeedback(battleResult?.won ? 'success' : 'error');
-          }, 1500);
-        }
-      }, (index + 1) * 600);
-    });
-  };
+            hapticFeedback(response.data!.status === 'won' ? 'success' : 'error');
+          }
+        }, 1500);
+      }
+    },
+  });
+
+  // Forfeit mutation
+  const forfeitMutation = useMutation({
+    mutationFn: () => gamificationService.forfeitBattle(),
+    onSuccess: (response) => {
+      if (response.success && response.data) {
+        hapticFeedback('error');
+        setBattleResult(response.data.result || null);
+        setGameState('result');
+      }
+    },
+  });
 
   const handleSelectMonster = (monster: Monster) => {
     setSelectedMonster(monster);
@@ -109,7 +153,7 @@ export default function ArenaPage() {
         return prev.filter((id) => id !== cardId);
       }
       if (prev.length >= 5) {
-        return prev; // Max 5 cards
+        return prev;
       }
       return [...prev, cardId];
     });
@@ -118,9 +162,18 @@ export default function ArenaPage() {
 
   const handleStartBattle = () => {
     if (selectedMonster && selectedCards.length > 0) {
-      battleMutation.mutate({
+      startBattleMutation.mutate({
         monsterId: selectedMonster.id,
         cardIds: selectedCards,
+      });
+    }
+  };
+
+  const handleExecuteTurn = () => {
+    if (selectedPlayerCard && selectedTargetCard) {
+      executeTurnMutation.mutate({
+        playerCardId: selectedPlayerCard,
+        targetCardId: selectedTargetCard,
       });
     }
   };
@@ -129,11 +182,13 @@ export default function ArenaPage() {
     setGameState('select');
     setSelectedMonster(null);
     setSelectedCards([]);
+    setActiveBattle(null);
     setBattleResult(null);
-    queryClient.invalidateQueries({ queryKey: ['arena', 'monsters'] });
+    setSelectedPlayerCard(null);
+    setSelectedTargetCard(null);
+    queryClient.invalidateQueries({ queryKey: ['arena'] });
     queryClient.invalidateQueries({ queryKey: ['cards'] });
     queryClient.invalidateQueries({ queryKey: ['deck'] });
-    queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
   };
 
   const handleBackToMonsters = () => {
@@ -194,16 +249,11 @@ export default function ArenaPage() {
   const leaderboard = leaderboardData?.data?.leaderboard || [];
   const isLoading = monstersLoading;
 
-  // Calculate selected cards' genres for validation
-  const selectedCardsData = deck.filter((card) => selectedCards.includes(card.id));
-  const selectedGenres = new Set(selectedCardsData.map((card) => card.genre));
-  const minGenresRequired = selectedMonster?.required_cards?.min_genres || 1;
-  const hasEnoughGenres = selectedGenres.size >= minGenresRequired;
+  // Get alive cards for battle UI
+  const alivePlayerCards = activeBattle?.state.player_cards.filter((c) => c.alive) || [];
+  const aliveMonsterCards = activeBattle?.state.monster_cards.filter((c) => c.alive) || [];
 
-  const canBattle =
-    selectedMonster &&
-    selectedCards.length >= (selectedMonster.required_cards?.min_cards || 1) &&
-    hasEnoughGenres;
+  const canAttack = selectedPlayerCard && selectedTargetCard && !executeTurnMutation.isPending;
 
   if (!user) {
     return (
@@ -219,7 +269,7 @@ export default function ArenaPage() {
       <div className="text-center mb-4">
         <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
         <h1 className="text-2xl font-bold text-white">Арена</h1>
-        <p className="text-sm text-gray-400">Сражайся картами и получай награды</p>
+        <p className="text-sm text-gray-400">Пошаговые бои картами</p>
       </div>
 
       {/* Tab Switcher */}
@@ -314,27 +364,15 @@ export default function ArenaPage() {
                       onClick={() => deck.length > 0 && handleSelectMonster(monster)}
                     >
                       <div className="flex items-center gap-3">
-                        {monster.sprite_url ? (
-                          <img
-                            src={monster.sprite_url}
-                            alt={monster.name}
-                            className={`w-16 h-16 rounded-xl object-cover ${
-                              monster.is_boss
-                                ? 'border-2 border-red-500/50'
-                                : ''
-                            }`}
-                          />
-                        ) : (
-                          <div
-                            className={`w-16 h-16 rounded-xl flex items-center justify-center text-4xl ${
-                              monster.is_boss
-                                ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30'
-                                : 'bg-gray-700'
-                            }`}
-                          >
-                            {monster.emoji}
-                          </div>
-                        )}
+                        <div
+                          className={`w-16 h-16 rounded-xl flex items-center justify-center text-4xl ${
+                            monster.is_boss
+                              ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30'
+                              : 'bg-gray-700'
+                          }`}
+                        >
+                          {monster.emoji}
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium text-white">{monster.name}</h3>
@@ -342,24 +380,15 @@ export default function ArenaPage() {
                               <Star className="w-4 h-4 text-yellow-500" />
                             )}
                           </div>
-                          {monster.description && (
-                            <p className="text-xs text-gray-500 line-clamp-1">{monster.description}</p>
-                          )}
+                          <div className="flex items-center gap-3 mt-1 text-xs">
+                            <span className="text-purple-400">
+                              {monster.is_boss ? '5 карт' : '3 карты'} в колоде
+                            </span>
+                          </div>
                           <div className="flex items-center gap-3 mt-1 text-xs">
                             <span className="text-red-400">ATK {monster.attack}</span>
-                            <span className="text-blue-400">DEF {monster.defense}</span>
                             <span className="text-green-400">HP {monster.hp}</span>
                           </div>
-                          {monster.required_cards && (
-                            <p className="text-xs text-purple-400 mt-1">
-                              Мин. карт: {monster.required_cards.min_cards}
-                              {monster.required_cards.min_genres && monster.required_cards.min_genres > 1 && (
-                                <span className="text-amber-400 ml-2">
-                                  • {monster.required_cards.min_genres}+ жанров
-                                </span>
-                              )}
-                            </p>
-                          )}
                         </div>
                         <div className="text-right text-xs">
                           <p className="text-amber-400">+{monster.xp_reward} XP</p>
@@ -383,23 +412,14 @@ export default function ArenaPage() {
 
               <Card className="mb-4">
                 <div className="flex items-center gap-3">
-                  {selectedMonster.sprite_url ? (
-                    <img
-                      src={selectedMonster.sprite_url}
-                      alt={selectedMonster.name}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-2xl">
-                      {selectedMonster.emoji}
-                    </div>
-                  )}
+                  <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-2xl">
+                    {selectedMonster.emoji}
+                  </div>
                   <div>
                     <h3 className="font-medium text-white">{selectedMonster.name}</h3>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <span className="text-red-400">ATK {selectedMonster.attack}</span>
-                      <span className="text-green-400">HP {selectedMonster.hp}</span>
-                    </div>
+                    <p className="text-xs text-purple-400">
+                      У монстра {selectedMonster.is_boss ? '5' : '3'} карт в колоде
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -407,26 +427,9 @@ export default function ArenaPage() {
               <h2 className="text-lg font-semibold text-white mb-2">
                 Выбери карты для боя
               </h2>
-              <div className="text-sm text-gray-400 mb-3 space-y-1">
-                <p>
-                  Выбрано: {selectedCards.length}/5
-                  {selectedMonster.required_cards && (
-                    <span className="text-purple-400 ml-2">
-                      (мин. {selectedMonster.required_cards.min_cards})
-                    </span>
-                  )}
-                </p>
-                {minGenresRequired > 1 && (
-                  <p className={cn(
-                    'text-xs',
-                    hasEnoughGenres ? 'text-green-400' : 'text-amber-400'
-                  )}>
-                    Жанров: {selectedGenres.size}/{minGenresRequired}
-                    {!hasEnoughGenres && ' (нужно больше жанров!)'}
-                    {hasEnoughGenres && ' ✓'}
-                  </p>
-                )}
-              </div>
+              <p className="text-sm text-gray-400 mb-3">
+                Выбрано: {selectedCards.length}/5 (мин. 1)
+              </p>
 
               <div className="grid grid-cols-2 gap-3 mb-20">
                 {deck.map((card) => {
@@ -449,19 +452,13 @@ export default function ArenaPage() {
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
-                      {isLowHp && (
-                        <div className="absolute top-2 right-2">
-                          <AlertCircle className="w-5 h-5 text-red-500" />
-                        </div>
-                      )}
                       <div className="text-center mb-2">
                         <span className="text-3xl">{card.emoji}</span>
                       </div>
                       <h4 className="text-sm font-medium text-white text-center truncate">
                         {card.name}
                       </h4>
-                      <p className="text-xs text-gray-500 text-center capitalize mb-1">{card.genre}</p>
-                      <div className="flex items-center justify-center gap-2 text-xs">
+                      <div className="flex items-center justify-center gap-2 text-xs mt-1">
                         <span className="text-red-400 flex items-center gap-0.5">
                           <Zap className="w-3 h-3" />
                           {card.attack}
@@ -476,12 +473,12 @@ export default function ArenaPage() {
                 })}
               </div>
 
-              {canBattle && (
+              {selectedCards.length > 0 && (
                 <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
                   <Button
                     className="w-full"
                     onClick={handleStartBattle}
-                    isLoading={battleMutation.isPending}
+                    isLoading={startBattleMutation.isPending}
                   >
                     <Swords className="w-5 h-5 mr-2" />
                     В бой! ({selectedCards.length} карт)
@@ -491,97 +488,171 @@ export default function ArenaPage() {
             </>
           )}
 
-          {/* Battle Animation */}
-          {gameState === 'battle' && showingLog && battleResult && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <div className="flex items-center justify-between w-full max-w-sm mb-8">
-                {/* Cards */}
-                <div className="text-center">
-                  <div className="flex -space-x-2 justify-center mb-2">
-                    {battleResult.cards_used.slice(0, 3).map((card, i) => (
-                      <div
-                        key={card.id}
-                        className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-xl border-2 border-gray-800"
-                        style={{ zIndex: 3 - i }}
-                      >
-                        {card.emoji}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-white">{battleResult.cards_used.length} карт</p>
+          {/* Turn-based Battle */}
+          {gameState === 'battle' && activeBattle && (
+            <div className="space-y-4">
+              {/* Battle Header */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-400">
+                  Раунд {activeBattle.current_round}
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => forfeitMutation.mutate()}
+                  disabled={forfeitMutation.isPending}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Сдаться
+                </Button>
+              </div>
 
-                <div className="text-2xl font-bold text-white">VS</div>
-
-                {/* Monster */}
-                <div className="text-center">
-                  {battleResult.monster.sprite_url ? (
-                    <img
-                      src={battleResult.monster.sprite_url}
-                      alt={battleResult.monster.name}
-                      className="w-20 h-20 rounded-xl object-cover mb-2 mx-auto"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-gray-700 flex items-center justify-center text-4xl mb-2 mx-auto">
-                      {battleResult.monster.emoji}
+              {/* Turn Animation */}
+              {showTurnAnimation && lastTurnLog.length > 0 && (
+                <Card className="bg-purple-500/20 border-purple-500/50 text-center py-6">
+                  {lastTurnLog.map((log, i) => (
+                    <div key={i} className="mb-2">
+                      {log.actor === 'player' && (
+                        <p className="text-white">
+                          <span className="text-2xl">{log.card_emoji}</span>{' '}
+                          {log.card_name} атакует{' '}
+                          <span className="text-2xl">{log.target_emoji}</span>{' '}
+                          {log.target_name}!
+                          <span className={cn(
+                            'block text-xl font-bold mt-1',
+                            log.is_critical ? 'text-yellow-400' : 'text-red-400'
+                          )}>
+                            -{log.damage} {log.is_critical && '💥 Крит!'}
+                          </span>
+                        </p>
+                      )}
+                      {log.actor === 'monster' && (
+                        <p className="text-white">
+                          <span className="text-2xl">{log.card_emoji}</span>{' '}
+                          {log.card_name} атакует{' '}
+                          <span className="text-2xl">{log.target_emoji}</span>{' '}
+                          {log.target_name}!
+                          <span className={cn(
+                            'block text-xl font-bold mt-1',
+                            log.is_critical ? 'text-yellow-400' : 'text-orange-400'
+                          )}>
+                            -{log.damage} {log.is_critical && '💥 Крит!'}
+                          </span>
+                        </p>
+                      )}
+                      {log.actor === 'system' && (
+                        <p className="text-red-400 font-medium">{log.message}</p>
+                      )}
                     </div>
-                  )}
-                  <p className="text-sm text-white">{battleResult.monster.name}</p>
+                  ))}
+                </Card>
+              )}
+
+              {/* Monster's Deck */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                  <span className="text-xl">{activeBattle.monster?.emoji}</span>
+                  Колода монстра ({aliveMonsterCards.length} карт)
+                </h3>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {activeBattle.state.monster_cards.map((card) => (
+                    <div
+                      key={card.id}
+                      onClick={() => card.alive && setSelectedTargetCard(card.id)}
+                      className={cn(
+                        'flex-shrink-0 w-24 rounded-lg p-2 border transition-all',
+                        card.alive
+                          ? 'bg-red-500/20 border-red-500/30 cursor-pointer hover:border-red-500'
+                          : 'bg-gray-800/50 border-gray-700/30 opacity-50',
+                        selectedTargetCard === card.id && 'ring-2 ring-red-500'
+                      )}
+                    >
+                      <div className="text-center mb-1">
+                        <span className="text-2xl">{card.emoji}</span>
+                      </div>
+                      <p className="text-xs text-white text-center truncate">{card.name}</p>
+                      <div className="mt-1">
+                        <Progress
+                          value={(card.hp / card.max_hp) * 100}
+                          className="h-1"
+                        />
+                        <div className="flex justify-between text-xs mt-0.5">
+                          <span className="text-green-400">{card.hp}</span>
+                          <span className="text-red-400">ATK {card.attack}</span>
+                        </div>
+                      </div>
+                      {!card.alive && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Skull className="w-8 h-8 text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Current action */}
-              {battleResult.battle_log[currentLogIndex] && (() => {
-                const log = battleResult.battle_log[currentLogIndex];
-                const isCard = log.actor === 'card';
-                const isSystem = log.actor === 'system';
-                const isCrit = log.is_critical || log.action === 'critical';
-                const isDestroyed = log.action === 'card_destroyed';
+              {/* VS Divider */}
+              <div className="flex items-center justify-center gap-4">
+                <div className="h-px bg-gray-700 flex-1" />
+                <span className="text-gray-500 font-bold">VS</span>
+                <div className="h-px bg-gray-700 flex-1" />
+              </div>
 
-                let emoji = isCard ? '⚔️' : isDestroyed ? '💔' : '💥';
-                let actionText = isCard
-                  ? `${log.card_name} атакует!`
-                  : isDestroyed
-                  ? log.message
-                  : `${battleResult.monster.name} атакует ${log.target_card_name}!`;
-
-                if (isCrit && !isDestroyed) {
-                  emoji = '💫';
-                  actionText = isCard
-                    ? `${log.card_name} - Критический удар!`
-                    : 'Критический удар!';
-                }
-
-                return (
-                  <Card className={cn(
-                    "text-center p-6 transition-all",
-                    isCrit && "ring-2 ring-yellow-500 bg-yellow-500/10",
-                    isDestroyed && "ring-2 ring-red-500 bg-red-500/10"
-                  )}>
-                    <div className={cn(
-                      "text-4xl mb-4",
-                      isCrit && "animate-pulse"
-                    )}>
-                      {isCard && log.card_emoji ? log.card_emoji : emoji}
+              {/* Player's Cards */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-2">
+                  Твои карты ({alivePlayerCards.length} карт)
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeBattle.state.player_cards.map((card) => (
+                    <div
+                      key={card.id}
+                      onClick={() => card.alive && setSelectedPlayerCard(card.id as number)}
+                      className={cn(
+                        'rounded-lg p-3 border transition-all',
+                        card.alive
+                          ? `bg-gradient-to-br ${getRarityBg(card.rarity || 'common')} cursor-pointer`
+                          : 'bg-gray-800/50 border-gray-700/30 opacity-50',
+                        selectedPlayerCard === card.id && 'ring-2 ring-purple-500'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{card.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white truncate">{card.name}</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-red-400">ATK {card.attack}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <Progress
+                          value={(card.hp / card.max_hp) * 100}
+                          className="h-1.5"
+                        />
+                        <p className="text-xs text-green-400 mt-0.5">
+                          {card.hp}/{card.max_hp} HP
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-white font-medium">{actionText}</p>
-                    {log.message && !isDestroyed && (
-                      <p className="text-sm text-purple-400 mt-1">{log.message}</p>
-                    )}
-                    {!isDestroyed && log.damage > 0 && (
-                      <p className={cn(
-                        "text-2xl font-bold mt-2",
-                        isCrit ? "text-yellow-400" : "text-red-400"
-                      )}>
-                        -{log.damage}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-400 mt-2">
-                      Раунд {log.round}
-                    </p>
-                  </Card>
-                );
-              })()}
+                  ))}
+                </div>
+              </div>
+
+              {/* Attack Button */}
+              <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
+                <Button
+                  className="w-full"
+                  onClick={handleExecuteTurn}
+                  disabled={!canAttack}
+                  isLoading={executeTurnMutation.isPending}
+                >
+                  <Target className="w-5 h-5 mr-2" />
+                  {selectedPlayerCard && selectedTargetCard
+                    ? 'Атаковать!'
+                    : 'Выбери карту и цель'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -593,17 +664,11 @@ export default function ArenaPage() {
                   <>
                     <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">Победа!</h2>
-                    <p className="text-gray-400">
-                      Вы победили {battleResult.monster.name}
-                    </p>
                   </>
                 ) : (
                   <>
                     <Skull className="w-20 h-20 text-gray-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">Поражение</h2>
-                    <p className="text-gray-400">
-                      {battleResult.monster.name} оказался сильнее
-                    </p>
                   </>
                 )}
               </div>
@@ -639,44 +704,11 @@ export default function ArenaPage() {
                       </div>
                       {battleResult.level_up && (
                         <div className="text-center pt-2 text-amber-400 font-medium">
-                          Новый уровень!
+                          🎉 Новый уровень!
                         </div>
                       )}
                     </div>
                   )}
-                </div>
-              </Card>
-
-              {/* Cards status */}
-              <Card className="w-full max-w-sm mb-4">
-                <h3 className="font-medium text-white mb-3">Состояние карт</h3>
-                <div className="space-y-2">
-                  {battleResult.cards_remaining.map((card) => {
-                    const isLost = battleResult.cards_lost.includes(card.id);
-                    return (
-                      <div
-                        key={card.id}
-                        className={cn(
-                          'flex items-center justify-between p-2 rounded-lg',
-                          isLost ? 'bg-red-500/20' : 'bg-gray-700/50'
-                        )}
-                      >
-                        <span className={cn(
-                          'text-sm',
-                          isLost ? 'text-red-400 line-through' : 'text-white'
-                        )}>
-                          {card.name}
-                        </span>
-                        {isLost ? (
-                          <span className="text-xs text-red-400">Уничтожена</span>
-                        ) : (
-                          <span className="text-xs text-green-400">
-                            {card.hp}/{card.max_hp} HP
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
               </Card>
 
@@ -751,9 +783,6 @@ export default function ArenaPage() {
             <Card className="text-center py-8">
               <Star className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400">Пока нет участников</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Будь первым в рейтинге!
-              </p>
             </Card>
           ) : (
             <div className="space-y-2">
@@ -769,28 +798,19 @@ export default function ArenaPage() {
                       isCurrentUser && 'ring-2 ring-purple-500'
                     )}
                   >
-                    {/* Rank */}
                     <div className="w-8 flex items-center justify-center">
                       {getRankIcon(entry.rank)}
                     </div>
-
-                    {/* Avatar */}
                     <div
                       className={cn(
                         'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold',
-                        entry.rank === 1
-                          ? 'bg-gradient-to-br from-yellow-400 to-amber-500'
-                          : entry.rank === 2
-                          ? 'bg-gradient-to-br from-gray-300 to-gray-400'
-                          : entry.rank === 3
-                          ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                          : 'bg-gradient-to-br from-purple-500 to-blue-500'
+                        entry.rank <= 3
+                          ? 'bg-gradient-to-br from-purple-500 to-blue-500'
+                          : 'bg-gray-700'
                       )}
                     >
                       {entry.first_name?.[0] || entry.username?.[0] || '?'}
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className={cn(
                         'font-medium truncate',
@@ -809,8 +829,6 @@ export default function ArenaPage() {
                         )}
                       </div>
                     </div>
-
-                    {/* XP */}
                     <div className="text-right">
                       <p className="font-bold text-amber-400">{entry.xp.toLocaleString()}</p>
                       <p className="text-xs text-gray-500">XP</p>

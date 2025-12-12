@@ -69,22 +69,81 @@ class CardService:
     # Stability AI API config
     STABILITY_API_URL = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
 
+    # Genre-specific character types for variety
+    GENRE_CHARACTERS = {
+        "magic": [
+            "ancient wizard with long beard and staff",
+            "young sorceress with glowing hands",
+            "mystical alchemist with potions",
+            "elemental mage summoning fire",
+            "dark warlock with shadow magic",
+            "enchanted owl familiar",
+            "magical golem made of crystals",
+            "phoenix spirit bird",
+        ],
+        "fantasy": [
+            "orc warrior with battle axe",
+            "elf archer with bow",
+            "dwarf blacksmith with hammer",
+            "dragon breathing fire",
+            "goblin rogue with daggers",
+            "troll berserker",
+            "giant with club",
+            "unicorn with glowing horn",
+            "griffin hybrid creature",
+            "knight paladin in shining armor",
+        ],
+        "scifi": [
+            "cyborg soldier with mechanical arm",
+            "alien creature with tentacles",
+            "robot android with glowing eyes",
+            "space marine in power armor",
+            "mutant with extra limbs",
+            "AI hologram entity",
+            "insectoid alien warrior",
+            "mech pilot in exosuit",
+            "genetically enhanced supersoldier",
+        ],
+        "cyberpunk": [
+            "hacker with cybernetic implants",
+            "street samurai with katana",
+            "android assassin",
+            "netrunner with neural interface",
+            "corpo bodyguard in suit",
+            "cyber-enhanced mercenary",
+            "drone operator with robots",
+            "biohacked mutant",
+            "synth human replica",
+        ],
+        "anime": [
+            "samurai warrior with katana",
+            "ninja with shuriken",
+            "mecha robot pilot",
+            "magical girl with wand",
+            "demon lord with horns",
+            "spirit fox yokai",
+            "martial artist fighter",
+            "school hero with special powers",
+            "dragon slayer knight",
+        ],
+    }
+
     # Genre-specific art style prompts
     GENRE_ART_STYLES = {
-        "magic": "mystical wizard, magical aura, glowing runes, fantasy art style",
-        "fantasy": "medieval knight warrior, epic armor, fantasy art style",
-        "scifi": "futuristic space pilot, sci-fi armor, cybernetic enhancements",
-        "cyberpunk": "neon cyberpunk hacker, futuristic city, digital aesthetic",
-        "anime": "anime hero character, dynamic pose, vibrant colors, anime art style",
+        "magic": "mystical magical aura, glowing runes, fantasy art style, spell effects",
+        "fantasy": "medieval fantasy setting, epic atmosphere, detailed fantasy art",
+        "scifi": "futuristic sci-fi setting, advanced technology, space opera style",
+        "cyberpunk": "neon lights, rain, dark futuristic city, cyberpunk aesthetic",
+        "anime": "anime art style, vibrant colors, dynamic pose, Japanese animation",
     }
 
     # Rarity visual modifiers
     RARITY_MODIFIERS = {
-        "common": "simple design, basic colors",
-        "uncommon": "detailed design, subtle glow",
-        "rare": "intricate design, blue magical aura, detailed armor",
-        "epic": "epic design, purple magical aura, legendary equipment, dramatic lighting",
-        "legendary": "divine design, golden aura, celestial light, ultimate power",
+        "common": "simple design, clean lines",
+        "uncommon": "detailed design, subtle magical glow",
+        "rare": "intricate design, blue energy aura, impressive equipment",
+        "epic": "epic majestic design, purple magical aura, legendary gear, dramatic lighting",
+        "legendary": "divine godlike design, golden celestial aura, ultimate power, heavenly light",
     }
 
     def __init__(self):
@@ -282,6 +341,12 @@ class CardService:
             return None
 
         try:
+            # Get random character type for variety
+            characters = self.GENRE_CHARACTERS.get(
+                genre, self.GENRE_CHARACTERS["fantasy"]
+            )
+            character_type = random.choice(characters)
+
             # Build prompt from genre and rarity
             art_style = self.GENRE_ART_STYLES.get(
                 genre, self.GENRE_ART_STYLES["fantasy"]
@@ -291,8 +356,10 @@ class CardService:
             )
 
             prompt = (
-                f"Trading card game character portrait, {name}, {art_style}, "
-                f"{rarity_modifier}, high quality digital art, centered composition"
+                f"Trading card game character portrait, {character_type}, "
+                f"{art_style}, {rarity_modifier}, "
+                f"high quality digital art, centered composition, "
+                f"fantasy illustration style, detailed"
             )
 
             logger.info(f"Generating card image with prompt: {prompt[:100]}...")
