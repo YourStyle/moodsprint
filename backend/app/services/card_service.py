@@ -324,13 +324,17 @@ class CardService:
                 logger.info(f"Card image generated successfully: {image_url}")
                 return image_url
             else:
+                error_text = (
+                    response.text[:500] if response.text else "No response body"
+                )
                 logger.error(
-                    f"Stability AI API error: {response.status_code} - {response.text}"
+                    f"Stability AI API error: status={response.status_code}, "
+                    f"response={error_text}"
                 )
                 return None
 
         except Exception as e:
-            logger.error(f"Failed to generate card image: {e}")
+            logger.error(f"Failed to generate card image: {e}", exc_info=True)
             return None
 
     def generate_card_image_async(self, card_id: int, user_id: int) -> dict:
@@ -357,6 +361,10 @@ class CardService:
             logger.info(f"Generated image for card {card_id}: {image_url}")
             return {"success": True, "image_url": image_url}
         else:
+            logger.warning(
+                f"Image generation failed for card {card_id}. "
+                f"API key configured: {bool(self.stability_api_key)}"
+            )
             return {"success": False, "error": "generation_failed"}
 
     def _generate_card_text(
