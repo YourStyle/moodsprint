@@ -16,6 +16,7 @@ from app.models.character import (
     BattleLog,
     CharacterStats,
     DailyMonster,
+    DefeatedMonster,
     Monster,
     MonsterCard,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "CharacterStats",
     "Monster",
     "DailyMonster",
+    "DefeatedMonster",
     "MonsterCard",
     "ActiveBattle",
     "BattleLog",

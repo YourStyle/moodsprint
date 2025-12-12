@@ -5,7 +5,15 @@ from datetime import date
 from typing import Any
 
 from app import db
-from app.models import ActiveBattle, BattleLog, DailyMonster, Monster, User
+from app.models import (
+    ActiveBattle,
+    BattleLog,
+    DailyMonster,
+    DefeatedMonster,
+    Monster,
+    MonsterCard,
+    User,
+)
 from app.models.card import UserCard
 from app.models.character import GENRE_THEMES
 from app.models.user_profile import UserProfile
@@ -18,6 +26,8 @@ MONSTER_CARD_TEMPLATES = {
         {"name": "Ледяная стрела", "emoji": "❄️", "attack": 20, "hp": 30},
         {"name": "Молния", "emoji": "⚡", "attack": 25, "hp": 25},
         {"name": "Теневой удар", "emoji": "👤", "attack": 16, "hp": 40},
+        {"name": "Проклятие", "emoji": "💀", "attack": 19, "hp": 33},
+        {"name": "Магический щит", "emoji": "🛡️", "attack": 12, "hp": 50},
     ],
     "fantasy": [
         {"name": "Орк-берсерк", "emoji": "👹", "attack": 24, "hp": 45},
@@ -25,6 +35,8 @@ MONSTER_CARD_TEMPLATES = {
         {"name": "Тролль", "emoji": "🧌", "attack": 20, "hp": 55},
         {"name": "Скелет-воин", "emoji": "💀", "attack": 15, "hp": 35},
         {"name": "Тёмный эльф", "emoji": "🧝", "attack": 22, "hp": 32},
+        {"name": "Огр", "emoji": "👾", "attack": 26, "hp": 48},
+        {"name": "Призрачный рыцарь", "emoji": "⚔️", "attack": 21, "hp": 38},
     ],
     "scifi": [
         {"name": "Боевой дрон", "emoji": "🤖", "attack": 20, "hp": 35},
@@ -32,6 +44,8 @@ MONSTER_CARD_TEMPLATES = {
         {"name": "Инопланетянин", "emoji": "👽", "attack": 18, "hp": 45},
         {"name": "Лазерная турель", "emoji": "🔫", "attack": 25, "hp": 25},
         {"name": "Мутант", "emoji": "🧟", "attack": 16, "hp": 50},
+        {"name": "Нанобот", "emoji": "🔬", "attack": 14, "hp": 32},
+        {"name": "Плазменный страж", "emoji": "⚡", "attack": 23, "hp": 36},
     ],
     "cyberpunk": [
         {"name": "Хакер", "emoji": "💻", "attack": 18, "hp": 32},
@@ -39,6 +53,8 @@ MONSTER_CARD_TEMPLATES = {
         {"name": "Киборг", "emoji": "🦿", "attack": 24, "hp": 38},
         {"name": "Нетраннер", "emoji": "🌐", "attack": 22, "hp": 30},
         {"name": "Уличный самурай", "emoji": "⚔️", "attack": 26, "hp": 35},
+        {"name": "Боевой дрон", "emoji": "🤖", "attack": 19, "hp": 33},
+        {"name": "Наёмник", "emoji": "🎯", "attack": 21, "hp": 40},
     ],
     "anime": [
         {"name": "Демон", "emoji": "👿", "attack": 22, "hp": 40},
@@ -46,6 +62,8 @@ MONSTER_CARD_TEMPLATES = {
         {"name": "Призрак", "emoji": "👻", "attack": 18, "hp": 45},
         {"name": "Огненный дух", "emoji": "🔥", "attack": 24, "hp": 30},
         {"name": "Ледяной воин", "emoji": "🧊", "attack": 20, "hp": 42},
+        {"name": "Теневой клон", "emoji": "👤", "attack": 17, "hp": 38},
+        {"name": "Древний ёкай", "emoji": "🎭", "attack": 23, "hp": 44},
     ],
 }
 
@@ -67,86 +85,70 @@ class CardBattleService:
         return "fantasy"
 
     def get_available_monsters(self, user_id: int) -> list[dict]:
-        """Get monsters available for battle based on user's genre and deck power."""
+        """Get monsters available for battle (excluding defeated ones)."""
         genre = self.get_user_genre(user_id)
         deck = self.get_user_deck(user_id)
         deck_power = sum(card.attack + card.hp for card in deck) if deck else 0
 
-        # Try to get today's daily monsters first
-        today = date.today()
-        daily_monsters = (
-            DailyMonster.query.filter_by(genre=genre, date=today)
+        # Get current period
+        period_start = DailyMonster.get_current_period_start()
+
+        # Get defeated monsters for this user in current period
+        defeated_ids = {
+            dm.monster_id
+            for dm in DefeatedMonster.query.filter_by(
+                user_id=user_id, period_start=period_start
+            ).all()
+        }
+
+        # Try to get period monsters first
+        period_monsters = (
+            DailyMonster.query.filter_by(genre=genre, period_start=period_start)
             .order_by(DailyMonster.slot_number)
             .all()
         )
 
-        if daily_monsters:
+        if period_monsters:
             result = []
-            for dm in daily_monsters:
-                if dm.monster:
+            for dm in period_monsters:
+                if dm.monster and dm.monster.id not in defeated_ids:
                     monster_dict = dm.monster.to_dict()
                     scaled = self._scale_monster_for_deck(dm.monster, deck_power)
                     monster_dict.update(scaled)
                     monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
+                    # Include pre-generated cards count
+                    monster_dict["cards_count"] = dm.monster.cards.count()
                     result.append(monster_dict)
             if result:
                 return result
 
-        # Fallback to regular monsters
-        monsters = Monster.query.filter_by(genre=genre).all()
-        if not monsters:
-            monsters = self._create_default_monsters(genre)
+        # Fallback: create monsters for this period if none exist
+        self._create_period_monsters(genre, period_start)
+
+        # Re-fetch
+        period_monsters = (
+            DailyMonster.query.filter_by(genre=genre, period_start=period_start)
+            .order_by(DailyMonster.slot_number)
+            .all()
+        )
 
         result = []
-        for monster in monsters[:6]:
-            monster_dict = monster.to_dict()
-            scaled = self._scale_monster_for_deck(monster, deck_power)
-            monster_dict.update(scaled)
-            monster_dict["deck_size"] = self._get_monster_deck_size(monster)
-            result.append(monster_dict)
+        for dm in period_monsters:
+            if dm.monster and dm.monster.id not in defeated_ids:
+                monster_dict = dm.monster.to_dict()
+                scaled = self._scale_monster_for_deck(dm.monster, deck_power)
+                monster_dict.update(scaled)
+                monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
+                monster_dict["cards_count"] = dm.monster.cards.count()
+                result.append(monster_dict)
 
         return result
 
-    def _get_monster_deck_size(self, monster: Monster) -> int:
-        """Get the number of cards in monster's deck."""
-        if monster.is_boss:
-            return 5
-        return 3
-
-    def _scale_monster_for_deck(self, monster: Monster, deck_power: int) -> dict:
-        """Scale monster stats based on deck power."""
-        if deck_power > 0:
-            scale_factor = 1 + (deck_power / 500)
-            scale_factor = min(scale_factor, 3.0)
-        else:
-            scale_factor = 0.5
-
-        hp = int(monster.base_hp * scale_factor)
-        attack = int(monster.base_attack * scale_factor)
-        defense = int(monster.base_defense * scale_factor)
-        xp_reward = int(monster.base_xp_reward * scale_factor)
-        stat_points = monster.base_stat_points_reward
-
-        if monster.is_boss:
-            hp = int(hp * 1.5)
-            attack = int(attack * 1.3)
-            xp_reward = int(xp_reward * 2)
-            stat_points = stat_points * 2
-
-        return {
-            "hp": hp,
-            "attack": attack,
-            "defense": defense,
-            "xp_reward": xp_reward,
-            "stat_points_reward": stat_points,
-        }
-
-    def _create_default_monsters(self, genre: str) -> list[Monster]:
-        """Create default monsters for a genre."""
+    def _create_period_monsters(self, genre: str, period_start: date) -> None:
+        """Create monsters with pre-generated decks for a 3-day period."""
         genre_info = GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"])
         monster_names = genre_info.get("monsters", ["Враг", "Монстр", "Босс"])
 
-        monsters = []
         emojis = ["👾", "👹", "🐉", "👻", "🤖"]
         types = ["normal", "normal", "normal", "elite", "boss"]
 
@@ -185,7 +187,7 @@ class CardBattleService:
                 }
 
             monster = Monster(
-                name=name,
+                name=f"{name} ({period_start.strftime('%d.%m')})",
                 genre=genre,
                 base_level=base_stats["level"],
                 base_hp=base_stats["hp"],
@@ -205,10 +207,74 @@ class CardBattleService:
                 is_boss=monster_type == "boss",
             )
             db.session.add(monster)
-            monsters.append(monster)
+            db.session.flush()  # Get monster ID
+
+            # Create pre-generated deck for this monster
+            self._create_monster_deck(monster, genre)
+
+            # Link to period
+            daily_monster = DailyMonster(
+                monster_id=monster.id,
+                genre=genre,
+                period_start=period_start,
+                slot_number=i + 1,
+            )
+            db.session.add(daily_monster)
 
         db.session.commit()
-        return monsters
+
+    def _create_monster_deck(self, monster: Monster, genre: str) -> None:
+        """Create pre-generated deck of cards for a monster (stored in DB)."""
+        templates = MONSTER_CARD_TEMPLATES.get(genre, MONSTER_CARD_TEMPLATES["fantasy"])
+        deck_size = self._get_monster_deck_size(monster)
+
+        # Select random cards for this monster's deck
+        selected = random.sample(templates, min(deck_size, len(templates)))
+
+        for template in selected:
+            card = MonsterCard(
+                monster_id=monster.id,
+                name=template["name"],
+                emoji=template["emoji"],
+                hp=template["hp"],
+                attack=template["attack"],
+                rarity="common",
+            )
+            db.session.add(card)
+
+    def _get_monster_deck_size(self, monster: Monster) -> int:
+        """Get the number of cards in monster's deck."""
+        if monster.is_boss:
+            return 5
+        return 3
+
+    def _scale_monster_for_deck(self, monster: Monster, deck_power: int) -> dict:
+        """Scale monster stats based on deck power."""
+        if deck_power > 0:
+            scale_factor = 1 + (deck_power / 500)
+            scale_factor = min(scale_factor, 3.0)
+        else:
+            scale_factor = 0.5
+
+        hp = int(monster.base_hp * scale_factor)
+        attack = int(monster.base_attack * scale_factor)
+        defense = int(monster.base_defense * scale_factor)
+        xp_reward = int(monster.base_xp_reward * scale_factor)
+        stat_points = monster.base_stat_points_reward
+
+        if monster.is_boss:
+            hp = int(hp * 1.5)
+            attack = int(attack * 1.3)
+            xp_reward = int(xp_reward * 2)
+            stat_points = stat_points * 2
+
+        return {
+            "hp": hp,
+            "attack": attack,
+            "defense": defense,
+            "xp_reward": xp_reward,
+            "stat_points_reward": stat_points,
+        }
 
     def get_active_battle(self, user_id: int) -> ActiveBattle | None:
         """Get user's active battle if any."""
@@ -226,6 +292,14 @@ class CardBattleService:
         monster = Monster.query.get(monster_id)
         if not monster:
             return {"error": "monster_not_found"}
+
+        # Check if monster was already defeated in this period
+        period_start = DailyMonster.get_current_period_start()
+        already_defeated = DefeatedMonster.query.filter_by(
+            user_id=user_id, monster_id=monster_id, period_start=period_start
+        ).first()
+        if already_defeated:
+            return {"error": "monster_already_defeated"}
 
         # Validate player cards
         cards = UserCard.query.filter(
@@ -247,11 +321,15 @@ class CardBattleService:
         deck_power = sum(card.attack + card.hp for card in deck) if deck else 0
         scaled = self._scale_monster_for_deck(monster, deck_power)
 
-        # Generate monster's deck
-        genre = monster.genre or self.get_user_genre(user_id)
-        monster_cards = self._generate_monster_deck(
-            monster, genre, deck_power, scaled["attack"]
-        )
+        # Get monster's pre-generated deck from DB and scale it
+        monster_cards = self._get_monster_battle_deck(monster, deck_power)
+
+        if not monster_cards:
+            # Fallback: generate on the fly if no cards in DB
+            genre = monster.genre or self.get_user_genre(user_id)
+            monster_cards = self._generate_monster_deck_fallback(
+                monster, genre, deck_power
+            )
 
         # Create player cards state
         player_cards = [
@@ -297,10 +375,45 @@ class CardBattleService:
             "message": "Бой начался! Выбери карту для атаки.",
         }
 
-    def _generate_monster_deck(
-        self, monster: Monster, genre: str, deck_power: int, monster_attack: int
+    def _get_monster_battle_deck(self, monster: Monster, deck_power: int) -> list[dict]:
+        """Get monster's pre-generated deck from DB with scaling."""
+        db_cards = monster.cards.all()
+        if not db_cards:
+            return []
+
+        # Scale factor based on deck power
+        if deck_power > 0:
+            scale = 0.8 + (deck_power / 600)
+            scale = min(scale, 2.5)
+        else:
+            scale = 0.6
+
+        # Boss gets stronger cards
+        if monster.is_boss:
+            scale *= 1.3
+
+        cards = []
+        for i, db_card in enumerate(db_cards):
+            hp = int(db_card.hp * scale)
+            attack = int(db_card.attack * scale)
+            card = {
+                "id": f"m_{monster.id}_{db_card.id}",
+                "db_id": db_card.id,
+                "name": db_card.name,
+                "emoji": db_card.emoji,
+                "hp": hp,
+                "max_hp": hp,
+                "attack": attack,
+                "alive": True,
+            }
+            cards.append(card)
+
+        return cards
+
+    def _generate_monster_deck_fallback(
+        self, monster: Monster, genre: str, deck_power: int
     ) -> list[dict]:
-        """Generate monster's deck of cards."""
+        """Fallback: generate monster deck on the fly if not in DB."""
         templates = MONSTER_CARD_TEMPLATES.get(genre, MONSTER_CARD_TEMPLATES["fantasy"])
         deck_size = self._get_monster_deck_size(monster)
 
@@ -513,6 +626,15 @@ class CardBattleService:
             if user:
                 xp_info = user.add_xp(xp_earned)
                 level_up = xp_info.get("level_up", False)
+
+            # Mark monster as defeated for this period
+            period_start = DailyMonster.get_current_period_start()
+            defeated = DefeatedMonster(
+                user_id=battle.user_id,
+                monster_id=battle.monster_id,
+                period_start=period_start,
+            )
+            db.session.add(defeated)
 
             # Generate reward card for boss kills
             monster = battle.monster
