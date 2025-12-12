@@ -20,8 +20,9 @@ COPY . .
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
+# Create non-root user and ensure static directories have correct permissions
+RUN useradd -m appuser && chown -R appuser:appuser /app \
+    && mkdir -p /app/static/card_images && chown -R appuser:appuser /app/static
 USER appuser
 
 # Environment variables
