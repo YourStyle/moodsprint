@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Swords,
-  Heart,
   Trophy,
   Skull,
   Star,
@@ -12,25 +11,21 @@ import {
   Flame,
   Crown,
   Shield,
-  Zap,
   Check,
-  AlertCircle,
   Sparkles,
   X,
   Target,
 } from 'lucide-react';
-import { Card, Button, Progress } from '@/components/ui';
+import { Card, Button } from '@/components/ui';
+import { BattleCard } from '@/components/cards';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type {
   Monster,
-  BattleCard,
   ActiveBattle,
   TurnResult,
-  CardBattleState,
-  MonsterCardState,
   BattleLogEntry,
 } from '@/services/gamification';
 
@@ -229,21 +224,6 @@ export default function ArenaPage() {
     }
   };
 
-  const getRarityBg = (rarity: string) => {
-    switch (rarity) {
-      case 'legendary':
-        return 'from-amber-500/30 to-orange-500/30 border-amber-500/50';
-      case 'epic':
-        return 'from-purple-500/30 to-pink-500/30 border-purple-500/50';
-      case 'rare':
-        return 'from-blue-500/30 to-cyan-500/30 border-blue-500/50';
-      case 'uncommon':
-        return 'from-green-500/30 to-emerald-500/30 border-green-500/50';
-      default:
-        return 'from-gray-500/30 to-gray-600/30 border-gray-500/50';
-    }
-  };
-
   const monsters = monstersData?.data?.monsters || [];
   const deck = monstersData?.data?.deck || [];
   const leaderboard = leaderboardData?.data?.leaderboard || [];
@@ -324,7 +304,7 @@ export default function ArenaPage() {
               </div>
               {deck.length === 0 && (
                 <p className="text-sm text-red-400 mt-2">
-                  Добавь карты в колоду в разделе "Колода"
+                  Добавь карты в колоду в разделе &quot;Колода&quot;
                 </p>
               )}
             </Card>
@@ -351,6 +331,11 @@ export default function ArenaPage() {
                     </Card>
                   ))}
                 </div>
+              ) : monsters.length === 0 ? (
+                <Card className="text-center py-8">
+                  <Swords className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400">Монстры появятся скоро</p>
+                </Card>
               ) : (
                 <div className="space-y-3">
                   {monsters.map((monster) => (
@@ -365,13 +350,17 @@ export default function ArenaPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-16 h-16 rounded-xl flex items-center justify-center text-4xl ${
+                          className={`w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden ${
                             monster.is_boss
                               ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30'
                               : 'bg-gray-700'
                           }`}
                         >
-                          {monster.emoji}
+                          {monster.sprite_url ? (
+                            <img src={monster.sprite_url} alt={monster.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-4xl">{monster.emoji}</span>
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -412,8 +401,12 @@ export default function ArenaPage() {
 
               <Card className="mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-2xl">
-                    {selectedMonster.emoji}
+                  <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden">
+                    {selectedMonster.sprite_url ? (
+                      <img src={selectedMonster.sprite_url} alt={selectedMonster.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl">{selectedMonster.emoji}</span>
+                    )}
                   </div>
                   <div>
                     <h3 className="font-medium text-white">{selectedMonster.name}</h3>
@@ -431,43 +424,33 @@ export default function ArenaPage() {
                 Выбрано: {selectedCards.length}/5 (мин. 1)
               </p>
 
-              <div className="grid grid-cols-2 gap-3 mb-20">
+              <div className="flex flex-wrap justify-center gap-3 mb-20">
                 {deck.map((card) => {
                   const isSelected = selectedCards.includes(card.id);
                   const isLowHp = card.current_hp <= 0;
 
                   return (
-                    <div
-                      key={card.id}
-                      onClick={() => !isLowHp && handleToggleCard(card.id)}
-                      className={cn(
-                        'relative rounded-xl p-3 border transition-all cursor-pointer',
-                        `bg-gradient-to-br ${getRarityBg(card.rarity)}`,
-                        isSelected && 'ring-2 ring-purple-500',
-                        isLowHp && 'opacity-50 cursor-not-allowed'
-                      )}
-                    >
+                    <div key={card.id} className="relative">
+                      <BattleCard
+                        id={card.id}
+                        name={card.name}
+                        emoji={card.emoji}
+                        imageUrl={card.image_url}
+                        hp={card.current_hp}
+                        maxHp={card.hp}
+                        attack={card.attack}
+                        rarity={card.rarity}
+                        alive={!isLowHp}
+                        selected={isSelected}
+                        selectable={!isLowHp}
+                        size="md"
+                        onClick={() => !isLowHp && handleToggleCard(card.id)}
+                      />
                       {isSelected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
-                      <div className="text-center mb-2">
-                        <span className="text-3xl">{card.emoji}</span>
-                      </div>
-                      <h4 className="text-sm font-medium text-white text-center truncate">
-                        {card.name}
-                      </h4>
-                      <div className="flex items-center justify-center gap-2 text-xs mt-1">
-                        <span className="text-red-400 flex items-center gap-0.5">
-                          <Zap className="w-3 h-3" />
-                          {card.attack}
-                        </span>
-                        <span className="text-green-400 flex items-center gap-0.5">
-                          <Heart className="w-3 h-3" />
-                          {card.current_hp}/{card.hp}
-                        </span>
-                      </div>
                     </div>
                   );
                 })}
@@ -550,91 +533,60 @@ export default function ArenaPage() {
 
               {/* Monster's Deck */}
               <div>
-                <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                   <span className="text-xl">{activeBattle.monster?.emoji}</span>
                   Колода монстра ({aliveMonsterCards.length} карт)
                 </h3>
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex flex-wrap justify-center gap-3">
                   {activeBattle.state.monster_cards.map((card) => (
-                    <div
+                    <BattleCard
                       key={card.id}
+                      id={card.id}
+                      name={card.name}
+                      emoji={card.emoji}
+                      hp={card.hp}
+                      maxHp={card.max_hp}
+                      attack={card.attack}
+                      alive={card.alive}
+                      selected={selectedTargetCard === card.id}
+                      selectable={card.alive}
+                      size="md"
                       onClick={() => card.alive && setSelectedTargetCard(card.id)}
-                      className={cn(
-                        'flex-shrink-0 w-24 rounded-lg p-2 border transition-all',
-                        card.alive
-                          ? 'bg-red-500/20 border-red-500/30 cursor-pointer hover:border-red-500'
-                          : 'bg-gray-800/50 border-gray-700/30 opacity-50',
-                        selectedTargetCard === card.id && 'ring-2 ring-red-500'
-                      )}
-                    >
-                      <div className="text-center mb-1">
-                        <span className="text-2xl">{card.emoji}</span>
-                      </div>
-                      <p className="text-xs text-white text-center truncate">{card.name}</p>
-                      <div className="mt-1">
-                        <Progress
-                          value={(card.hp / card.max_hp) * 100}
-                          className="h-1"
-                        />
-                        <div className="flex justify-between text-xs mt-0.5">
-                          <span className="text-green-400">{card.hp}</span>
-                          <span className="text-red-400">ATK {card.attack}</span>
-                        </div>
-                      </div>
-                      {!card.alive && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Skull className="w-8 h-8 text-gray-500" />
-                        </div>
-                      )}
-                    </div>
+                    />
                   ))}
                 </div>
               </div>
 
               {/* VS Divider */}
-              <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center justify-center gap-4 py-2">
                 <div className="h-px bg-gray-700 flex-1" />
-                <span className="text-gray-500 font-bold">VS</span>
+                <span className="text-2xl font-bold text-purple-500">VS</span>
                 <div className="h-px bg-gray-700 flex-1" />
               </div>
 
               {/* Player's Cards */}
               <div>
-                <h3 className="text-sm font-medium text-gray-400 mb-2">
-                  Твои карты ({alivePlayerCards.length} карт)
+                <h3 className="text-sm font-medium text-gray-400 mb-3">
+                  Твои карты ({alivePlayerCards.length} живых)
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap justify-center gap-3">
                   {activeBattle.state.player_cards.map((card) => (
-                    <div
+                    <BattleCard
                       key={card.id}
+                      id={card.id}
+                      name={card.name}
+                      emoji={card.emoji}
+                      imageUrl={card.image_url}
+                      hp={card.hp}
+                      maxHp={card.max_hp}
+                      attack={card.attack}
+                      rarity={card.rarity}
+                      alive={card.alive}
+                      selected={selectedPlayerCard === card.id}
+                      selectable={card.alive}
+                      size="md"
                       onClick={() => card.alive && setSelectedPlayerCard(card.id as number)}
-                      className={cn(
-                        'rounded-lg p-3 border transition-all',
-                        card.alive
-                          ? `bg-gradient-to-br ${getRarityBg(card.rarity || 'common')} cursor-pointer`
-                          : 'bg-gray-800/50 border-gray-700/30 opacity-50',
-                        selectedPlayerCard === card.id && 'ring-2 ring-purple-500'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{card.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate">{card.name}</p>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-red-400">ATK {card.attack}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <Progress
-                          value={(card.hp / card.max_hp) * 100}
-                          className="h-1.5"
-                        />
-                        <p className="text-xs text-green-400 mt-0.5">
-                          {card.hp}/{card.max_hp} HP
-                        </p>
-                      </div>
-                    </div>
+                    />
                   ))}
                 </div>
               </div>
