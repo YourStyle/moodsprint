@@ -128,8 +128,8 @@ jobs:
           script: |
             cd /opt/moodsprint
 
-            # Use staging nginx config
-            cp nginx/nginx.staging.conf nginx/nginx.ssl.conf
+            # Use staging nginx config (copy as nginx.prod.conf which is mounted by docker-compose)
+            cp nginx/nginx.staging.conf nginx/nginx.prod.conf
 
             # Pull latest images
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
