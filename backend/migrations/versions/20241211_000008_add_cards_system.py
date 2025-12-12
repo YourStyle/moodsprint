@@ -1,7 +1,7 @@
 """Add cards system and task difficulty.
 
-Revision ID: 20241211_000008
-Revises: 20241210_000007
+Revision ID: 000008
+Revises: 008_add_gamification
 Create Date: 2024-12-11 18:00:00
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "20241211_000008"
-down_revision = "20241210_000007"
+revision = "000008"
+down_revision = "008_add_gamification"
 branch_labels = None
 depends_on = None
 
