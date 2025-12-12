@@ -1,8 +1,14 @@
 """Card-based turn-by-turn battle arena service."""
 
+import logging
+import os
 import random
+import uuid
 from datetime import date
+from pathlib import Path
 from typing import Any
+
+import requests
 
 from app import db
 from app.models import (
@@ -17,6 +23,8 @@ from app.models import (
 from app.models.card import UserCard
 from app.models.character import GENRE_THEMES
 from app.models.user_profile import UserProfile
+
+logger = logging.getLogger(__name__)
 
 # Monster card templates per genre
 MONSTER_CARD_TEMPLATES = {
@@ -68,8 +76,64 @@ MONSTER_CARD_TEMPLATES = {
 }
 
 
+# Monster character types for image generation per genre
+MONSTER_CHARACTERS = {
+    "magic": [
+        "dark wizard with glowing evil eyes",
+        "shadowy demon with horns",
+        "cursed ghost with chains",
+        "corrupted golem with purple crystals",
+        "nightmare wraith floating",
+    ],
+    "fantasy": [
+        "orc warlord with battle scars",
+        "troll with massive club",
+        "dark elf assassin",
+        "undead knight in rusted armor",
+        "fire dragon breathing flames",
+    ],
+    "scifi": [
+        "alien creature with tentacles",
+        "corrupted combat robot",
+        "mutant monster with extra limbs",
+        "space parasite creature",
+        "rogue AI android with red eyes",
+    ],
+    "cyberpunk": [
+        "cyber-enhanced gang leader",
+        "rogue combat drone",
+        "mutant street monster",
+        "corporate killer robot",
+        "netrunner gone insane with implants",
+    ],
+    "anime": [
+        "demon lord with horns and dark aura",
+        "evil ninja master",
+        "corrupted samurai with glowing katana",
+        "yokai spirit monster",
+        "kaiju giant beast",
+    ],
+}
+
+MONSTER_ART_STYLES = {
+    "magic": "dark magical atmosphere, sinister aura, mystical evil energy",
+    "fantasy": "medieval fantasy villain, dark epic style, menacing presence",
+    "scifi": "futuristic sci-fi enemy, high-tech threat, dangerous alien technology",
+    "cyberpunk": "neon-lit cyberpunk enemy, dark urban threat, cyber nightmare",
+    "anime": "anime villain style, dramatic dark pose, Japanese animation evil character",
+}
+
+
 class CardBattleService:
     """Service for managing turn-based card battles."""
+
+    # Stability AI config
+    STABILITY_API_URL = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
+
+    def __init__(self):
+        self.stability_api_key = os.getenv("STABILITY_API_KEY")
+        self.images_dir = Path("/app/static/monster_images")
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_deck(self, user_id: int) -> list[UserCard]:
         """Get user's active battle deck."""
@@ -144,73 +208,189 @@ class CardBattleService:
 
         return result
 
+    def _generate_monster_image(self, monster: Monster, genre: str) -> str | None:
+        """Generate monster image using Stability AI."""
+        if not self.stability_api_key:
+            logger.warning(
+                "Stability API key not configured, skipping monster image generation"
+            )
+            return None
+
+        try:
+            # Get random character type for variety
+            characters = MONSTER_CHARACTERS.get(genre, MONSTER_CHARACTERS["fantasy"])
+            character_type = random.choice(characters)
+
+            # Build prompt from genre
+            art_style = MONSTER_ART_STYLES.get(genre, MONSTER_ART_STYLES["fantasy"])
+
+            # Boss monsters get special treatment
+            boss_modifier = ""
+            if monster.is_boss:
+                boss_modifier = (
+                    "powerful boss enemy, epic scale, intimidating presence, "
+                )
+
+            prompt = (
+                f"Trading card game enemy monster portrait, {boss_modifier}{character_type}, "
+                f"{art_style}, "
+                f"high quality digital art, centered composition, "
+                f"dark fantasy villain illustration style, detailed, menacing"
+            )
+
+            logger.info(
+                f"Generating monster image for {monster.name}: {prompt[:80]}..."
+            )
+
+            response = requests.post(
+                self.STABILITY_API_URL,
+                headers={
+                    "authorization": f"Bearer {self.stability_api_key}",
+                    "accept": "image/*",
+                },
+                files={"none": ""},
+                data={
+                    "prompt": prompt,
+                    "model": "sd3.5-large-turbo",
+                    "output_format": "png",
+                    "aspect_ratio": "1:1",
+                },
+                timeout=60,
+            )
+
+            if response.status_code == 200:
+                filename = f"monster_{uuid.uuid4()}.png"
+                filepath = self.images_dir / filename
+                filepath.write_bytes(response.content)
+
+                image_url = f"/static/monster_images/{filename}"
+                logger.info(f"Monster image generated: {image_url}")
+                return image_url
+            else:
+                error_text = (
+                    response.text[:500] if response.text else "No response body"
+                )
+                logger.error(
+                    f"Stability AI API error for monster: status={response.status_code}, "
+                    f"response={error_text}"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(f"Failed to generate monster image: {e}", exc_info=True)
+            return None
+
     def _create_period_monsters(self, genre: str, period_start: date) -> None:
-        """Create monsters with pre-generated decks for a 3-day period."""
+        """Create/reuse monsters with pre-generated decks for a 3-day period.
+
+        Reuses existing monsters from the database when possible,
+        only generating new decks for each period.
+        """
         genre_info = GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"])
         monster_names = genre_info.get("monsters", ["Враг", "Монстр", "Босс"])
 
         emojis = ["👾", "👹", "🐉", "👻", "🤖"]
         types = ["normal", "normal", "normal", "elite", "boss"]
 
+        # Try to find existing monsters for this genre that we can reuse
+        existing_monsters = (
+            Monster.query.filter_by(genre=genre).order_by(Monster.id).all()
+        )
+
+        # Separate by type
+        existing_normal = [m for m in existing_monsters if not m.is_boss]
+        existing_bosses = [m for m in existing_monsters if m.is_boss]
+
         for i, name in enumerate(monster_names[:5]):
             monster_type = types[i] if i < len(types) else "normal"
+            monster = None
 
-            if monster_type == "boss":
-                base_stats = {
-                    "level": 5,
-                    "hp": 200,
-                    "attack": 35,
-                    "defense": 20,
-                    "speed": 25,
-                    "xp_reward": 100,
-                    "stat_points_reward": 3,
-                }
-            elif monster_type == "elite":
-                base_stats = {
-                    "level": 3,
-                    "hp": 120,
-                    "attack": 25,
-                    "defense": 15,
-                    "speed": 20,
-                    "xp_reward": 60,
-                    "stat_points_reward": 2,
-                }
+            # Try to reuse existing monster
+            if monster_type == "boss" and existing_bosses:
+                # Reuse random boss
+                monster = random.choice(existing_bosses)
+                existing_bosses.remove(monster)
+            elif monster_type != "boss" and existing_normal:
+                # Reuse random normal monster
+                monster = random.choice(existing_normal)
+                existing_normal.remove(monster)
+
+            if monster:
+                # Reuse existing monster - regenerate its deck
+                logger.info(
+                    f"Reusing monster {monster.name} (id={monster.id}) for period {period_start}"
+                )
+
+                # Delete old deck cards
+                MonsterCard.query.filter_by(monster_id=monster.id).delete()
+
+                # Create new deck
+                self._create_monster_deck(monster, genre)
             else:
-                base_stats = {
-                    "level": i + 1,
-                    "hp": 50 + i * 15,
-                    "attack": 12 + i * 4,
-                    "defense": 6 + i * 3,
-                    "speed": 12 + i * 3,
-                    "xp_reward": 25 + i * 10,
-                    "stat_points_reward": 1,
-                }
+                # Create new monster
+                if monster_type == "boss":
+                    base_stats = {
+                        "level": 5,
+                        "hp": 200,
+                        "attack": 35,
+                        "defense": 20,
+                        "speed": 25,
+                        "xp_reward": 100,
+                        "stat_points_reward": 3,
+                    }
+                elif monster_type == "elite":
+                    base_stats = {
+                        "level": 3,
+                        "hp": 120,
+                        "attack": 25,
+                        "defense": 15,
+                        "speed": 20,
+                        "xp_reward": 60,
+                        "stat_points_reward": 2,
+                    }
+                else:
+                    base_stats = {
+                        "level": i + 1,
+                        "hp": 50 + i * 15,
+                        "attack": 12 + i * 4,
+                        "defense": 6 + i * 3,
+                        "speed": 12 + i * 3,
+                        "xp_reward": 25 + i * 10,
+                        "stat_points_reward": 1,
+                    }
 
-            monster = Monster(
-                name=f"{name} ({period_start.strftime('%d.%m')})",
-                genre=genre,
-                base_level=base_stats["level"],
-                base_hp=base_stats["hp"],
-                base_attack=base_stats["attack"],
-                base_defense=base_stats["defense"],
-                base_speed=base_stats["speed"],
-                base_xp_reward=base_stats["xp_reward"],
-                base_stat_points_reward=base_stats["stat_points_reward"],
-                level=base_stats["level"],
-                hp=base_stats["hp"],
-                attack=base_stats["attack"],
-                defense=base_stats["defense"],
-                speed=base_stats["speed"],
-                xp_reward=base_stats["xp_reward"],
-                stat_points_reward=base_stats["stat_points_reward"],
-                emoji=emojis[i % len(emojis)],
-                is_boss=monster_type == "boss",
-            )
-            db.session.add(monster)
-            db.session.flush()  # Get monster ID
+                monster = Monster(
+                    name=name,  # No date suffix - reusable monster
+                    genre=genre,
+                    base_level=base_stats["level"],
+                    base_hp=base_stats["hp"],
+                    base_attack=base_stats["attack"],
+                    base_defense=base_stats["defense"],
+                    base_speed=base_stats["speed"],
+                    base_xp_reward=base_stats["xp_reward"],
+                    base_stat_points_reward=base_stats["stat_points_reward"],
+                    level=base_stats["level"],
+                    hp=base_stats["hp"],
+                    attack=base_stats["attack"],
+                    defense=base_stats["defense"],
+                    speed=base_stats["speed"],
+                    xp_reward=base_stats["xp_reward"],
+                    stat_points_reward=base_stats["stat_points_reward"],
+                    emoji=emojis[i % len(emojis)],
+                    is_boss=monster_type == "boss",
+                )
+                db.session.add(monster)
+                db.session.flush()  # Get monster ID
 
-            # Create pre-generated deck for this monster
-            self._create_monster_deck(monster, genre)
+                # Generate image for new monster
+                sprite_url = self._generate_monster_image(monster, genre)
+                if sprite_url:
+                    monster.sprite_url = sprite_url
+
+                # Create pre-generated deck for this monster
+                self._create_monster_deck(monster, genre)
+
+                logger.info(f"Created new monster {monster.name} (id={monster.id})")
 
             # Link to period
             daily_monster = DailyMonster(
