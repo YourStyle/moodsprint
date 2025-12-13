@@ -265,7 +265,7 @@ export interface LeaderboardEntry {
   user_id: number;
   username: string;
   first_name: string | null;
-  xp: number;
+  monsters_killed: number;
   level: number;
   streak_days: number;
 }
@@ -347,6 +347,165 @@ export interface ApiResponse<T> {
 export interface XPReward {
   xp_earned: number;
   achievements_unlocked: Achievement[];
+}
+
+// ============ Card Abilities ============
+
+export type CardAbility = 'heal' | 'double_strike' | 'shield' | 'poison';
+
+export interface AbilityInfo {
+  type: CardAbility;
+  name: string;
+  description: string;
+  emoji: string;
+  cooldown: number;
+  current_cooldown: number;
+}
+
+export interface Card {
+  id: number;
+  user_id: number;
+  template_id: number | null;
+  name: string;
+  description: string | null;
+  genre: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  hp: number;
+  attack: number;
+  current_hp: number;
+  ability: CardAbility | null;
+  ability_info: AbilityInfo | null;
+  image_url: string | null;
+  emoji: string;
+  is_in_deck: boolean;
+  is_tradeable: boolean;
+  is_alive: boolean;
+  rarity_color: string;
+  created_at: string;
+}
+
+export interface BattleCard {
+  id: number | string;
+  name: string;
+  emoji: string;
+  image_url?: string;
+  hp: number;
+  max_hp: number;
+  attack: number;
+  rarity?: string;
+  genre?: string;
+  alive: boolean;
+  ability?: CardAbility;
+  ability_info?: AbilityInfo;
+  ability_cooldown?: number;
+  has_shield?: boolean;
+  status_effects?: StatusEffect[];
+}
+
+export interface StatusEffect {
+  type: 'poison';
+  damage: number;
+  turns_left: number;
+  source: string;
+}
+
+// ============ Merge System ============
+
+export interface MergeChances {
+  chances: Record<string, number>;
+  bonuses: MergeBonus[];
+  can_merge: boolean;
+}
+
+export interface MergeBonus {
+  type: 'same_genre' | 'both_abilities' | 'high_attack';
+  value: string;
+}
+
+export interface MergeResult {
+  success: boolean;
+  new_card: Card;
+  merged_cards: string[];
+  rarity_upgrade: boolean;
+  message: string;
+}
+
+export interface MergeLog {
+  id: number;
+  user_id: number;
+  card1_name: string;
+  card1_rarity: string;
+  card2_name: string;
+  card2_rarity: string;
+  result_card: Card | null;
+  result_rarity: string;
+  created_at: string;
+}
+
+// ============ Seasonal Events ============
+
+export type EventType = 'seasonal' | 'manual' | 'special';
+
+export interface SeasonalEvent {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  event_type: EventType;
+  start_date: string;
+  end_date: string;
+  banner_url: string | null;
+  theme_color: string;
+  emoji: string;
+  is_active: boolean;
+  is_currently_active: boolean;
+  xp_multiplier: number;
+  days_remaining: number;
+}
+
+export interface EventMonster {
+  id: number;
+  event_id: number;
+  monster: Monster;
+  appear_day: number;
+  exclusive_reward_name: string | null;
+  guaranteed_rarity: string | null;
+  times_defeated: number;
+}
+
+export interface UserEventProgress {
+  id: number;
+  user_id: number;
+  event_id: number;
+  monsters_defeated: number;
+  bosses_defeated: number;
+  exclusive_cards_earned: number;
+  milestones: string[];
+}
+
+export interface EventMilestone {
+  code: string;
+  title: string;
+  xp_reward: number;
+}
+
+// ============ Monster ============
+
+export interface Monster {
+  id: number;
+  name: string;
+  description: string | null;
+  genre: string;
+  level: number;
+  hp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  xp_reward: number;
+  stat_points_reward: number;
+  sprite_url: string | null;
+  emoji: string;
+  is_boss: boolean;
 }
 
 // ============ Telegram ============

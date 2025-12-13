@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Medal, Flame, Star, Crown } from 'lucide-react';
+import { Trophy, Medal, Flame, Star, Crown, Skull } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -62,7 +62,7 @@ export default function LeaderboardPage() {
       <div className="text-center mb-6">
         <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-2" />
         <h1 className="text-2xl font-bold text-white">Лидерборд</h1>
-        <p className="text-sm text-gray-400">Лучшие игроки</p>
+        <p className="text-sm text-gray-400">Лучшие охотники на монстров</p>
       </div>
 
       {/* Type Toggle */}
@@ -169,10 +169,13 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
 
-                {/* XP */}
+                {/* Monsters Killed */}
                 <div className="text-right">
-                  <p className="font-bold text-amber-400">{entry.xp.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">XP</p>
+                  <div className="flex items-center gap-1 justify-end">
+                    <Skull className="w-4 h-4 text-red-400" />
+                    <p className="font-bold text-red-400">{entry.monsters_killed || 0}</p>
+                  </div>
+                  <p className="text-xs text-gray-500">монстров</p>
                 </div>
               </div>
             );

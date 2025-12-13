@@ -3,12 +3,14 @@
 from app.models.achievement import Achievement, UserAchievement
 from app.models.activity_log import ActivityType, UserActivityLog
 from app.models.card import (
+    CardAbility,
     CardRarity,
     CardTemplate,
     CardTrade,
     CoopBattle,
     CoopBattleParticipant,
     Friendship,
+    MergeLog,
     UserCard,
 )
 from app.models.character import (
@@ -20,6 +22,7 @@ from app.models.character import (
     Monster,
     MonsterCard,
 )
+from app.models.event import EventMonster, EventType, SeasonalEvent, UserEventProgress
 from app.models.focus_session import FocusSession
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
@@ -53,8 +56,15 @@ __all__ = [
     "CardTemplate",
     "UserCard",
     "CardRarity",
+    "CardAbility",
+    "MergeLog",
     "Friendship",
     "CardTrade",
     "CoopBattle",
     "CoopBattleParticipant",
+    # Events
+    "SeasonalEvent",
+    "EventMonster",
+    "UserEventProgress",
+    "EventType",
 ]

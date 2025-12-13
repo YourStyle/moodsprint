@@ -11,7 +11,9 @@ from openai import OpenAI
 
 from app import db
 from app.models.card import (
+    ABILITY_CHANCE_BY_RARITY,
     RARITY_MULTIPLIERS,
+    CardAbility,
     CardRarity,
     CardTemplate,
     CardTrade,
@@ -42,6 +44,16 @@ def get_random_rarity() -> CardRarity:
         if roll <= cumulative_prob:
             return rarity
     return CardRarity.COMMON
+
+
+def get_random_ability(rarity: CardRarity) -> CardAbility | None:
+    """Get a random ability based on rarity chance, or None if no ability."""
+    chance = ABILITY_CHANCE_BY_RARITY.get(rarity, 0)
+    if random.random() > chance:
+        return None
+    # Pick a random ability
+    abilities = list(CardAbility)
+    return random.choice(abilities)
 
 
 # Genre-specific card name prefixes for variety
@@ -128,13 +140,28 @@ class CardService:
         ],
     }
 
-    # Genre-specific art style prompts
+    # Genre-specific art style prompts - Art Deco & Steampunk fusion
     GENRE_ART_STYLES = {
-        "magic": "mystical magical aura, glowing runes, fantasy art style, spell effects",
-        "fantasy": "medieval fantasy setting, epic atmosphere, detailed fantasy art",
-        "scifi": "futuristic sci-fi setting, advanced technology, space opera style",
-        "cyberpunk": "neon lights, rain, dark futuristic city, cyberpunk aesthetic",
-        "anime": "anime art style, vibrant colors, dynamic pose, Japanese animation",
+        "magic": (
+            "art deco style, geometric patterns, gold accents, "
+            "mystical steampunk, brass gears, magical clockwork, ornate frames"
+        ),
+        "fantasy": (
+            "art deco fantasy, steampunk armor, brass and copper details, "
+            "geometric ornaments, vintage poster style, elegant machinery"
+        ),
+        "scifi": (
+            "art deco retro-futurism, steampunk technology, brass machinery, "
+            "geometric shapes, vintage sci-fi poster, ornate metalwork"
+        ),
+        "cyberpunk": (
+            "art deco noir, steampunk cybernetics, brass implants, "
+            "neon and gold, geometric patterns, industrial elegance"
+        ),
+        "anime": (
+            "art deco anime fusion, steampunk aesthetic, brass accessories, "
+            "geometric backgrounds, vintage Japanese poster style"
+        ),
     }
 
     # Rarity visual modifiers
@@ -225,15 +252,17 @@ class CardService:
         task_id: int | None,
         task_title: str,
         difficulty: str = "medium",
+        forced_rarity: CardRarity | None = None,
     ) -> UserCard | None:
         """
         Generate a card for completing a task.
 
-        Rarity is determined by random probability, not task difficulty.
+        Rarity is determined by random probability, not task difficulty,
+        unless forced_rarity is specified.
         First tries to use an existing template, then falls back to AI generation.
         """
         genre = self.get_user_genre(user_id)
-        rarity = get_random_rarity()
+        rarity = forced_rarity if forced_rarity else get_random_rarity()
 
         # Try to find an unused template for this genre
         template = self._get_random_template(genre)
@@ -271,6 +300,9 @@ class CardService:
         hp = int(template.base_hp * multipliers["hp"])
         attack = int(template.base_attack * multipliers["attack"])
 
+        # Roll for ability based on rarity
+        ability = get_random_ability(rarity)
+
         return UserCard(
             user_id=user_id,
             template_id=template.id,
@@ -284,6 +316,7 @@ class CardService:
             current_hp=hp,
             image_url=template.image_url,
             emoji=template.emoji,
+            ability=ability.value if ability else None,
         )
 
     def _generate_card_with_ai(
@@ -314,6 +347,9 @@ class CardService:
         emojis = GENRE_CARD_EMOJIS.get(genre, GENRE_CARD_EMOJIS["fantasy"])
         emoji = random.choice(emojis)
 
+        # Roll for ability based on rarity
+        ability = get_random_ability(rarity)
+
         # Card created without image - image will be generated async
         return UserCard(
             user_id=user_id,
@@ -328,6 +364,7 @@ class CardService:
             current_hp=hp,
             image_url=None,  # Will be generated async
             emoji=emoji,
+            ability=ability.value if ability else None,
         )
 
     def _generate_card_image(
@@ -356,10 +393,10 @@ class CardService:
             )
 
             prompt = (
-                f"Trading card game character portrait, {character_type}, "
+                f"Art deco steampunk trading card portrait, {character_type}, "
                 f"{art_style}, {rarity_modifier}, "
-                f"high quality digital art, centered composition, "
-                f"fantasy illustration style, detailed"
+                f"brass and gold ornaments, geometric art deco frame, "
+                f"vintage poster illustration, highly detailed, elegant composition"
             )
 
             logger.info(f"Generating card image with prompt: {prompt[:100]}...")

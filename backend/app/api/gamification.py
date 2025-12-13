@@ -318,36 +318,58 @@ def get_daily_bonus_status():
 @jwt_required()
 def get_leaderboard():
     """
-    Get leaderboard.
+    Get leaderboard based on killed monsters.
 
     Query params:
     - type: weekly or all_time (default: weekly)
     - limit: max results (default 10)
     """
+    from sqlalchemy import func
+
+    from app.models.character import BattleLog
+
     limit = min(int(request.args.get("limit", 10)), 50)
     leaderboard_type = request.args.get("type", "weekly")
 
+    week_start = None
     if leaderboard_type == "weekly":
-        # Weekly leaderboard based on XP earned this week
-        # TODO: In production, track weekly XP separately using week_start filter
-        # week_start = datetime.combine(
-        #     date.today() - timedelta(days=date.today().weekday()),
-        #     datetime.min.time()
-        # )
-        users = User.query.order_by(User.xp.desc()).limit(limit).all()
-    else:
-        # All-time leaderboard
-        users = User.query.order_by(User.xp.desc()).limit(limit).all()
+        # Weekly - battles from this week
+        week_start = datetime.combine(
+            date.today() - timedelta(days=date.today().weekday()), datetime.min.time()
+        )
+
+    # Count kills per user
+    kills_subq = db.session.query(
+        BattleLog.user_id,
+        func.count(BattleLog.id).label("total_kills"),
+    ).filter(BattleLog.won.is_(True))
+
+    if leaderboard_type == "weekly":
+        kills_subq = kills_subq.filter(BattleLog.created_at >= week_start)
+
+    kills_subq = kills_subq.group_by(BattleLog.user_id).subquery()
+
+    # Join with users and order by kills
+    results = (
+        db.session.query(
+            User,
+            func.coalesce(kills_subq.c.total_kills, 0).label("monsters_killed"),
+        )
+        .outerjoin(kills_subq, User.id == kills_subq.c.user_id)
+        .order_by(func.coalesce(kills_subq.c.total_kills, 0).desc(), User.level.desc())
+        .limit(limit)
+        .all()
+    )
 
     leaderboard = []
-    for rank, user in enumerate(users, 1):
+    for rank, (user, monsters_killed) in enumerate(results, 1):
         leaderboard.append(
             {
                 "rank": rank,
                 "user_id": user.id,
                 "username": user.username or f"User {user.id}",
                 "first_name": user.first_name,
-                "xp": user.xp,
+                "monsters_killed": monsters_killed,
                 "level": user.level,
                 "streak_days": user.streak_days,
             }
@@ -815,8 +837,9 @@ def execute_battle_turn():
 
     Request body:
     {
-        "player_card_id": 1,        // ID of player's card to attack with
-        "target_card_id": "m_1_0"   // ID of monster's card to target
+        "player_card_id": 1,        // ID of player's card to attack/use ability with
+        "target_card_id": "m_1_0",  // ID of target card (monster or ally depending on ability)
+        "use_ability": false        // If true, use card's ability instead of attack
     }
     """
     user_id = int(get_jwt_identity())
@@ -824,17 +847,18 @@ def execute_battle_turn():
 
     player_card_id = data.get("player_card_id")
     target_card_id = data.get("target_card_id")
+    use_ability = data.get("use_ability", False)
 
     if not player_card_id:
         return validation_error({"player_card_id": "Select a card to attack with"})
 
     if not target_card_id:
-        return validation_error({"target_card_id": "Select a target to attack"})
+        return validation_error({"target_card_id": "Select a target"})
 
     from app.services.card_battle_service import CardBattleService
 
     service = CardBattleService()
-    result = service.execute_turn(user_id, player_card_id, target_card_id)
+    result = service.execute_turn(user_id, player_card_id, target_card_id, use_ability)
 
     if "error" in result:
         return validation_error(result)
@@ -970,6 +994,274 @@ def generate_all_monster_images():
 
 
 # ============ Boss Tasks ============
+
+
+# ============ Seasonal Events ============
+
+
+@api_bp.route("/events/active", methods=["GET"])
+@jwt_required()
+def get_active_event():
+    """Get currently active event with user progress."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.event_service import EventService
+
+    service = EventService()
+    event = service.get_active_event()
+
+    if not event:
+        return success_response({"event": None})
+
+    # Get user progress
+    progress = service.get_user_progress(user_id, event.id)
+
+    # Get event monsters
+    monsters = service.get_event_monsters(event.id)
+
+    return success_response(
+        {
+            "event": event.to_dict(),
+            "progress": progress.to_dict() if progress else None,
+            "monsters": [m.to_dict() for m in monsters],
+        }
+    )
+
+
+@api_bp.route("/events", methods=["GET"])
+@jwt_required()
+def get_all_events():
+    """Get all events (current and upcoming)."""
+    include_past = request.args.get("include_past", "false").lower() == "true"
+
+    from app.services.event_service import EventService
+
+    service = EventService()
+    events = service.get_all_events(include_past=include_past)
+
+    return success_response(
+        {
+            "events": [e.to_dict() for e in events],
+        }
+    )
+
+
+@api_bp.route("/events/<int:event_id>", methods=["GET"])
+@jwt_required()
+def get_event_details(event_id: int):
+    """Get detailed information about a specific event."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.event_service import EventService
+
+    service = EventService()
+    event = service.get_event_by_id(event_id)
+
+    if not event:
+        return not_found("Event not found")
+
+    progress = service.get_user_progress(user_id, event.id)
+    monsters = service.get_event_monsters(event.id)
+
+    return success_response(
+        {
+            "event": event.to_dict(),
+            "progress": progress.to_dict() if progress else None,
+            "monsters": [m.to_dict() for m in monsters],
+        }
+    )
+
+
+@api_bp.route("/events/<int:event_id>/progress", methods=["GET"])
+@jwt_required()
+def get_event_progress(event_id: int):
+    """Get user's progress in a specific event."""
+    user_id = int(get_jwt_identity())
+
+    from app.services.event_service import EventService
+
+    service = EventService()
+    event = service.get_event_by_id(event_id)
+
+    if not event:
+        return not_found("Event not found")
+
+    progress = service.get_or_create_user_progress(user_id, event.id)
+
+    return success_response(
+        {
+            "event": event.to_dict(),
+            "progress": progress.to_dict(),
+        }
+    )
+
+
+# Admin endpoint for creating manual events
+@api_bp.route("/admin/events", methods=["POST"])
+@jwt_required()
+def create_manual_event():
+    """
+    Create a manual event (admin only).
+
+    Request body:
+    {
+        "code": "special_event_2024",
+        "name": "Special Event",
+        "description": "Event description",
+        "start_date": "2024-12-20T00:00:00",
+        "end_date": "2024-12-27T23:59:59",
+        "emoji": "🎉",
+        "theme_color": "#FF6B00",
+        "xp_multiplier": 1.5
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    # Basic validation (in production, add admin role check)
+    required_fields = ["code", "name", "start_date", "end_date"]
+    for field in required_fields:
+        if not data.get(field):
+            return validation_error({field: f"{field} is required"})
+
+    try:
+        start_date = datetime.fromisoformat(data["start_date"])
+        end_date = datetime.fromisoformat(data["end_date"])
+    except ValueError:
+        return validation_error({"date": "Invalid date format. Use ISO format."})
+
+    if start_date >= end_date:
+        return validation_error({"date": "End date must be after start date"})
+
+    from app.services.event_service import EventService
+
+    service = EventService()
+
+    # Check if code already exists
+    existing = service.get_all_events(include_past=True)
+    if any(e.code == data["code"] for e in existing):
+        return validation_error({"code": "Event code already exists"})
+
+    event = service.create_manual_event(
+        code=data["code"],
+        name=data["name"],
+        description=data.get("description", ""),
+        start_date=start_date,
+        end_date=end_date,
+        created_by=user_id,
+        emoji=data.get("emoji", "🎉"),
+        theme_color=data.get("theme_color", "#FF6B00"),
+        xp_multiplier=data.get("xp_multiplier", 1.0),
+    )
+
+    return success_response(
+        {
+            "event": event.to_dict(),
+            "message": "Event created successfully",
+        }
+    )
+
+
+# ============ Card Merge System ============
+
+
+@api_bp.route("/cards/merge/preview", methods=["POST"])
+@jwt_required()
+def preview_card_merge():
+    """
+    Preview merge chances for two cards.
+
+    Request body:
+    {
+        "card1_id": 1,
+        "card2_id": 2
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    card1_id = data.get("card1_id")
+    card2_id = data.get("card2_id")
+
+    if not card1_id or not card2_id:
+        return validation_error({"cards": "Select two cards to merge"})
+
+    from app.models.card import UserCard
+
+    card1 = UserCard.query.filter_by(id=card1_id, user_id=user_id).first()
+    card2 = UserCard.query.filter_by(id=card2_id, user_id=user_id).first()
+
+    if not card1 or not card2:
+        return not_found("Card not found")
+
+    from app.services.merge_service import MergeService
+
+    service = MergeService()
+    result = service.get_merge_chances(card1, card2)
+
+    if "error" in result:
+        return validation_error(result)
+
+    return success_response(
+        {
+            "card1": card1.to_dict(),
+            "card2": card2.to_dict(),
+            **result,
+        }
+    )
+
+
+@api_bp.route("/cards/merge", methods=["POST"])
+@jwt_required()
+def merge_cards():
+    """
+    Merge two cards into a new random card.
+
+    Request body:
+    {
+        "card1_id": 1,
+        "card2_id": 2
+    }
+
+    Note: This will DESTROY both input cards!
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    card1_id = data.get("card1_id")
+    card2_id = data.get("card2_id")
+
+    if not card1_id or not card2_id:
+        return validation_error({"cards": "Select two cards to merge"})
+
+    from app.services.merge_service import MergeService
+
+    service = MergeService()
+    result = service.merge_cards(user_id, card1_id, card2_id)
+
+    if "error" in result:
+        return validation_error(result)
+
+    return success_response(result)
+
+
+@api_bp.route("/cards/merge/history", methods=["GET"])
+@jwt_required()
+def get_merge_history():
+    """Get recent merge history."""
+    user_id = int(get_jwt_identity())
+    limit = request.args.get("limit", 10, type=int)
+
+    from app.services.merge_service import MergeService
+
+    service = MergeService()
+    merges = service.get_merge_history(user_id, min(limit, 50))
+
+    return success_response(
+        {
+            "merges": [m.to_dict() for m in merges],
+        }
+    )
 
 
 @api_bp.route("/tasks/<int:task_id>/boss-info", methods=["GET"])

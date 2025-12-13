@@ -10,3 +10,5 @@ export { focusService } from './focus';
 export { gamificationService } from './gamification';
 export { onboardingService } from './onboarding';
 export { cardsService } from './cards';
+export { mergeService } from './merge';
+export { eventsService } from './events';

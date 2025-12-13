@@ -16,6 +16,62 @@ class CardRarity(str, Enum):
     LEGENDARY = "legendary"  # Boss tasks / special achievements
 
 
+class CardAbility(str, Enum):
+    """Card abilities available for Uncommon+ cards."""
+
+    HEAL = "heal"  # Restore 30% HP to an ally
+    DOUBLE_STRIKE = "double_strike"  # Attack twice at 60% damage each
+    SHIELD = "shield"  # Block next attack
+    POISON = "poison"  # Deal 10% damage over 3 turns
+
+
+# Ability configuration
+ABILITY_CONFIG = {
+    CardAbility.HEAL: {
+        "name": "Исцеление",
+        "description": "Восстанавливает 30% HP союзной карте",
+        "emoji": "💚",
+        "cooldown": 3,
+        "target": "ally",  # ally, enemy, self
+        "effect_value": 0.3,  # 30% HP
+    },
+    CardAbility.DOUBLE_STRIKE: {
+        "name": "Двойной удар",
+        "description": "Атакует дважды за ход (60% урона каждый удар)",
+        "emoji": "⚔️",
+        "cooldown": 2,
+        "target": "enemy",
+        "effect_value": 0.6,  # 60% of base attack
+    },
+    CardAbility.SHIELD: {
+        "name": "Щит",
+        "description": "Блокирует следующую атаку",
+        "emoji": "🛡️",
+        "cooldown": 4,
+        "target": "self",
+        "effect_value": 1,  # Full block
+    },
+    CardAbility.POISON: {
+        "name": "Яд",
+        "description": "Отравляет врага: 10% урона каждый ход 3 хода",
+        "emoji": "☠️",
+        "cooldown": 3,
+        "target": "enemy",
+        "effect_value": 0.1,  # 10% of max HP
+        "duration": 3,
+    },
+}
+
+# Chance of getting an ability by rarity
+ABILITY_CHANCE_BY_RARITY = {
+    CardRarity.COMMON: 0,  # Common cards don't get abilities
+    CardRarity.UNCOMMON: 0.3,  # 30% chance
+    CardRarity.RARE: 0.5,  # 50% chance
+    CardRarity.EPIC: 0.75,  # 75% chance
+    CardRarity.LEGENDARY: 1.0,  # 100% chance
+}
+
+
 # Rarity stats multipliers
 RARITY_MULTIPLIERS = {
     CardRarity.COMMON: {"hp": 1.0, "attack": 1.0},
@@ -108,6 +164,10 @@ class UserCard(db.Model):
     attack = db.Column(db.Integer, default=15, nullable=False)
     current_hp = db.Column(db.Integer, default=50, nullable=False)  # For battles
 
+    # Ability (for Uncommon+ cards)
+    ability = db.Column(db.String(30), nullable=True)  # CardAbility value
+    ability_cooldown = db.Column(db.Integer, default=0)  # Current cooldown in turns
+
     # Visual
     image_url = db.Column(db.String(512), nullable=True)
     emoji = db.Column(db.String(10), default="🃏")
@@ -155,6 +215,25 @@ class UserCard(db.Model):
             CardRarity(self.rarity), RARITY_COLORS[CardRarity.COMMON]
         )
 
+    @property
+    def ability_info(self) -> dict | None:
+        """Get ability configuration info."""
+        if not self.ability:
+            return None
+        try:
+            ability_enum = CardAbility(self.ability)
+            config = ABILITY_CONFIG.get(ability_enum, {})
+            return {
+                "type": self.ability,
+                "name": config.get("name", self.ability),
+                "description": config.get("description", ""),
+                "emoji": config.get("emoji", "✨"),
+                "cooldown": config.get("cooldown", 0),
+                "current_cooldown": self.ability_cooldown or 0,
+            }
+        except ValueError:
+            return None
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -168,6 +247,8 @@ class UserCard(db.Model):
             "hp": self.hp,
             "attack": self.attack,
             "current_hp": self.current_hp,
+            "ability": self.ability,
+            "ability_info": self.ability_info,
             "image_url": self.image_url,
             "emoji": self.emoji,
             "is_in_deck": self.is_in_deck,
@@ -408,4 +489,52 @@ class CoopBattleParticipant(db.Model):
             "cards_lost": self.cards_lost,
             "xp_earned": self.xp_earned,
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,
+        }
+
+
+class MergeLog(db.Model):
+    """History of card merges."""
+
+    __tablename__ = "merge_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Source cards info (saved because cards will be destroyed)
+    card1_name = db.Column(db.String(100), nullable=False)
+    card1_rarity = db.Column(db.String(20), nullable=False)
+    card2_name = db.Column(db.String(100), nullable=False)
+    card2_rarity = db.Column(db.String(20), nullable=False)
+
+    # Result
+    result_card_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user_cards.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    result_rarity = db.Column(db.String(20), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship("User", backref=db.backref("merges", lazy="dynamic"))
+    result_card = db.relationship("UserCard")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "card1_name": self.card1_name,
+            "card1_rarity": self.card1_rarity,
+            "card2_name": self.card2_name,
+            "card2_rarity": self.card2_rarity,
+            "result_card": self.result_card.to_dict() if self.result_card else None,
+            "result_rarity": self.result_rarity,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }

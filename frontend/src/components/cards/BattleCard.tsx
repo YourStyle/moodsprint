@@ -1,7 +1,9 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Heart, Zap, Skull } from 'lucide-react';
+import { Heart, Zap, Skull, Shield, Sparkles } from 'lucide-react';
+import { DamageNumber } from './DamageNumber';
+import type { AbilityInfo, StatusEffect } from '@/domain/types';
 
 export interface BattleCardProps {
   id: number | string;
@@ -20,7 +22,17 @@ export interface BattleCardProps {
   size?: 'sm' | 'md' | 'lg';
   isAttacking?: boolean;
   isBeingAttacked?: boolean;
+  damageReceived?: number | null;
+  isCriticalHit?: boolean;
   onClick?: () => void;
+  // New ability props
+  ability?: string | null;
+  abilityInfo?: AbilityInfo | null;
+  abilityCooldown?: number;
+  hasShield?: boolean;
+  statusEffects?: StatusEffect[];
+  onAbilityClick?: () => void;
+  canUseAbility?: boolean;
 }
 
 const rarityConfig = {
@@ -85,8 +97,18 @@ export function BattleCard({
   size = 'md',
   isAttacking = false,
   isBeingAttacked = false,
+  damageReceived = null,
+  isCriticalHit = false,
   onClick,
+  ability,
+  abilityInfo,
+  abilityCooldown = 0,
+  hasShield = false,
+  statusEffects = [],
+  onAbilityClick,
+  canUseAbility = false,
 }: BattleCardProps) {
+  const hasPoisonEffect = statusEffects.some(e => e.type === 'poison');
   const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
 
@@ -299,6 +321,72 @@ export function BattleCard({
           'absolute inset-0 rounded-xl pointer-events-none',
           'bg-red-500/40 animate-ping'
         )} />
+      )}
+
+      {/* Floating damage number */}
+      {damageReceived !== null && damageReceived > 0 && (
+        <DamageNumber damage={damageReceived} isCritical={isCriticalHit} />
+      )}
+
+      {/* Shield indicator */}
+      {hasShield && alive && (
+        <div className={cn(
+          'absolute -top-1 -right-1 z-20',
+          'w-6 h-6 rounded-full',
+          'bg-gradient-to-br from-blue-400 to-blue-600',
+          'border-2 border-blue-300',
+          'flex items-center justify-center',
+          'shadow-[0_0_10px_rgba(59,130,246,0.8)]',
+          'animate-pulse'
+        )}>
+          <Shield className="w-3 h-3 text-white" />
+        </div>
+      )}
+
+      {/* Poison indicator */}
+      {hasPoisonEffect && alive && (
+        <div className={cn(
+          'absolute -top-1 -left-1 z-20',
+          'w-6 h-6 rounded-full',
+          'bg-gradient-to-br from-green-500 to-green-700',
+          'border-2 border-green-400',
+          'flex items-center justify-center',
+          'shadow-[0_0_10px_rgba(34,197,94,0.8)]'
+        )}>
+          <span className="text-xs">☠️</span>
+        </div>
+      )}
+
+      {/* Ability button */}
+      {ability && abilityInfo && alive && onAbilityClick && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (canUseAbility && abilityCooldown === 0) {
+              onAbilityClick();
+            }
+          }}
+          disabled={!canUseAbility || abilityCooldown > 0}
+          className={cn(
+            'absolute -bottom-3 left-1/2 -translate-x-1/2 z-20',
+            'px-2 py-1 rounded-full',
+            'text-[10px] font-bold',
+            'border transition-all duration-200',
+            canUseAbility && abilityCooldown === 0
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-purple-400 text-white hover:scale-110 cursor-pointer shadow-[0_0_12px_rgba(168,85,247,0.6)]'
+              : 'bg-gray-700/80 border-gray-600 text-gray-400 cursor-not-allowed'
+          )}
+          title={`${abilityInfo.name}: ${abilityInfo.description}`}
+        >
+          <span className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            {abilityCooldown > 0 ? (
+              <span>{abilityCooldown}</span>
+            ) : (
+              <span>{abilityInfo.emoji}</span>
+            )}
+          </span>
+        </button>
       )}
     </div>
   );

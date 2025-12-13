@@ -20,11 +20,45 @@ from app.models import (
     MonsterCard,
     User,
 )
-from app.models.card import UserCard
+from app.models.card import CardRarity, UserCard
 from app.models.character import GENRE_THEMES
 from app.models.user_profile import UserProfile
 
 logger = logging.getLogger(__name__)
+
+# Monster reward configuration by type
+MONSTER_REWARD_CONFIG = {
+    "normal": {
+        "card_chance": 1.0,  # 100% chance to get a card
+        "rarity_weights": {
+            CardRarity.COMMON: 1.0,  # 100% Common
+            CardRarity.UNCOMMON: 0,
+            CardRarity.RARE: 0,
+            CardRarity.EPIC: 0,
+            CardRarity.LEGENDARY: 0,
+        },
+    },
+    "elite": {
+        "card_chance": 1.0,
+        "rarity_weights": {
+            CardRarity.COMMON: 0,
+            CardRarity.UNCOMMON: 0.70,  # 70% Uncommon
+            CardRarity.RARE: 0.30,  # 30% Rare
+            CardRarity.EPIC: 0,
+            CardRarity.LEGENDARY: 0,
+        },
+    },
+    "boss": {
+        "card_chance": 1.0,
+        "rarity_weights": {
+            CardRarity.COMMON: 0,
+            CardRarity.UNCOMMON: 0,
+            CardRarity.RARE: 0.50,  # 50% Rare
+            CardRarity.EPIC: 0.40,  # 40% Epic
+            CardRarity.LEGENDARY: 0.10,  # 10% Legendary
+        },
+    },
+}
 
 # Monster card templates per genre
 MONSTER_CARD_TEMPLATES = {
@@ -116,11 +150,26 @@ MONSTER_CHARACTERS = {
 }
 
 MONSTER_ART_STYLES = {
-    "magic": "dark magical atmosphere, sinister aura, mystical evil energy",
-    "fantasy": "medieval fantasy villain, dark epic style, menacing presence",
-    "scifi": "futuristic sci-fi enemy, high-tech threat, dangerous alien technology",
-    "cyberpunk": "neon-lit cyberpunk enemy, dark urban threat, cyber nightmare",
-    "anime": "anime villain style, dramatic dark pose, Japanese animation evil character",
+    "magic": (
+        "art deco dark magic, steampunk evil wizard, brass clockwork curse, "
+        "geometric sinister patterns, gold and black"
+    ),
+    "fantasy": (
+        "art deco villain, steampunk monster armor, brass and copper menace, "
+        "geometric dark ornaments, vintage evil poster"
+    ),
+    "scifi": (
+        "art deco retro alien, steampunk robot enemy, brass machinery threat, "
+        "geometric danger patterns, vintage sci-fi menace"
+    ),
+    "cyberpunk": (
+        "art deco noir villain, steampunk cyber threat, brass implant horror, "
+        "geometric neon evil, industrial nightmare"
+    ),
+    "anime": (
+        "art deco anime villain, steampunk dark lord, brass accessories, "
+        "geometric shadow patterns, vintage Japanese evil poster"
+    ),
 }
 
 
@@ -232,10 +281,10 @@ class CardBattleService:
                 )
 
             prompt = (
-                f"Trading card game enemy monster portrait, {boss_modifier}{character_type}, "
+                f"Art deco steampunk monster portrait, {boss_modifier}{character_type}, "
                 f"{art_style}, "
-                f"high quality digital art, centered composition, "
-                f"dark fantasy villain illustration style, detailed, menacing"
+                f"brass and copper machinery, geometric dark patterns, "
+                f"vintage villain poster style, ornate evil design, highly detailed"
             )
 
             logger.info(
@@ -524,6 +573,11 @@ class CardBattleService:
                 "rarity": c.rarity,
                 "genre": c.genre,
                 "alive": True,
+                "ability": c.ability,
+                "ability_info": c.ability_info,
+                "ability_cooldown": 0,  # Fresh cooldown at battle start
+                "has_shield": False,  # Shield status
+                "status_effects": [],  # Active status effects (poison, etc.)
             }
             for c in cards
         ]
@@ -585,6 +639,8 @@ class CardBattleService:
                 "max_hp": hp,
                 "attack": attack,
                 "alive": True,
+                "has_shield": False,
+                "status_effects": [],
             }
             cards.append(card)
 
@@ -620,13 +676,19 @@ class CardBattleService:
                 "max_hp": int(template["hp"] * scale),
                 "attack": int(template["attack"] * scale),
                 "alive": True,
+                "has_shield": False,
+                "status_effects": [],
             }
             cards.append(card)
 
         return cards
 
     def execute_turn(
-        self, user_id: int, player_card_id: int, target_monster_card_id: str
+        self,
+        user_id: int,
+        player_card_id: int,
+        target_card_id: str,
+        use_ability: bool = False,
     ) -> dict[str, Any]:
         """Execute a turn in the battle."""
         battle = self.get_active_battle(user_id)
@@ -648,44 +710,75 @@ class CardBattleService:
         if not player_card:
             return {"error": "invalid_player_card"}
 
-        # Find target monster card
-        monster_card = None
-        for c in state["monster_cards"]:
-            if c["id"] == target_monster_card_id and c["alive"]:
-                monster_card = c
-                break
-
-        if not monster_card:
-            return {"error": "invalid_monster_card"}
-
         turn_log = []
 
-        # Player attacks monster card
-        damage = self._calculate_damage(player_card["attack"], is_critical=False)
-        is_critical = random.random() < 0.15
-        if is_critical:
-            damage = int(damage * 1.5)
+        # Process poison damage at start of turn
+        poison_log = self._process_poison_damage(state)
+        turn_log.extend(poison_log)
 
-        monster_card["hp"] -= damage
-        state["damage_dealt"] = state.get("damage_dealt", 0) + damage
+        # Check if battle ended from poison
+        alive_monster_cards = [c for c in state["monster_cards"] if c["alive"]]
+        if not alive_monster_cards:
+            state["battle_log"].extend(turn_log)
+            battle.state = state
+            return self._end_battle(battle, won=True, turn_log=turn_log)
 
-        turn_log.append(
-            {
-                "actor": "player",
-                "card_id": player_card["id"],
-                "card_name": player_card["name"],
-                "card_emoji": player_card["emoji"],
-                "action": "critical" if is_critical else "attack",
-                "damage": damage,
-                "target_id": monster_card["id"],
-                "target_name": monster_card["name"],
-                "target_emoji": monster_card["emoji"],
-                "is_critical": is_critical,
-            }
-        )
+        # Use ability or attack
+        if use_ability:
+            ability_result = self._execute_ability(
+                state, player_card, target_card_id, turn_log
+            )
+            if "error" in ability_result:
+                return ability_result
+        else:
+            # Find target monster card for attack
+            monster_card = None
+            for c in state["monster_cards"]:
+                if c["id"] == target_card_id and c["alive"]:
+                    monster_card = c
+                    break
 
-        # Check if monster card died
-        if monster_card["hp"] <= 0:
+            if not monster_card:
+                return {"error": "invalid_monster_card"}
+
+            # Player attacks monster card
+            damage = self._calculate_damage(player_card["attack"], is_critical=False)
+            is_critical = random.random() < 0.15
+            if is_critical:
+                damage = int(damage * 1.5)
+
+            # Check if target has shield
+            if monster_card.get("has_shield"):
+                monster_card["has_shield"] = False
+                turn_log.append(
+                    {
+                        "actor": "system",
+                        "action": "shield_blocked",
+                        "message": f"Щит {monster_card['name']} поглотил удар!",
+                    }
+                )
+                damage = 0
+            else:
+                monster_card["hp"] -= damage
+                state["damage_dealt"] = state.get("damage_dealt", 0) + damage
+
+            turn_log.append(
+                {
+                    "actor": "player",
+                    "card_id": player_card["id"],
+                    "card_name": player_card["name"],
+                    "card_emoji": player_card["emoji"],
+                    "action": "critical" if is_critical else "attack",
+                    "damage": damage,
+                    "target_id": monster_card["id"],
+                    "target_name": monster_card["name"],
+                    "target_emoji": monster_card.get("emoji", "👾"),
+                    "is_critical": is_critical,
+                }
+            )
+
+        # Check if monster card died (only if we attacked, not used ability)
+        if not use_ability and monster_card["hp"] <= 0:
             monster_card["alive"] = False
             monster_card["hp"] = 0
             turn_log.append(
@@ -719,20 +812,32 @@ class CardBattleService:
             if monster_crit:
                 monster_damage = int(monster_damage * 1.5)
 
-            target_player_card["hp"] -= monster_damage
-            state["damage_taken"] = state.get("damage_taken", 0) + monster_damage
+            # Check if target has shield
+            if target_player_card.get("has_shield"):
+                target_player_card["has_shield"] = False
+                turn_log.append(
+                    {
+                        "actor": "system",
+                        "action": "shield_blocked",
+                        "message": f"Щит {target_player_card['name']} поглотил удар!",
+                    }
+                )
+                monster_damage = 0
+            else:
+                target_player_card["hp"] -= monster_damage
+                state["damage_taken"] = state.get("damage_taken", 0) + monster_damage
 
             turn_log.append(
                 {
                     "actor": "monster",
                     "card_id": attacking_monster_card["id"],
                     "card_name": attacking_monster_card["name"],
-                    "card_emoji": attacking_monster_card["emoji"],
+                    "card_emoji": attacking_monster_card.get("emoji", "👾"),
                     "action": "critical" if monster_crit else "attack",
                     "damage": monster_damage,
                     "target_id": target_player_card["id"],
                     "target_name": target_player_card["name"],
-                    "target_emoji": target_player_card["emoji"],
+                    "target_emoji": target_player_card.get("emoji", "🃏"),
                     "is_critical": monster_crit,
                 }
             )
@@ -758,6 +863,11 @@ class CardBattleService:
             battle.state = state
             return self._end_battle(battle, won=False, turn_log=turn_log)
 
+        # Decrease cooldowns at end of turn
+        for card in state["player_cards"]:
+            if card.get("ability_cooldown", 0) > 0:
+                card["ability_cooldown"] -= 1
+
         # Continue battle
         state["current_turn"] = "player"
         state["battle_log"].extend(turn_log)
@@ -779,6 +889,280 @@ class CardBattleService:
         if is_critical:
             damage = int(damage * 1.5)
         return max(1, damage)
+
+    def _execute_ability(
+        self, state: dict, player_card: dict, target_id: str, turn_log: list
+    ) -> dict:
+        """Execute a card's ability."""
+        from app.models.card import ABILITY_CONFIG, CardAbility
+
+        ability = player_card.get("ability")
+        if not ability:
+            return {"error": "no_ability"}
+
+        cooldown = player_card.get("ability_cooldown", 0)
+        if cooldown > 0:
+            return {"error": "ability_on_cooldown", "cooldown": cooldown}
+
+        try:
+            ability_enum = CardAbility(ability)
+            config = ABILITY_CONFIG.get(ability_enum, {})
+        except ValueError:
+            return {"error": "invalid_ability"}
+
+        ability_name = config.get("name", ability)
+        ability_emoji = config.get("emoji", "✨")
+        ability_cooldown = config.get("cooldown", 3)
+
+        if ability == "heal":
+            # Find target ally card
+            target_card = None
+            for c in state["player_cards"]:
+                if c["id"] == int(target_id) and c["alive"]:
+                    target_card = c
+                    break
+            if not target_card:
+                return {"error": "invalid_target"}
+
+            # Heal 30% of max HP
+            heal_amount = int(target_card["max_hp"] * config.get("effect_value", 0.3))
+            old_hp = target_card["hp"]
+            target_card["hp"] = min(
+                target_card["max_hp"], target_card["hp"] + heal_amount
+            )
+            actual_heal = target_card["hp"] - old_hp
+
+            turn_log.append(
+                {
+                    "actor": "player",
+                    "card_name": player_card["name"],
+                    "action": "ability",
+                    "ability": ability,
+                    "ability_name": ability_name,
+                    "ability_emoji": ability_emoji,
+                    "heal_amount": actual_heal,
+                    "target_name": target_card["name"],
+                    "message": f"{player_card['name']} исцеляет "
+                    f"{target_card['name']} на {actual_heal} HP!",
+                }
+            )
+
+        elif ability == "double_strike":
+            # Find target enemy card
+            target_card = None
+            for c in state["monster_cards"]:
+                if c["id"] == target_id and c["alive"]:
+                    target_card = c
+                    break
+            if not target_card:
+                return {"error": "invalid_target"}
+
+            # Two attacks at 60% damage each
+            effect_value = config.get("effect_value", 0.6)
+            total_damage = 0
+            for strike in range(2):
+                damage = int(
+                    self._calculate_damage(player_card["attack"]) * effect_value
+                )
+                if target_card.get("has_shield") and strike == 0:
+                    target_card["has_shield"] = False
+                    damage = 0
+                else:
+                    target_card["hp"] -= damage
+                    total_damage += damage
+
+            state["damage_dealt"] = state.get("damage_dealt", 0) + total_damage
+
+            turn_log.append(
+                {
+                    "actor": "player",
+                    "card_name": player_card["name"],
+                    "action": "ability",
+                    "ability": ability,
+                    "ability_name": ability_name,
+                    "ability_emoji": ability_emoji,
+                    "damage": total_damage,
+                    "target_name": target_card["name"],
+                    "message": f"{player_card['name']} наносит двойной удар: {total_damage} урона!",
+                }
+            )
+
+            # Check if target died
+            if target_card["hp"] <= 0:
+                target_card["alive"] = False
+                target_card["hp"] = 0
+                turn_log.append(
+                    {
+                        "actor": "system",
+                        "action": "card_destroyed",
+                        "card_name": target_card["name"],
+                        "message": f"{target_card['name']} побеждена!",
+                    }
+                )
+
+        elif ability == "shield":
+            # Apply shield to self
+            player_card["has_shield"] = True
+
+            turn_log.append(
+                {
+                    "actor": "player",
+                    "card_name": player_card["name"],
+                    "action": "ability",
+                    "ability": ability,
+                    "ability_name": ability_name,
+                    "ability_emoji": ability_emoji,
+                    "message": f"{player_card['name']} активирует щит!",
+                }
+            )
+
+        elif ability == "poison":
+            # Find target enemy card
+            target_card = None
+            for c in state["monster_cards"]:
+                if c["id"] == target_id and c["alive"]:
+                    target_card = c
+                    break
+            if not target_card:
+                return {"error": "invalid_target"}
+
+            # Apply poison effect
+            duration = config.get("duration", 3)
+            poison_damage = int(target_card["max_hp"] * config.get("effect_value", 0.1))
+
+            # Initialize status_effects if not present
+            if "status_effects" not in target_card:
+                target_card["status_effects"] = []
+
+            target_card["status_effects"].append(
+                {
+                    "type": "poison",
+                    "damage": poison_damage,
+                    "turns_left": duration,
+                    "source": player_card["name"],
+                }
+            )
+
+            turn_log.append(
+                {
+                    "actor": "player",
+                    "card_name": player_card["name"],
+                    "action": "ability",
+                    "ability": ability,
+                    "ability_name": ability_name,
+                    "ability_emoji": ability_emoji,
+                    "target_name": target_card["name"],
+                    "message": f"{player_card['name']} отравляет "
+                    f"{target_card['name']}! ({poison_damage} урона/{duration} ходов)",
+                }
+            )
+
+        # Set cooldown
+        player_card["ability_cooldown"] = ability_cooldown
+
+        return {"success": True}
+
+    def _process_poison_damage(self, state: dict) -> list:
+        """Process poison damage on all affected cards at start of turn."""
+        turn_log = []
+
+        # Process poison on monster cards
+        for card in state["monster_cards"]:
+            if not card.get("alive"):
+                continue
+            if "status_effects" not in card:
+                continue
+
+            new_effects = []
+            for effect in card["status_effects"]:
+                if effect["type"] == "poison" and effect["turns_left"] > 0:
+                    damage = effect["damage"]
+                    card["hp"] -= damage
+                    effect["turns_left"] -= 1
+                    state["damage_dealt"] = state.get("damage_dealt", 0) + damage
+
+                    turn_log.append(
+                        {
+                            "actor": "system",
+                            "action": "poison_damage",
+                            "damage": damage,
+                            "target_name": card["name"],
+                            "message": f"☠️ Яд наносит {damage} урона {card['name']}!",
+                        }
+                    )
+
+                    # Check if card died from poison
+                    if card["hp"] <= 0:
+                        card["alive"] = False
+                        card["hp"] = 0
+                        turn_log.append(
+                            {
+                                "actor": "system",
+                                "action": "card_destroyed",
+                                "card_name": card["name"],
+                                "message": f"{card['name']} погибла от яда!",
+                            }
+                        )
+
+                    # Keep effect if turns remain
+                    if effect["turns_left"] > 0:
+                        new_effects.append(effect)
+
+            card["status_effects"] = new_effects
+
+        return turn_log
+
+    def _get_monster_type(self, monster: Monster) -> str:
+        """Determine monster type: normal, elite, or boss."""
+        if monster.is_boss:
+            return "boss"
+        # Elite monsters have higher base stats
+        if monster.base_hp >= 100 or monster.base_attack >= 20:
+            return "elite"
+        return "normal"
+
+    def _roll_rarity_from_weights(self, weights: dict) -> CardRarity:
+        """Roll a rarity based on weight distribution."""
+        total = sum(weights.values())
+        if total == 0:
+            return CardRarity.COMMON
+
+        roll = random.random() * total
+        cumulative = 0
+        for rarity, weight in weights.items():
+            cumulative += weight
+            if roll <= cumulative:
+                return rarity
+        return CardRarity.COMMON
+
+    def _generate_reward_card(
+        self, user_id: int, monster: Monster, monster_type: str
+    ) -> UserCard | None:
+        """Generate a reward card based on monster type."""
+        from app.services.card_service import CardService
+
+        config = MONSTER_REWARD_CONFIG.get(
+            monster_type, MONSTER_REWARD_CONFIG["normal"]
+        )
+
+        # Check if we should generate a card
+        if random.random() > config["card_chance"]:
+            return None
+
+        # Roll rarity based on weights
+        rarity = self._roll_rarity_from_weights(config["rarity_weights"])
+
+        # Generate card using CardService
+        card_service = CardService()
+        card = card_service.generate_card_for_task(
+            user_id=user_id,
+            task_id=None,
+            task_title=f"Победа над {monster.name}",
+            difficulty=monster_type,
+            forced_rarity=rarity,
+        )
+
+        return card
 
     def _end_battle(
         self, battle: ActiveBattle, won: bool, turn_log: list
@@ -820,20 +1204,17 @@ class CardBattleService:
             )
             db.session.add(defeated)
 
-            # Generate reward card for boss kills
+            # Generate reward card based on monster type
             monster = battle.monster
-            if monster and monster.is_boss:
-                from app.services.card_service import CardService
-
-                card_service = CardService()
-                new_card = card_service.generate_card_for_task(
+            if monster:
+                monster_type = self._get_monster_type(monster)
+                reward_card = self._generate_reward_card(
                     user_id=battle.user_id,
-                    task_id=None,
-                    task_title=f"Победа над {monster.name}",
-                    difficulty="very_hard",
+                    monster=monster,
+                    monster_type=monster_type,
                 )
-                if new_card:
-                    new_card = new_card.to_dict()
+                if reward_card:
+                    new_card = reward_card.to_dict()
 
         # Update actual player cards in database
         for card_state in state["player_cards"]:
