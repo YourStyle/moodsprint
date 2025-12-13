@@ -92,6 +92,8 @@ module.exports = {
         'float': 'float 6s ease-in-out infinite',
         'glow': 'glow 2s ease-in-out infinite alternate',
         'shimmer': 'shimmer 2s linear infinite',
+        'card-attack': 'cardAttack 0.5s ease-out',
+        'card-hit': 'cardHit 0.4s ease-out',
       },
       keyframes: {
         float: {
@@ -105,6 +107,20 @@ module.exports = {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        cardAttack: {
+          '0%': { transform: 'translateY(0) scale(1)' },
+          '30%': { transform: 'translateY(-20px) scale(1.1)' },
+          '50%': { transform: 'translateY(-10px) scale(1.15)' },
+          '70%': { transform: 'translateY(10px) scale(1.05)' },
+          '100%': { transform: 'translateY(0) scale(1)' },
+        },
+        cardHit: {
+          '0%': { transform: 'translateX(0) rotate(0deg)', filter: 'brightness(1)' },
+          '25%': { transform: 'translateX(-8px) rotate(-3deg)', filter: 'brightness(1.5)' },
+          '50%': { transform: 'translateX(8px) rotate(3deg)', filter: 'brightness(0.7)' },
+          '75%': { transform: 'translateX(-4px) rotate(-1deg)', filter: 'brightness(1.2)' },
+          '100%': { transform: 'translateX(0) rotate(0deg)', filter: 'brightness(1)' },
         },
       },
       borderRadius: {

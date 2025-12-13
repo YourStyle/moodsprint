@@ -50,6 +50,8 @@ export default function ArenaPage() {
   const [lastTurnLog, setLastTurnLog] = useState<BattleLogEntry[]>([]);
   const [battleResult, setBattleResult] = useState<TurnResult['result'] | null>(null);
   const [showTurnAnimation, setShowTurnAnimation] = useState(false);
+  const [attackingCardId, setAttackingCardId] = useState<number | string | null>(null);
+  const [attackedCardId, setAttackedCardId] = useState<number | string | null>(null);
 
   // Leaderboard state
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('weekly');
@@ -106,9 +108,31 @@ export default function ArenaPage() {
         setLastTurnLog(response.data.turn_log);
         setShowTurnAnimation(true);
 
-        // Animate turn log
+        // Trigger attack animations based on turn log
+        const turnLog = response.data.turn_log;
+        if (turnLog.length > 0) {
+          // Player attack animation
+          const playerAction = turnLog.find(log => log.actor === 'player');
+          if (playerAction) {
+            setAttackingCardId(selectedPlayerCard);
+            setAttackedCardId(selectedTargetCard);
+          }
+
+          // Monster counter-attack animation after player attack
+          setTimeout(() => {
+            const monsterAction = turnLog.find(log => log.actor === 'monster');
+            if (monsterAction) {
+              setAttackingCardId(monsterAction.card_id || null);
+              setAttackedCardId(monsterAction.target_id || null);
+            }
+          }, 600);
+        }
+
+        // Clear animations and update state
         setTimeout(() => {
           setShowTurnAnimation(false);
+          setAttackingCardId(null);
+          setAttackedCardId(null);
           setActiveBattle(response.data!.battle);
           setSelectedPlayerCard(null);
           setSelectedTargetCard(null);
@@ -551,6 +575,8 @@ export default function ArenaPage() {
                       selected={selectedTargetCard === card.id}
                       selectable={card.alive}
                       size="md"
+                      isAttacking={attackingCardId === card.id}
+                      isBeingAttacked={attackedCardId === card.id}
                       onClick={() => card.alive && setSelectedTargetCard(card.id)}
                     />
                   ))}
@@ -585,6 +611,8 @@ export default function ArenaPage() {
                       selected={selectedPlayerCard === card.id}
                       selectable={card.alive}
                       size="md"
+                      isAttacking={attackingCardId === card.id}
+                      isBeingAttacked={attackedCardId === card.id}
                       onClick={() => card.alive && setSelectedPlayerCard(card.id as number)}
                     />
                   ))}

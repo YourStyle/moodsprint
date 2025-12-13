@@ -17,6 +17,21 @@ from app.utils import not_found, success_response, validation_error
 # Minimum time (in minutes) after task creation before a card can be earned
 MIN_TASK_TIME_FOR_CARD = 10
 
+# Number of first tasks that bypass the time restriction (onboarding experience)
+FIRST_TASKS_WITHOUT_TIME_LIMIT = 5
+
+
+def should_skip_time_check_for_card(user_id: int) -> bool:
+    """Check if user should skip the time restriction for cards.
+
+    First N tasks created by user get cards immediately regardless of time.
+    This improves onboarding experience.
+    """
+    completed_tasks_count = Task.query.filter_by(
+        user_id=user_id, status=TaskStatus.COMPLETED.value
+    ).count()
+    return completed_tasks_count < FIRST_TASKS_WITHOUT_TIME_LIMIT
+
 
 def get_current_time_slot() -> str:
     """Get current time slot based on hour (Moscow time, UTC+3)."""
@@ -368,9 +383,11 @@ def update_task(task_id: int):
         checker = AchievementChecker(user)
         achievements_unlocked = checker.check_all()
 
-        # Generate card for completing task only if enough time passed since creation
+        # Generate card for completing task
+        # Skip time check for first N tasks (onboarding experience)
         task_age_minutes = (datetime.utcnow() - task.created_at).total_seconds() / 60
-        if task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
+        skip_time_check = should_skip_time_check_for_card(user_id)
+        if skip_time_check or task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
             try:
                 card_service = CardService()
                 difficulty = task.difficulty or "medium"
@@ -662,11 +679,13 @@ def update_subtask(subtask_id: int):
         if task_just_completed:
             xp_earned += XPCalculator.task_completed()
 
-            # Generate card for completing task only if enough time passed since creation
+            # Generate card for completing task
+            # Skip time check for first N tasks (onboarding experience)
             task_age_minutes = (
                 datetime.utcnow() - task.created_at
             ).total_seconds() / 60
-            if task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
+            skip_time_check = should_skip_time_check_for_card(user_id)
+            if skip_time_check or task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
                 try:
                     card_service = CardService()
                     difficulty = task.difficulty or "medium"

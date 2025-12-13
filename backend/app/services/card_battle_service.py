@@ -672,10 +672,12 @@ class CardBattleService:
         turn_log.append(
             {
                 "actor": "player",
+                "card_id": player_card["id"],
                 "card_name": player_card["name"],
                 "card_emoji": player_card["emoji"],
                 "action": "critical" if is_critical else "attack",
                 "damage": damage,
+                "target_id": monster_card["id"],
                 "target_name": monster_card["name"],
                 "target_emoji": monster_card["emoji"],
                 "is_critical": is_critical,
@@ -723,10 +725,12 @@ class CardBattleService:
             turn_log.append(
                 {
                     "actor": "monster",
+                    "card_id": attacking_monster_card["id"],
                     "card_name": attacking_monster_card["name"],
                     "card_emoji": attacking_monster_card["emoji"],
                     "action": "critical" if monster_crit else "attack",
                     "damage": monster_damage,
+                    "target_id": target_player_card["id"],
                     "target_name": target_player_card["name"],
                     "target_emoji": target_player_card["emoji"],
                     "is_critical": monster_crit,

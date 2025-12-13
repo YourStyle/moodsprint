@@ -187,8 +187,10 @@ export interface BattleLogEntry {
   damage?: number;
   is_critical?: boolean;
   message?: string;
+  card_id?: number | string;
   card_name?: string;
   card_emoji?: string;
+  target_id?: number | string;
   target_name?: string;
   target_emoji?: string;
 }

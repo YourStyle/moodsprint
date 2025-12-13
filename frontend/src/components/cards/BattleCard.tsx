@@ -18,50 +18,61 @@ export interface BattleCardProps {
   selected?: boolean;
   selectable?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  isAttacking?: boolean;
+  isBeingAttacked?: boolean;
   onClick?: () => void;
 }
 
-const rarityStyles = {
+const rarityConfig = {
   common: {
-    border: 'border-gray-500/50',
+    frame: 'from-slate-600 to-slate-700',
+    border: 'border-slate-500/60',
     glow: '',
-    bg: 'from-gray-700 to-gray-800',
+    gem: 'bg-slate-400',
+    gemGlow: '',
     label: 'Обычная',
-    labelBg: 'bg-gray-500',
+    accent: 'text-slate-300',
   },
   uncommon: {
-    border: 'border-green-500/50',
-    glow: 'shadow-[0_0_15px_rgba(34,197,94,0.3)]',
-    bg: 'from-green-900/50 to-gray-800',
+    frame: 'from-emerald-700 to-emerald-900',
+    border: 'border-emerald-500/60',
+    glow: 'shadow-[0_0_20px_rgba(16,185,129,0.3)]',
+    gem: 'bg-gradient-to-br from-emerald-300 to-emerald-500',
+    gemGlow: 'shadow-[0_0_8px_rgba(16,185,129,0.6)]',
     label: 'Необычная',
-    labelBg: 'bg-green-600',
+    accent: 'text-emerald-400',
   },
   rare: {
-    border: 'border-blue-500/50',
-    glow: 'shadow-[0_0_15px_rgba(59,130,246,0.4)]',
-    bg: 'from-blue-900/50 to-gray-800',
+    frame: 'from-blue-700 to-blue-900',
+    border: 'border-blue-500/60',
+    glow: 'shadow-[0_0_25px_rgba(59,130,246,0.4)]',
+    gem: 'bg-gradient-to-br from-blue-300 to-blue-500',
+    gemGlow: 'shadow-[0_0_10px_rgba(59,130,246,0.7)]',
     label: 'Редкая',
-    labelBg: 'bg-blue-600',
+    accent: 'text-blue-400',
   },
   epic: {
-    border: 'border-purple-500/50',
-    glow: 'shadow-[0_0_20px_rgba(168,85,247,0.4)]',
-    bg: 'from-purple-900/50 to-gray-800',
+    frame: 'from-purple-700 to-purple-900',
+    border: 'border-purple-500/60',
+    glow: 'shadow-[0_0_30px_rgba(168,85,247,0.5)]',
+    gem: 'bg-gradient-to-br from-purple-300 to-purple-500',
+    gemGlow: 'shadow-[0_0_12px_rgba(168,85,247,0.8)]',
     label: 'Эпическая',
-    labelBg: 'bg-purple-600',
+    accent: 'text-purple-400',
   },
   legendary: {
-    border: 'border-amber-500/50',
-    glow: 'shadow-[0_0_25px_rgba(245,158,11,0.5)]',
-    bg: 'from-amber-900/50 to-gray-800',
+    frame: 'from-amber-600 to-orange-800',
+    border: 'border-amber-500/60',
+    glow: 'shadow-[0_0_35px_rgba(245,158,11,0.5)]',
+    gem: 'bg-gradient-to-br from-amber-200 to-amber-500',
+    gemGlow: 'shadow-[0_0_15px_rgba(245,158,11,0.9)]',
     label: 'Легендарная',
-    labelBg: 'bg-amber-600',
+    accent: 'text-amber-400',
   },
 };
 
 export function BattleCard({
   name,
-  description,
   emoji,
   imageUrl,
   hp,
@@ -72,144 +83,222 @@ export function BattleCard({
   selected = false,
   selectable = true,
   size = 'md',
+  isAttacking = false,
+  isBeingAttacked = false,
   onClick,
 }: BattleCardProps) {
-  const styles = rarityStyles[rarity as keyof typeof rarityStyles] || rarityStyles.common;
+  const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
 
   const sizeClasses = {
-    sm: 'w-24 h-36',
-    md: 'w-32 h-48',
-    lg: 'w-40 h-56',
+    sm: 'w-[88px] h-[130px]',
+    md: 'w-[110px] h-[160px]',
+    lg: 'w-[140px] h-[200px]',
   };
 
   const imageSizeClasses = {
-    sm: 'h-16',
-    md: 'h-24',
-    lg: 'h-32',
-  };
-
-  const textSizeClasses = {
-    sm: 'text-[10px]',
-    md: 'text-xs',
-    lg: 'text-sm',
-  };
-
-  const nameSizeClasses = {
-    sm: 'text-[9px]',
-    md: 'text-[11px]',
-    lg: 'text-sm',
+    sm: 'h-[60px]',
+    md: 'h-[80px]',
+    lg: 'h-[105px]',
   };
 
   return (
     <div
       onClick={selectable && alive ? onClick : undefined}
       className={cn(
-        'relative rounded-xl overflow-hidden transition-all duration-200',
-        'border-2',
+        'relative transition-all duration-300 ease-out',
         sizeClasses[size],
-        styles.border,
-        alive && styles.glow,
-        selectable && alive && 'cursor-pointer hover:scale-105 active:scale-95',
-        selected && 'ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-900',
+        selectable && alive && 'cursor-pointer',
+        selectable && alive && 'hover:scale-105 hover:-translate-y-1',
+        selected && 'scale-105 -translate-y-2',
         !alive && 'grayscale brightness-50',
-        !selectable && 'cursor-default'
+        !selectable && 'cursor-default',
+        // Attack animation
+        isAttacking && 'animate-card-attack',
+        isBeingAttacked && 'animate-card-hit'
       )}
     >
-      {/* Background gradient */}
-      <div className={cn('absolute inset-0 bg-gradient-to-b', styles.bg)} />
+      {/* Card frame */}
+      <div
+        className={cn(
+          'absolute inset-0 rounded-xl overflow-hidden',
+          'border-2',
+          config.border,
+          alive && config.glow,
+          selected && 'ring-2 ring-white/80 ring-offset-1 ring-offset-gray-900'
+        )}
+      >
+        {/* Outer frame gradient */}
+        <div className={cn('absolute inset-0 bg-gradient-to-b', config.frame)} />
 
-      {/* Card image area */}
-      <div className={cn('relative', imageSizeClasses[size], 'overflow-hidden')}>
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-gray-600/50 to-transparent">
+        {/* Inner card area */}
+        <div className="absolute inset-[3px] rounded-lg overflow-hidden bg-gray-900/90">
+          {/* Top decorative bar */}
+          <div className={cn(
+            'absolute top-0 left-0 right-0 h-[2px]',
+            'bg-gradient-to-r from-transparent via-white/30 to-transparent'
+          )} />
+
+          {/* Gem indicator - top center */}
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10">
+            <div
+              className={cn(
+                'w-3 h-3 rounded-full',
+                config.gem,
+                config.gemGlow,
+                'border border-white/20'
+              )}
+            />
+          </div>
+
+          {/* Attack stat - top left */}
+          <div className={cn(
+            'absolute top-1 left-1 z-10',
+            'flex items-center gap-0.5 px-1 py-0.5 rounded',
+            'bg-red-900/80 backdrop-blur-sm border border-red-500/30'
+          )}>
+            <Zap className={cn(
+              size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
+              'text-yellow-400'
+            )} />
             <span className={cn(
-              size === 'sm' ? 'text-3xl' : size === 'md' ? 'text-4xl' : 'text-5xl'
+              'font-bold text-white',
+              size === 'sm' ? 'text-[8px]' : 'text-[10px]'
             )}>
-              {emoji || '🎴'}
+              {attack}
             </span>
           </div>
-        )}
 
-        {/* Rarity label */}
-        {size !== 'sm' && (
+          {/* HP stat - top right */}
           <div className={cn(
-            'absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold text-white uppercase',
-            styles.labelBg
+            'absolute top-1 right-1 z-10',
+            'flex items-center gap-0.5 px-1 py-0.5 rounded',
+            'bg-emerald-900/80 backdrop-blur-sm border border-emerald-500/30'
           )}>
-            {styles.label}
+            <Heart className={cn(
+              size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
+              'text-red-400 fill-red-400'
+            )} />
+            <span className={cn(
+              'font-bold text-white',
+              size === 'sm' ? 'text-[8px]' : 'text-[10px]'
+            )}>
+              {hp}
+            </span>
           </div>
-        )}
 
-        {/* Attack badge - top right */}
-        <div className={cn(
-          'absolute top-1 right-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded',
-          'bg-red-600/90 backdrop-blur-sm',
-          textSizeClasses[size]
-        )}>
-          <Zap className={cn(size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3', 'text-yellow-300')} />
-          <span className="font-bold text-white">{attack}</span>
-        </div>
-      </div>
+          {/* Character image */}
+          <div className={cn(
+            'absolute left-[4px] right-[4px] top-[18px]',
+            imageSizeClasses[size],
+            'rounded-md overflow-hidden',
+            'border border-white/10'
+          )}>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className={cn(
+                'w-full h-full flex items-center justify-center',
+                'bg-gradient-to-b from-gray-700/80 to-gray-800/80'
+              )}>
+                <span className={cn(
+                  size === 'sm' ? 'text-2xl' : size === 'md' ? 'text-3xl' : 'text-4xl'
+                )}>
+                  {emoji || '🎴'}
+                </span>
+              </div>
+            )}
 
-      {/* Card info */}
-      <div className="relative p-1.5 flex flex-col flex-1">
-        {/* Name */}
-        <h3 className={cn(
-          'font-bold text-white text-center truncate leading-tight',
-          nameSizeClasses[size]
-        )}>
-          {name}
-        </h3>
+            {/* Image overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-transparent to-transparent" />
+          </div>
 
-        {/* Description - only on lg */}
-        {size === 'lg' && description && (
-          <p className="text-[9px] text-gray-400 text-center line-clamp-2 mt-0.5">
-            {description}
-          </p>
-        )}
+          {/* Name plate */}
+          <div className={cn(
+            'absolute left-[4px] right-[4px]',
+            size === 'sm' ? 'bottom-[22px]' : size === 'md' ? 'bottom-[26px]' : 'bottom-[32px]',
+            'py-0.5 px-1',
+            'bg-gradient-to-r from-gray-800/90 via-gray-700/90 to-gray-800/90',
+            'border-y border-white/10'
+          )}>
+            <h3 className={cn(
+              'font-bold text-center truncate',
+              config.accent,
+              size === 'sm' ? 'text-[7px]' : size === 'md' ? 'text-[9px]' : 'text-[11px]'
+            )}>
+              {name}
+            </h3>
+          </div>
 
-        {/* HP bar */}
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mb-0.5">
-            <div className={cn('flex items-center gap-0.5', textSizeClasses[size])}>
-              <Heart className={cn(size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3', 'text-red-400')} />
-              <span className="text-white font-medium">{hp}</span>
-              <span className="text-gray-500">/{maxHp}</span>
+          {/* HP bar */}
+          <div className={cn(
+            'absolute left-[4px] right-[4px] bottom-[8px]',
+            'space-y-0.5'
+          )}>
+            <div className={cn(
+              'h-[6px] rounded-full overflow-hidden',
+              'bg-gray-800 border border-white/10'
+            )}>
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  hpPercent > 50
+                    ? 'bg-gradient-to-r from-green-600 to-green-400'
+                    : hpPercent > 25
+                    ? 'bg-gradient-to-r from-yellow-600 to-yellow-400'
+                    : 'bg-gradient-to-r from-red-600 to-red-400'
+                )}
+                style={{ width: `${hpPercent}%` }}
+              />
             </div>
           </div>
 
-          {/* HP progress bar */}
-          <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-300',
-                hpPercent > 50 ? 'bg-green-500' : hpPercent > 25 ? 'bg-yellow-500' : 'bg-red-500'
-              )}
-              style={{ width: `${hpPercent}%` }}
-            />
-          </div>
+          {/* Bottom decorative bar */}
+          <div className={cn(
+            'absolute bottom-0 left-0 right-0 h-[2px]',
+            'bg-gradient-to-r from-transparent via-white/20 to-transparent'
+          )} />
         </div>
       </div>
 
+      {/* Selection glow effect */}
+      {selected && alive && (
+        <div className={cn(
+          'absolute -inset-1 rounded-xl',
+          'bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20',
+          'animate-pulse pointer-events-none'
+        )} />
+      )}
+
       {/* Dead overlay */}
       {!alive && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-          <div className="relative">
-            <Skull className="w-12 h-12 text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-          </div>
+        <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-black/70">
+          <Skull className={cn(
+            size === 'sm' ? 'w-8 h-8' : 'w-10 h-10',
+            'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]'
+          )} />
         </div>
       )}
 
-      {/* Selection indicator */}
-      {selected && alive && (
-        <div className="absolute inset-0 border-2 border-purple-400 rounded-xl pointer-events-none animate-pulse" />
+      {/* Attack effect overlay */}
+      {isAttacking && (
+        <div className={cn(
+          'absolute inset-0 rounded-xl pointer-events-none',
+          'bg-gradient-to-r from-orange-500/30 to-red-500/30',
+          'animate-pulse'
+        )} />
+      )}
+
+      {/* Hit effect overlay */}
+      {isBeingAttacked && (
+        <div className={cn(
+          'absolute inset-0 rounded-xl pointer-events-none',
+          'bg-red-500/40 animate-ping'
+        )} />
       )}
     </div>
   );
