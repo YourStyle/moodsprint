@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Heart, Zap, Skull, Shield, Sparkles } from 'lucide-react';
+import { Heart, Swords, Skull, Shield, Sparkles } from 'lucide-react';
 import { DamageNumber } from './DamageNumber';
 import type { AbilityInfo, StatusEffect } from '@/domain/types';
 
@@ -179,9 +179,9 @@ export function BattleCard({
             'flex items-center gap-0.5 px-1 py-0.5 rounded',
             'bg-red-900/80 backdrop-blur-sm border border-red-500/30'
           )}>
-            <Zap className={cn(
+            <Swords className={cn(
               size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5',
-              'text-yellow-400'
+              'text-orange-400'
             )} />
             <span className={cn(
               'font-bold text-white',

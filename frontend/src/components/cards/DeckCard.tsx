@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Zap, Info, Layers, Calendar } from 'lucide-react';
+import { Heart, Swords, Info, Layers, Calendar } from 'lucide-react';
 
 export interface DeckCardProps {
   id: number;
@@ -194,10 +194,10 @@ export function DeckCard({
               )}
             </div>
 
-            {/* Name - below image, fully visible */}
+            {/* Name - below image, up to 2 lines */}
             <div className={cn('px-1', compact ? 'py-0.5' : 'py-1')}>
               <h3 className={cn(
-                'font-bold text-center leading-tight truncate',
+                'font-bold text-center leading-tight line-clamp-2',
                 compact ? 'text-[10px]' : 'text-sm',
                 config.accent
               )}>
@@ -211,7 +211,7 @@ export function DeckCard({
               compact ? 'gap-2 py-1' : 'gap-4 py-1.5'
             )}>
               <div className="flex items-center gap-0.5">
-                <Zap className={cn(compact ? 'w-3 h-3' : 'w-4 h-4', 'text-yellow-400')} />
+                <Swords className={cn(compact ? 'w-3 h-3' : 'w-4 h-4', 'text-orange-400')} />
                 <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-sm')}>{attack}</span>
               </div>
               <div className={cn('w-px bg-gray-600', compact ? 'h-3' : 'h-4')} />

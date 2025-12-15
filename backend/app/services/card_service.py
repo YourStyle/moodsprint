@@ -36,6 +36,26 @@ RARITY_PROBABILITIES = [
     (CardRarity.LEGENDARY, 1.00),
 ]
 
+# Card pool thresholds - how many templates per user in genre before we reuse
+# Lower number = generate more new cards, higher = reuse more
+# Legendary always generates new (unique feel)
+CARD_POOL_MULTIPLIERS = {
+    CardRarity.COMMON: 0.5,  # 1 template per 2 users
+    CardRarity.UNCOMMON: 0.3,  # 1 template per ~3 users
+    CardRarity.RARE: 0.2,  # 1 template per 5 users
+    CardRarity.EPIC: 0.1,  # 1 template per 10 users
+    CardRarity.LEGENDARY: 0.0,  # Always generate new (always unique)
+}
+
+# Minimum templates in pool before we start reusing
+MIN_TEMPLATES_PER_GENRE = {
+    CardRarity.COMMON: 10,
+    CardRarity.UNCOMMON: 7,
+    CardRarity.RARE: 5,
+    CardRarity.EPIC: 3,
+    CardRarity.LEGENDARY: 0,  # Never reuse
+}
+
 
 def get_random_rarity() -> CardRarity:
     """Get a random rarity based on probability distribution."""
@@ -192,6 +212,50 @@ class CardService:
             return profile.favorite_genre
         return "fantasy"
 
+    def _count_users_in_genre(self, genre: str) -> int:
+        """Count how many users have this genre as their favorite."""
+        count = (
+            db.session.query(db.func.count(UserProfile.id))
+            .filter(UserProfile.favorite_genre == genre)
+            .scalar()
+        )
+        return count or 1  # At least 1 to avoid division issues
+
+    def _count_templates_in_genre(self, genre: str) -> int:
+        """Count active templates for a genre."""
+        return CardTemplate.query.filter_by(genre=genre, is_active=True).count()
+
+    def _should_generate_new_card(self, genre: str, rarity: CardRarity) -> bool:
+        """
+        Determine if we should generate a new card or use existing template.
+
+        Logic:
+        - Legendary: always generate new (unique feel)
+        - Other rarities: generate if pool is too small for user count
+        """
+        # Legendary always generates new cards
+        if rarity == CardRarity.LEGENDARY:
+            return True
+
+        users_count = self._count_users_in_genre(genre)
+        templates_count = self._count_templates_in_genre(genre)
+        min_templates = MIN_TEMPLATES_PER_GENRE.get(rarity, 5)
+        multiplier = CARD_POOL_MULTIPLIERS.get(rarity, 0.3)
+
+        # Required templates = max(minimum, users * multiplier)
+        required_templates = max(min_templates, int(users_count * multiplier))
+
+        # Generate new if we don't have enough templates
+        should_generate = templates_count < required_templates
+
+        logger.debug(
+            f"Card pool check: genre={genre}, rarity={rarity.value}, "
+            f"users={users_count}, templates={templates_count}, "
+            f"required={required_templates}, generate_new={should_generate}"
+        )
+
+        return should_generate
+
     def determine_task_difficulty(
         self, task_title: str, task_description: str = ""
     ) -> str:
@@ -257,32 +321,74 @@ class CardService:
         """
         Generate a card for completing a task.
 
-        Rarity is determined by random probability, not task difficulty,
-        unless forced_rarity is specified.
-        First tries to use an existing template, then falls back to AI generation.
+        Uses a card pool system:
+        - Checks if we have enough templates for the user count in this genre
+        - If pool is sufficient, picks a random existing template
+        - If pool needs more variety, generates a new card and saves as template
+
+        Rarity is determined by random probability, unless forced_rarity is specified.
         """
         genre = self.get_user_genre(user_id)
         rarity = forced_rarity if forced_rarity else get_random_rarity()
 
-        # Try to find an unused template for this genre
-        template = self._get_random_template(genre)
+        # Check if we should generate new or use existing pool
+        should_generate = self._should_generate_new_card(genre, rarity)
 
-        if template:
-            card = self._create_card_from_template(user_id, task_id, template, rarity)
-        else:
-            # Generate card with AI
+        if should_generate:
+            # Generate new card with AI and save as template
             card = self._generate_card_with_ai(
                 user_id, task_id, genre, rarity, task_title
             )
+            if card:
+                # Save as template for future reuse (except legendary - unique)
+                if rarity != CardRarity.LEGENDARY:
+                    self._save_as_template(card, genre)
+        else:
+            # Use existing template from pool
+            template = self._get_random_template(genre)
+            if template:
+                card = self._create_card_from_template(
+                    user_id, task_id, template, rarity
+                )
+            else:
+                # Fallback: generate if no templates exist
+                card = self._generate_card_with_ai(
+                    user_id, task_id, genre, rarity, task_title
+                )
+                if card:
+                    self._save_as_template(card, genre)
 
         if card:
             db.session.add(card)
             db.session.commit()
             logger.info(
-                f"Generated {rarity.value} card for user {user_id}: {card.name}"
+                f"Generated {rarity.value} card for user {user_id}: {card.name} "
+                f"(new={should_generate})"
             )
 
         return card
+
+    def _save_as_template(self, card: UserCard, genre: str) -> CardTemplate | None:
+        """Save a generated card as a template for future reuse."""
+        try:
+            template = CardTemplate(
+                name=card.name,
+                description=card.description,
+                genre=genre,
+                base_hp=50,  # Base stats, will be modified by rarity
+                base_attack=15,
+                image_url=card.image_url,
+                emoji=card.emoji,
+                ai_generated=True,
+                is_active=True,
+            )
+            db.session.add(template)
+            # Don't commit here, let the caller handle transaction
+            logger.info(f"Saved new template: {card.name} for genre {genre}")
+            return template
+        except Exception as e:
+            logger.error(f"Failed to save template: {e}")
+            return None
 
     def _get_random_template(self, genre: str) -> CardTemplate | None:
         """Get a random active template for the genre."""
