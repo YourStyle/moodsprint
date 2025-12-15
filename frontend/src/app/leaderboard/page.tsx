@@ -6,12 +6,14 @@ import { Trophy, Medal, Flame, Star, Crown, Skull } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type LeaderboardType = 'weekly' | 'all_time';
 
 export default function LeaderboardPage() {
   const { user } = useAppStore();
+  const { t } = useLanguage();
   const [type, setType] = useState<LeaderboardType>('weekly');
 
   const { data: leaderboardData, isLoading } = useQuery({
@@ -51,7 +53,7 @@ export default function LeaderboardPage() {
   if (!user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Войдите чтобы увидеть лидерборд</p>
+        <p className="text-gray-500">{t('loginToSeeLeaderboard')}</p>
       </div>
     );
   }
@@ -61,8 +63,8 @@ export default function LeaderboardPage() {
       {/* Header */}
       <div className="text-center mb-6">
         <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">Лидерборд</h1>
-        <p className="text-sm text-gray-400">Лучшие охотники на монстров</p>
+        <h1 className="text-2xl font-bold text-white">{t('leaderboardTitle')}</h1>
+        <p className="text-sm text-gray-400">{t('bestMonsterHunters')}</p>
       </div>
 
       {/* Type Toggle */}
@@ -76,7 +78,7 @@ export default function LeaderboardPage() {
               : 'text-gray-400 hover:text-white'
           )}
         >
-          За неделю
+          {t('weekly')}
         </button>
         <button
           onClick={() => setType('all_time')}
@@ -87,7 +89,7 @@ export default function LeaderboardPage() {
               : 'text-gray-400 hover:text-white'
           )}
         >
-          Все время
+          {t('allTime')}
         </button>
       </div>
 
@@ -109,9 +111,9 @@ export default function LeaderboardPage() {
       ) : leaderboard.length === 0 ? (
         <Card className="text-center py-8">
           <Star className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">Пока нет участников</p>
+          <p className="text-gray-400">{t('noParticipants')}</p>
           <p className="text-sm text-gray-500 mt-1">
-            Будь первым в рейтинге!
+            {t('beFirstInRating')}
           </p>
         </Card>
       ) : (
@@ -156,10 +158,10 @@ export default function LeaderboardPage() {
                     isCurrentUser ? 'text-purple-400' : 'text-white'
                   )}>
                     {entry.first_name || entry.username}
-                    {isCurrentUser && ' (вы)'}
+                    {isCurrentUser && ` (${t('you')})`}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span>Ур. {entry.level}</span>
+                    <span>{t('level')} {entry.level}</span>
                     {entry.streak_days > 0 && (
                       <span className="flex items-center gap-0.5">
                         <Flame className="w-3 h-3 text-orange-500" />
@@ -175,7 +177,7 @@ export default function LeaderboardPage() {
                     <Skull className="w-4 h-4 text-red-400" />
                     <p className="font-bold text-red-400">{entry.monsters_killed || 0}</p>
                   </div>
-                  <p className="text-xs text-gray-500">монстров</p>
+                  <p className="text-xs text-gray-500">{t('monsters')}</p>
                 </div>
               </div>
             );

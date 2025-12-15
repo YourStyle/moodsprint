@@ -333,30 +333,44 @@ def get_leaderboard():
 
     week_start = None
     if leaderboard_type == "weekly":
-        # Weekly - battles from this week
+        # Weekly - battles from this week (Monday = 0)
         week_start = datetime.combine(
             date.today() - timedelta(days=date.today().weekday()), datetime.min.time()
         )
 
-    # Count kills per user
-    kills_subq = db.session.query(
-        BattleLog.user_id,
-        func.count(BattleLog.id).label("total_kills"),
-    ).filter(BattleLog.won.is_(True))
+    # Build the kills count query based on type
+    if leaderboard_type == "weekly" and week_start:
+        # Weekly kills
+        kills_case = func.count(
+            db.case(
+                (
+                    db.and_(
+                        BattleLog.won.is_(True),
+                        BattleLog.created_at >= week_start,
+                    ),
+                    BattleLog.id,
+                ),
+                else_=None,
+            )
+        )
+    else:
+        # All time kills
+        kills_case = func.count(
+            db.case(
+                (BattleLog.won.is_(True), BattleLog.id),
+                else_=None,
+            )
+        )
 
-    if leaderboard_type == "weekly":
-        kills_subq = kills_subq.filter(BattleLog.created_at >= week_start)
-
-    kills_subq = kills_subq.group_by(BattleLog.user_id).subquery()
-
-    # Join with users and order by kills
+    # Get users who have ever battled, with their kill count for the period
     results = (
         db.session.query(
             User,
-            func.coalesce(kills_subq.c.total_kills, 0).label("monsters_killed"),
+            kills_case.label("monsters_killed"),
         )
-        .outerjoin(kills_subq, User.id == kills_subq.c.user_id)
-        .order_by(func.coalesce(kills_subq.c.total_kills, 0).desc(), User.level.desc())
+        .join(BattleLog, User.id == BattleLog.user_id)
+        .group_by(User.id)
+        .order_by(kills_case.desc(), User.level.desc())
         .limit(limit)
         .all()
     )
@@ -369,7 +383,7 @@ def get_leaderboard():
                 "user_id": user.id,
                 "username": user.username or f"User {user.id}",
                 "first_name": user.first_name,
-                "monsters_killed": monsters_killed,
+                "monsters_killed": monsters_killed or 0,
                 "level": user.level,
                 "streak_days": user.streak_days,
             }

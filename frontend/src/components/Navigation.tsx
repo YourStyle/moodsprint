@@ -6,18 +6,20 @@ import { Home, ListTodo, Timer, User, Swords, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
+import { useLanguage, TranslationKey } from '@/lib/i18n';
 
-const navItems = [
-  { href: '/', icon: Home, label: 'Главная' },
-  { href: '/tasks', icon: ListTodo, label: 'Задачи' },
-  { href: '/deck', icon: Layers, label: 'Колода' },
-  { href: '/arena', icon: Swords, label: 'Арена' },
-  { href: '/profile', icon: User, label: 'Профиль' },
+const navItems: { href: string; icon: typeof Home; labelKey: TranslationKey }[] = [
+  { href: '/', icon: Home, labelKey: 'home' },
+  { href: '/tasks', icon: ListTodo, labelKey: 'tasks' },
+  { href: '/deck', icon: Layers, labelKey: 'deck' },
+  { href: '/arena', icon: Swords, labelKey: 'arena' },
+  { href: '/profile', icon: User, labelKey: 'profile' },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
   const { activeSession } = useAppStore();
+  const { t } = useLanguage();
 
   // Hide navigation on onboarding page
   if (pathname === '/onboarding') {
@@ -84,7 +86,7 @@ export function Navigation() {
                       )}
                     </AnimatePresence>
                   </motion.div>
-                  <span className="text-xs font-medium">{item.label}</span>
+                  <span className="text-xs font-medium">{t(item.labelKey)}</span>
                   <AnimatePresence>
                     {isActive && (
                       <motion.div

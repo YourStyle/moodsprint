@@ -13,6 +13,8 @@ export const translations = {
     done: 'Готово',
     error: 'Ошибка',
     success: 'Успех',
+    you: 'вы',
+    min: 'мин',
 
     // Navigation
     home: 'Главная',
@@ -21,6 +23,7 @@ export const translations = {
     settings: 'Настройки',
     arena: 'Арена',
     deck: 'Колода',
+    leaderboard: 'Лидерборд',
 
     // Greetings
     goodMorning: 'Доброе утро',
@@ -83,11 +86,22 @@ export const translations = {
     achievements: 'Достижения',
     streak: 'Серия',
     days: 'дней',
+    tasksCompleted: 'задач',
+    focusTime: 'фокус',
+    logout: 'Выйти',
 
     // Settings
     language: 'Язык',
     notifications: 'Уведомления',
     theme: 'Тема',
+    workSchedule: 'Рабочее расписание',
+    workDays: 'Рабочие дни',
+    workStart: 'Начало работы',
+    workEnd: 'Конец работы',
+    focusSessions: 'Фокус-сессии',
+    defaultDuration: 'Длительность по умолчанию',
+    enableNotifications: 'Включить уведомления',
+    reminderTime: 'Время напоминания',
 
     // Telegram
     openInTelegram: 'Открыть в Telegram',
@@ -100,13 +114,50 @@ export const translations = {
     attack: 'Атака',
     defense: 'Защита',
     health: 'Здоровье',
+    hp: 'HP',
+    cards: 'Карты',
+    collection: 'Коллекция',
+    myDeck: 'Моя колода',
+    addToDeck: 'В колоду',
+    removeFromDeck: 'Убрать',
+    heal: 'Лечить',
+    noCards: 'Нет карт',
+    completeTasksToGetCards: 'Выполняйте задачи, чтобы получать карты!',
+    deckEmpty: 'Колода пуста',
+    addCardsFromCollection: 'Добавьте карты из коллекции',
+    cardsInDeck: 'карт в колоде',
 
-    // Battle
+    // Battle / Arena
     battle: 'Сражение',
     victory: 'Победа',
     defeat: 'Поражение',
     yourTurn: 'Ваш ход',
     enemyTurn: 'Ход противника',
+    startBattle: 'Начать бой',
+    selectMonster: 'Выберите монстра',
+    monstersDefeated: 'Побеждено монстров',
+    dailyMonster: 'Монстр дня',
+    bossMonster: 'Босс',
+    noMonstersAvailable: 'Нет доступных монстров',
+    battleReward: 'Награда за бой',
+    xpEarned: 'XP получено',
+
+    // Leaderboard
+    leaderboardTitle: 'Лидерборд',
+    bestMonsterHunters: 'Лучшие охотники на монстров',
+    weekly: 'За неделю',
+    allTime: 'Все время',
+    noParticipants: 'Пока нет участников',
+    beFirstInRating: 'Будь первым в рейтинге!',
+    monsters: 'монстров',
+    loginToSeeLeaderboard: 'Войдите чтобы увидеть лидерборд',
+
+    // Rarity
+    rarityCommon: 'Обычная',
+    rarityUncommon: 'Необычная',
+    rarityRare: 'Редкая',
+    rarityEpic: 'Эпическая',
+    rarityLegendary: 'Легендарная',
   },
 
   en: {
@@ -123,6 +174,8 @@ export const translations = {
     done: 'Done',
     error: 'Error',
     success: 'Success',
+    you: 'you',
+    min: 'min',
 
     // Navigation
     home: 'Home',
@@ -131,6 +184,7 @@ export const translations = {
     settings: 'Settings',
     arena: 'Arena',
     deck: 'Deck',
+    leaderboard: 'Leaderboard',
 
     // Greetings
     goodMorning: 'Good morning',
@@ -193,11 +247,22 @@ export const translations = {
     achievements: 'Achievements',
     streak: 'Streak',
     days: 'days',
+    tasksCompleted: 'tasks',
+    focusTime: 'focus',
+    logout: 'Logout',
 
     // Settings
     language: 'Language',
     notifications: 'Notifications',
     theme: 'Theme',
+    workSchedule: 'Work schedule',
+    workDays: 'Work days',
+    workStart: 'Work start',
+    workEnd: 'Work end',
+    focusSessions: 'Focus sessions',
+    defaultDuration: 'Default duration',
+    enableNotifications: 'Enable notifications',
+    reminderTime: 'Reminder time',
 
     // Telegram
     openInTelegram: 'Open in Telegram',
@@ -210,13 +275,50 @@ export const translations = {
     attack: 'Attack',
     defense: 'Defense',
     health: 'Health',
+    hp: 'HP',
+    cards: 'Cards',
+    collection: 'Collection',
+    myDeck: 'My Deck',
+    addToDeck: 'Add to deck',
+    removeFromDeck: 'Remove',
+    heal: 'Heal',
+    noCards: 'No cards',
+    completeTasksToGetCards: 'Complete tasks to get cards!',
+    deckEmpty: 'Deck is empty',
+    addCardsFromCollection: 'Add cards from collection',
+    cardsInDeck: 'cards in deck',
 
-    // Battle
+    // Battle / Arena
     battle: 'Battle',
     victory: 'Victory',
     defeat: 'Defeat',
     yourTurn: 'Your turn',
     enemyTurn: 'Enemy turn',
+    startBattle: 'Start battle',
+    selectMonster: 'Select monster',
+    monstersDefeated: 'Monsters defeated',
+    dailyMonster: 'Daily monster',
+    bossMonster: 'Boss',
+    noMonstersAvailable: 'No monsters available',
+    battleReward: 'Battle reward',
+    xpEarned: 'XP earned',
+
+    // Leaderboard
+    leaderboardTitle: 'Leaderboard',
+    bestMonsterHunters: 'Best monster hunters',
+    weekly: 'Weekly',
+    allTime: 'All time',
+    noParticipants: 'No participants yet',
+    beFirstInRating: 'Be the first in the rating!',
+    monsters: 'monsters',
+    loginToSeeLeaderboard: 'Login to see leaderboard',
+
+    // Rarity
+    rarityCommon: 'Common',
+    rarityUncommon: 'Uncommon',
+    rarityRare: 'Rare',
+    rarityEpic: 'Epic',
+    rarityLegendary: 'Legendary',
   },
 } as const;
 
