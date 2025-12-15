@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Swords,
@@ -244,11 +244,11 @@ export default function ArenaPage() {
     queryClient.invalidateQueries({ queryKey: ['deck'] });
   };
 
-  const handleBackToMonsters = () => {
+  const handleBackToMonsters = useCallback(() => {
     setGameState('select');
     setSelectedMonster(null);
     setSelectedCards([]);
-  };
+  }, []);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
@@ -294,14 +294,6 @@ export default function ArenaPage() {
 
   const canAttack = selectedPlayerCard && selectedTargetCard && !executeTurnMutation.isPending;
 
-  if (!user) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-gray-500">{t('loginToEnterArena')}</p>
-      </div>
-    );
-  }
-
   // Show/hide Telegram back button based on game state
   useEffect(() => {
     if (gameState === 'cards') {
@@ -310,7 +302,15 @@ export default function ArenaPage() {
     } else {
       hideBackButton();
     }
-  }, [gameState]);
+  }, [gameState, handleBackToMonsters]);
+
+  if (!user) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-gray-500">{t('loginToEnterArena')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 pt-safe pb-24">
