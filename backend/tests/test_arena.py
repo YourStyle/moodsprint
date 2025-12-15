@@ -86,9 +86,10 @@ class TestStartBattle:
 
     def test_start_battle_success(self, auth_client, test_monster, battle_deck):
         """Should start battle with valid deck."""
+        card_ids = [card["id"] for card in battle_deck]
         response = auth_client.post(
             "/api/v1/arena/battle",
-            json={"monster_id": test_monster["id"]},
+            json={"monster_id": test_monster["id"], "card_ids": card_ids},
         )
 
         assert response.status_code == 200
