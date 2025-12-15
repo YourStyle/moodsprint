@@ -10,6 +10,9 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
+    # Static files
+    STATIC_FOLDER = os.environ.get("STATIC_FOLDER", "/app/static")
+
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", "postgresql://moodsprint:moodsprint@localhost:5432/moodsprint"
@@ -58,6 +61,7 @@ class TestingConfig(Config):
     DEBUG = True  # Enable dev endpoints for testing
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite doesn't need pool settings
+    STATIC_FOLDER = "/tmp/moodsprint_test_static"
 
 
 config = {

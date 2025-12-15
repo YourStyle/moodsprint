@@ -201,8 +201,16 @@ class CardService:
 
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
 
+        # Get static folder from Flask config or use default
+        from flask import current_app
+
+        try:
+            static_folder = current_app.static_folder or "/app/static"
+        except RuntimeError:
+            static_folder = "/app/static"
+
         # Ensure images directory exists
-        self.images_dir = Path("/app/static/card_images")
+        self.images_dir = Path(static_folder) / "card_images"
         self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_genre(self, user_id: int) -> str:

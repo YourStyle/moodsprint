@@ -20,8 +20,12 @@ def create_app(config_name: str | None = None) -> Flask:
     if config_name is None:
         config_name = os.environ.get("FLASK_ENV", "development")
 
-    app = Flask(__name__, static_folder="/app/static", static_url_path="/static")
-    app.config.from_object(config[config_name])
+    # Get static folder from config
+    config_obj = config[config_name]
+    static_folder = getattr(config_obj, "STATIC_FOLDER", "/app/static")
+
+    app = Flask(__name__, static_folder=static_folder, static_url_path="/static")
+    app.config.from_object(config_obj)
 
     # Initialize extensions
     db.init_app(app)

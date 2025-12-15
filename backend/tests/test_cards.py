@@ -129,7 +129,10 @@ class TestDeckManagement:
 
     def test_add_to_deck(self, auth_client, test_card):
         """Should add card to deck."""
-        response = auth_client.post(f"/api/v1/deck/add/{test_card['id']}")
+        response = auth_client.post(
+            "/api/v1/deck/add",
+            json={"card_id": test_card["id"]},
+        )
 
         assert response.status_code == 200
         data = response.json
@@ -142,7 +145,10 @@ class TestDeckManagement:
     def test_remove_from_deck(self, auth_client, deck_cards):
         """Should remove card from deck."""
         card_id = deck_cards[0]["id"]
-        response = auth_client.post(f"/api/v1/deck/remove/{card_id}")
+        response = auth_client.post(
+            "/api/v1/deck/remove",
+            json={"card_id": card_id},
+        )
 
         assert response.status_code == 200
 

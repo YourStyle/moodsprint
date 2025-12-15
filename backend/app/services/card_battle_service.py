@@ -181,7 +181,16 @@ class CardBattleService:
 
     def __init__(self):
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
-        self.images_dir = Path("/app/static/monster_images")
+
+        # Get static folder from Flask config or use default
+        from flask import current_app
+
+        try:
+            static_folder = current_app.static_folder or "/app/static"
+        except RuntimeError:
+            static_folder = "/app/static"
+
+        self.images_dir = Path(static_folder) / "monster_images"
         self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_deck(self, user_id: int) -> list[UserCard]:

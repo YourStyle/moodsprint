@@ -14,11 +14,11 @@ def test_monster(app):
         monster = Monster(
             name="Test Goblin",
             description="A weak test monster",
+            genre="fantasy",
             hp=50,
             attack=10,
             xp_reward=25,
-            stat_reward=1,
-            difficulty="easy",
+            stat_points_reward=1,
             emoji="👺",
         )
         db.session.add(monster)
