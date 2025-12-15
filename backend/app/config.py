@@ -55,7 +55,9 @@ class TestingConfig(Config):
     """Testing configuration."""
 
     TESTING = True
+    DEBUG = True  # Enable dev endpoints for testing
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite doesn't need pool settings
 
 
 config = {

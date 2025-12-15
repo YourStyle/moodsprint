@@ -254,6 +254,79 @@ def user_detail(user_id: int):
         {"uid": user_id},
     ).fetchall()
 
+    # Get user's cards
+    cards = db.session.execute(
+        text(
+            """
+            SELECT * FROM user_cards
+            WHERE user_id = :uid AND is_destroyed = false
+            ORDER BY rarity DESC, created_at DESC
+            LIMIT 50
+        """
+        ),
+        {"uid": user_id},
+    ).fetchall()
+
+    # Get card statistics
+    card_stats = db.session.execute(
+        text(
+            """
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_in_deck = true) as in_deck,
+                COUNT(*) FILTER (WHERE ability IS NOT NULL) as with_abilities,
+                COUNT(*) FILTER (WHERE rarity = 'common') as common,
+                COUNT(*) FILTER (WHERE rarity = 'uncommon') as uncommon,
+                COUNT(*) FILTER (WHERE rarity = 'rare') as rare,
+                COUNT(*) FILTER (WHERE rarity = 'epic') as epic,
+                COUNT(*) FILTER (WHERE rarity = 'legendary') as legendary
+            FROM user_cards
+            WHERE user_id = :uid AND is_destroyed = false
+        """
+        ),
+        {"uid": user_id},
+    ).fetchone()
+
+    # Get battle history
+    battles = db.session.execute(
+        text(
+            """
+            SELECT b.*, m.name as monster_name
+            FROM battle_logs b
+            LEFT JOIN monsters m ON b.monster_id = m.id
+            WHERE b.user_id = :uid
+            ORDER BY b.created_at DESC
+            LIMIT 20
+        """
+        ),
+        {"uid": user_id},
+    ).fetchall()
+
+    # Get battle statistics
+    battle_stats = db.session.execute(
+        text(
+            """
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE won = true) as wins,
+                COALESCE(SUM(xp_earned), 0) as total_xp,
+                COALESCE(SUM(damage_dealt), 0) as total_damage,
+                COALESCE(AVG(rounds), 0) as avg_rounds
+            FROM battle_logs
+            WHERE user_id = :uid
+        """
+        ),
+        {"uid": user_id},
+    ).fetchone()
+
+    # Get user's genre preference
+    user_genre = db.session.execute(
+        text(
+            "SELECT favorite_genre FROM onboarding_profiles WHERE user_id = :uid"
+        ),
+        {"uid": user_id},
+    ).fetchone()
+
     # Format productivity data
     hour_data = {
         r[0]: {"total": r[1], "completed": r[2]} for r in productivity_patterns
@@ -290,6 +363,11 @@ def user_detail(user_id: int):
         tasks=[dict(row._mapping) for row in tasks],
         activity=[dict(row._mapping) for row in activity] if activity else [],
         sessions=[dict(row._mapping) for row in sessions],
+        cards=[dict(row._mapping) for row in cards] if cards else [],
+        card_stats=dict(card_stats._mapping) if card_stats else {},
+        battles=[dict(row._mapping) for row in battles] if battles else [],
+        battle_stats=dict(battle_stats._mapping) if battle_stats else {},
+        user_genre=user_genre[0] if user_genre else None,
         productivity={
             "hour_data": [
                 {

@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users } from 'lucide-react';
 import { Card, Progress, Button } from '@/components/ui';
 import { XPBar, StreakBadge, AchievementCard, DailyQuests } from '@/components/gamification';
+import { GenreSelector } from '@/components/GenreSelector';
 import { useAppStore } from '@/lib/store';
-import { gamificationService } from '@/services';
+import { gamificationService, onboardingService } from '@/services';
 import { authService } from '@/services';
 
 export default function ProfilePage() {
@@ -37,6 +38,12 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
+  const { data: profileData } = useQuery({
+    queryKey: ['onboarding', 'profile'],
+    queryFn: () => onboardingService.getProfile(),
+    enabled: !!user,
+  });
+
   const handleLogout = () => {
     authService.logout();
     setUser(null);
@@ -55,6 +62,7 @@ export default function ProfilePage() {
   const achievements = achievementsData?.data;
   const patterns = patternsData?.data;
   const quests = questsData?.data?.quests || [];
+  const profile = profileData?.data?.profile;
 
   const getProductivityIcon = (time: string) => {
     switch (time) {
@@ -97,6 +105,18 @@ export default function ProfilePage() {
         {user.username && user.first_name && (
           <p className="text-sm text-gray-400">@{user.username}</p>
         )}
+
+        {/* Genre selector and Settings under avatar */}
+        <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-700/50">
+          <GenreSelector currentGenre={profile?.favorite_genre} />
+          <button
+            onClick={() => router.push('/settings')}
+            className="p-2 rounded-xl bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white transition-colors"
+            title="Настройки"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
       </Card>
 
       {/* XP Bar */}
@@ -246,23 +266,14 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Settings & Logout */}
-      <div className="space-y-2">
-        <button
-          onClick={() => router.push('/settings')}
-          className="w-full flex items-center justify-center gap-2 py-3 text-gray-300 hover:text-white transition-colors bg-gray-800 rounded-xl"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Настройки</span>
-        </button>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Выйти</span>
-        </button>
-      </div>
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+        <span>Выйти</span>
+      </button>
     </div>
   );
 }

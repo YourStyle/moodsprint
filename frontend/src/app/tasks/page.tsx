@@ -9,7 +9,7 @@ import { TaskCard, TaskForm } from '@/components/tasks';
 import { tasksService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { useAppStore } from '@/lib/store';
-import type { TaskPriority, TaskStatus, PreferredTime } from '@/domain/types';
+import type { TaskStatus } from '@/domain/types';
 
 type FilterStatus = TaskStatus | 'all';
 
@@ -29,7 +29,7 @@ export default function TasksPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string; preferred_time?: PreferredTime; scheduled_at?: string }) =>
+    mutationFn: (input: { title: string; description: string; due_date: string }) =>
       tasksService.createTask(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -38,8 +38,8 @@ export default function TasksPage() {
     },
   });
 
-  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime, scheduledAt?: string) => {
-    createMutation.mutate({ title, description, priority, due_date: dueDate, preferred_time: preferredTime, scheduled_at: scheduledAt });
+  const handleCreateTask = (title: string, description: string, dueDate: string) => {
+    createMutation.mutate({ title, description, due_date: dueDate });
   };
 
   const filters: { value: FilterStatus; label: string }[] = [

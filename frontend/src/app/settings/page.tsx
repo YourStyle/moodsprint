@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Calendar, Bell, Timer } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, Bell, Timer, Globe } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
+import { useLanguage, Language } from '@/lib/i18n';
 
 const DAYS_OF_WEEK = [
   { id: 1, short: 'Пн', full: 'Понедельник' },
@@ -21,10 +22,16 @@ const DAYS_OF_WEEK = [
 
 const SESSION_DURATIONS = [15, 25, 45, 60];
 
+const LANGUAGES: { id: Language; label: string; flag: string }[] = [
+  { id: 'ru', label: 'Русский', flag: '🇷🇺' },
+  { id: 'en', label: 'English', flag: '🇬🇧' },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { language, setLanguage, t } = useLanguage();
 
   const [workStartTime, setWorkStartTime] = useState('09:00');
   const [workEndTime, setWorkEndTime] = useState('18:00');
@@ -235,6 +242,34 @@ export default function SettingsPage() {
             />
           </div>
         )}
+      </Card>
+
+      {/* Language */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-5 h-5 text-blue-500" />
+          <h2 className="font-semibold text-white">{t('language')}</h2>
+        </div>
+
+        <div className="flex gap-2">
+          {LANGUAGES.map((lang) => (
+            <button
+              key={lang.id}
+              onClick={() => {
+                setLanguage(lang.id);
+                hapticFeedback('light');
+              }}
+              className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                language === lang.id
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-700 text-gray-400'
+              }`}
+            >
+              <span className="text-lg">{lang.flag}</span>
+              <span>{lang.label}</span>
+            </button>
+          ))}
+        </div>
       </Card>
     </div>
   );

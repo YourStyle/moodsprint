@@ -1,45 +1,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles, Menu, HelpCircle, Clock, Play, ChevronLeft, ChevronRight, ArrowUp, X, Zap, Timer, Smile } from 'lucide-react';
+import { Plus, Sparkles, Play, ArrowUp, X, Smile } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
-import { TaskCard } from '@/components/tasks';
-import { XPBar, StreakBadge, DailyGoals, DailyBonus } from '@/components/gamification';
+import { DailyBonus } from '@/components/gamification';
 import { useAppStore } from '@/lib/store';
-import { tasksService, moodService, gamificationService, focusService } from '@/services';
+import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
-import type { MoodLevel, EnergyLevel, TaskPriority, TaskSuggestion, PreferredTime } from '@/domain/types';
+import { useLanguage, TranslationKey } from '@/lib/i18n';
+import type { MoodLevel, EnergyLevel } from '@/domain/types';
 
 const formatDateForAPI = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
 
-const formatDateDisplay = (date: Date): string => {
+const formatDateDisplay = (date: Date, language: 'ru' | 'en', t: (key: TranslationKey) => string): string => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (formatDateForAPI(date) === formatDateForAPI(today)) return 'Сегодня';
-  if (formatDateForAPI(date) === formatDateForAPI(tomorrow)) return 'Завтра';
-  if (formatDateForAPI(date) === formatDateForAPI(yesterday)) return 'Вчера';
+  if (formatDateForAPI(date) === formatDateForAPI(today)) return t('today');
+  if (formatDateForAPI(date) === formatDateForAPI(tomorrow)) return t('tomorrow');
+  if (formatDateForAPI(date) === formatDateForAPI(yesterday)) return t('yesterday');
 
-  return date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const locale = language === 'ru' ? 'ru-RU' : 'en-US';
+  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 };
 
 interface WeekCalendarProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
+  language: 'ru' | 'en';
 }
 
-function WeekCalendar({ selectedDate, onDateSelect }: WeekCalendarProps) {
-  const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const WEEK_DAYS = {
+  ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+};
+
+function WeekCalendar({ selectedDate, onDateSelect, language }: WeekCalendarProps) {
+  const days = WEEK_DAYS[language];
   const today = new Date();
   const currentDay = today.getDay();
   const selectedDateStr = formatDateForAPI(selectedDate);
@@ -131,148 +138,14 @@ function TaskCardCompact({
   );
 }
 
-const TIME_OPTIONS = [15, 30, 45, 60, 90, 120];
-
-function FreeTimeModal({
-  isOpen,
-  onClose,
-  onSelectSuggestion,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelectSuggestion: (suggestion: TaskSuggestion) => void;
-}) {
-  const [selectedTime, setSelectedTime] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<TaskSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchSuggestions = async (minutes: number) => {
-    setLoading(true);
-    setSelectedTime(minutes);
-    try {
-      const result = await tasksService.getSuggestions(minutes);
-      if (result.success && result.data) {
-        setSuggestions(result.data.suggestions);
-      }
-    } catch (error) {
-      console.error('Failed to fetch suggestions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getFitBadge = (quality: string) => {
-    switch (quality) {
-      case 'perfect':
-        return <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full">идеально</span>;
-      case 'good':
-        return <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full">хорошо</span>;
-      case 'partial':
-        return <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full">частично</span>;
-      default:
-        return null;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-400';
-      case 'medium': return 'text-yellow-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Есть свободное время?">
-      <div className="space-y-4">
-        {/* Time selection */}
-        <div>
-          <p className="text-sm text-gray-400 mb-3">Сколько у тебя есть времени?</p>
-          <div className="grid grid-cols-3 gap-2">
-            {TIME_OPTIONS.map((minutes) => (
-              <button
-                key={minutes}
-                onClick={() => fetchSuggestions(minutes)}
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  selectedTime === minutes
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                {minutes < 60 ? `${minutes} мин` : `${minutes / 60} ч`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Suggestions */}
-        {selectedTime && (
-          <div>
-            <p className="text-sm text-gray-400 mb-3">
-              {loading ? 'Подбираю задачи...' : suggestions.length > 0 ? 'Рекомендую:' : 'Нет подходящих задач'}
-            </p>
-            {loading ? (
-              <div className="space-y-2">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-16 bg-gray-700 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {suggestions.map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onSelectSuggestion(suggestion)}
-                    className="w-full text-left p-3 bg-gray-700/50 hover:bg-gray-700 rounded-xl transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs ${getPriorityColor(suggestion.priority)}`}>●</span>
-                          <span className="text-white font-medium truncate">{suggestion.task_title}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <Timer className="w-3 h-3" />
-                          <span>{suggestion.estimated_minutes} мин</span>
-                          {suggestion.type === 'task' && suggestion.subtasks_count ? (
-                            <span>• {suggestion.subtasks_count} шагов</span>
-                          ) : suggestion.type === 'subtasks' && suggestion.subtasks ? (
-                            <span>• {suggestion.subtasks.length} шагов</span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {getFitBadge(suggestion.fit_quality)}
-                        <Play className="w-4 h-4 text-primary-400" />
-                      </div>
-                    </div>
-                    {suggestion.type === 'subtasks' && suggestion.subtasks && (
-                      <div className="mt-2 text-xs text-gray-500">
-                        {suggestion.subtasks.slice(0, 3).map(s => s.title).join(' → ')}
-                        {suggestion.subtasks.length > 3 && '...'}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t, language, setLanguage } = useLanguage();
   const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFreeTimeModal, setShowFreeTimeModal] = useState(false);
   const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
 
   const selectedDateStr = formatDateForAPI(selectedDate);
@@ -300,7 +173,7 @@ export default function HomePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; priority: TaskPriority; due_date: string; preferred_time?: PreferredTime; scheduled_at?: string }) =>
+    mutationFn: (input: { title: string; description: string; due_date: string }) =>
       tasksService.createTask(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -324,36 +197,9 @@ export default function HomePage() {
     },
   });
 
-  const handleCreateTask = (title: string, description: string, priority: TaskPriority, dueDate: string, preferredTime?: PreferredTime, scheduledAt?: string) => {
-    createMutation.mutate({ title, description, priority, due_date: dueDate, preferred_time: preferredTime, scheduled_at: scheduledAt });
+  const handleCreateTask = (title: string, description: string, dueDate: string) => {
+    createMutation.mutate({ title, description, due_date: dueDate });
   };
-
-  const handleSelectSuggestion = (suggestion: TaskSuggestion) => {
-    setShowFreeTimeModal(false);
-    hapticFeedback('success');
-    // Start focus session with the suggested duration
-    focusService.startSession({
-      task_id: suggestion.task_id,
-      planned_duration_minutes: suggestion.estimated_minutes,
-    }).then((result) => {
-      if (result.success && result.data) {
-        setActiveSession(result.data.session);
-        router.push('/focus');
-      }
-    });
-  };
-
-  const { data: statsData } = useQuery({
-    queryKey: ['user', 'stats'],
-    queryFn: () => gamificationService.getUserStats(),
-    enabled: !!user,
-  });
-
-  const { data: goalsData } = useQuery({
-    queryKey: ['daily', 'goals'],
-    queryFn: () => gamificationService.getDailyGoals(),
-    enabled: !!user,
-  });
 
   // Check for postponed tasks notification
   const { data: postponeData } = useQuery({
@@ -414,8 +260,6 @@ export default function HomePage() {
     );
   }
 
-  const stats = statsData?.data;
-  const goals = goalsData?.data;
   const tasks = tasksData?.data?.tasks || [];
   const postponeStatus = postponeData?.data;
   const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
@@ -431,9 +275,16 @@ export default function HomePage() {
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Доброе утро';
-    if (hour < 17) return 'Добрый день';
-    return 'Добрый вечер';
+    if (hour < 12) return t('goodMorning');
+    if (hour < 17) return t('goodAfternoon');
+    return t('goodEvening');
+  };
+
+  // Toggle language
+  const toggleLanguage = () => {
+    const newLang = language === 'ru' ? 'en' : 'ru';
+    setLanguage(newLang);
+    hapticFeedback('light');
   };
 
   return (
@@ -470,9 +321,16 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-white">
             {getGreeting()},
           </h1>
-          <p className="text-gray-400">{user.first_name || 'друг'}</p>
+          <p className="text-gray-400">{user.first_name || t('friend')}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Language Toggle */}
+          <button
+            onClick={toggleLanguage}
+            className="w-10 h-10 rounded-full bg-dark-700 border border-gray-700 flex items-center justify-center hover:bg-dark-600 transition-colors text-sm font-medium"
+          >
+            {language === 'ru' ? '🇷🇺' : '🇬🇧'}
+          </button>
           {/* Mood Button */}
           <button
             onClick={() => setShowMoodModal(true)}
@@ -487,38 +345,35 @@ export default function HomePage() {
             )}
           </button>
           {/* Avatar */}
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-            {(user.first_name?.[0] || '?').toUpperCase()}
-          </div>
+          {user.photo_url ? (
+            <img
+              src={user.photo_url}
+              alt={user.first_name || 'User'}
+              className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+              {(user.first_name?.[0] || '?').toUpperCase()}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Week Calendar */}
-      <WeekCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+      <WeekCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} language={language} />
 
       {/* Tasks Section - Moved to top */}
       <div className="space-y-3 min-h-[180px]">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate)}</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFreeTimeModal(true)}
-              className="text-accent-400"
-            >
-              <Zap className="w-4 h-4 mr-1" />
-              Есть время?
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Добавить
-            </Button>
-          </div>
+          <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate, language, t)}</h2>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {t('add')}
+          </Button>
         </div>
 
         {tasksLoading && !tasksData ? (
@@ -542,46 +397,27 @@ export default function HomePage() {
                 onClick={() => router.push('/tasks')}
                 className="w-full py-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
               >
-                Посмотреть все ({allTasksSorted.length})
+                {t('viewAll')} ({allTasksSorted.length})
               </button>
             )}
           </div>
         ) : (
           <Card variant="glass" className="text-center py-8">
             <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">Нет задач на {formatDateDisplay(selectedDate).toLowerCase()}</p>
+            <p className="text-gray-400 mb-4">{t('noTasksForDate')} {formatDateDisplay(selectedDate, language, t).toLowerCase()}</p>
             <Button variant="gradient" onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4" />
-              Создать задачу
+              {t('createTask')}
             </Button>
           </Card>
         )}
       </div>
 
-      {/* XP Bar */}
-      {stats && (
-        <XPBar
-          xp={stats.xp}
-          level={stats.level}
-          levelName={stats.level_name}
-          xpForNextLevel={stats.xp_for_next_level}
-          progressPercent={stats.xp_progress_percent}
-        />
-      )}
-
-      {/* Streak Badge */}
-      {stats && stats.streak_days > 0 && (
-        <StreakBadge days={stats.streak_days} longestStreak={stats.longest_streak} />
-      )}
-
-      {/* Daily Goals */}
-      {goals && <DailyGoals goals={goals.goals} allCompleted={goals.all_completed} />}
-
       {/* Mood Modal */}
       <Modal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
-        title="Как ты себя чувствуешь?"
+        title={t('howAreYouFeeling')}
       >
         <MoodSelector onSubmit={handleMoodSubmit} isLoading={moodLoading} />
       </Modal>
@@ -590,7 +426,7 @@ export default function HomePage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Создать задачу"
+        title={t('createTask')}
       >
         <TaskForm
           onSubmit={handleCreateTask}
@@ -598,13 +434,6 @@ export default function HomePage() {
           initialDueDate={selectedDateStr}
         />
       </Modal>
-
-      {/* Free Time Modal */}
-      <FreeTimeModal
-        isOpen={showFreeTimeModal}
-        onClose={() => setShowFreeTimeModal(false)}
-        onSelectSuggestion={handleSelectSuggestion}
-      />
     </div>
   );
 }

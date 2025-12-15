@@ -17,6 +17,7 @@ import {
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 import { GenreSelectionModal } from '@/components/GenreSelectionModal';
+import { LanguageProvider } from '@/lib/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,11 +140,13 @@ function AuthProvider({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {children}
-        <XPPopup />
-        <GenreSelectionModal />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          {children}
+          <XPPopup />
+          <GenreSelectionModal />
+        </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

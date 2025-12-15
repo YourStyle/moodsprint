@@ -20,7 +20,7 @@
             <p class="text-gray-500">@{{ user.username or 'No username' }}</p>
             <p class="text-sm text-gray-400 mt-1">Telegram ID: {{ user.telegram_id }}</p>
         </div>
-        <div class="ml-auto grid grid-cols-3 gap-8 text-center">
+        <div class="ml-auto grid grid-cols-4 gap-8 text-center">
             <div>
                 <p class="text-3xl font-bold text-blue-600">{{ user.level or 1 }}</p>
                 <p class="text-sm text-gray-500">Level</p>
@@ -33,9 +33,90 @@
                 <p class="text-3xl font-bold text-orange-600">{{ user.streak_days or 0 }}</p>
                 <p class="text-sm text-gray-500">Streak</p>
             </div>
+            <div>
+                <p class="text-3xl font-bold text-pink-600">{{ user_genre or '-' }}</p>
+                <p class="text-sm text-gray-500">Genre</p>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Card & Battle Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-indigo-600">{{ card_stats.total or 0 }}</p>
+        <p class="text-sm text-gray-500">Total Cards</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-green-600">{{ card_stats.in_deck or 0 }}</p>
+        <p class="text-sm text-gray-500">In Deck</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-red-600">{{ battle_stats.total or 0 }}</p>
+        <p class="text-sm text-gray-500">Total Battles</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        {% set win_rate = ((battle_stats.wins or 0) / (battle_stats.total or 1) * 100) | round | int %}
+        <p class="text-3xl font-bold text-yellow-600">{{ win_rate }}%</p>
+        <p class="text-sm text-gray-500">Win Rate</p>
+    </div>
+</div>
+
+<!-- Cards by Rarity -->
+{% if card_stats.total %}
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Cards by Rarity</h3>
+    <div class="flex gap-4 flex-wrap">
+        <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">
+            Common: <strong>{{ card_stats.common or 0 }}</strong>
+        </span>
+        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+            Uncommon: <strong>{{ card_stats.uncommon or 0 }}</strong>
+        </span>
+        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+            Rare: <strong>{{ card_stats.rare or 0 }}</strong>
+        </span>
+        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+            Epic: <strong>{{ card_stats.epic or 0 }}</strong>
+        </span>
+        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+            Legendary: <strong>{{ card_stats.legendary or 0 }}</strong>
+        </span>
+        <span class="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm">
+            With Abilities: <strong>{{ card_stats.with_abilities or 0 }}</strong>
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Battle Stats Detail -->
+{% if battle_stats.total %}
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Battle Statistics</h3>
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-green-600">{{ battle_stats.wins or 0 }}</p>
+            <p class="text-sm text-gray-500">Wins</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-red-600">{{ (battle_stats.total or 0) - (battle_stats.wins or 0) }}</p>
+            <p class="text-sm text-gray-500">Losses</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-purple-600">{{ battle_stats.total_xp | int }}</p>
+            <p class="text-sm text-gray-500">XP Earned</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-orange-600">{{ battle_stats.total_damage | int }}</p>
+            <p class="text-sm text-gray-500">Total Damage</p>
+        </div>
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+            <p class="text-2xl font-bold text-blue-600">{{ battle_stats.avg_rounds | round(1) }}</p>
+            <p class="text-sm text-gray-500">Avg Rounds</p>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Recent Tasks -->
@@ -157,6 +238,104 @@
         </div>
     </div>
 </div>
+
+<!-- Card Collection -->
+{% if cards %}
+<div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Card Collection ({{ cards | length }} cards)</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 uppercase tracking-wider">
+                    <th class="pb-3">Name</th>
+                    <th class="pb-3">Rarity</th>
+                    <th class="pb-3">Genre</th>
+                    <th class="pb-3">HP</th>
+                    <th class="pb-3">ATK</th>
+                    <th class="pb-3">Ability</th>
+                    <th class="pb-3">In Deck</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for card in cards %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2">
+                        <div class="flex items-center gap-2">
+                            <span>{{ card.emoji or '🎴' }}</span>
+                            <span class="font-medium text-gray-900">{{ card.name[:30] }}{% if card.name|length > 30 %}...{% endif %}</span>
+                        </div>
+                    </td>
+                    <td class="py-2">
+                        <span class="px-2 py-0.5 text-xs rounded-full
+                            {% if card.rarity == 'legendary' %}bg-yellow-100 text-yellow-800
+                            {% elif card.rarity == 'epic' %}bg-purple-100 text-purple-800
+                            {% elif card.rarity == 'rare' %}bg-blue-100 text-blue-800
+                            {% elif card.rarity == 'uncommon' %}bg-green-100 text-green-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ card.rarity }}
+                        </span>
+                    </td>
+                    <td class="py-2 text-sm text-gray-600">{{ card.genre or '-' }}</td>
+                    <td class="py-2 text-sm">
+                        <span class="text-green-600">{{ card.current_hp or card.hp }}</span>/<span class="text-gray-400">{{ card.hp }}</span>
+                    </td>
+                    <td class="py-2 text-sm text-orange-600 font-medium">{{ card.attack }}</td>
+                    <td class="py-2 text-sm text-purple-600">{{ card.ability or '-' }}</td>
+                    <td class="py-2">
+                        {% if card.is_in_deck %}
+                        <span class="text-green-500">✓</span>
+                        {% else %}
+                        <span class="text-gray-300">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Battle History -->
+{% if battles %}
+<div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Battles</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 uppercase tracking-wider">
+                    <th class="pb-3">Date</th>
+                    <th class="pb-3">Monster</th>
+                    <th class="pb-3">Result</th>
+                    <th class="pb-3">Rounds</th>
+                    <th class="pb-3">Damage</th>
+                    <th class="pb-3">XP</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for battle in battles %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 text-sm text-gray-500">
+                        {{ battle.created_at.strftime('%Y-%m-%d %H:%M') if battle.created_at else '-' }}
+                    </td>
+                    <td class="py-2 font-medium text-gray-900">{{ battle.monster_name or 'Unknown' }}</td>
+                    <td class="py-2">
+                        {% if battle.won %}
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Won</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800">Lost</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 text-sm text-gray-600">{{ battle.rounds or 0 }}</td>
+                    <td class="py-2 text-sm text-orange-600">{{ battle.damage_dealt or 0 }}</td>
+                    <td class="py-2 text-sm text-purple-600">+{{ battle.xp_earned or 0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <!-- Activity Log -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
