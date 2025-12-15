@@ -185,147 +185,177 @@ def user_detail(user_id: int):
         return "User not found", 404
 
     # Get user's tasks
-    tasks = db.session.execute(
-        text(
-            "SELECT * FROM tasks WHERE user_id = :uid ORDER BY created_at DESC LIMIT 10"
-        ),
-        {"uid": user_id},
-    ).fetchall()
+    try:
+        tasks = db.session.execute(
+            text(
+                "SELECT * FROM tasks WHERE user_id = :uid ORDER BY created_at DESC LIMIT 10"
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        tasks = []
 
     # Get user's activity log
-    activity = db.session.execute(
-        text(
+    try:
+        activity = db.session.execute(
+            text(
+                """
+                SELECT * FROM user_activity_logs
+                WHERE user_id = :uid
+                ORDER BY created_at DESC
+                LIMIT 50
             """
-            SELECT * FROM user_activity_logs
-            WHERE user_id = :uid
-            ORDER BY created_at DESC
-            LIMIT 50
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        activity = []
 
     # Get focus sessions
-    sessions = db.session.execute(
-        text(
+    try:
+        sessions = db.session.execute(
+            text(
+                """
+                SELECT * FROM focus_sessions
+                WHERE user_id = :uid
+                ORDER BY started_at DESC
+                LIMIT 10
             """
-            SELECT * FROM focus_sessions
-            WHERE user_id = :uid
-            ORDER BY started_at DESC
-            LIMIT 10
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        sessions = []
 
     # Get productivity patterns
-    productivity_patterns = db.session.execute(
-        text(
+    try:
+        productivity_patterns = db.session.execute(
+            text(
+                """
+                SELECT
+                    EXTRACT(HOUR FROM started_at)::int as hour,
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE status = 'completed') as completed
+                FROM focus_sessions
+                WHERE user_id = :uid
+                    AND started_at >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY EXTRACT(HOUR FROM started_at)
+                ORDER BY hour
             """
-            SELECT
-                EXTRACT(HOUR FROM started_at)::int as hour,
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE status = 'completed') as completed
-            FROM focus_sessions
-            WHERE user_id = :uid
-                AND started_at >= CURRENT_DATE - INTERVAL '30 days'
-            GROUP BY EXTRACT(HOUR FROM started_at)
-            ORDER BY hour
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        productivity_patterns = []
 
     # Get day of week patterns
-    day_patterns = db.session.execute(
-        text(
+    try:
+        day_patterns = db.session.execute(
+            text(
+                """
+                SELECT
+                    EXTRACT(DOW FROM started_at)::int as day,
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE status = 'completed') as completed
+                FROM focus_sessions
+                WHERE user_id = :uid
+                    AND started_at >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY EXTRACT(DOW FROM started_at)
+                ORDER BY day
             """
-            SELECT
-                EXTRACT(DOW FROM started_at)::int as day,
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE status = 'completed') as completed
-            FROM focus_sessions
-            WHERE user_id = :uid
-                AND started_at >= CURRENT_DATE - INTERVAL '30 days'
-            GROUP BY EXTRACT(DOW FROM started_at)
-            ORDER BY day
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        day_patterns = []
 
     # Get user's cards
-    cards = db.session.execute(
-        text(
+    try:
+        cards = db.session.execute(
+            text(
+                """
+                SELECT * FROM user_cards
+                WHERE user_id = :uid AND is_destroyed = false
+                ORDER BY rarity DESC, created_at DESC
+                LIMIT 50
             """
-            SELECT * FROM user_cards
-            WHERE user_id = :uid AND is_destroyed = false
-            ORDER BY rarity DESC, created_at DESC
-            LIMIT 50
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        cards = []
 
     # Get card statistics
-    card_stats = db.session.execute(
-        text(
+    try:
+        card_stats = db.session.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE is_in_deck = true) as in_deck,
+                    COUNT(*) FILTER (WHERE ability IS NOT NULL) as with_abilities,
+                    COUNT(*) FILTER (WHERE rarity = 'common') as common,
+                    COUNT(*) FILTER (WHERE rarity = 'uncommon') as uncommon,
+                    COUNT(*) FILTER (WHERE rarity = 'rare') as rare,
+                    COUNT(*) FILTER (WHERE rarity = 'epic') as epic,
+                    COUNT(*) FILTER (WHERE rarity = 'legendary') as legendary
+                FROM user_cards
+                WHERE user_id = :uid AND is_destroyed = false
             """
-            SELECT
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE is_in_deck = true) as in_deck,
-                COUNT(*) FILTER (WHERE ability IS NOT NULL) as with_abilities,
-                COUNT(*) FILTER (WHERE rarity = 'common') as common,
-                COUNT(*) FILTER (WHERE rarity = 'uncommon') as uncommon,
-                COUNT(*) FILTER (WHERE rarity = 'rare') as rare,
-                COUNT(*) FILTER (WHERE rarity = 'epic') as epic,
-                COUNT(*) FILTER (WHERE rarity = 'legendary') as legendary
-            FROM user_cards
-            WHERE user_id = :uid AND is_destroyed = false
-        """
-        ),
-        {"uid": user_id},
-    ).fetchone()
+            ),
+            {"uid": user_id},
+        ).fetchone()
+    except Exception:
+        card_stats = None
 
     # Get battle history
-    battles = db.session.execute(
-        text(
+    try:
+        battles = db.session.execute(
+            text(
+                """
+                SELECT b.*, m.name as monster_name
+                FROM battle_logs b
+                LEFT JOIN monsters m ON b.monster_id = m.id
+                WHERE b.user_id = :uid
+                ORDER BY b.created_at DESC
+                LIMIT 20
             """
-            SELECT b.*, m.name as monster_name
-            FROM battle_logs b
-            LEFT JOIN monsters m ON b.monster_id = m.id
-            WHERE b.user_id = :uid
-            ORDER BY b.created_at DESC
-            LIMIT 20
-        """
-        ),
-        {"uid": user_id},
-    ).fetchall()
+            ),
+            {"uid": user_id},
+        ).fetchall()
+    except Exception:
+        battles = []
 
     # Get battle statistics
-    battle_stats = db.session.execute(
-        text(
+    try:
+        battle_stats = db.session.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE won = true) as wins,
+                    COALESCE(SUM(xp_earned), 0) as total_xp,
+                    COALESCE(SUM(damage_dealt), 0) as total_damage,
+                    COALESCE(AVG(rounds), 0) as avg_rounds
+                FROM battle_logs
+                WHERE user_id = :uid
             """
-            SELECT
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE won = true) as wins,
-                COALESCE(SUM(xp_earned), 0) as total_xp,
-                COALESCE(SUM(damage_dealt), 0) as total_damage,
-                COALESCE(AVG(rounds), 0) as avg_rounds
-            FROM battle_logs
-            WHERE user_id = :uid
-        """
-        ),
-        {"uid": user_id},
-    ).fetchone()
+            ),
+            {"uid": user_id},
+        ).fetchone()
+    except Exception:
+        battle_stats = None
 
     # Get user's genre preference
-    user_genre = db.session.execute(
-        text(
-            "SELECT favorite_genre FROM onboarding_profiles WHERE user_id = :uid"
-        ),
-        {"uid": user_id},
-    ).fetchone()
+    try:
+        user_genre = db.session.execute(
+            text(
+                "SELECT favorite_genre FROM onboarding_profiles WHERE user_id = :uid"
+            ),
+            {"uid": user_id},
+        ).fetchone()
+    except Exception:
+        user_genre = None
 
     # Format productivity data
     hour_data = {

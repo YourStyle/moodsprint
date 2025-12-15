@@ -9,6 +9,7 @@ import { TaskCard, TaskForm } from '@/components/tasks';
 import { tasksService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import type { TaskStatus } from '@/domain/types';
 
 type FilterStatus = TaskStatus | 'all';
@@ -17,6 +18,7 @@ export default function TasksPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, showXPAnimation } = useAppStore();
+  const { t } = useLanguage();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
@@ -42,11 +44,11 @@ export default function TasksPage() {
     createMutation.mutate({ title, description, due_date: dueDate });
   };
 
-  const filters: { value: FilterStatus; label: string }[] = [
-    { value: 'all', label: 'Все' },
-    { value: 'pending', label: 'Ожидают' },
-    { value: 'in_progress', label: 'В работе' },
-    { value: 'completed', label: 'Готово' },
+  const filters: { value: FilterStatus; labelKey: 'all' | 'statusPending' | 'statusInProgress' | 'statusCompleted' }[] = [
+    { value: 'all', labelKey: 'all' },
+    { value: 'pending', labelKey: 'statusPending' },
+    { value: 'in_progress', labelKey: 'statusInProgress' },
+    { value: 'completed', labelKey: 'statusCompleted' },
   ];
 
   const rawTasks = data?.data?.tasks || [];
@@ -78,10 +80,10 @@ export default function TasksPage() {
     <div className="p-4 space-y-4 pt-safe">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">Задачи</h1>
+        <h1 className="text-xl font-bold text-white">{t('tasks')}</h1>
         <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="w-4 h-4 mr-1" />
-          Новая
+          {t('newTask')}
         </Button>
       </div>
 
@@ -97,7 +99,7 @@ export default function TasksPage() {
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
-            {filter.label}
+            {t(filter.labelKey)}
           </button>
         ))}
       </div>
@@ -124,11 +126,11 @@ export default function TasksPage() {
           <div className="text-4xl mb-4">📝</div>
           <p className="text-gray-500 mb-4">
             {filterStatus === 'all'
-              ? 'Пока нет задач'
-              : 'Нет задач в этой категории'}
+              ? t('noTasksYet')
+              : t('noTasksInCategory')}
           </p>
           <Button onClick={() => setShowCreateModal(true)}>
-            Создать первую задачу
+            {t('createFirstTask')}
           </Button>
         </Card>
       )}
@@ -137,7 +139,7 @@ export default function TasksPage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Создать задачу"
+        title={t('createTask')}
       >
         <TaskForm
           onSubmit={handleCreateTask}

@@ -22,8 +22,9 @@ import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
 import { gamificationService, eventsService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback } from '@/lib/telegram';
+import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n';
 import type {
   Monster,
   ActiveBattle,
@@ -38,6 +39,7 @@ type LeaderboardType = 'weekly' | 'all_time';
 export default function ArenaPage() {
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<Tab>('battle');
@@ -95,6 +97,13 @@ export default function ArenaPage() {
       setGameState('battle');
     }
   }, [activeBattleData]);
+
+  // Refetch deck data on mount to ensure fresh HP values
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['arena', 'monsters'] });
+    queryClient.invalidateQueries({ queryKey: ['deck'] });
+    queryClient.invalidateQueries({ queryKey: ['cards'] });
+  }, [queryClient]);
 
   // Start battle mutation
   const startBattleMutation = useMutation({
@@ -288,18 +297,28 @@ export default function ArenaPage() {
   if (!user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Войдите чтобы попасть на арену</p>
+        <p className="text-gray-500">{t('loginToEnterArena')}</p>
       </div>
     );
   }
+
+  // Show/hide Telegram back button based on game state
+  useEffect(() => {
+    if (gameState === 'cards') {
+      showBackButton(handleBackToMonsters);
+      return () => hideBackButton();
+    } else {
+      hideBackButton();
+    }
+  }, [gameState]);
 
   return (
     <div className="min-h-screen p-4 pt-safe pb-24">
       {/* Header */}
       <div className="text-center mb-4">
         <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">Арена</h1>
-        <p className="text-sm text-gray-400">Пошаговые бои картами</p>
+        <h1 className="text-2xl font-bold text-white">{t('arena')}</h1>
+        <p className="text-sm text-gray-400">{t('arenaSubtitle')}</p>
       </div>
 
       {/* Active Event Banner */}
@@ -334,8 +353,8 @@ export default function ArenaPage() {
                   <div className="flex items-center gap-1 text-xs text-gray-300">
                     <Calendar className="w-3 h-3" />
                     {activeEvent.days_remaining > 0
-                      ? `${activeEvent.days_remaining} дн. осталось`
-                      : 'Последний день!'}
+                      ? `${activeEvent.days_remaining} ${t('daysLeft')}`
+                      : t('lastDay')}
                   </div>
                 </div>
               </div>
@@ -357,7 +376,7 @@ export default function ArenaPage() {
             )}
           >
             <Swords className="w-4 h-4" />
-            Бой
+            {t('battle')}
           </button>
           <button
             onClick={() => handleTabChange('leaderboard')}
@@ -369,7 +388,7 @@ export default function ArenaPage() {
             )}
           >
             <Trophy className="w-4 h-4" />
-            Рейтинг
+            {t('rating')}
           </button>
         </div>
       )}
@@ -383,20 +402,20 @@ export default function ArenaPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-purple-400" />
-                  <span className="text-white font-medium">Твоя колода</span>
+                  <span className="text-white font-medium">{t('yourDeck')}</span>
                 </div>
                 <div className="text-right">
                   <span className={cn(
                     'text-lg font-bold',
                     deck.length > 0 ? 'text-green-400' : 'text-red-400'
                   )}>
-                    {deck.length} карт
+                    {deck.length} {t('cards')}
                   </span>
                 </div>
               </div>
               {deck.length === 0 && (
                 <p className="text-sm text-red-400 mt-2">
-                  Добавь карты в колоду в разделе &quot;Колода&quot;
+                  {t('addCardsToDeck')}
                 </p>
               )}
             </Card>
@@ -406,7 +425,7 @@ export default function ArenaPage() {
           {gameState === 'select' && (
             <>
               <h2 className="text-lg font-semibold text-white mb-3">
-                Выбери противника
+                {t('selectOpponent')}
               </h2>
 
               {isLoading ? (
@@ -426,7 +445,7 @@ export default function ArenaPage() {
               ) : monsters.length === 0 ? (
                 <Card className="text-center py-8">
                   <Swords className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-400">Монстры появятся скоро</p>
+                  <p className="text-gray-400">{t('monstersComingSoon')}</p>
                 </Card>
               ) : (
                 <div className="space-y-3">
@@ -463,7 +482,7 @@ export default function ArenaPage() {
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs">
                             <span className="text-purple-400">
-                              {monster.is_boss ? '5 карт' : '3 карты'} в колоде
+                              {monster.is_boss ? '5' : '3'} {t('cardsInMonsterDeck')}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs">
@@ -485,12 +504,6 @@ export default function ArenaPage() {
           {/* Card Selection */}
           {gameState === 'cards' && selectedMonster && (
             <>
-              <div className="mb-4">
-                <Button variant="ghost" size="sm" onClick={handleBackToMonsters}>
-                  ← Назад к монстрам
-                </Button>
-              </div>
-
               <Card className="mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden">
@@ -503,17 +516,17 @@ export default function ArenaPage() {
                   <div>
                     <h3 className="font-medium text-white">{selectedMonster.name}</h3>
                     <p className="text-xs text-purple-400">
-                      У монстра {selectedMonster.is_boss ? '5' : '3'} карт в колоде
+                      {t('monsterHasCards')} {selectedMonster.is_boss ? '5' : '3'} {t('cardsInMonsterDeck')}
                     </p>
                   </div>
                 </div>
               </Card>
 
               <h2 className="text-lg font-semibold text-white mb-2">
-                Выбери карты для боя
+                {t('selectCardsForBattle')}
               </h2>
               <p className="text-sm text-gray-400 mb-3">
-                Выбрано: {selectedCards.length}/5 (мин. 1)
+                {t('selected')}: {selectedCards.length}/5 ({t('minOne')})
               </p>
 
               <div className="flex flex-wrap justify-center gap-3 mb-20">
@@ -556,7 +569,7 @@ export default function ArenaPage() {
                     isLoading={startBattleMutation.isPending}
                   >
                     <Swords className="w-5 h-5 mr-2" />
-                    В бой! ({selectedCards.length} карт)
+                    {t('toBattle')} ({selectedCards.length} {t('cards')})
                   </Button>
                 </div>
               )}
@@ -569,7 +582,7 @@ export default function ArenaPage() {
               {/* Battle Header */}
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-400">
-                  Раунд {activeBattle.current_round}
+                  {t('round')} {activeBattle.current_round}
                 </div>
                 <Button
                   variant="ghost"
@@ -578,7 +591,7 @@ export default function ArenaPage() {
                   disabled={forfeitMutation.isPending}
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Сдаться
+                  {t('forfeit')}
                 </Button>
               </div>
 
@@ -586,7 +599,7 @@ export default function ArenaPage() {
               <div>
                 <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                   <span className="text-xl">{activeBattle.monster?.emoji}</span>
-                  Колода монстра ({aliveMonsterCards.length} карт)
+                  {t('monsterDeck')} ({aliveMonsterCards.length} {t('cards')})
                 </h3>
                 <div className="flex flex-wrap justify-center gap-3">
                   {activeBattle.state.monster_cards.map((card) => (
@@ -622,7 +635,7 @@ export default function ArenaPage() {
               {/* Player's Cards */}
               <div>
                 <h3 className="text-sm font-medium text-gray-400 mb-3">
-                  Твои карты ({alivePlayerCards.length} живых)
+                  {t('yourCards')} ({alivePlayerCards.length} {t('alive')})
                 </h3>
                 <div className="flex flex-wrap justify-center gap-3">
                   {activeBattle.state.player_cards.map((card) => (
@@ -660,8 +673,8 @@ export default function ArenaPage() {
                 >
                   <Target className="w-5 h-5 mr-2" />
                   {selectedPlayerCard && selectedTargetCard
-                    ? 'Атаковать!'
-                    : 'Выбери карту и цель'}
+                    ? t('attackButton')
+                    : t('selectCardAndTarget')}
                 </Button>
               </div>
             </div>
@@ -674,48 +687,48 @@ export default function ArenaPage() {
                 {battleResult.won ? (
                   <>
                     <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-white mb-2">Победа!</h2>
+                    <h2 className="text-2xl font-bold text-white mb-2">{t('victory')}!</h2>
                   </>
                 ) : (
                   <>
                     <Skull className="w-20 h-20 text-gray-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-white mb-2">Поражение</h2>
+                    <h2 className="text-2xl font-bold text-white mb-2">{t('defeat')}</h2>
                   </>
                 )}
               </div>
 
               <Card className="w-full max-w-sm mb-4">
-                <h3 className="font-medium text-white mb-3">Итоги боя</h3>
+                <h3 className="font-medium text-white mb-3">{t('battleResults')}</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Раундов</span>
+                    <span className="text-gray-400">{t('rounds')}</span>
                     <span className="text-white">{battleResult.rounds}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Нанесено урона</span>
+                    <span className="text-gray-400">{t('damageDealt')}</span>
                     <span className="text-green-400">{battleResult.damage_dealt}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Получено урона</span>
+                    <span className="text-gray-400">{t('damageTaken')}</span>
                     <span className="text-red-400">{battleResult.damage_taken}</span>
                   </div>
                   {battleResult.cards_lost.length > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Потеряно карт</span>
+                      <span className="text-gray-400">{t('cardsLost')}</span>
                       <span className="text-red-500">{battleResult.cards_lost.length}</span>
                     </div>
                   )}
                   {battleResult.won && (
                     <div className="border-t border-gray-700 pt-2 mt-2">
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Опыт</span>
+                        <span className="text-gray-400">{t('experience')}</span>
                         <span className="text-amber-400">
                           +{battleResult.xp_earned} XP
                         </span>
                       </div>
                       {battleResult.level_up && (
                         <div className="text-center pt-2 text-amber-400 font-medium">
-                          🎉 Новый уровень!
+                          🎉 {t('newLevel')}
                         </div>
                       )}
                     </div>
@@ -729,7 +742,7 @@ export default function ArenaPage() {
                   <div className="flex items-center gap-3">
                     <Sparkles className="w-6 h-6 text-amber-400" />
                     <div>
-                      <h3 className="font-medium text-white">Награда: новая карта!</h3>
+                      <h3 className="font-medium text-white">{t('rewardNewCard')}</h3>
                       <p className="text-sm text-amber-400">
                         {battleResult.reward_card.name} ({battleResult.reward_card.rarity})
                       </p>
@@ -739,7 +752,7 @@ export default function ArenaPage() {
               )}
 
               <Button className="w-full max-w-sm" onClick={handleBackToSelect}>
-                Вернуться к выбору
+                {t('returnToSelect')}
               </Button>
             </div>
           )}
@@ -760,7 +773,7 @@ export default function ArenaPage() {
                   : 'text-gray-400 hover:text-white'
               )}
             >
-              За неделю
+              {t('weekly')}
             </button>
             <button
               onClick={() => setLeaderboardType('all_time')}
@@ -771,7 +784,7 @@ export default function ArenaPage() {
                   : 'text-gray-400 hover:text-white'
               )}
             >
-              Все время
+              {t('allTime')}
             </button>
           </div>
 
@@ -793,7 +806,7 @@ export default function ArenaPage() {
           ) : leaderboard.length === 0 ? (
             <Card className="text-center py-8">
               <Star className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">Пока нет участников</p>
+              <p className="text-gray-400">{t('noParticipants')}</p>
             </Card>
           ) : (
             <div className="space-y-2">
@@ -828,10 +841,10 @@ export default function ArenaPage() {
                         isCurrentUser ? 'text-purple-400' : 'text-white'
                       )}>
                         {entry.first_name || entry.username}
-                        {isCurrentUser && ' (вы)'}
+                        {isCurrentUser && ` (${t('you')})`}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <span>Ур. {entry.level}</span>
+                        <span>{t('level')} {entry.level}</span>
                         {entry.streak_days > 0 && (
                           <span className="flex items-center gap-0.5">
                             <Flame className="w-3 h-3 text-orange-500" />
@@ -842,7 +855,7 @@ export default function ArenaPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-red-400">{entry.monsters_killed || 0}</p>
-                      <p className="text-xs text-gray-500">монстров</p>
+                      <p className="text-xs text-gray-500">{t('monsters')}</p>
                     </div>
                   </div>
                 );

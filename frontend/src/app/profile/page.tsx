@@ -9,10 +9,12 @@ import { GenreSelector } from '@/components/GenreSelector';
 import { useAppStore } from '@/lib/store';
 import { gamificationService, onboardingService } from '@/services';
 import { authService } from '@/services';
+import { useLanguage } from '@/lib/i18n';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, setUser } = useAppStore();
+  const { t } = useLanguage();
 
   const { data: statsData } = useQuery({
     queryKey: ['user', 'stats'],
@@ -53,7 +55,7 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Войдите чтобы просмотреть профиль</p>
+        <p className="text-gray-500">{t('loginToViewProfile')}</p>
       </div>
     );
   }
@@ -76,11 +78,11 @@ export default function ProfilePage() {
 
   const getProductivityLabel = (time: string) => {
     switch (time) {
-      case 'morning': return 'Утро (5:00-12:00)';
-      case 'afternoon': return 'День (12:00-17:00)';
-      case 'evening': return 'Вечер (17:00-21:00)';
-      case 'night': return 'Ночь (21:00-5:00)';
-      default: return 'Разное время';
+      case 'morning': return t('morning');
+      case 'afternoon': return t('afternoon');
+      case 'evening': return t('evening');
+      case 'night': return t('night');
+      default: return t('variousTime');
     }
   };
 
@@ -112,7 +114,7 @@ export default function ProfilePage() {
           <button
             onClick={() => router.push('/settings')}
             className="p-2 rounded-xl bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white transition-colors"
-            title="Настройки"
+            title={t('settings')}
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -140,22 +142,22 @@ export default function ProfilePage() {
           <Card className="text-center">
             <CheckSquare className="w-6 h-6 mx-auto text-green-500 mb-2" />
             <p className="text-2xl font-bold text-white">{stats.total_tasks_completed}</p>
-            <p className="text-xs text-gray-400">Задач выполнено</p>
+            <p className="text-xs text-gray-400">{t('tasksCompletedLabel')}</p>
           </Card>
           <Card className="text-center">
             <Target className="w-6 h-6 mx-auto text-blue-500 mb-2" />
             <p className="text-2xl font-bold text-white">{stats.total_subtasks_completed}</p>
-            <p className="text-xs text-gray-400">Шагов выполнено</p>
+            <p className="text-xs text-gray-400">{t('stepsCompleted')}</p>
           </Card>
           <Card className="text-center">
             <Clock className="w-6 h-6 mx-auto text-purple-500 mb-2" />
             <p className="text-2xl font-bold text-white">{Math.round(stats.total_focus_minutes / 60)}ч</p>
-            <p className="text-xs text-gray-400">Время фокуса</p>
+            <p className="text-xs text-gray-400">{t('focusTimeLabel')}</p>
           </Card>
           <Card className="text-center">
             <TrendingUp className="w-6 h-6 mx-auto text-orange-500 mb-2" />
             <p className="text-2xl font-bold text-white">{stats.longest_streak}</p>
-            <p className="text-xs text-gray-400">Лучшая серия</p>
+            <p className="text-xs text-gray-400">{t('bestStreak')}</p>
           </Card>
         </div>
       )}
@@ -171,7 +173,7 @@ export default function ProfilePage() {
           onClick={() => router.push('/deck')}
         >
           <Scroll className="w-5 h-5 mr-2" />
-          Колода
+          {t('deck')}
         </Button>
         <Button
           variant="secondary"
@@ -179,7 +181,7 @@ export default function ProfilePage() {
           onClick={() => router.push('/arena')}
         >
           <Swords className="w-5 h-5 mr-2" />
-          Арена
+          {t('arena')}
         </Button>
       </div>
       <Button
@@ -188,7 +190,7 @@ export default function ProfilePage() {
         onClick={() => router.push('/friends')}
       >
         <Users className="w-5 h-5 mr-2" />
-        Друзья
+        {t('friends')}
       </Button>
 
       {/* Productivity Patterns */}
@@ -196,14 +198,14 @@ export default function ProfilePage() {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-5 h-5 text-primary-500" />
-            <h2 className="font-semibold text-white">Аналитика продуктивности</h2>
+            <h2 className="font-semibold text-white">{t('productivityAnalytics')}</h2>
           </div>
 
           {/* Best productivity time */}
           <div className="flex items-center gap-3 mb-4 p-3 bg-gray-700/50 rounded-xl">
             {getProductivityIcon(patterns.productivity_time)}
             <div>
-              <p className="text-sm text-gray-400">Лучшее время для работы</p>
+              <p className="text-sm text-gray-400">{t('bestWorkTime')}</p>
               <p className="font-medium text-white">{getProductivityLabel(patterns.productivity_time)}</p>
             </div>
           </div>
@@ -212,15 +214,15 @@ export default function ProfilePage() {
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="text-center p-2 bg-gray-700/30 rounded-lg">
               <p className="text-lg font-bold text-white">{patterns.total_sessions}</p>
-              <p className="text-xs text-gray-400">Сессий</p>
+              <p className="text-xs text-gray-400">{t('sessions')}</p>
             </div>
             <div className="text-center p-2 bg-gray-700/30 rounded-lg">
               <p className="text-lg font-bold text-green-500">{patterns.overall_success_rate}%</p>
-              <p className="text-xs text-gray-400">Завершено</p>
+              <p className="text-xs text-gray-400">{t('completed')}</p>
             </div>
             <div className="text-center p-2 bg-gray-700/30 rounded-lg">
               <p className="text-lg font-bold text-white">{patterns.avg_session_duration}</p>
-              <p className="text-xs text-gray-400">мин/сессия</p>
+              <p className="text-xs text-gray-400">{t('minPerSession')}</p>
             </div>
           </div>
 
@@ -228,7 +230,7 @@ export default function ProfilePage() {
           {patterns.best_day && patterns.best_day.sessions > 0 && (
             <div className="text-sm text-gray-400">
               <span className="text-white font-medium">{patterns.best_day.day_name}</span>
-              {' — '}ваш самый продуктивный день ({patterns.best_day.success_rate}% успешных сессий)
+              {' — '}{t('mostProductiveDay')} ({patterns.best_day.success_rate}% {t('successfulSessions')})
             </div>
           )}
         </Card>
@@ -239,9 +241,9 @@ export default function ProfilePage() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            <h2 className="font-semibold text-white">Достижения</h2>
+            <h2 className="font-semibold text-white">{t('achievements')}</h2>
             <span className="text-sm text-gray-400">
-              {achievements.unlocked.length} получено
+              {achievements.unlocked.length} {t('unlocked')}
             </span>
           </div>
 
@@ -255,7 +257,7 @@ export default function ProfilePage() {
 
           {achievements.in_progress.length > 0 && (
             <>
-              <h3 className="text-sm font-medium text-gray-400 mt-4">В процессе</h3>
+              <h3 className="text-sm font-medium text-gray-400 mt-4">{t('inProgress')}</h3>
               <div className="space-y-2">
                 {achievements.in_progress.slice(0, 5).map((ach) => (
                   <AchievementCard key={ach.id} achievement={ach} />
@@ -272,7 +274,7 @@ export default function ProfilePage() {
         className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
       >
         <LogOut className="w-4 h-4" />
-        <span>Выйти</span>
+        <span>{t('logout')}</span>
       </button>
     </div>
   );

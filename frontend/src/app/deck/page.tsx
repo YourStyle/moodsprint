@@ -22,6 +22,7 @@ import { cardsService, mergeService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n';
 import type { Card as CardType } from '@/services/cards';
 
 type Tab = 'collection' | 'deck' | 'merge';
@@ -35,17 +36,26 @@ interface MergePreview {
   can_merge: boolean;
 }
 
-const RARITY_INFO = {
-  common: { label: 'Обычная', color: '#9CA3AF' },
-  uncommon: { label: 'Необычная', color: '#22C55E' },
-  rare: { label: 'Редкая', color: '#3B82F6' },
-  epic: { label: 'Эпическая', color: '#A855F7' },
-  legendary: { label: 'Легендарная', color: '#F59E0B' },
+const RARITY_COLORS = {
+  common: '#9CA3AF',
+  uncommon: '#22C55E',
+  rare: '#3B82F6',
+  epic: '#A855F7',
+  legendary: '#F59E0B',
 };
+
+const RARITY_KEYS = {
+  common: 'rarityCommon',
+  uncommon: 'rarityUncommon',
+  rare: 'rarityRare',
+  epic: 'rarityEpic',
+  legendary: 'rarityLegendary',
+} as const;
 
 export default function DeckPage() {
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<Tab>('collection');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
@@ -240,7 +250,7 @@ export default function DeckPage() {
   if (!user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Войдите чтобы увидеть колоду</p>
+        <p className="text-gray-500">{t('loginToSeeDeck')}</p>
       </div>
     );
   }
@@ -263,8 +273,8 @@ export default function DeckPage() {
       {/* Header */}
       <div className="text-center mb-4">
         <Layers className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">Колода</h1>
-        <p className="text-sm text-gray-400">Собирай карты, побеждай монстров</p>
+        <h1 className="text-2xl font-bold text-white">{t('deck')}</h1>
+        <p className="text-sm text-gray-400">{t('deckSubtitle')}</p>
       </div>
 
       {/* Tabs */}
@@ -279,7 +289,7 @@ export default function DeckPage() {
           )}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Коллекция</span> ({cards.length})
+          <span className="hidden sm:inline">{t('collection')}</span> ({cards.length})
         </button>
         <button
           onClick={() => setActiveTab('deck')}
@@ -291,7 +301,7 @@ export default function DeckPage() {
           )}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Колода</span> ({deck.length}/{maxDeckSize})
+          <span className="hidden sm:inline">{t('deck')}</span> ({deck.length}/{maxDeckSize})
         </button>
         <button
           onClick={() => {
@@ -306,7 +316,7 @@ export default function DeckPage() {
           )}
         >
           <Merge className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Слияние</span>
+          <span className="hidden sm:inline">{t('merge')}</span>
         </button>
       </div>
 
@@ -325,9 +335,9 @@ export default function DeckPage() {
               )}
             >
               <Filter className="w-3 h-3" />
-              Все
+              {t('all')}
             </button>
-            {Object.entries(RARITY_INFO).map(([rarity, info]) => (
+            {Object.entries(RARITY_COLORS).map(([rarity, color]) => (
               <button
                 key={rarity}
                 onClick={() => setRarityFilter(rarity as RarityFilter)}
@@ -337,9 +347,9 @@ export default function DeckPage() {
                     ? 'text-white'
                     : 'bg-gray-800 text-gray-400'
                 )}
-                style={rarityFilter === rarity ? { backgroundColor: info.color } : {}}
+                style={rarityFilter === rarity ? { backgroundColor: color } : {}}
               >
-                {info.label} ({rarityCounts[rarity] || 0})
+                {t(RARITY_KEYS[rarity as keyof typeof RARITY_KEYS])} ({rarityCounts[rarity] || 0})
               </button>
             ))}
           </div>
@@ -350,7 +360,7 @@ export default function DeckPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <HeartPulse className="w-5 h-5 text-red-400" />
-                  <span className="text-sm text-gray-300">Вылечить все карты</span>
+                  <span className="text-sm text-gray-300">{t('healAllCards')}</span>
                 </div>
                 <Button
                   size="sm"
@@ -359,7 +369,7 @@ export default function DeckPage() {
                   isLoading={healAllMutation.isPending}
                 >
                   <Heart className="w-4 h-4 mr-1" />
-                  Лечить
+                  {t('heal')}
                 </Button>
               </div>
             </Card>
@@ -377,11 +387,11 @@ export default function DeckPage() {
               <Sparkles className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400">
                 {rarityFilter === 'all'
-                  ? 'Пока нет карт'
-                  : `Нет карт редкости "${RARITY_INFO[rarityFilter].label}"`}
+                  ? t('noCards')
+                  : `${t('noCardsOfRarity')} "${t(RARITY_KEYS[rarityFilter])}"`}
               </p>
               <p className="text-sm text-gray-500 mt-1">
-                Выполняй задачи чтобы получать карты!
+                {t('completeTasksToGetCards')}
               </p>
             </Card>
           ) : (
@@ -423,7 +433,7 @@ export default function DeckPage() {
                         isLoading={removeFromDeckMutation.isPending}
                       >
                         <Minus className="w-4 h-4 mr-1" />
-                        Убрать
+                        {t('removeFromDeck')}
                       </Button>
                     ) : (
                       <Button
@@ -433,7 +443,7 @@ export default function DeckPage() {
                         disabled={deck.length >= maxDeckSize}
                       >
                         <Plus className="w-4 h-4 mr-1" />
-                        В колоду
+                        {t('addToDeck')}
                       </Button>
                     )}
                   </Card>
@@ -450,19 +460,19 @@ export default function DeckPage() {
           {/* Deck stats */}
           {deckStats && deck.length > 0 && (
             <Card className="mb-4">
-              <h3 className="text-sm font-medium text-white mb-3">Статистика колоды</h3>
+              <h3 className="text-sm font-medium text-white mb-3">{t('deckStats')}</h3>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-lg font-bold text-red-400">{deckStats.total_attack}</p>
-                  <p className="text-xs text-gray-500">Атака</p>
+                  <p className="text-xs text-gray-500">{t('attack')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-green-400">{deckStats.total_hp}</p>
-                  <p className="text-xs text-gray-500">HP</p>
+                  <p className="text-xs text-gray-500">{t('hp')}</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-purple-400">{deckStats.genres.length}</p>
-                  <p className="text-xs text-gray-500">Жанров</p>
+                  <p className="text-xs text-gray-500">{t('genres')}</p>
                 </div>
               </div>
             </Card>
@@ -478,16 +488,16 @@ export default function DeckPage() {
           ) : deck.length === 0 ? (
             <Card className="text-center py-8">
               <Layers className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">Колода пуста</p>
+              <p className="text-gray-400">{t('deckEmpty')}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Добавь карты из коллекции для боя
+                {t('addCardsForBattle')}
               </p>
               <Button
                 size="sm"
                 className="mt-4"
                 onClick={() => setActiveTab('collection')}
               >
-                Перейти в коллекцию
+                {t('goToCollection')}
               </Button>
             </Card>
           ) : (
@@ -528,7 +538,7 @@ export default function DeckPage() {
                       isLoading={removeFromDeckMutation.isPending}
                     >
                       <Minus className="w-4 h-4 mr-1" />
-                      Убрать
+                      {t('removeFromDeck')}
                     </Button>
                   </Card>
                 </div>
@@ -546,10 +556,9 @@ export default function DeckPage() {
             <div className="flex items-start gap-3">
               <Merge className="w-6 h-6 text-orange-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-sm font-medium text-white mb-1">Слияние карт</h3>
+                <h3 className="text-sm font-medium text-white mb-1">{t('mergeCards')}</h3>
                 <p className="text-xs text-gray-400">
-                  Объедини 2 карты чтобы получить новую случайную карту.
-                  Чем выше редкость исходных карт, тем больше шанс получить редкую!
+                  {t('mergeExplanation')}
                 </p>
               </div>
             </div>
@@ -594,7 +603,7 @@ export default function DeckPage() {
               ) : (
                 <div className="text-center">
                   <Plus className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                  <p className="text-xs text-gray-500">Карта 1</p>
+                  <p className="text-xs text-gray-500">{t('card1')}</p>
                 </div>
               )}
             </div>
@@ -636,7 +645,7 @@ export default function DeckPage() {
               ) : (
                 <div className="text-center">
                   <Plus className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                  <p className="text-xs text-gray-500">Карта 2</p>
+                  <p className="text-xs text-gray-500">{t('card2')}</p>
                 </div>
               )}
             </div>
@@ -647,7 +656,7 @@ export default function DeckPage() {
             <Card className="mb-4">
               <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-yellow-400" />
-                Шансы получить:
+                {t('chancesToGet')}
               </h4>
               <div className="space-y-2">
                 {Object.entries(mergePreview.chances)
@@ -657,10 +666,10 @@ export default function DeckPage() {
                     <div key={rarity} className="flex items-center gap-2">
                       <div
                         className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: RARITY_INFO[rarity as keyof typeof RARITY_INFO]?.color || '#888' }}
+                        style={{ backgroundColor: RARITY_COLORS[rarity as keyof typeof RARITY_COLORS] || '#888' }}
                       />
                       <span className="text-xs text-gray-300 flex-1">
-                        {RARITY_INFO[rarity as keyof typeof RARITY_INFO]?.label || rarity}
+                        {t(RARITY_KEYS[rarity as keyof typeof RARITY_KEYS] || 'rarityCommon')}
                       </span>
                       <span className="text-xs font-bold text-white">{chance}%</span>
                     </div>
@@ -670,7 +679,7 @@ export default function DeckPage() {
               {/* Bonuses */}
               {mergePreview.bonuses.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-700">
-                  <p className="text-xs text-gray-400 mb-2">Бонусы:</p>
+                  <p className="text-xs text-gray-400 mb-2">{t('bonuses')}</p>
                   {mergePreview.bonuses.map((bonus, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-green-400">
                       <Check className="w-3 h-3" />
@@ -691,7 +700,7 @@ export default function DeckPage() {
               disabled={!mergePreview?.can_merge}
             >
               <Merge className="w-4 h-4 mr-2" />
-              Объединить карты
+              {t('mergeCardsButton')}
             </Button>
           )}
 
@@ -700,25 +709,24 @@ export default function DeckPage() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-yellow-200/80">
-                Внимание! Обе исходные карты будут уничтожены при слиянии.
-                Карты в колоде и легендарные нельзя объединять.
+                {t('mergeWarning')}
               </p>
             </div>
           </Card>
 
           {/* Available cards for merge */}
           <h4 className="text-sm font-medium text-white mb-3">
-            Доступные карты ({mergeableCards.length})
+            {t('availableCards')} ({mergeableCards.length})
           </h4>
 
           {mergeableCards.length === 0 ? (
             <Card className="text-center py-6">
               <Merge className="w-10 h-10 text-gray-600 mx-auto mb-2" />
               <p className="text-sm text-gray-400">
-                Нет карт для слияния
+                {t('noCardsForMerge')}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Карты в колоде и легендарные нельзя объединять
+                {t('cannotMergeLegendary')}
               </p>
             </Card>
           ) : (
@@ -760,8 +768,8 @@ export default function DeckPage() {
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full text-center animate-in zoom-in-95">
                 <Sparkles className="w-12 h-12 text-yellow-400 mx-auto mb-4 animate-pulse" />
-                <h3 className="text-xl font-bold text-white mb-2">Новая карта!</h3>
-                <p className="text-sm text-gray-400 mb-6">Поздравляем с успешным слиянием!</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t('newCard')}</h3>
+                <p className="text-sm text-gray-400 mb-6">{t('congratsMerge')}</p>
 
                 <div className="flex justify-center mb-6">
                   <DeckCard
@@ -788,7 +796,7 @@ export default function DeckPage() {
                     setMergeResult(null);
                   }}
                 >
-                  Отлично!
+                  {t('great')}
                 </Button>
               </div>
             </div>
