@@ -64,12 +64,12 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[100]"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Dropdown */}
-          <div className="absolute top-full left-0 mt-2 z-50 w-48 py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
+          <div className="absolute top-full left-0 mt-2 z-[101] w-48 py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
             {genreOptions.map((option) => (
               <button
                 key={option.value}
