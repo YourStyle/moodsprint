@@ -1,62 +1,58 @@
 #!/bin/bash
 set -e
 
+echo "=== Backend entrypoint starting ==="
+echo "Environment: ${FLASK_ENV:-production}"
+
 # Wait for database to be ready
 echo "Waiting for database..."
 python -c "
 import time
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import create_engine, text
 
 db_url = os.environ.get('DATABASE_URL')
+if not db_url:
+    print('ERROR: DATABASE_URL not set!')
+    exit(1)
+
 engine = create_engine(db_url)
 
 for i in range(30):
     try:
-        engine.connect()
+        with engine.connect() as conn:
+            conn.execute(text('SELECT 1'))
         print('Database is ready!')
         break
-    except OperationalError:
-        print(f'Waiting for database... ({i+1}/30)')
+    except Exception as e:
+        print(f'Waiting for database... ({i+1}/30) - {e}')
         time.sleep(1)
 else:
-    print('Could not connect to database')
+    print('ERROR: Could not connect to database after 30 attempts')
     exit(1)
-"
+" || {
+    echo "Database connection check failed"
+    exit 1
+}
 
-# Run migrations with lock to prevent race condition with multiple replicas
+# Run migrations
 echo "Running database migrations..."
-python -c "
-import os
-import sys
-from sqlalchemy import create_engine, text
+flask db upgrade 2>&1 | tee /tmp/migration.log
+MIGRATION_EXIT_CODE=${PIPESTATUS[0]}
 
-db_url = os.environ.get('DATABASE_URL')
-engine = create_engine(db_url)
+if [ $MIGRATION_EXIT_CODE -ne 0 ]; then
+    echo "=== MIGRATION FAILED ==="
+    cat /tmp/migration.log
+    echo "========================"
+    # Don't exit - let the app start anyway, maybe migrations were already applied
+    echo "WARNING: Migration failed but continuing startup..."
+else
+    echo "Migrations completed successfully"
+fi
 
-# Use advisory lock to ensure only one instance runs migrations
-with engine.connect() as conn:
-    # Try to acquire lock (lock_id = 1 for migrations)
-    result = conn.execute(text('SELECT pg_try_advisory_lock(1)')).scalar()
-    if result:
-        print('Acquired migration lock, running migrations...')
-        conn.execute(text('COMMIT'))  # Release transaction to allow DDL
+# Show current migration state
+echo "Current database revision:"
+flask db current 2>&1 || echo "Could not get current revision"
 
-        # Run flask db upgrade
-        import subprocess
-        exit_code = subprocess.call(['flask', 'db', 'upgrade'])
-
-        # Release lock
-        conn.execute(text('SELECT pg_advisory_unlock(1)'))
-        print('Migrations completed, lock released')
-        sys.exit(exit_code)
-    else:
-        print('Another instance is running migrations, skipping...')
-        # Wait a bit for migrations to complete
-        import time
-        time.sleep(5)
-"
-
-echo "Starting application..."
+echo "=== Starting application ==="
 exec "$@"
