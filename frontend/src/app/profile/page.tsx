@@ -89,7 +89,7 @@ export default function ProfilePage() {
   return (
     <div className="p-4 space-y-4 pt-safe">
       {/* User Info */}
-      <Card className="text-center">
+      <Card className="text-center relative z-10">
         {user.photo_url ? (
           <img
             src={user.photo_url}

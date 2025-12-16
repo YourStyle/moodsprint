@@ -10,6 +10,7 @@ import { MoodSelector } from '@/components/mood';
 import { tasksService, focusService, moodService, cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
+import { useLanguage, type TranslationKey } from '@/lib/i18n';
 import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
 import type { MoodLevel, EnergyLevel, TaskType } from '@/domain/types';
 
@@ -35,12 +36,12 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: 'from-yellow-500 to-orange-500',
 };
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Обычная',
-  uncommon: 'Необычная',
-  rare: 'Редкая',
-  epic: 'Эпическая',
-  legendary: 'Легендарная',
+const RARITY_TRANSLATION_KEYS: Record<string, string> = {
+  common: 'rarityCommon',
+  uncommon: 'rarityUncommon',
+  rare: 'rarityRare',
+  epic: 'rarityEpic',
+  legendary: 'rarityLegendary',
 };
 
 const TASK_TYPES: TaskType[] = [
@@ -52,11 +53,13 @@ const TASK_TYPES: TaskType[] = [
 function CardEarnedModal({
   isOpen,
   card,
-  onClose
+  onClose,
+  t
 }: {
   isOpen: boolean;
   card: EarnedCard | null;
   onClose: () => void;
+  t: (key: TranslationKey) => string;
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -97,8 +100,10 @@ function CardEarnedModal({
 
   const displayImageUrl = imageUrl || card.image_url;
 
+  const rarityKey = (RARITY_TRANSLATION_KEYS[card.rarity] || 'rarityCommon') as TranslationKey;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Новая карта!">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('newCardTitle')}>
       <div className="flex flex-col items-center">
         {/* Card Preview */}
         <div className={`w-48 h-64 rounded-2xl bg-gradient-to-br ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} p-1 mb-4`}>
@@ -117,7 +122,7 @@ function CardEarnedModal({
                   {isGenerating && (
                     <div className="absolute bottom-2 left-0 right-0 text-center">
                       <span className="text-xs text-gray-400 animate-pulse">
-                        Облик скоро появится...
+                        {t('cardImageGenerating')}
                       </span>
                     </div>
                   )}
@@ -147,16 +152,16 @@ function CardEarnedModal({
         <div className={`px-4 py-1 rounded-full bg-gradient-to-r ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} mb-4`}>
           <span className="text-white font-bold text-sm flex items-center gap-1">
             <Sparkles className="w-4 h-4" />
-            {RARITY_LABELS[card.rarity] || card.rarity}
+            {t(rarityKey)}
           </span>
         </div>
 
         <p className="text-gray-400 text-sm text-center mb-4">
-          Карта добавлена в твою коллекцию!
+          {t('cardAddedToCollection')}
         </p>
 
         <Button onClick={onClose} className="w-full">
-          Отлично!
+          {t('great')}
         </Button>
       </div>
     </Modal>
@@ -168,6 +173,7 @@ export default function TaskDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const taskId = Number(params.id);
+  const { t } = useLanguage();
 
   const { latestMood, setLatestMood, setActiveSession, showXPAnimation } = useAppStore();
   const [showMoodModal, setShowMoodModal] = useState(false);
@@ -411,9 +417,9 @@ export default function TaskDetailPage() {
   if (!task) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Задача не найдена</p>
+        <p className="text-gray-500">{t('taskNotFound')}</p>
         <Button onClick={() => router.push('/tasks')} className="mt-4">
-          Назад к задачам
+          {t('backToTasks')}
         </Button>
       </div>
     );
@@ -463,14 +469,14 @@ export default function TaskDetailPage() {
                 onClick={() => setShowTypeModal(true)}
                 className="text-xs px-2 py-0.5 rounded-full bg-gray-600/50 text-gray-400 border border-dashed border-gray-500 hover:bg-gray-600"
               >
-                + Тип
+                {t('addType')}
               </button>
             )}
             <button
               onClick={() => setShowPriorityModal(true)}
               className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${PRIORITY_COLORS[task.priority]}`}
             >
-              {task.priority === 'low' ? 'Низкий' : task.priority === 'medium' ? 'Средний' : 'Высокий'}
+              {task.priority === 'low' ? t('priorityLow') : task.priority === 'medium' ? t('priorityMedium') : t('priorityHigh')}
             </button>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               task.status === 'completed'
@@ -479,11 +485,11 @@ export default function TaskDetailPage() {
                 ? 'bg-blue-500/20 text-blue-400'
                 : 'bg-gray-500/20 text-gray-400'
             }`}>
-              {task.status === 'completed' ? 'Выполнена' : task.status === 'in_progress' ? 'В работе' : 'Ожидает'}
+              {task.status === 'completed' ? t('statusCompleted') : task.status === 'in_progress' ? t('statusInProgress') : t('statusPending')}
             </span>
           </div>
           <span className="text-sm text-gray-500">
-            {task.progress_percent}% выполнено
+            {task.progress_percent}{t('percentComplete')}
           </span>
         </div>
         <Progress value={task.progress_percent} color="primary" />
@@ -499,7 +505,7 @@ export default function TaskDetailPage() {
             className="flex-1"
           >
             <Play className="w-4 h-4 mr-2" />
-            Начать фокус
+            {t('startFocusButton')}
           </Button>
           <Button
             variant="secondary"
@@ -508,7 +514,7 @@ export default function TaskDetailPage() {
             className="flex-1"
           >
             <Check className="w-4 h-4 mr-2" />
-            Завершить
+            {t('completeTask')}
           </Button>
         </div>
       )}
@@ -521,7 +527,7 @@ export default function TaskDetailPage() {
           className="w-full"
         >
           <Wand2 className="w-4 h-4 mr-2" />
-          Разбить на шаги с ИИ
+          {t('decomposeWithAI')}
         </Button>
       )}
 
@@ -536,14 +542,14 @@ export default function TaskDetailPage() {
       {subtasks.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-white">Шаги</h2>
+            <h2 className="font-semibold text-white">{t('steps')}</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowAddSubtask(true)}
                 className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                Добавить
+                {t('add')}
               </button>
               <button
                 onClick={handleDecompose}
@@ -589,7 +595,7 @@ export default function TaskDetailPage() {
           className="w-full mt-2"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Добавить шаг вручную
+          {t('addStepManually')}
         </Button>
       )}
 
@@ -597,10 +603,10 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
-        title="Сначала отметь настроение"
+        title={t('firstCheckMood')}
       >
         <p className="text-sm text-gray-500 mb-4">
-          Мы подстроим разбивку задачи под твоё текущее состояние.
+          {t('moodDecomposeHint')}
         </p>
         <MoodSelector onSubmit={handleMoodSubmit} isLoading={moodLoading} />
       </Modal>
@@ -609,10 +615,10 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Удалить задачу"
+        title={t('deleteTask')}
       >
         <p className="text-gray-600 mb-4">
-          Ты уверен, что хочешь удалить «{task.title}»? Это нельзя отменить.
+          {t('deleteTaskConfirm').replace('{title}', task.title)}
         </p>
         <div className="flex gap-3">
           <Button
@@ -620,7 +626,7 @@ export default function TaskDetailPage() {
             onClick={() => setShowDeleteConfirm(false)}
             className="flex-1"
           >
-            Отмена
+            {t('cancel')}
           </Button>
           <Button
             variant="danger"
@@ -628,7 +634,7 @@ export default function TaskDetailPage() {
             isLoading={deleteMutation.isPending}
             className="flex-1"
           >
-            Удалить
+            {t('delete')}
           </Button>
         </div>
       </Modal>
@@ -637,30 +643,30 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showEditTask}
         onClose={() => setShowEditTask(false)}
-        title="Редактировать задачу"
+        title={t('editTask')}
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Название
+              {t('title')}
             </label>
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="Название задачи"
+              placeholder={t('taskTitlePlaceholder')}
               className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
               autoFocus
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Описание
+              {t('description')}
             </label>
             <textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              placeholder="Описание задачи (необязательно)"
+              placeholder={t('taskDescriptionPlaceholder')}
               rows={4}
               className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
@@ -671,7 +677,7 @@ export default function TaskDetailPage() {
               onClick={() => setShowEditTask(false)}
               className="flex-1"
             >
-              Отмена
+              {t('cancel')}
             </Button>
             <Button
               onClick={() => updateTaskMutation.mutate({
@@ -682,7 +688,7 @@ export default function TaskDetailPage() {
               disabled={!editTitle.trim()}
               className="flex-1"
             >
-              Сохранить
+              {t('save')}
             </Button>
           </div>
         </div>
@@ -695,14 +701,14 @@ export default function TaskDetailPage() {
           setShowAddSubtask(false);
           setNewSubtaskTitle('');
         }}
-        title="Добавить шаг"
+        title={t('addStep')}
       >
         <div className="space-y-4">
           <input
             type="text"
             value={newSubtaskTitle}
             onChange={(e) => setNewSubtaskTitle(e.target.value)}
-            placeholder="Название шага"
+            placeholder={t('stepTitlePlaceholder')}
             className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             autoFocus
           />
@@ -715,7 +721,7 @@ export default function TaskDetailPage() {
               }}
               className="flex-1"
             >
-              Отмена
+              {t('cancel')}
             </Button>
             <Button
               onClick={() => createSubtaskMutation.mutate(newSubtaskTitle)}
@@ -723,7 +729,7 @@ export default function TaskDetailPage() {
               disabled={!newSubtaskTitle.trim()}
               className="flex-1"
             >
-              Добавить
+              {t('add')}
             </Button>
           </div>
         </div>
@@ -736,26 +742,26 @@ export default function TaskDetailPage() {
           setShowEditSubtask(false);
           setEditingSubtask(null);
         }}
-        title="Редактировать шаг"
+        title={t('editStep')}
       >
         {editingSubtask && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Название
+                {t('title')}
               </label>
               <input
                 type="text"
                 value={editingSubtask.title}
                 onChange={(e) => setEditingSubtask({ ...editingSubtask, title: e.target.value })}
-                placeholder="Название шага"
+                placeholder={t('stepTitlePlaceholder')}
                 className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 autoFocus
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Время (минуты)
+                {t('timeMinutes')}
               </label>
               <input
                 type="number"
@@ -775,7 +781,7 @@ export default function TaskDetailPage() {
                 }}
                 className="flex-1"
               >
-                Отмена
+                {t('cancel')}
               </Button>
               <Button
                 onClick={() => updateSubtaskMutation.mutate({
@@ -789,7 +795,7 @@ export default function TaskDetailPage() {
                 disabled={!editingSubtask.title.trim()}
                 className="flex-1"
               >
-                Сохранить
+                {t('save')}
               </Button>
             </div>
           </div>
@@ -800,10 +806,10 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showTypeModal}
         onClose={() => setShowTypeModal(false)}
-        title="Тип задачи"
+        title={t('taskType')}
       >
         <p className="text-sm text-gray-500 mb-4">
-          Выбери тип задачи для более точной разбивки на шаги
+          {t('taskTypeHint')}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {TASK_TYPES.map((type) => (
@@ -831,7 +837,7 @@ export default function TaskDetailPage() {
           setShowDurationModal(false);
           setPendingFocusSubtaskId(null);
         }}
-        title="Выбери длительность"
+        title={t('chooseDuration')}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
@@ -846,7 +852,7 @@ export default function TaskDetailPage() {
                 }`}
               >
                 <Timer className="w-5 h-5 mx-auto mb-1" />
-                <span className="text-sm font-medium">{d} мин</span>
+                <span className="text-sm font-medium">{d} {t('min')}</span>
               </button>
             ))}
           </div>
@@ -860,7 +866,7 @@ export default function TaskDetailPage() {
             }`}
           >
             <Infinity className="w-5 h-5 mx-auto mb-1" />
-            <span className="text-sm font-medium">Без таймера</span>
+            <span className="text-sm font-medium">{t('withoutTimer')}</span>
           </button>
 
           <Button
@@ -869,7 +875,7 @@ export default function TaskDetailPage() {
             className="w-full"
           >
             <Play className="w-4 h-4 mr-2" />
-            Начать
+            {t('start')}
           </Button>
         </div>
       </Modal>
@@ -878,13 +884,13 @@ export default function TaskDetailPage() {
       <Modal
         isOpen={showPriorityModal}
         onClose={() => setShowPriorityModal(false)}
-        title="Приоритет задачи"
+        title={t('taskPriority')}
       >
         <div className="space-y-2">
           {([
-            { value: 'high' as const, label: 'Высокий', icon: <ChevronUp className="w-4 h-4" /> },
-            { value: 'medium' as const, label: 'Средний', icon: null },
-            { value: 'low' as const, label: 'Низкий', icon: <ChevronDown className="w-4 h-4" /> },
+            { value: 'high' as const, labelKey: 'priorityHigh' as const, icon: <ChevronUp className="w-4 h-4" /> },
+            { value: 'medium' as const, labelKey: 'priorityMedium' as const, icon: null },
+            { value: 'low' as const, labelKey: 'priorityLow' as const, icon: <ChevronDown className="w-4 h-4" /> },
           ]).map((priority) => (
             <button
               key={priority.value}
@@ -899,7 +905,7 @@ export default function TaskDetailPage() {
               <span className={`w-8 h-8 rounded-full flex items-center justify-center ${PRIORITY_COLORS[priority.value]}`}>
                 {priority.icon || <span className="w-2 h-2 rounded-full bg-current" />}
               </span>
-              <span className="font-medium">{priority.label}</span>
+              <span className="font-medium">{t(priority.labelKey)}</span>
             </button>
           ))}
         </div>
@@ -913,6 +919,7 @@ export default function TaskDetailPage() {
           setShowCardModal(false);
           setEarnedCard(null);
         }}
+        t={t}
       />
     </div>
   );
