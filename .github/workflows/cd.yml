@@ -1,9 +1,15 @@
 name: CD
 
 on:
-  push:
+  # Deploy staging when CI passes on main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
+  # Deploy production on tags
+  push:
     tags: ['v*']
+  # Manual deploy
   workflow_dispatch:
     inputs:
       environment:
@@ -25,11 +31,55 @@ permissions:
 
 jobs:
   # ===========================================
+  # CI check for tags (ensures tests pass before prod deploy)
+  # ===========================================
+  ci-for-tags:
+    name: CI Check for Tags
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend lint & type-check
+        run: |
+          cd frontend
+          npm ci
+          npm run lint
+          npm run type-check
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Backend lint
+        run: |
+          cd backend
+          pip install flake8 black isort
+          flake8 app --max-line-length=120 --ignore=E501,W503,E203
+          black --check app
+
+  # ===========================================
   # Build and push Docker images
   # ===========================================
   build-and-push:
     name: Build & Push Images
     runs-on: ubuntu-latest
+    needs: [ci-for-tags]
+    # Skip if CI failed
+    if: |
+      always() && (
+        (github.event_name == 'push' && needs.ci-for-tags.result == 'success') ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      )
 
     strategy:
       matrix:
@@ -48,6 +98,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,9 +118,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=main
             type=sha,prefix=sha-
 
       - name: Build and push
@@ -84,13 +137,15 @@ jobs:
             NEXT_PUBLIC_API_URL=/api/v1
 
   # ===========================================
-  # Deploy to staging
+  # Deploy to staging (main branch only)
   # ===========================================
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [build-and-push]
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    if: |
+      (github.event_name == 'workflow_run') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment:
       name: staging
       url: https://staging.moodsprint.ru
@@ -128,19 +183,14 @@ jobs:
           script: |
             cd /opt/moodsprint
 
-            # Use staging nginx config (copy as nginx.prod.conf which is mounted by docker-compose)
+            # Use staging nginx config
             cp nginx/nginx.staging.conf nginx/nginx.prod.conf
 
-            # Pull latest images
+            # Pull and deploy with force recreate
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # Deploy with zero downtime
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Reload nginx with new config
-            docker exec moodsprint-nginx nginx -s reload || true
-
-            # Run migrations (use --index 1 to run on first replica only)
+            # Run migrations
             docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
 
             # Cleanup old images
@@ -151,13 +201,15 @@ jobs:
             curl -f https://staging.moodsprint.ru/health || curl -f http://localhost/health || exit 1
 
   # ===========================================
-  # Deploy to production
+  # Deploy to production (tags only)
   # ===========================================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-and-push]
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     environment:
       name: production
       url: https://moodsprint.ru
@@ -201,16 +253,11 @@ jobs:
             # Backup database before deployment
             docker compose exec -T db pg_dump -U moodsprint moodsprint > /backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql || true
 
-            # Pull latest images
+            # Pull and deploy with force recreate
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # Deploy with zero downtime (rolling update)
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Reload nginx with new config
-            docker exec moodsprint-nginx nginx -s reload || true
-
-            # Run migrations (use --index 1 to run on first replica only)
+            # Run migrations
             docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
 
             # Cleanup
@@ -221,35 +268,6 @@ jobs:
             curl -f https://moodsprint.ru/health || curl -f http://localhost/health || exit 1
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-
-  # ===========================================
-  # Rollback job (manual trigger)
-  # ===========================================
-  rollback:
-    name: Rollback Deployment
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    environment: ${{ github.event.inputs.environment }}
-
-    steps:
-      - name: Rollback to previous version
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ github.event.inputs.environment == 'production' && secrets.PRODUCTION_HOST || secrets.STAGING_HOST }}
-          username: ${{ github.event.inputs.environment == 'production' && secrets.PRODUCTION_USER || secrets.STAGING_USER }}
-          key: ${{ github.event.inputs.environment == 'production' && secrets.PRODUCTION_SSH_KEY || secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/moodsprint
-
-            # Get previous image tags
-            docker compose down
-
-            # Restore from backup if needed
-            # docker compose exec -T db psql -U moodsprint moodsprint < /backups/latest.sql
-
-            # Restart with previous images
-            docker compose up -d
