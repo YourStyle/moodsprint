@@ -121,7 +121,14 @@ export default function DeckPage() {
     onSuccess: (result) => {
       if (result.success && result.data) {
         setMergePreview(result.data as unknown as MergePreview);
+      } else {
+        console.error('Merge preview failed:', result);
+        setMergePreview(null);
       }
+    },
+    onError: (error) => {
+      console.error('Merge preview error:', error);
+      setMergePreview(null);
     },
   });
 
@@ -696,8 +703,8 @@ export default function DeckPage() {
             <Button
               className="w-full mb-4 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
               onClick={handleExecuteMerge}
-              isLoading={mergeCardsMutation.isPending}
-              disabled={!mergePreview?.can_merge}
+              isLoading={mergeCardsMutation.isPending || mergePreviewMutation.isPending}
+              disabled={!mergePreview?.can_merge && !mergePreviewMutation.isPending}
             >
               <Merge className="w-4 h-4 mr-2" />
               {t('mergeCardsButton')}
