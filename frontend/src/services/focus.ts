@@ -12,6 +12,7 @@ import type {
 
 interface FocusSessionResponse {
   session: FocusSession | null;
+  sessions?: FocusSession[];
 }
 
 interface FocusSessionWithXP {
@@ -80,5 +81,11 @@ export const focusService = {
 
   async getTodayFocus(): Promise<ApiResponse<TodayFocusResponse>> {
     return api.get<TodayFocusResponse>('/focus/today');
+  },
+
+  async extendSession(minutes: number): Promise<ApiResponse<FocusSessionResponse>> {
+    return api.post<FocusSessionResponse>('/focus/extend', {
+      minutes,
+    });
   },
 };

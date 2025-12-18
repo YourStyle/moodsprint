@@ -34,13 +34,31 @@ def start_focus_session():
     if not data:
         return validation_error({"body": "Request body is required"})
 
-    # Check for existing active session
-    active_session = FocusSession.query.filter_by(
-        user_id=user_id, status=FocusSessionStatus.ACTIVE.value
-    ).first()
+    # Check if this specific task/subtask already has an active session
+    subtask_id = data.get("subtask_id")
+    task_id = data.get("task_id")
 
-    if active_session:
-        return conflict("You already have an active focus session")
+    if subtask_id:
+        existing = FocusSession.query.filter(
+            FocusSession.user_id == user_id,
+            FocusSession.subtask_id == subtask_id,
+            FocusSession.status.in_(
+                [FocusSessionStatus.ACTIVE.value, FocusSessionStatus.PAUSED.value]
+            ),
+        ).first()
+        if existing:
+            return conflict("This subtask already has an active focus session")
+    elif task_id:
+        existing = FocusSession.query.filter(
+            FocusSession.user_id == user_id,
+            FocusSession.task_id == task_id,
+            FocusSession.subtask_id.is_(None),
+            FocusSession.status.in_(
+                [FocusSessionStatus.ACTIVE.value, FocusSessionStatus.PAUSED.value]
+            ),
+        ).first()
+        if existing:
+            return conflict("This task already has an active focus session")
 
     # Validate subtask (optional)
     subtask_id = data.get("subtask_id")
@@ -95,20 +113,23 @@ def start_focus_session():
 @api_bp.route("/focus/active", methods=["GET"])
 @jwt_required()
 def get_active_session():
-    """Get the current active focus session."""
+    """Get all active focus sessions."""
     user_id = int(get_jwt_identity())
 
-    session = FocusSession.query.filter_by(
-        user_id=user_id, status=FocusSessionStatus.ACTIVE.value
-    ).first()
+    sessions = FocusSession.query.filter(
+        FocusSession.user_id == user_id,
+        FocusSession.status.in_(
+            [FocusSessionStatus.ACTIVE.value, FocusSessionStatus.PAUSED.value]
+        ),
+    ).all()
 
-    # Also check for paused sessions
-    if not session:
-        session = FocusSession.query.filter_by(
-            user_id=user_id, status=FocusSessionStatus.PAUSED.value
-        ).first()
-
-    return success_response({"session": session.to_dict() if session else None})
+    return success_response(
+        {
+            "sessions": [s.to_dict() for s in sessions],
+            # Keep backward compatibility
+            "session": sessions[0].to_dict() if sessions else None,
+        }
+    )
 
 
 @api_bp.route("/focus/complete", methods=["POST"])
@@ -330,3 +351,42 @@ def get_today_focus():
             "sessions": [s.to_dict() for s in today_sessions],
         }
     )
+
+
+@api_bp.route("/focus/extend", methods=["POST"])
+@jwt_required()
+def extend_focus_session():
+    """
+    Extend the active focus session duration.
+
+    Request body:
+    {
+        "minutes": 10  // minutes to add
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    minutes = data.get("minutes", 10)
+    try:
+        minutes = int(minutes)
+        minutes = max(1, min(60, minutes))  # 1-60 minutes
+    except (ValueError, TypeError):
+        minutes = 10
+
+    # Find active or paused session
+    session = FocusSession.query.filter(
+        FocusSession.user_id == user_id,
+        FocusSession.status.in_(
+            [FocusSessionStatus.ACTIVE.value, FocusSessionStatus.PAUSED.value]
+        ),
+    ).first()
+
+    if not session:
+        return not_found("No active session found")
+
+    # Extend duration
+    session.planned_duration_minutes += minutes
+    db.session.commit()
+
+    return success_response({"session": session.to_dict()})

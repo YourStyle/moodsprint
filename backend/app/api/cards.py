@@ -565,3 +565,66 @@ def get_friend_cards(friend_id: int):
             "total": len(cards),
         }
     )
+
+
+# ============ Card Merging ============
+
+
+@api_bp.route("/cards/merge", methods=["POST"])
+@jwt_required()
+def merge_cards():
+    """
+    Merge two cards of the same rarity to create one card of higher rarity.
+
+    Request body:
+    {
+        "card_id_1": 1,
+        "card_id_2": 2
+    }
+
+    Returns the new merged card.
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    card_id_1 = data.get("card_id_1")
+    card_id_2 = data.get("card_id_2")
+
+    if not card_id_1 or not card_id_2:
+        return validation_error({"error": "Both card IDs are required"})
+
+    if card_id_1 == card_id_2:
+        return validation_error({"error": "Cannot merge a card with itself"})
+
+    # Get both cards
+    card1 = UserCard.query.filter_by(
+        id=card_id_1, user_id=user_id, is_destroyed=False
+    ).first()
+    card2 = UserCard.query.filter_by(
+        id=card_id_2, user_id=user_id, is_destroyed=False
+    ).first()
+
+    if not card1 or not card2:
+        return not_found("One or both cards not found")
+
+    # Check same rarity
+    if card1.rarity != card2.rarity:
+        return validation_error({"error": "Cards must be of the same rarity to merge"})
+
+    # Check not legendary (can't upgrade further)
+    if card1.rarity == "legendary":
+        return validation_error({"error": "Legendary cards cannot be merged"})
+
+    service = CardService()
+    result = service.merge_cards(user_id, card1, card2)
+
+    if not result.get("success"):
+        return validation_error({"error": result.get("error", "Merge failed")})
+
+    return success_response(
+        {
+            "message": result.get("message", "Cards merged successfully!"),
+            "card": result.get("card"),
+            "destroyed_cards": [card1.id, card2.id],
+        }
+    )

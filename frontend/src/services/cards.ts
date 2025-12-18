@@ -206,6 +206,22 @@ class CardsService {
   async generateCardImage(cardId: number): Promise<ApiResponse<{ image_url?: string; already_exists?: boolean }>> {
     return api.post<{ image_url?: string; already_exists?: boolean }>(`/cards/${cardId}/generate-image`);
   }
+
+  // Card merging
+  async mergeCards(cardId1: number, cardId2: number): Promise<ApiResponse<{
+    message: string;
+    card: Card;
+    destroyed_cards: number[];
+  }>> {
+    return api.post<{
+      message: string;
+      card: Card;
+      destroyed_cards: number[];
+    }>('/cards/merge', {
+      card_id_1: cardId1,
+      card_id_2: cardId2,
+    });
+  }
 }
 
 export const cardsService = new CardsService();

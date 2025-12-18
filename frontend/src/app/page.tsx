@@ -191,7 +191,6 @@ export default function HomePage() {
     onSuccess: (result) => {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
-        router.push('/focus');
         hapticFeedback('success');
       }
     },

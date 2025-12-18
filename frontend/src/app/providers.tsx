@@ -35,7 +35,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
     setUser,
     setLoading,
     setLatestMood,
-    setActiveSession,
+    setActiveSessions,
     setOnboardingCompleted,
   } = useAppStore();
 
@@ -113,8 +113,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
           setLatestMood(moodResult.data.mood_check);
         }
 
-        if (focusResult.success && focusResult.data?.session) {
-          setActiveSession(focusResult.data.session);
+        if (focusResult.success && focusResult.data?.sessions) {
+          setActiveSessions(focusResult.data.sessions);
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
@@ -128,7 +128,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
     setUser,
     setLoading,
     setLatestMood,
-    setActiveSession,
+    setActiveSessions,
     setOnboardingCompleted,
     router,
     pathname,

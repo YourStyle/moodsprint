@@ -153,6 +153,7 @@ export type FocusSessionStatus = 'active' | 'completed' | 'cancelled' | 'paused'
 export interface FocusSession {
   id: number;
   user_id: number;
+  task_id: number | null;
   subtask_id: number | null;
   subtask_title?: string;
   task_title?: string;

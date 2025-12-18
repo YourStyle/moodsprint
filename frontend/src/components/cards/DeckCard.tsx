@@ -118,6 +118,18 @@ export function DeckCard({
       className="relative w-full aspect-[3/4] perspective-1000"
       onClick={handleCardClick}
     >
+      {/* Rarity badge - outside of flip container so it doesn't rotate */}
+      {!compact && (
+        <div
+          className={cn(
+            'absolute -top-0.5 left-2 px-2 py-0.5 rounded-b-md text-[10px] font-bold text-white z-20',
+            config.labelBg
+          )}
+        >
+          {config.label}
+        </div>
+      )}
+
       <div
         className={cn(
           'relative w-full h-full transition-transform duration-500 transform-style-3d cursor-pointer',
@@ -136,18 +148,6 @@ export function DeckCard({
           <div className={cn('absolute inset-0 bg-gradient-to-br', config.gradient)} />
 
           <div className="relative h-full flex flex-col p-2">
-            {/* Rarity badge */}
-            {!compact && (
-              <div
-                className={cn(
-                  'absolute -top-0.5 left-2 px-2 py-0.5 rounded-b-md text-[10px] font-bold text-white z-10',
-                  config.labelBg
-                )}
-              >
-                {config.label}
-              </div>
-            )}
-
             {/* Info button */}
             {!compact && (
               <button

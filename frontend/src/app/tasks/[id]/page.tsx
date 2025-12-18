@@ -193,6 +193,7 @@ export default function TaskDetailPage() {
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -272,8 +273,8 @@ export default function TaskDetailPage() {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
         setShowDurationModal(false);
+        setShowActionModal(false);
         setPendingFocusSubtaskId(null);
-        router.push('/focus');
         hapticFeedback('success');
       }
     },
@@ -290,7 +291,7 @@ export default function TaskDetailPage() {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
         setShowDurationModal(false);
-        router.push('/focus');
+        setShowActionModal(false);
         hapticFeedback('success');
       }
     },
@@ -495,28 +496,16 @@ export default function TaskDetailPage() {
         <Progress value={task.progress_percent} color="primary" />
       </Card>
 
-      {/* Action Buttons */}
+      {/* Action Button */}
       {task.status !== 'completed' && (
-        <div className="flex gap-3">
-          <Button
-            variant="primary"
-            onClick={() => handleStartFocus()}
-            isLoading={startTaskFocusMutation.isPending}
-            className="flex-1"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            {t('startFocusButton')}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => completeTaskMutation.mutate()}
-            isLoading={completeTaskMutation.isPending}
-            className="flex-1"
-          >
-            <Check className="w-4 h-4 mr-2" />
-            {t('completeTask')}
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          onClick={() => setShowActionModal(true)}
+          className="w-full h-14"
+        >
+          <Play className="w-5 h-5 mr-2" />
+          {t('start')}
+        </Button>
       )}
 
       {/* Decompose Button */}
@@ -908,6 +897,54 @@ export default function TaskDetailPage() {
               <span className="font-medium">{t(priority.labelKey)}</span>
             </button>
           ))}
+        </div>
+      </Modal>
+
+      {/* Action Selection Modal */}
+      <Modal
+        isOpen={showActionModal}
+        onClose={() => setShowActionModal(false)}
+        title={t('chooseAction')}
+      >
+        <div className="space-y-3">
+          {/* Start Focus Option */}
+          <button
+            onClick={() => {
+              setShowActionModal(false);
+              handleStartFocus();
+            }}
+            className="w-full p-4 rounded-xl bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/50 transition-all text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary-500/30 flex items-center justify-center">
+                <Timer className="w-6 h-6 text-primary-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-white">{t('startFocusButton')}</p>
+                <p className="text-sm text-gray-400">{t('startFocusHint')}</p>
+              </div>
+            </div>
+          </button>
+
+          {/* Complete Task Option */}
+          <button
+            onClick={() => {
+              setShowActionModal(false);
+              completeTaskMutation.mutate();
+            }}
+            disabled={completeTaskMutation.isPending}
+            className="w-full p-4 rounded-xl bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 transition-all text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-500/30 flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-white">{t('completeTask')}</p>
+                <p className="text-sm text-gray-400">{t('completeTaskHint')}</p>
+              </div>
+            </div>
+          </button>
         </div>
       </Modal>
 

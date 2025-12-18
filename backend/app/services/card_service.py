@@ -933,3 +933,104 @@ class CardService:
             ((CardTrade.sender_id == user_id) | (CardTrade.receiver_id == user_id))
             & (CardTrade.status == "pending")
         ).all()
+
+    def merge_cards(self, user_id: int, card1: UserCard, card2: UserCard) -> dict:
+        """
+        Merge two cards of the same rarity to create one card of higher rarity.
+
+        Args:
+            user_id: The user's ID
+            card1: First card to merge
+            card2: Second card to merge
+
+        Returns:
+            dict with success status and new card or error
+        """
+        # Rarity upgrade order
+        rarity_order = ["common", "uncommon", "rare", "epic", "legendary"]
+        current_rarity_idx = rarity_order.index(card1.rarity)
+
+        if current_rarity_idx >= len(rarity_order) - 1:
+            return {"success": False, "error": "Cannot upgrade legendary cards"}
+
+        new_rarity = rarity_order[current_rarity_idx + 1]
+        new_rarity_enum = CardRarity(new_rarity)
+
+        # Get genre from one of the cards (prefer card1, or pick randomly)
+        genre = card1.genre or card2.genre or "fantasy"
+
+        # Generate new card name and description
+        name, description = self._generate_card_text(
+            genre,
+            GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"]),
+            new_rarity_enum,
+            f"Merged from {card1.name} and {card2.name}",
+        )
+
+        # Calculate stats - take best of both cards and apply new rarity multiplier
+        multipliers = RARITY_MULTIPLIERS[new_rarity_enum]
+        base_hp = max(card1.hp, card2.hp)
+        base_attack = max(card1.attack, card2.attack)
+
+        # Apply upgrade bonus (10-20% on top of the best card)
+        hp = int(
+            base_hp
+            * multipliers["hp"]
+            / RARITY_MULTIPLIERS[CardRarity(card1.rarity)]["hp"]
+            * random.uniform(1.1, 1.2)
+        )
+        attack = int(
+            base_attack
+            * multipliers["attack"]
+            / RARITY_MULTIPLIERS[CardRarity(card1.rarity)]["attack"]
+            * random.uniform(1.1, 1.2)
+        )
+
+        # Select emoji
+        emojis = GENRE_CARD_EMOJIS.get(genre, GENRE_CARD_EMOJIS["fantasy"])
+        emoji = random.choice(emojis)
+
+        # Higher chance for ability on merged card
+        ability = get_random_ability(new_rarity_enum)
+
+        # Create new card
+        new_card = UserCard(
+            user_id=user_id,
+            template_id=None,
+            task_id=None,  # Merged card, no task
+            name=name,
+            description=description,
+            genre=genre,
+            rarity=new_rarity,
+            hp=hp,
+            attack=attack,
+            current_hp=hp,
+            image_url=None,  # Will be generated async
+            emoji=emoji,
+            ability=ability.value if ability else None,
+        )
+
+        # Mark old cards as destroyed
+        card1.is_destroyed = True
+        card1.is_in_deck = False
+        card2.is_destroyed = True
+        card2.is_in_deck = False
+
+        db.session.add(new_card)
+        db.session.commit()
+
+        # Get rarity name for message
+        rarity_names = {
+            "common": "Обычную",
+            "uncommon": "Необычную",
+            "rare": "Редкую",
+            "epic": "Эпическую",
+            "legendary": "Легендарную",
+        }
+
+        rarity_label = rarity_names.get(new_rarity, new_rarity)
+        return {
+            "success": True,
+            "card": new_card.to_dict(),
+            "message": f"Карты объединены! Получена {rarity_label} карта!",
+        }
