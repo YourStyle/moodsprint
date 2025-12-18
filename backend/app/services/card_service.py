@@ -569,12 +569,29 @@ class CardService:
                 "already_exists": True,
             }
 
+        # Check if template has image (can reuse it)
+        if card.template_id:
+            template = CardTemplate.query.get(card.template_id)
+            if template and template.image_url:
+                card.image_url = template.image_url
+                db.session.commit()
+                logger.info(f"Reused template image for card {card_id}")
+                return {"success": True, "image_url": card.image_url}
+
         # Generate image
         rarity = CardRarity(card.rarity)
         image_url = self._generate_card_image(card.name, card.genre, rarity)
 
         if image_url:
             card.image_url = image_url
+
+            # Also update template if card has one (for future reuse)
+            if card.template_id:
+                template = CardTemplate.query.get(card.template_id)
+                if template and not template.image_url:
+                    template.image_url = image_url
+                    logger.info(f"Updated template {card.template_id} with image")
+
             db.session.commit()
             logger.info(f"Generated image for card {card_id}: {image_url}")
             return {"success": True, "image_url": image_url}

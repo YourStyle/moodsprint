@@ -5,8 +5,10 @@ import os
 import random
 import uuid
 from datetime import date
+from pathlib import Path
 
 import requests
+from flask import current_app
 from openai import OpenAI
 
 from app import db
@@ -59,6 +61,16 @@ class MonsterGeneratorService:
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key:
             self.openai_client = OpenAI(api_key=openai_key)
+
+        # Get static folder from Flask app context
+        try:
+            static_folder = current_app.static_folder or "/app/static"
+        except RuntimeError:
+            static_folder = "/app/static"
+
+        # Ensure monster images directory exists
+        self.images_dir = Path(static_folder) / "monster_images"
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_monsters_for_genre(self, genre: str, count: int = 6) -> list[dict]:
         """
@@ -186,16 +198,14 @@ Be creative with names - avoid generic names. Each monster should feel unique an
             if response.status_code == 200:
                 # Save image and return URL
                 image_filename = f"monster_{uuid.uuid4().hex[:8]}.jpg"
-                image_path = os.path.join("static", "monsters", image_filename)
+                image_path = self.images_dir / image_filename
 
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(image_path), exist_ok=True)
-
-                with open(image_path, "wb") as f:
-                    f.write(response.content)
+                image_path.write_bytes(response.content)
 
                 # Return relative URL
-                return f"/static/monsters/{image_filename}"
+                image_url = f"/static/monster_images/{image_filename}"
+                logger.info(f"Monster image generated: {image_url}")
+                return image_url
 
             else:
                 logger.error(
