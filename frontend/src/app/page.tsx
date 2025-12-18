@@ -8,6 +8,7 @@ import { Button, Card, Modal } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
+import { CardEarnedModal, type EarnedCard } from '@/components/cards';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
@@ -261,6 +262,8 @@ export default function HomePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
+  const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
 
   const selectedDateStr = formatDateForAPI(selectedDate);
 
@@ -372,7 +375,13 @@ export default function HomePage() {
       removeActiveSession(sessionId);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
       if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
+      // Show card earned modal if card was generated
+      if (result.data?.card_earned) {
+        setEarnedCard(result.data.card_earned as EarnedCard);
+        setShowCardModal(true);
+      }
       hapticFeedback('success');
     },
   });
@@ -651,6 +660,17 @@ export default function HomePage() {
           initialDueDate={selectedDateStr}
         />
       </Modal>
+
+      {/* Card Earned Modal */}
+      <CardEarnedModal
+        isOpen={showCardModal}
+        card={earnedCard}
+        onClose={() => {
+          setShowCardModal(false);
+          setEarnedCard(null);
+        }}
+        t={t}
+      />
     </div>
   );
 }

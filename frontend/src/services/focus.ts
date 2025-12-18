@@ -8,6 +8,7 @@ import type {
   StartFocusInput,
   ApiResponse,
   XPReward,
+  Card,
 } from '@/domain/types';
 
 interface FocusSessionResponse {
@@ -19,6 +20,7 @@ interface FocusSessionWithXP {
   session: FocusSession;
   xp_earned: number;
   achievements_unlocked: XPReward['achievements_unlocked'];
+  card_earned?: Card;
 }
 
 interface FocusHistoryResponse {

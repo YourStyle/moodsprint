@@ -11,7 +11,9 @@ from app.api import api_bp
 from app.models import FocusSession, Subtask, Task, User
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
+from app.models.task import TaskStatus
 from app.services import AchievementChecker, XPCalculator
+from app.services.card_service import CardService
 from app.utils import conflict, not_found, success_response, validation_error
 
 
@@ -180,13 +182,30 @@ def complete_focus_session():
     )
 
     # Add XP for subtask completion if applicable
+    generated_card = None
+
     if complete_subtask and session.subtask:
         xp_earned += XPCalculator.subtask_completed()
 
         # Check if task is now complete
-        session.subtask.task.update_status_from_subtasks()
-        if session.subtask.task.status == "completed":
+        task = session.subtask.task
+        old_status = task.status
+        task.update_status_from_subtasks()
+
+        if (
+            task.status == TaskStatus.COMPLETED.value
+            and old_status != TaskStatus.COMPLETED.value
+        ):
             xp_earned += XPCalculator.task_completed()
+
+            # Generate card for task completion
+            card_service = CardService()
+            generated_card = card_service.generate_card_for_task(
+                user_id=user_id,
+                task_id=task.id,
+                task_title=task.title,
+                difficulty=task.difficulty,
+            )
 
     xp_info = user.add_xp(xp_earned)
     user.update_streak()
@@ -197,13 +216,16 @@ def complete_focus_session():
 
     db.session.commit()
 
-    return success_response(
-        {
-            "session": session.to_dict(),
-            "xp_earned": xp_info["xp_earned"],
-            "achievements_unlocked": [a.to_dict() for a in achievements_unlocked],
-        }
-    )
+    response_data = {
+        "session": session.to_dict(),
+        "xp_earned": xp_info["xp_earned"],
+        "achievements_unlocked": [a.to_dict() for a in achievements_unlocked],
+    }
+
+    if generated_card:
+        response_data["card_earned"] = generated_card.to_dict()
+
+    return success_response(response_data)
 
 
 @api_bp.route("/focus/cancel", methods=["POST"])
