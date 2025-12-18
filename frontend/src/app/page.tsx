@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2 } from 'lucide-react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Filter } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
@@ -13,7 +13,9 @@ import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
-import type { MoodLevel, EnergyLevel, FocusSession } from '@/domain/types';
+import type { MoodLevel, EnergyLevel, FocusSession, TaskStatus } from '@/domain/types';
+
+type FilterStatus = TaskStatus | 'all';
 
 const formatDateForAPI = (date: Date): string => {
   return date.toISOString().split('T')[0];
@@ -38,6 +40,7 @@ interface WeekCalendarProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
   language: 'ru' | 'en';
+  taskCounts?: Record<string, number>;
 }
 
 const WEEK_DAYS = {
@@ -45,7 +48,7 @@ const WEEK_DAYS = {
   en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
 };
 
-function WeekCalendar({ selectedDate, onDateSelect, language }: WeekCalendarProps) {
+function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }: WeekCalendarProps) {
   const days = WEEK_DAYS[language];
   const today = new Date();
   const currentDay = today.getDay();
@@ -59,12 +62,13 @@ function WeekCalendar({ selectedDate, onDateSelect, language }: WeekCalendarProp
         const dateStr = formatDateForAPI(date);
         const isSelected = dateStr === selectedDateStr;
         const isToday = dateStr === formatDateForAPI(today);
+        const taskCount = taskCounts[dateStr] || 0;
 
         return (
           <button
             key={day}
             onClick={() => onDateSelect(date)}
-            className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
+            className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
               isSelected
                 ? 'bg-primary-500/20 border border-primary-500/50'
                 : isToday
@@ -76,6 +80,11 @@ function WeekCalendar({ selectedDate, onDateSelect, language }: WeekCalendarProp
             <span className={`text-lg font-semibold ${isSelected ? 'text-primary-400' : isToday ? 'text-white' : 'text-gray-400'}`}>
               {date.getDate()}
             </span>
+            {taskCount > 0 && !isSelected && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-purple-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                {taskCount > 9 ? '9+' : taskCount}
+              </span>
+            )}
           </button>
         );
       })}
@@ -251,8 +260,22 @@ export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
 
   const selectedDateStr = formatDateForAPI(selectedDate);
+
+  // Calculate week date range for task counts
+  const weekDates = useMemo(() => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - currentDay + i);
+      dates.push(formatDateForAPI(date));
+    }
+    return dates;
+  }, []);
 
   // Check if we should show mood modal on first entry
   useEffect(() => {
@@ -269,12 +292,37 @@ export default function HomePage() {
     }
   }, [user, latestMood, setLatestMood, setShowMoodModal]);
 
+  // Query tasks for selected date with status filter
   const { data: tasksData, isLoading: tasksLoading, isFetching } = useQuery({
-    queryKey: ['tasks', 'by_date', selectedDateStr],
-    queryFn: () => tasksService.getTasks({ due_date: selectedDateStr, limit: 50 }),
+    queryKey: ['tasks', 'by_date', selectedDateStr, filterStatus],
+    queryFn: () => tasksService.getTasks({
+      due_date: selectedDateStr,
+      ...(filterStatus !== 'all' && { status: filterStatus }),
+      limit: 100,
+    }),
     enabled: !!user,
     placeholderData: keepPreviousData,
   });
+
+  // Query all tasks for week to show counts on calendar
+  const { data: weekTasksData } = useQuery({
+    queryKey: ['tasks', 'week', weekDates[0], weekDates[6]],
+    queryFn: () => tasksService.getTasks({ limit: 200 }),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  // Calculate task counts per day for the week
+  const taskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const allTasks = weekTasksData?.data?.tasks || [];
+    for (const task of allTasks) {
+      if (task.due_date && task.status !== 'completed') {
+        counts[task.due_date] = (counts[task.due_date] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [weekTasksData]);
 
   const createMutation = useMutation({
     mutationFn: (input: { title: string; description: string; due_date: string }) =>
@@ -409,14 +457,6 @@ export default function HomePage() {
   const tasks = tasksData?.data?.tasks || [];
   const postponeStatus = postponeData?.data;
   const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
-  const incompleteTasks = tasks.filter(t => t.status !== 'completed');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-
-  // Limit displayed tasks to 10
-  const MAX_DISPLAYED_TASKS = 10;
-  const allTasksSorted = [...incompleteTasks, ...completedTasks];
-  const displayedTasks = allTasksSorted.slice(0, MAX_DISPLAYED_TASKS);
-  const hasMoreTasks = allTasksSorted.length > MAX_DISPLAYED_TASKS;
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -506,9 +546,14 @@ export default function HomePage() {
       </div>
 
       {/* Week Calendar */}
-      <WeekCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} language={language} />
+      <WeekCalendar
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+        language={language}
+        taskCounts={taskCounts}
+      />
 
-      {/* Tasks Section - Moved to top */}
+      {/* Tasks Section */}
       <div className="space-y-3 min-h-[180px]">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate, language, t)}</h2>
@@ -522,15 +567,37 @@ export default function HomePage() {
           </Button>
         </div>
 
+        {/* Status Filters */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+          {([
+            { value: 'pending' as const, labelKey: 'statusPending' as const },
+            { value: 'in_progress' as const, labelKey: 'statusInProgress' as const },
+            { value: 'completed' as const, labelKey: 'statusCompleted' as const },
+            { value: 'all' as const, labelKey: 'all' as const },
+          ]).map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setFilterStatus(filter.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                filterStatus === filter.value
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {t(filter.labelKey)}
+            </button>
+          ))}
+        </div>
+
         {tasksLoading && !tasksData ? (
           <div className="space-y-2">
-            {[1, 2].map((i) => (
+            {[1, 2, 3].map((i) => (
               <Card key={i} variant="glass" className="h-14 animate-pulse" />
             ))}
           </div>
         ) : tasks.length > 0 ? (
           <div className="space-y-2">
-            {displayedTasks.map((task) => {
+            {tasks.map((task) => {
               const session = getSessionForTask(task.id);
               return (
                 <TaskCardCompact
@@ -546,19 +613,15 @@ export default function HomePage() {
                 />
               );
             })}
-            {hasMoreTasks && (
-              <button
-                onClick={() => router.push('/tasks')}
-                className="w-full py-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                {t('viewAll')} ({allTasksSorted.length})
-              </button>
-            )}
           </div>
         ) : (
           <Card variant="glass" className="text-center py-8">
             <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">{t('noTasksForDate')} {formatDateDisplay(selectedDate, language, t).toLowerCase()}</p>
+            <p className="text-gray-400 mb-4">
+              {filterStatus === 'all'
+                ? `${t('noTasksForDate')} ${formatDateDisplay(selectedDate, language, t).toLowerCase()}`
+                : t('noTasksInCategory')}
+            </p>
             <Button variant="gradient" onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4" />
               {t('createTask')}
