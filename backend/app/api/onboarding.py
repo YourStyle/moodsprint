@@ -1,5 +1,6 @@
 """Onboarding API endpoints."""
 
+import logging
 from datetime import datetime
 
 from flask import request
@@ -7,10 +8,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models import ActivityType, UserActivityLog
+from app.models import ActivityType, User, UserActivityLog
 from app.models.user_profile import UserProfile
+from app.services.card_service import CardService
 from app.services.profile_analyzer import ProfileAnalyzer
 from app.utils import not_found, success_response, validation_error
+
+logger = logging.getLogger(__name__)
 
 
 @api_bp.route("/onboarding/status", methods=["GET"])
@@ -85,24 +89,59 @@ def complete_onboarding():
 
     db.session.commit()
 
+    # Handle referral rewards
+    referral_rewards = {}
+    user = User.query.get(user_id)
+
+    if user and user.referred_by and not user.referral_reward_given:
+        try:
+            card_service = CardService()
+
+            # Give starter deck to new user (3 cards, max rare)
+            starter_deck = card_service.generate_starter_deck(user_id)
+            if starter_deck:
+                referral_rewards["starter_deck"] = [c.to_dict() for c in starter_deck]
+                logger.info(
+                    f"Gave starter deck to user {user_id}: {len(starter_deck)} cards"
+                )
+
+            # Give rare+ card to referrer
+            referrer_card = card_service.generate_referral_reward(user.referred_by)
+            if referrer_card:
+                referral_rewards["referrer_rewarded"] = True
+                referral_rewards["referrer_card_rarity"] = referrer_card.rarity
+                logger.info(
+                    f"Gave referral reward to user {user.referred_by}: "
+                    f"{referrer_card.name} ({referrer_card.rarity})"
+                )
+
+            # Mark reward as given
+            user.referral_reward_given = True
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Failed to give referral rewards: {e}")
+
     # Generate personalized message
     welcome_message = analyzer.get_personalized_message(analysis)
 
-    return success_response(
-        {
-            "profile": profile.to_dict(),
-            "analysis": {
-                "productivity_type": analysis.get("productivity_type"),
-                "work_style": analysis.get("work_style"),
-                "personalized_tips": analysis.get("personalized_tips", []),
-                "motivation_style": analysis.get("motivation_style", "gentle"),
-                "recommended_session_duration": analysis.get(
-                    "recommended_session_duration", 25
-                ),
-            },
-            "welcome_message": welcome_message,
-        }
-    )
+    response_data = {
+        "profile": profile.to_dict(),
+        "analysis": {
+            "productivity_type": analysis.get("productivity_type"),
+            "work_style": analysis.get("work_style"),
+            "personalized_tips": analysis.get("personalized_tips", []),
+            "motivation_style": analysis.get("motivation_style", "gentle"),
+            "recommended_session_duration": analysis.get(
+                "recommended_session_duration", 25
+            ),
+        },
+        "welcome_message": welcome_message,
+    }
+
+    if referral_rewards:
+        response_data["referral_rewards"] = referral_rewards
+
+    return success_response(response_data)
 
 
 @api_bp.route("/onboarding/profile", methods=["GET"])

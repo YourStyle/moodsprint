@@ -63,16 +63,30 @@ function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] isTelegramWebApp:', isTg);
         console.log('[Auth] initData exists:', !!initData);
 
+        // Parse referrer from startParam before authentication
+        const startParam = getStartParam();
+        let referrerId: number | undefined;
+        if (startParam && startParam.startsWith('invite_')) {
+          referrerId = parseInt(startParam.replace('invite_', ''), 10);
+          if (isNaN(referrerId) || referrerId <= 0) {
+            referrerId = undefined;
+          } else {
+            console.log('[Referral] Found referrer:', referrerId);
+          }
+        }
+
         let authenticated = false;
+        let isNewUser = false;
 
         if (initData) {
-          // Authenticate with Telegram
+          // Authenticate with Telegram (pass referrer_id for new users)
           console.log('[Auth] Authenticating with Telegram...');
-          const result = await authService.authenticateTelegram(initData);
+          const result = await authService.authenticateTelegram(initData, referrerId);
           console.log('[Auth] Result:', result.success, result.error);
           if (result.success && result.data) {
             setUser(result.data.user);
             authenticated = true;
+            isNewUser = result.data.is_new_user || false;
           }
         } else if (process.env.NODE_ENV === 'development') {
           // Dev mode: use dev auth
@@ -103,20 +117,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          // Handle deeplink invite
-          const startParam = getStartParam();
-          if (startParam && startParam.startsWith('invite_')) {
-            const inviterId = parseInt(startParam.replace('invite_', ''), 10);
-            if (!isNaN(inviterId) && inviterId > 0) {
-              console.log('[Deeplink] Processing invite from user:', inviterId);
-              try {
-                await cardsService.sendFriendRequest(inviterId);
-                console.log('[Deeplink] Friend request sent to inviter');
-                // Redirect to friends page
-                router.push('/friends');
-              } catch (err) {
-                console.log('[Deeplink] Failed to send friend request:', err);
-              }
+          // For existing users who clicked invite link, send friend request
+          if (!isNewUser && referrerId) {
+            console.log('[Deeplink] Existing user, sending friend request to:', referrerId);
+            try {
+              await cardsService.sendFriendRequest(referrerId);
+              console.log('[Deeplink] Friend request sent to inviter');
+              router.push('/friends');
+            } catch (err) {
+              console.log('[Deeplink] Failed to send friend request:', err);
             }
           }
         }

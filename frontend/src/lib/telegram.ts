@@ -212,10 +212,10 @@ export function openTelegramLink(url: string) {
 
 export function shareInviteLink(userId: number, text?: string) {
   const webApp = getTelegramWebApp();
-  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'moodsprintbot';
   const inviteParam = `invite_${userId}`;
-  const shareUrl = `https://t.me/${botUsername}/app?startapp=${inviteParam}`;
-  const shareText = text || 'Join me in MoodSprint!';
+  // Mini app link format: t.me/bot_username/app_short_name?startapp=param
+  const shareUrl = `https://t.me/moodsprint_bot/moodsprint?startapp=${inviteParam}`;
+  const shareText = text || 'Присоединяйся ко мне в MoodSprint! 🚀';
 
   const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 

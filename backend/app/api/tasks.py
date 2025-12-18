@@ -8,6 +8,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app import db
 from app.api import api_bp
 from app.models import MoodCheck, PostponeLog, Subtask, Task, User, UserProfile
+from app.models.card import CardRarity
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskPriority, TaskStatus
 from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCalculator
@@ -375,6 +376,7 @@ def update_task(task_id: int):
     xp_info = None
     achievements_unlocked = []
     generated_card = None
+    is_quick_completion = False
 
     task_just_completed = (
         old_status != TaskStatus.COMPLETED.value
@@ -390,19 +392,24 @@ def update_task(task_id: int):
         achievements_unlocked = checker.check_all()
 
         # Generate card for completing task
-        # Skip time check for first N tasks (onboarding experience)
+        # For quick completions, limit max rarity to uncommon
         task_age_minutes = (datetime.utcnow() - task.created_at).total_seconds() / 60
         skip_time_check = should_skip_time_check_for_card(user_id)
-        if skip_time_check or task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
-            try:
-                card_service = CardService()
-                difficulty = task.difficulty or "medium"
-                generated_card = card_service.generate_card_for_task(
-                    user_id, task.id, task.title, difficulty
-                )
-            except Exception:
-                # Card generation is optional, don't fail task completion
-                pass
+        is_quick_completion = (
+            not skip_time_check and task_age_minutes < MIN_TASK_TIME_FOR_CARD
+        )
+
+        try:
+            card_service = CardService()
+            difficulty = task.difficulty or "medium"
+            # Quick completions get max_rarity=UNCOMMON
+            max_rarity = CardRarity.UNCOMMON if is_quick_completion else None
+            generated_card = card_service.generate_card_for_task(
+                user_id, task.id, task.title, difficulty, max_rarity=max_rarity
+            )
+        except Exception:
+            # Card generation is optional, don't fail task completion
+            pass
 
         db.session.commit()
 
@@ -414,6 +421,13 @@ def update_task(task_id: int):
         ]
     if generated_card:
         response_data["card_earned"] = generated_card.to_dict()
+        # Add quick completion flag and message
+        if is_quick_completion:
+            response_data["quick_completion"] = True
+            response_data["quick_completion_message"] = (
+                "Задача выполнена слишком быстро. "
+                "Максимальная редкость карты за такую задачу — Необычная."
+            )
 
     return success_response(response_data)
 
@@ -682,25 +696,31 @@ def update_subtask(subtask_id: int):
 
         # Bonus XP if all subtasks completed (task completed)
         task_just_completed = task.status == TaskStatus.COMPLETED.value
+        is_quick_completion = False
         if task_just_completed:
             xp_earned += XPCalculator.task_completed()
 
             # Generate card for completing task
-            # Skip time check for first N tasks (onboarding experience)
+            # For quick completions, limit max rarity to uncommon
             task_age_minutes = (
                 datetime.utcnow() - task.created_at
             ).total_seconds() / 60
             skip_time_check = should_skip_time_check_for_card(user_id)
-            if skip_time_check or task_age_minutes >= MIN_TASK_TIME_FOR_CARD:
-                try:
-                    card_service = CardService()
-                    difficulty = task.difficulty or "medium"
-                    generated_card = card_service.generate_card_for_task(
-                        user_id, task.id, task.title, difficulty
-                    )
-                except Exception:
-                    # Card generation is optional, don't fail task completion
-                    pass
+            is_quick_completion = (
+                not skip_time_check and task_age_minutes < MIN_TASK_TIME_FOR_CARD
+            )
+
+            try:
+                card_service = CardService()
+                difficulty = task.difficulty or "medium"
+                # Quick completions get max_rarity=UNCOMMON
+                max_rarity = CardRarity.UNCOMMON if is_quick_completion else None
+                generated_card = card_service.generate_card_for_task(
+                    user_id, task.id, task.title, difficulty, max_rarity=max_rarity
+                )
+            except Exception:
+                # Card generation is optional, don't fail task completion
+                pass
 
         xp_info = user.add_xp(xp_earned)
         user.update_streak()
@@ -718,6 +738,13 @@ def update_subtask(subtask_id: int):
         ]
     if generated_card:
         response_data["card_earned"] = generated_card.to_dict()
+        # Add quick completion flag and message
+        if is_quick_completion:
+            response_data["quick_completion"] = True
+            response_data["quick_completion_message"] = (
+                "Задача выполнена слишком быстро. "
+                "Максимальная редкость карты за такую задачу — Необычная."
+            )
 
     return success_response(response_data)
 

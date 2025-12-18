@@ -52,11 +52,26 @@ RARITY_POOL_FACTORS = {
 }
 
 
-def get_random_rarity() -> CardRarity:
-    """Get a random rarity based on probability distribution."""
+def get_random_rarity(max_rarity: CardRarity | None = None) -> CardRarity:
+    """Get a random rarity based on probability distribution.
+
+    Args:
+        max_rarity: Maximum rarity allowed (e.g., UNCOMMON for quick task completions)
+    """
     roll = random.random()
     for rarity, cumulative_prob in RARITY_PROBABILITIES:
         if roll <= cumulative_prob:
+            # If max_rarity is set, cap the result
+            if max_rarity:
+                rarity_order = [
+                    CardRarity.COMMON,
+                    CardRarity.UNCOMMON,
+                    CardRarity.RARE,
+                    CardRarity.EPIC,
+                    CardRarity.LEGENDARY,
+                ]
+                if rarity_order.index(rarity) > rarity_order.index(max_rarity):
+                    return max_rarity
             return rarity
     return CardRarity.COMMON
 
@@ -321,6 +336,7 @@ class CardService:
         task_title: str,
         difficulty: str = "medium",
         forced_rarity: CardRarity | None = None,
+        max_rarity: CardRarity | None = None,
     ) -> UserCard | None:
         """
         Generate a card for completing a task.
@@ -330,10 +346,14 @@ class CardService:
         - If pool is sufficient, picks a random existing template
         - If pool needs more variety, generates a new card and saves as template
 
+        Args:
+            forced_rarity: Force a specific rarity (ignores random roll)
+            max_rarity: Cap the maximum possible rarity (e.g., for quick completions)
+
         Rarity is determined by random probability, unless forced_rarity is specified.
         """
         genre = self.get_user_genre(user_id)
-        rarity = forced_rarity if forced_rarity else get_random_rarity()
+        rarity = forced_rarity if forced_rarity else get_random_rarity(max_rarity)
 
         # Check if we should generate new or use existing pool
         should_generate = self._should_generate_new_card(genre, rarity)
@@ -960,6 +980,82 @@ class CardService:
             ((CardTrade.sender_id == user_id) | (CardTrade.receiver_id == user_id))
             & (CardTrade.status == "pending")
         ).all()
+
+    def generate_starter_deck(self, user_id: int) -> list[UserCard]:
+        """
+        Generate a starter deck of 3 cards for a new user (from referral).
+
+        Cards are max rare, with higher chance for rare and uncommon.
+        Distribution: 40% common, 40% uncommon, 20% rare
+        """
+        cards = []
+
+        # Starter deck rarity distribution
+        starter_probabilities = [
+            (CardRarity.COMMON, 0.40),
+            (CardRarity.UNCOMMON, 0.80),
+            (CardRarity.RARE, 1.00),
+        ]
+
+        for i in range(3):
+            roll = random.random()
+            rarity = CardRarity.COMMON
+            for r, prob in starter_probabilities:
+                if roll <= prob:
+                    rarity = r
+                    break
+
+            card = self.generate_card_for_task(
+                user_id=user_id,
+                task_id=None,
+                task_title=f"Стартовая карта #{i + 1}",
+                difficulty="medium",
+                forced_rarity=rarity,
+            )
+            if card:
+                cards.append(card)
+
+        logger.info(
+            f"Generated starter deck for user {user_id}: "
+            f"{[c.rarity for c in cards]}"
+        )
+        return cards
+
+    def generate_referral_reward(self, user_id: int) -> UserCard | None:
+        """
+        Generate a guaranteed rare+ card for referring a new user.
+
+        Distribution: 60% rare, 30% epic, 10% legendary
+        """
+        # Referral reward rarity distribution (rare+)
+        referral_probabilities = [
+            (CardRarity.RARE, 0.60),
+            (CardRarity.EPIC, 0.90),
+            (CardRarity.LEGENDARY, 1.00),
+        ]
+
+        roll = random.random()
+        rarity = CardRarity.RARE
+        for r, prob in referral_probabilities:
+            if roll <= prob:
+                rarity = r
+                break
+
+        card = self.generate_card_for_task(
+            user_id=user_id,
+            task_id=None,
+            task_title="Награда за приглашение друга",
+            difficulty="hard",
+            forced_rarity=rarity,
+        )
+
+        if card:
+            logger.info(
+                f"Generated referral reward for user {user_id}: "
+                f"{card.name} ({rarity.value})"
+            )
+
+        return card
 
     def merge_cards(self, user_id: int, card1: UserCard, card2: UserCard) -> dict:
         """

@@ -1,14 +1,22 @@
 """Card system API endpoints."""
 
+from datetime import date
+
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
 from app.models.card import CardTemplate, CardTrade, Friendship, UserCard
+from app.models.task import Task, TaskStatus
 from app.models.user import User
+from app.models.user_profile import UserProfile
 from app.services.card_service import CardService
 from app.utils import not_found, success_response, validation_error
+
+# Healing requirements: tasks needed per heal
+# First heal = 3 tasks, second = 5 tasks (cumulative)
+HEAL_REQUIREMENTS = [3, 5]  # tasks required for 1st, 2nd heal
 
 # ============ Card Collection ============
 
@@ -172,11 +180,85 @@ def remove_from_deck():
 # ============ Card Healing ============
 
 
+@api_bp.route("/cards/heal-status", methods=["GET"])
+@jwt_required()
+def get_heal_status():
+    """Get healing status - tasks needed for next heal."""
+    user_id = int(get_jwt_identity())
+
+    # Get or create profile
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.session.add(profile)
+        db.session.commit()
+
+    heals_today = profile.get_heals_today()
+    required_tasks = get_heal_requirement(heals_today)
+    tasks_completed = get_tasks_completed_today(user_id)
+
+    can_heal = required_tasks == 0 or tasks_completed >= required_tasks
+
+    return success_response(
+        {
+            "heals_today": heals_today,
+            "required_tasks": required_tasks,
+            "completed_tasks": tasks_completed,
+            "can_heal": can_heal,
+            "heal_requirements": HEAL_REQUIREMENTS,
+        }
+    )
+
+
+def get_tasks_completed_today(user_id: int) -> int:
+    """Count tasks completed today."""
+    today = date.today()
+    return Task.query.filter(
+        Task.user_id == user_id,
+        Task.status == TaskStatus.COMPLETED.value,
+        db.func.date(Task.updated_at) == today,
+    ).count()
+
+
+def get_heal_requirement(heals_today: int) -> int:
+    """Get the number of tasks required for the next heal."""
+    if heals_today >= len(HEAL_REQUIREMENTS):
+        # After defined limits, allow free heals
+        return 0
+    return HEAL_REQUIREMENTS[heals_today]
+
+
 @api_bp.route("/cards/<int:card_id>/heal", methods=["POST"])
 @jwt_required()
 def heal_card(card_id: int):
     """Heal a specific card to full HP."""
     user_id = int(get_jwt_identity())
+
+    # Get or create profile to track heals
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.session.add(profile)
+        db.session.flush()
+
+    # Check healing requirements
+    heals_today = profile.get_heals_today()
+    required_tasks = get_heal_requirement(heals_today)
+
+    if required_tasks > 0:
+        tasks_completed = get_tasks_completed_today(user_id)
+        if tasks_completed < required_tasks:
+            heal_number = heals_today + 1
+            return validation_error(
+                {
+                    "error": "not_enough_tasks",
+                    "message": f"Для {heal_number}-го лечения за сегодня нужно "
+                    f"закрыть {required_tasks} задач. Выполнено: {tasks_completed}.",
+                    "required_tasks": required_tasks,
+                    "completed_tasks": tasks_completed,
+                    "heals_today": heals_today,
+                }
+            )
 
     service = CardService()
     result = service.heal_card(card_id, user_id)
@@ -190,10 +272,15 @@ def heal_card(card_id: int):
             {"error": error_messages.get(result["error"], result["error"])}
         )
 
+    # Record successful heal
+    profile.record_heal()
+    db.session.commit()
+
     return success_response(
         {
             "card": result["card"],
             "message": "Карта вылечена!",
+            "heals_today": profile.heals_today,
         }
     )
 
@@ -201,16 +288,48 @@ def heal_card(card_id: int):
 @api_bp.route("/cards/heal-all", methods=["POST"])
 @jwt_required()
 def heal_all_cards():
-    """Heal all user's cards."""
+    """Heal all user's cards (counts as one heal action)."""
     user_id = int(get_jwt_identity())
+
+    # Get or create profile to track heals
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.session.add(profile)
+        db.session.flush()
+
+    # Check healing requirements
+    heals_today = profile.get_heals_today()
+    required_tasks = get_heal_requirement(heals_today)
+
+    if required_tasks > 0:
+        tasks_completed = get_tasks_completed_today(user_id)
+        if tasks_completed < required_tasks:
+            heal_number = heals_today + 1
+            return validation_error(
+                {
+                    "error": "not_enough_tasks",
+                    "message": f"Для {heal_number}-го лечения за сегодня нужно "
+                    f"закрыть {required_tasks} задач. Выполнено: {tasks_completed}.",
+                    "required_tasks": required_tasks,
+                    "completed_tasks": tasks_completed,
+                    "heals_today": heals_today,
+                }
+            )
 
     service = CardService()
     healed_count = service.heal_all_cards(user_id)
+
+    if healed_count > 0:
+        # Record successful heal (counts as one heal action)
+        profile.record_heal()
+        db.session.commit()
 
     return success_response(
         {
             "healed_count": healed_count,
             "message": f"Вылечено карт: {healed_count}",
+            "heals_today": profile.heals_today,
         }
     )
 

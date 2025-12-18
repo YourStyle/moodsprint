@@ -1,6 +1,6 @@
 """User profile model for onboarding and personalization."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from app import db
 
@@ -69,6 +69,10 @@ class UserProfile(db.Model):
     work_days = db.Column(db.JSON, default=[1, 2, 3, 4, 5])  # 1=Mon, 2=Tue, ..., 7=Sun
     timezone = db.Column(db.String(50), default="Europe/Moscow")
 
+    # Card healing tracking
+    heals_today = db.Column(db.Integer, default=0, nullable=False)
+    last_heal_date = db.Column(db.Date, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -76,6 +80,24 @@ class UserProfile(db.Model):
 
     # Relationship
     user = db.relationship("User", backref=db.backref("profile", uselist=False))
+
+    def get_heals_today(self) -> int:
+        """Get number of heals performed today, resetting if new day."""
+        today = date.today()
+        if self.last_heal_date != today:
+            # New day, reset count
+            self.heals_today = 0
+            self.last_heal_date = today
+        return self.heals_today
+
+    def record_heal(self):
+        """Record a heal action."""
+        today = date.today()
+        if self.last_heal_date != today:
+            self.heals_today = 1
+            self.last_heal_date = today
+        else:
+            self.heals_today += 1
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""

@@ -22,7 +22,8 @@ def authenticate_telegram():
 
     Request body:
     {
-        "init_data": "query_id=...&user=...&auth_date=...&hash=..."
+        "init_data": "query_id=...&user=...&auth_date=...&hash=...",
+        "referrer_id": 123  // optional, from invite link
     }
     """
     data = request.get_json()
@@ -45,6 +46,7 @@ def authenticate_telegram():
 
     # Find or create user
     user = User.query.filter_by(telegram_id=telegram_id).first()
+    is_new_user = user is None
 
     if user:
         # Update user info
@@ -54,12 +56,20 @@ def authenticate_telegram():
         user.photo_url = telegram_user.get("photo_url")
     else:
         # Create new user
+        referrer_id = data.get("referrer_id")
+        # Validate referrer exists
+        if referrer_id:
+            referrer = User.query.get(referrer_id)
+            if not referrer:
+                referrer_id = None
+
         user = User(
             telegram_id=telegram_id,
             username=telegram_user.get("username"),
             first_name=telegram_user.get("first_name"),
             last_name=telegram_user.get("last_name"),
             photo_url=telegram_user.get("photo_url"),
+            referred_by=referrer_id,
         )
         db.session.add(user)
 
@@ -68,7 +78,13 @@ def authenticate_telegram():
     # Create JWT token (identity must be a string for Flask-JWT-Extended)
     access_token = create_access_token(identity=str(user.id))
 
-    return success_response({"user": user.to_dict(), "token": access_token})
+    return success_response(
+        {
+            "user": user.to_dict(),
+            "token": access_token,
+            "is_new_user": is_new_user,
+        }
+    )
 
 
 @api_bp.route("/auth/me", methods=["GET"])

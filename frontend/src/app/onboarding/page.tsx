@@ -10,7 +10,7 @@ import { hapticFeedback } from '@/lib/telegram';
 import type { OnboardingInput } from '@/domain/types';
 import type { Genre } from '@/services/gamification';
 
-type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'goals' | 'result';
+type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'result';
 
 const timeOptions = [
   { value: 'morning', label: 'Утро', emoji: '🌅', desc: '6:00 - 12:00' },
@@ -167,7 +167,7 @@ export default function OnboardingPage() {
     router.push('/');
   };
 
-  const progressSteps = ['time', 'tasks', 'challenges', 'genre', 'goals'] as const;
+  const progressSteps = ['time', 'tasks', 'challenges', 'genre'] as const;
   const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
 
   return (
@@ -353,60 +353,6 @@ export default function OnboardingPage() {
           {/* Fixed buttons */}
           <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button variant="secondary" onClick={() => setStep('challenges')}>
-              Назад
-            </Button>
-            <Button className="flex-1" onClick={() => setStep('goals')}>
-              Далее
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Step: Goals */}
-      {step === 'goals' && (
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto px-4">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-white mb-2">
-                Чего ты хочешь достичь?
-              </h1>
-              <p className="text-gray-400">Необязательно, но поможет нам лучше</p>
-            </div>
-
-            <div className="space-y-4 pb-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  Расскажи о своей работе или учёбе
-                </label>
-                <textarea
-                  value={data.work_description}
-                  onChange={(e) =>
-                    setData({ ...data, work_description: e.target.value })
-                  }
-                  placeholder="Например: работаю разработчиком, много задач параллельно..."
-                  className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  Твои цели в продуктивности
-                </label>
-                <textarea
-                  value={data.goals}
-                  onChange={(e) => setData({ ...data, goals: e.target.value })}
-                  placeholder="Например: хочу лучше фокусироваться и меньше прокрастинировать..."
-                  className="w-full p-4 bg-gray-800 rounded-2xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  rows={3}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Fixed buttons */}
-          <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
-            <Button variant="secondary" onClick={() => setStep('genre')}>
               Назад
             </Button>
             <Button

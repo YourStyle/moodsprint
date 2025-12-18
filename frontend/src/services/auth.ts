@@ -8,13 +8,19 @@ import type { User, ApiResponse } from '@/domain/types';
 interface AuthResponse {
   user: User;
   token: string;
+  is_new_user?: boolean;
 }
 
 export const authService = {
-  async authenticateTelegram(initData: string): Promise<ApiResponse<AuthResponse>> {
-    const response = await api.post<AuthResponse>('/auth/telegram', {
+  async authenticateTelegram(initData: string, referrerId?: number): Promise<ApiResponse<AuthResponse>> {
+    const payload: Record<string, unknown> = {
       init_data: initData,
-    });
+    };
+    if (referrerId) {
+      payload.referrer_id = referrerId;
+    }
+
+    const response = await api.post<AuthResponse>('/auth/telegram', payload);
 
     if (response.success && response.data) {
       api.setToken(response.data.token);

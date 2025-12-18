@@ -24,6 +24,10 @@ class User(db.Model):
     last_activity_date = db.Column(db.Date, nullable=True)
     last_daily_bonus_date = db.Column(db.Date, nullable=True)
 
+    # Referral system
+    referred_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    referral_reward_given = db.Column(db.Boolean, default=False, nullable=False)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(
