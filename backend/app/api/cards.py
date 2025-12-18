@@ -572,7 +572,7 @@ def get_friend_cards(friend_id: int):
 
 @api_bp.route("/cards/merge", methods=["POST"])
 @jwt_required()
-def merge_cards():
+def merge_user_cards():
     """
     Merge two cards of the same rarity to create one card of higher rarity.
 
