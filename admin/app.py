@@ -350,12 +350,27 @@ def user_detail(user_id: int):
     try:
         user_genre = db.session.execute(
             text(
-                "SELECT favorite_genre FROM onboarding_profiles WHERE user_id = :uid"
+                "SELECT favorite_genre FROM user_profiles WHERE user_id = :uid"
             ),
             {"uid": user_id},
         ).fetchone()
     except Exception:
         user_genre = None
+
+    # Get onboarding status
+    try:
+        onboarding_profile = db.session.execute(
+            text(
+                """
+                SELECT onboarding_completed, onboarding_completed_at,
+                       productivity_type, work_style, preferred_time
+                FROM user_profiles WHERE user_id = :uid
+                """
+            ),
+            {"uid": user_id},
+        ).fetchone()
+    except Exception:
+        onboarding_profile = None
 
     # Format productivity data
     hour_data = {
@@ -398,6 +413,7 @@ def user_detail(user_id: int):
         battles=[dict(row._mapping) for row in battles] if battles else [],
         battle_stats=dict(battle_stats._mapping) if battle_stats else {},
         user_genre=user_genre[0] if user_genre else None,
+        onboarding=dict(onboarding_profile._mapping) if onboarding_profile else None,
         productivity={
             "hour_data": [
                 {
@@ -789,6 +805,39 @@ def business_metrics():
             for r in cohort_retention
         ],
     )
+
+
+@app.route("/users/<int:user_id>/reset-onboarding", methods=["POST"])
+@login_required
+def reset_onboarding(user_id: int):
+    """Reset onboarding for a user."""
+    try:
+        # Check if profile exists
+        profile = db.session.execute(
+            text("SELECT id FROM user_profiles WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+
+        if profile:
+            # Reset onboarding status
+            db.session.execute(
+                text(
+                    """
+                    UPDATE user_profiles
+                    SET onboarding_completed = false,
+                        onboarding_completed_at = NULL
+                    WHERE user_id = :uid
+                    """
+                ),
+                {"uid": user_id},
+            )
+            db.session.commit()
+            return jsonify({"success": True, "message": "Onboarding reset successfully"})
+        else:
+            return jsonify({"success": True, "message": "No profile found, user will see onboarding"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/metrics/realtime")

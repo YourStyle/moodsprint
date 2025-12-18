@@ -171,7 +171,7 @@ export default function OnboardingPage() {
   const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
 
   return (
-    <div className="h-screen flex flex-col pt-safe overflow-hidden">
+    <div className="min-h-screen flex flex-col pt-safe pb-20">
       {/* Progress - fixed at top */}
       <div className="flex gap-1 px-4 pt-4 pb-2 flex-shrink-0">
         {progressSteps.map((s, i) => (
@@ -188,7 +188,7 @@ export default function OnboardingPage() {
 
       {/* Step: Time */}
       {step === 'time' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-2">
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
 
       {/* Step: Tasks */}
       {step === 'tasks' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-2">
@@ -254,7 +254,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Fixed buttons */}
-          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button variant="secondary" onClick={() => setStep('time')}>
               Назад
             </Button>
@@ -271,7 +271,7 @@ export default function OnboardingPage() {
 
       {/* Step: Challenges */}
       {step === 'challenges' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-2">
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Fixed buttons */}
-          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button variant="secondary" onClick={() => setStep('tasks')}>
               Назад
             </Button>
@@ -316,7 +316,7 @@ export default function OnboardingPage() {
 
       {/* Step: Genre */}
       {step === 'genre' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-2">
@@ -351,7 +351,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Fixed buttons */}
-          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button variant="secondary" onClick={() => setStep('challenges')}>
               Назад
             </Button>
@@ -364,7 +364,7 @@ export default function OnboardingPage() {
 
       {/* Step: Goals */}
       {step === 'goals' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-white mb-2">
@@ -405,7 +405,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Fixed buttons */}
-          <div className="flex gap-3 p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 flex gap-3 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button variant="secondary" onClick={() => setStep('genre')}>
               Назад
             </Button>
@@ -422,7 +422,7 @@ export default function OnboardingPage() {
 
       {/* Step: Result */}
       {step === 'result' && result && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-4">
             <div className="text-center mb-6">
               <span className="text-5xl mb-4 block">🎉</span>
@@ -448,7 +448,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Fixed button */}
-          <div className="p-4 bg-gray-900 border-t border-gray-800 flex-shrink-0 pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
             <Button className="w-full" onClick={handleFinish}>
               Начать работу
             </Button>
