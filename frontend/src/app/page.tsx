@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Sparkles, Play, ArrowUp, X, Smile } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
@@ -13,7 +13,7 @@ import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
-import type { MoodLevel, EnergyLevel } from '@/domain/types';
+import type { MoodLevel, EnergyLevel, FocusSession } from '@/domain/types';
 
 const formatDateForAPI = (date: Date): string => {
   return date.toISOString().split('T')[0];
@@ -83,28 +83,124 @@ function WeekCalendar({ selectedDate, onDateSelect, language }: WeekCalendarProp
   );
 }
 
+// Helper to calculate elapsed seconds
+function calculateElapsedSeconds(session: FocusSession): number {
+  const startedAt = new Date(session.started_at).getTime();
+  const now = Date.now();
+  return Math.floor((now - startedAt) / 1000);
+}
+
+// Mini timer component for compact cards
+function MiniTimer({ session, onPause, onResume, onComplete, onStop }: {
+  session: FocusSession;
+  onPause: () => void;
+  onResume: () => void;
+  onComplete: () => void;
+  onStop: () => void;
+}) {
+  const initialElapsed = useMemo(() => {
+    if (session.status === 'paused') {
+      return session.elapsed_minutes * 60;
+    }
+    return calculateElapsedSeconds(session);
+  }, [session.started_at, session.status, session.elapsed_minutes]);
+
+  const [elapsed, setElapsed] = useState(initialElapsed);
+  const isPaused = session.status === 'paused';
+  const planned = session.planned_duration_minutes * 60;
+
+  useEffect(() => {
+    setElapsed(initialElapsed);
+  }, [initialElapsed]);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setElapsed(calculateElapsedSeconds(session));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPaused, session.started_at]);
+
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(Math.abs(seconds) / 60);
+    const secs = Math.abs(seconds) % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  const isNoTimerMode = session.planned_duration_minutes >= 480;
+  const remaining = planned - elapsed;
+  const isOvertime = !isNoTimerMode && remaining < 0;
+
+  return (
+    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono ${
+        isOvertime ? 'bg-red-500/20 text-red-400' : isPaused ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary-500/20 text-primary-400'
+      }`}>
+        <Timer className="w-3 h-3" />
+        <span className="tabular-nums">
+          {isOvertime && '+'}
+          {isNoTimerMode ? formatTime(elapsed) : formatTime(isOvertime ? -remaining : remaining)}
+        </span>
+      </div>
+      <button
+        onClick={isPaused ? onResume : onPause}
+        className={`w-6 h-6 rounded flex items-center justify-center ${
+          isPaused ? 'bg-primary-500/20 text-primary-400' : 'bg-yellow-500/20 text-yellow-400'
+        }`}
+      >
+        {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+      </button>
+      <button
+        onClick={onComplete}
+        className="w-6 h-6 rounded bg-green-500/20 text-green-400 flex items-center justify-center"
+      >
+        <CheckCircle2 className="w-3 h-3" />
+      </button>
+      <button
+        onClick={onStop}
+        className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 flex items-center justify-center"
+      >
+        <Square className="w-3 h-3" />
+      </button>
+    </div>
+  );
+}
+
 function TaskCardCompact({
   task,
   onClick,
   onStart,
+  activeSession,
+  onPause,
+  onResume,
+  onComplete,
+  onStop,
 }: {
   task: { id: number; title: string; progress_percent: number; estimated_minutes?: number; status: string; subtasks_count: number };
   onClick: () => void;
   onStart?: () => void;
+  activeSession?: FocusSession;
+  onPause?: () => void;
+  onResume?: () => void;
+  onComplete?: () => void;
+  onStop?: () => void;
 }) {
   const isCompleted = task.status === 'completed';
   const hasSubtasks = task.subtasks_count > 0;
+  const hasActiveSession = !!activeSession;
 
   return (
     <div
-      className={`bg-dark-700/50 rounded-xl p-3 border border-gray-800 ${isCompleted ? 'opacity-50' : ''}`}
+      className={`bg-dark-700/50 rounded-xl p-3 border ${hasActiveSession ? 'border-primary-500/50' : 'border-gray-800'} ${isCompleted ? 'opacity-50' : ''}`}
     >
       <div className="flex items-center gap-3" onClick={onClick}>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          isCompleted ? 'bg-green-500/20' : 'bg-purple-500/20'
+          isCompleted ? 'bg-green-500/20' : hasActiveSession ? 'bg-primary-500/30' : 'bg-purple-500/20'
         }`}>
           {isCompleted ? (
             <span className="text-sm text-green-400">✓</span>
+          ) : hasActiveSession ? (
+            <div className="w-3 h-3 rounded-full bg-primary-500 animate-pulse" />
           ) : (
             <Sparkles className="w-4 h-4 text-purple-400" />
           )}
@@ -113,7 +209,7 @@ function TaskCardCompact({
           <h3 className={`text-sm font-medium truncate ${isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
             {task.title}
           </h3>
-          {!isCompleted && hasSubtasks && (
+          {!isCompleted && hasSubtasks && !hasActiveSession && (
             <div className="mt-1 h-1 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary-500 rounded-full transition-all"
@@ -122,7 +218,15 @@ function TaskCardCompact({
             </div>
           )}
         </div>
-        {!isCompleted && onStart && (
+        {hasActiveSession && activeSession && onPause && onResume && onComplete && onStop ? (
+          <MiniTimer
+            session={activeSession}
+            onPause={onPause}
+            onResume={onResume}
+            onComplete={onComplete}
+            onStop={onStop}
+          />
+        ) : !isCompleted && onStart && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -142,7 +246,7 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t, language, setLanguage } = useLanguage();
-  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession } = useAppStore();
+  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, activeSessions, removeActiveSession, updateActiveSession } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -195,6 +299,49 @@ export default function HomePage() {
       }
     },
   });
+
+  const pauseSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.pauseSession(),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        updateActiveSession(result.data.session);
+      }
+    },
+  });
+
+  const resumeSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.resumeSession(),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        updateActiveSession(result.data.session);
+      }
+    },
+  });
+
+  const completeSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.completeSession(sessionId, true),
+    onSuccess: (result, sessionId) => {
+      removeActiveSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
+      if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
+      hapticFeedback('success');
+    },
+  });
+
+  const cancelSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.cancelSession(sessionId),
+    onSuccess: (result, sessionId) => {
+      removeActiveSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ['focus'] });
+      hapticFeedback('light');
+    },
+  });
+
+  // Helper to get session for a task
+  const getSessionForTask = (taskId: number) => {
+    return activeSessions.find(s => s.task_id === taskId);
+  };
 
   const handleCreateTask = (title: string, description: string, dueDate: string) => {
     createMutation.mutate({ title, description, due_date: dueDate });
@@ -383,14 +530,22 @@ export default function HomePage() {
           </div>
         ) : tasks.length > 0 ? (
           <div className="space-y-2">
-            {displayedTasks.map((task) => (
-              <TaskCardCompact
-                key={task.id}
-                task={task}
-                onClick={() => router.push(`/tasks/${task.id}`)}
-                onStart={task.status !== 'completed' ? () => startFocusMutation.mutate(task.id) : undefined}
-              />
-            ))}
+            {displayedTasks.map((task) => {
+              const session = getSessionForTask(task.id);
+              return (
+                <TaskCardCompact
+                  key={task.id}
+                  task={task}
+                  onClick={() => router.push(`/tasks/${task.id}`)}
+                  onStart={task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
+                  activeSession={session}
+                  onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
+                  onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
+                  onComplete={session ? () => completeSessionMutation.mutate(session.id) : undefined}
+                  onStop={session ? () => cancelSessionMutation.mutate(session.id) : undefined}
+                />
+              );
+            })}
             {hasMoreTasks && (
               <button
                 onClick={() => router.push('/tasks')}
