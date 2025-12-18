@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, Heart, Swords, ChevronUp, ChevronDown } from 'lucide-react';
+import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, Heart, Swords, ChevronUp, ChevronDown, Pause, Square } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -48,6 +48,124 @@ const TASK_TYPES: TaskType[] = [
   'creative', 'analytical', 'communication', 'physical',
   'learning', 'planning', 'coding', 'writing'
 ];
+
+// Helper to calculate elapsed seconds
+function calculateElapsedSeconds(session: { started_at: string }): number {
+  const startedAt = new Date(session.started_at).getTime();
+  const now = Date.now();
+  return Math.floor((now - startedAt) / 1000);
+}
+
+// Timer component for active focus session
+function FocusTimer({
+  session,
+  onPause,
+  onResume,
+  onComplete,
+  onCancel,
+  t,
+}: {
+  session: {
+    id: number;
+    status: string;
+    started_at: string;
+    planned_duration_minutes: number;
+    elapsed_minutes?: number;
+  };
+  onPause: () => void;
+  onResume: () => void;
+  onComplete: () => void;
+  onCancel: () => void;
+  t: (key: TranslationKey) => string;
+}) {
+  const isPaused = session.status === 'paused';
+  const isNoTimerMode = session.planned_duration_minutes >= 480;
+
+  const initialElapsed = useMemo(() => {
+    if (isPaused) {
+      return (session.elapsed_minutes || 0) * 60;
+    }
+    return calculateElapsedSeconds(session);
+  }, [session.started_at, session.status, session.elapsed_minutes, isPaused]);
+
+  const [elapsed, setElapsed] = useState(initialElapsed);
+
+  useEffect(() => {
+    setElapsed(initialElapsed);
+  }, [initialElapsed]);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setElapsed(calculateElapsedSeconds(session));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPaused, session.started_at, session]);
+
+  const planned = session.planned_duration_minutes * 60;
+  const remaining = planned - elapsed;
+  const isOvertime = !isNoTimerMode && remaining < 0;
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(Math.abs(seconds) / 60);
+    const secs = Math.abs(seconds) % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-primary-500/20 to-primary-600/20 rounded-xl p-4 border border-primary-500/30">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Timer className="w-5 h-5 text-primary-400" />
+          <span className="text-sm font-medium text-primary-300">
+            {isPaused ? t('pause') : t('focus')}
+          </span>
+        </div>
+        <div className={`text-2xl font-bold tabular-nums ${isOvertime ? 'text-orange-400' : 'text-white'}`}>
+          {isOvertime && '+'}
+          {isNoTimerMode ? formatTime(elapsed) : formatTime(isOvertime ? -remaining : remaining)}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        {isPaused ? (
+          <Button
+            variant="primary"
+            onClick={onResume}
+            className="flex-1"
+          >
+            <Play className="w-4 h-4 mr-1" />
+            {t('resume')}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={onPause}
+            className="flex-1"
+          >
+            <Pause className="w-4 h-4 mr-1" />
+            {t('pause')}
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          onClick={onComplete}
+          className="flex-1"
+        >
+          <Check className="w-4 h-4 mr-1" />
+          {t('complete')}
+        </Button>
+        <Button
+          variant="danger"
+          onClick={onCancel}
+          className="px-3"
+        >
+          <Square className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // CardEarnedModal component with async image generation
 function CardEarnedModal({
@@ -175,7 +293,17 @@ export default function TaskDetailPage() {
   const taskId = Number(params.id);
   const { t } = useLanguage();
 
-  const { latestMood, setLatestMood, setActiveSession, showXPAnimation } = useAppStore();
+  const {
+    latestMood,
+    setLatestMood,
+    setActiveSession,
+    showXPAnimation,
+    activeSessions,
+    setActiveSessions,
+    updateActiveSession,
+    removeActiveSession,
+    getSessionForTask,
+  } = useAppStore();
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
@@ -211,6 +339,24 @@ export default function TaskDetailPage() {
     queryFn: () => tasksService.getTask(taskId),
     enabled: !!taskId,
   });
+
+  // Fetch active focus sessions
+  const { data: activeSessionsData } = useQuery({
+    queryKey: ['focus', 'active'],
+    queryFn: () => focusService.getActiveSession(),
+  });
+
+  // Sync active sessions to store
+  useEffect(() => {
+    if (activeSessionsData?.data?.sessions) {
+      setActiveSessions(activeSessionsData.data.sessions);
+    }
+  }, [activeSessionsData, setActiveSessions]);
+
+  // Get active session for this task
+  const activeSession = useMemo(() => {
+    return getSessionForTask(taskId);
+  }, [getSessionForTask, taskId, activeSessions]);
 
   const decomposeMutation = useMutation({
     mutationFn: (moodId?: number) => tasksService.decomposeTask(taskId, moodId),
@@ -293,6 +439,54 @@ export default function TaskDetailPage() {
         setShowDurationModal(false);
         setShowActionModal(false);
         hapticFeedback('success');
+      }
+    },
+  });
+
+  // Focus session control mutations
+  const pauseSessionMutation = useMutation({
+    mutationFn: () => focusService.pauseSession(),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        updateActiveSession(result.data.session);
+        hapticFeedback('light');
+      }
+    },
+  });
+
+  const resumeSessionMutation = useMutation({
+    mutationFn: () => focusService.resumeSession(),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        updateActiveSession(result.data.session);
+        hapticFeedback('light');
+      }
+    },
+  });
+
+  const completeSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.completeSession(sessionId),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        removeActiveSession(result.data.session.id);
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
+        if (result.data.xp_earned) {
+          showXPAnimation(result.data.xp_earned);
+        }
+        hapticFeedback('success');
+      }
+    },
+  });
+
+  const cancelSessionMutation = useMutation({
+    mutationFn: (sessionId: number) => focusService.cancelSession(sessionId),
+    onSuccess: (result) => {
+      if (result.success && result.data?.session) {
+        removeActiveSession(result.data.session.id);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
+        hapticFeedback('light');
       }
     },
   });
@@ -496,16 +690,27 @@ export default function TaskDetailPage() {
         <Progress value={task.progress_percent} color="primary" />
       </Card>
 
-      {/* Action Button */}
+      {/* Action Button or Active Session Timer */}
       {task.status !== 'completed' && (
-        <Button
-          variant="primary"
-          onClick={() => setShowActionModal(true)}
-          className="w-full h-14"
-        >
-          <Play className="w-5 h-5 mr-2" />
-          {t('start')}
-        </Button>
+        activeSession ? (
+          <FocusTimer
+            session={activeSession}
+            onPause={() => pauseSessionMutation.mutate()}
+            onResume={() => resumeSessionMutation.mutate()}
+            onComplete={() => completeSessionMutation.mutate(activeSession.id)}
+            onCancel={() => cancelSessionMutation.mutate(activeSession.id)}
+            t={t}
+          />
+        ) : (
+          <Button
+            variant="primary"
+            onClick={() => setShowActionModal(true)}
+            className="w-full h-14"
+          >
+            <Play className="w-5 h-5 mr-2" />
+            {t('start')}
+          </Button>
+        )
       )}
 
       {/* Decompose Button */}
