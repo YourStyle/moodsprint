@@ -370,7 +370,7 @@ def get_leaderboard():
         )
         .join(BattleLog, User.id == BattleLog.user_id)
         .group_by(User.id)
-        .order_by(kills_case.desc(), User.level.desc())
+        .order_by(kills_case.desc(), User.xp.desc())
         .limit(limit)
         .all()
     )
