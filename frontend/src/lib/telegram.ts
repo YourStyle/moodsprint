@@ -195,3 +195,33 @@ export function hideBackButton() {
   }
   webApp.BackButton.hide();
 }
+
+export function getStartParam(): string | null {
+  const webApp = getTelegramWebApp();
+  return webApp?.initDataUnsafe?.start_param || null;
+}
+
+export function openTelegramLink(url: string) {
+  const webApp = getTelegramWebApp();
+  if (webApp && webApp.openTelegramLink) {
+    webApp.openTelegramLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+export function shareInviteLink(userId: number, text?: string) {
+  const webApp = getTelegramWebApp();
+  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'moodsprintbot';
+  const inviteParam = `invite_${userId}`;
+  const shareUrl = `https://t.me/${botUsername}/app?startapp=${inviteParam}`;
+  const shareText = text || 'Join me in MoodSprint!';
+
+  const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
+  if (webApp && webApp.openTelegramLink) {
+    webApp.openTelegramLink(telegramShareUrl);
+  } else {
+    window.open(telegramShareUrl, '_blank');
+  }
+}

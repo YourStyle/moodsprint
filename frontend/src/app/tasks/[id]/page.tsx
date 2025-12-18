@@ -178,7 +178,7 @@ export default function TaskDetailPage() {
   // Show Telegram back button
   useEffect(() => {
     const handleBack = () => {
-      router.push('/tasks');
+      router.push('/');
     };
     showBackButton(handleBack);
     return () => {
@@ -245,7 +245,7 @@ export default function TaskDetailPage() {
     mutationFn: () => tasksService.deleteTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      router.push('/tasks');
+      router.push('/');
       hapticFeedback('success');
     },
   });
@@ -360,14 +360,22 @@ export default function TaskDetailPage() {
   };
 
   const completeTaskMutation = useMutation({
-    mutationFn: () =>
-      tasksService.updateTask(taskId, { status: 'completed' }),
+    mutationFn: async () => {
+      // Cancel any active session for this task first
+      const activeSession = getSessionForTask(taskId);
+      if (activeSession) {
+        await focusService.cancelSession(activeSession.id);
+        removeActiveSession(activeSession.id);
+      }
+      return tasksService.updateTask(taskId, { status: 'completed' });
+    },
     onSuccess: (result) => {
       refetch();
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['daily', 'goals'] });
       queryClient.invalidateQueries({ queryKey: ['cards'] });
+      queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
       if (result.data?.xp_earned) {
         showXPAnimation(result.data.xp_earned);
       }
@@ -465,7 +473,7 @@ export default function TaskDetailPage() {
     return (
       <div className="p-4 text-center">
         <p className="text-gray-500">{t('taskNotFound')}</p>
-        <Button onClick={() => router.push('/tasks')} className="mt-4">
+        <Button onClick={() => router.push('/')} className="mt-4">
           {t('backToTasks')}
         </Button>
       </div>

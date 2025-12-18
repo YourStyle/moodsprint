@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from '@/lib/store';
-import { authService, moodService, focusService, onboardingService } from '@/services';
+import { authService, moodService, focusService, onboardingService, cardsService } from '@/services';
 import {
   getTelegramInitData,
   isTelegramWebApp,
@@ -14,6 +14,7 @@ import {
   enableClosingConfirmation,
   disableVerticalSwipes,
   isMobileDevice,
+  getStartParam,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 import { GenreSelectionModal } from '@/components/GenreSelectionModal';
@@ -99,6 +100,23 @@ function AuthProvider({ children }: { children: ReactNode }) {
             // Redirect to onboarding if not completed and not already there
             if (!completed && pathname !== '/onboarding') {
               router.push('/onboarding');
+            }
+          }
+
+          // Handle deeplink invite
+          const startParam = getStartParam();
+          if (startParam && startParam.startsWith('invite_')) {
+            const inviterId = parseInt(startParam.replace('invite_', ''), 10);
+            if (!isNaN(inviterId) && inviterId > 0) {
+              console.log('[Deeplink] Processing invite from user:', inviterId);
+              try {
+                await cardsService.sendFriendRequest(inviterId);
+                console.log('[Deeplink] Friend request sent to inviter');
+                // Redirect to friends page
+                router.push('/friends');
+              } catch (err) {
+                console.log('[Deeplink] Failed to send friend request:', err);
+              }
             }
           }
         }

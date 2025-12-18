@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ListTodo, Users, User, Swords, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
+import { cardsService } from '@/services';
 
 const navItems: { href: string; icon: typeof ListTodo; labelKey: TranslationKey }[] = [
   { href: '/', icon: ListTodo, labelKey: 'tasks' },
@@ -18,8 +20,19 @@ const navItems: { href: string; icon: typeof ListTodo; labelKey: TranslationKey 
 
 export function Navigation() {
   const pathname = usePathname();
-  const { activeSession } = useAppStore();
+  const { activeSession, user } = useAppStore();
   const { t } = useLanguage();
+
+  // Fetch pending friend requests count
+  const { data: friendRequestsData } = useQuery({
+    queryKey: ['friends', 'requests'],
+    queryFn: () => cardsService.getFriendRequests(),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
+  });
+
+  const pendingRequestsCount = friendRequestsData?.data?.total || 0;
 
   // Hide navigation on onboarding page
   if (pathname === '/onboarding') {
@@ -58,6 +71,7 @@ export function Navigation() {
               const isActive = pathname === item.href;
               const Icon = item.icon;
               const showFocusBadge = item.href === '/focus' && activeSession;
+              const showFriendsBadge = item.href === '/friends' && pendingRequestsCount > 0;
 
               return (
                 <Link
@@ -83,6 +97,16 @@ export function Navigation() {
                           animate={{ scale: 1 }}
                           exit={{ scale: 0 }}
                         />
+                      )}
+                      {showFriendsBadge && (
+                        <motion.span
+                          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                        >
+                          {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                        </motion.span>
                       )}
                     </AnimatePresence>
                   </motion.div>

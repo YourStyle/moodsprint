@@ -17,11 +17,12 @@ import {
   Heart,
   Swords,
   AlertCircle,
+  Share2,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
+import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Card as CardType, Friend, FriendRequest, Trade } from '@/services/cards';
 
@@ -200,7 +201,9 @@ export default function FriendsPage() {
 
   const handleSendRequest = () => {
     if (searchUsername.trim()) {
-      sendRequestMutation.mutate(searchUsername.trim());
+      // Remove @ prefix if present
+      const username = searchUsername.trim().replace(/^@/, '');
+      sendRequestMutation.mutate(username);
     }
   };
 
@@ -216,6 +219,12 @@ export default function FriendsPage() {
     setSelectedMyCard(null);
     setSelectedFriendCard(null);
     setTradeMessage('');
+  };
+
+  const handleShareInvite = () => {
+    if (!user) return;
+    hapticFeedback('light');
+    shareInviteLink(user.id, 'Присоединяйся к MoodSprint!');
   };
 
   const renderCardMini = (card: CardType | null, onClick?: () => void, isSelected?: boolean) => {
@@ -374,6 +383,15 @@ export default function FriendsPage() {
         <Users className="w-10 h-10 text-purple-500 mx-auto mb-2" />
         <h1 className="text-2xl font-bold text-white">Друзья</h1>
         <p className="text-sm text-gray-400">Добавляй друзей и обменивайся картами</p>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="mt-3"
+          onClick={handleShareInvite}
+        >
+          <Share2 className="w-4 h-4 mr-2" />
+          Пригласить друга
+        </Button>
       </div>
 
       {/* Tabs */}

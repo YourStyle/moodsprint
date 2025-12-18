@@ -550,6 +550,7 @@ export interface TelegramWebApp {
     user?: TelegramUser;
     auth_date: number;
     hash: string;
+    start_param?: string;
   };
   version: string;
   platform: string;
@@ -623,6 +624,9 @@ export interface TelegramWebApp {
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
   onEvent: (eventType: string, callback: () => void) => void;
   offEvent: (eventType: string, callback: () => void) => void;
+  openTelegramLink: (url: string) => void;
+  openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+  switchInlineQuery: (query: string, choose_chat_types?: ('users' | 'bots' | 'groups' | 'channels')[]) => void;
 }
 
 declare global {
