@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, User, Swords, Layers } from 'lucide-react';
+import { ListTodo, Users, User, Swords, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 
-const navItems: { href: string; icon: typeof Home; labelKey: TranslationKey }[] = [
-  { href: '/', icon: Home, labelKey: 'home' },
+const navItems: { href: string; icon: typeof ListTodo; labelKey: TranslationKey }[] = [
+  { href: '/', icon: ListTodo, labelKey: 'tasks' },
   { href: '/friends', icon: Users, labelKey: 'friends' },
   { href: '/deck', icon: Layers, labelKey: 'deck' },
   { href: '/arena', icon: Swords, labelKey: 'arena' },
