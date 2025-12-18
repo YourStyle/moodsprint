@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Info, Layers, Calendar } from 'lucide-react';
+import { Heart, Swords, Info, Layers, Calendar, Sparkles } from 'lucide-react';
+
+interface SimpleAbilityInfo {
+  type: string;
+  name: string;
+  description: string;
+  emoji: string;
+  cooldown: number;
+  current_cooldown: number;
+}
 
 export interface DeckCardProps {
   id: number;
@@ -20,6 +29,8 @@ export interface DeckCardProps {
   createdAt?: string | null;
   onClick?: () => void;
   compact?: boolean;
+  ability?: string | null;
+  abilityInfo?: SimpleAbilityInfo | null;
 }
 
 const rarityConfig = {
@@ -88,6 +99,8 @@ export function DeckCard({
   createdAt,
   onClick,
   compact = false,
+  ability,
+  abilityInfo,
 }: DeckCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
@@ -168,6 +181,17 @@ export function DeckCard({
             {isInDeck && !compact && (
               <div className="absolute top-1.5 left-1.5 z-10 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
                 <Layers className="w-3 h-3 text-white" />
+              </div>
+            )}
+
+            {/* Ability indicator */}
+            {ability && abilityInfo && !compact && (
+              <div
+                className="absolute top-8 left-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center gap-1 shadow-lg"
+                title={`${abilityInfo.name}: ${abilityInfo.description}`}
+              >
+                <Sparkles className="w-3 h-3 text-white" />
+                <span className="text-[10px] font-medium text-white">{abilityInfo.emoji}</span>
               </div>
             )}
 
@@ -283,6 +307,15 @@ export function DeckCard({
                 <span className="text-gray-500">Здоровье</span>
                 <span className="text-green-400 font-medium">{currentHp}/{hp}</span>
               </div>
+              {abilityInfo && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">Способность</span>
+                  <span className="text-purple-400 font-medium flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    {abilityInfo.name}
+                  </span>
+                </div>
+              )}
               {createdAt && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Получена</span>

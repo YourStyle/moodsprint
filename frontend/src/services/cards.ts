@@ -6,6 +6,15 @@ import type { ApiResponse } from '@/domain/types';
 import { api } from './api';
 
 // Card types
+export interface AbilityInfo {
+  type: string;
+  name: string;
+  description: string;
+  emoji: string;
+  cooldown: number;
+  current_cooldown: number;
+}
+
 export interface Card {
   id: number;
   user_id: number;
@@ -17,6 +26,8 @@ export interface Card {
   hp: number;
   attack: number;
   current_hp: number;
+  ability: string | null;
+  ability_info: AbilityInfo | null;
   image_url: string | null;
   emoji: string;
   is_in_deck: boolean;

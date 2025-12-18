@@ -195,9 +195,21 @@ export default function ArenaPage() {
 
   const handleSelectMonster = (monster: Monster) => {
     setSelectedMonster(monster);
-    setSelectedCards([]);
-    setGameState('cards');
     hapticFeedback('light');
+
+    // If user has a deck, auto-start battle with deck cards
+    if (deck.length > 0) {
+      const deckCardIds = deck.map((c: { id: number }) => c.id);
+      setSelectedCards(deckCardIds);
+      startBattleMutation.mutate({
+        monsterId: monster.id,
+        cardIds: deckCardIds,
+      });
+    } else {
+      // No deck - show card selection
+      setSelectedCards([]);
+      setGameState('cards');
+    }
   };
 
   const handleToggleCard = (cardId: number) => {

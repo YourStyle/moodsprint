@@ -420,6 +420,8 @@ export default function DeckPage() {
                     isInDeck={card.is_in_deck}
                     isGenerating={generatingImages.has(card.id)}
                     createdAt={card.created_at}
+                    ability={card.ability}
+                    abilityInfo={card.ability_info}
                     onClick={() => handleCardClick(card)}
                   />
                 ))}
@@ -427,9 +429,9 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto">
-                  <Card className="flex items-center gap-3 p-3">
-                    <span className="text-sm text-gray-300 flex-1 truncate">
+                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
+                  <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
+                    <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}
                     </span>
                     {selectedCard.is_in_deck ? (
@@ -453,7 +455,7 @@ export default function DeckPage() {
                         {t('addToDeck')}
                       </Button>
                     )}
-                  </Card>
+                  </div>
                 </div>
               )}
             </>
@@ -526,6 +528,8 @@ export default function DeckPage() {
                     isInDeck={card.is_in_deck}
                     isGenerating={generatingImages.has(card.id)}
                     createdAt={card.created_at}
+                    ability={card.ability}
+                    abilityInfo={card.ability_info}
                     onClick={() => handleCardClick(card)}
                   />
                 ))}
@@ -533,9 +537,9 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto">
-                  <Card className="flex items-center gap-3 p-3">
-                    <span className="text-sm text-gray-300 flex-1 truncate">
+                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
+                  <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
+                    <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}
                     </span>
                     <Button
@@ -547,7 +551,7 @@ export default function DeckPage() {
                       <Minus className="w-4 h-4 mr-1" />
                       {t('removeFromDeck')}
                     </Button>
-                  </Card>
+                  </div>
                 </div>
               )}
             </>
@@ -598,6 +602,8 @@ export default function DeckPage() {
                     isInDeck={false}
                     isGenerating={false}
                     createdAt={mergeCard1.created_at}
+                    ability={mergeCard1.ability}
+                    abilityInfo={mergeCard1.ability_info}
                     onClick={() => setMergeCard1(null)}
                   />
                   <button
@@ -640,6 +646,8 @@ export default function DeckPage() {
                     isInDeck={false}
                     isGenerating={false}
                     createdAt={mergeCard2.created_at}
+                    ability={mergeCard2.ability}
+                    abilityInfo={mergeCard2.ability_info}
                     onClick={() => setMergeCard2(null)}
                   />
                   <button
@@ -763,6 +771,8 @@ export default function DeckPage() {
                     isInDeck={false}
                     isGenerating={generatingImages.has(card.id)}
                     createdAt={card.created_at}
+                    ability={card.ability}
+                    abilityInfo={card.ability_info}
                     compact
                   />
                 </div>
@@ -793,6 +803,8 @@ export default function DeckPage() {
                     isInDeck={false}
                     isGenerating={false}
                     createdAt={mergeResult.created_at}
+                    ability={mergeResult.ability}
+                    abilityInfo={mergeResult.ability_info}
                   />
                 </div>
 

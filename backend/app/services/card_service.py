@@ -36,24 +36,19 @@ RARITY_PROBABILITIES = [
     (CardRarity.LEGENDARY, 1.00),
 ]
 
-# Card pool thresholds - how many templates per user in genre before we reuse
-# Lower number = generate more new cards, higher = reuse more
-# Legendary always generates new (unique feel)
-CARD_POOL_MULTIPLIERS = {
-    CardRarity.COMMON: 0.5,  # 1 template per 2 users
-    CardRarity.UNCOMMON: 0.3,  # 1 template per ~3 users
-    CardRarity.RARE: 0.2,  # 1 template per 5 users
-    CardRarity.EPIC: 0.1,  # 1 template per 10 users
-    CardRarity.LEGENDARY: 0.0,  # Always generate new (always unique)
-}
+# Base number of templates for all genres (before user scaling)
+BASE_TEMPLATES_COUNT = 10
 
-# Minimum templates in pool before we start reusing
-MIN_TEMPLATES_PER_GENRE = {
-    CardRarity.COMMON: 10,
-    CardRarity.UNCOMMON: 7,
-    CardRarity.RARE: 5,
-    CardRarity.EPIC: 3,
-    CardRarity.LEGENDARY: 0,  # Never reuse
+# Per-user scaling factor by rarity
+# Higher rarity = more templates needed = more variety (feels more unique)
+# Formula: required_templates = BASE + users_count * RARITY_FACTOR
+# Example for 100 users: Common=20, Uncommon=25, Rare=30, Epic=40
+RARITY_POOL_FACTORS = {
+    CardRarity.COMMON: 0.1,  # 100 users = 10 + 10 = 20 templates
+    CardRarity.UNCOMMON: 0.15,  # 100 users = 10 + 15 = 25 templates
+    CardRarity.RARE: 0.2,  # 100 users = 10 + 20 = 30 templates
+    CardRarity.EPIC: 0.3,  # 100 users = 10 + 30 = 40 templates
+    CardRarity.LEGENDARY: None,  # Always unique (never reuse)
 }
 
 
@@ -240,18 +235,19 @@ class CardService:
         Logic:
         - Legendary: always generate new (unique feel)
         - Other rarities: generate if pool is too small for user count
+        - Formula: required = BASE_TEMPLATES_COUNT + users_count * RARITY_FACTOR
+        - Higher rarity = higher factor = more variety needed
         """
-        # Legendary always generates new cards
-        if rarity == CardRarity.LEGENDARY:
+        # Legendary always generates new cards (always unique)
+        rarity_factor = RARITY_POOL_FACTORS.get(rarity)
+        if rarity_factor is None:
             return True
 
         users_count = self._count_users_in_genre(genre)
         templates_count = self._count_templates_in_genre(genre)
-        min_templates = MIN_TEMPLATES_PER_GENRE.get(rarity, 5)
-        multiplier = CARD_POOL_MULTIPLIERS.get(rarity, 0.3)
 
-        # Required templates = max(minimum, users * multiplier)
-        required_templates = max(min_templates, int(users_count * multiplier))
+        # Required templates = base + users * rarity_factor
+        required_templates = BASE_TEMPLATES_COUNT + int(users_count * rarity_factor)
 
         # Generate new if we don't have enough templates
         should_generate = templates_count < required_templates
@@ -379,6 +375,14 @@ class CardService:
     def _save_as_template(self, card: UserCard, genre: str) -> CardTemplate | None:
         """Save a generated card as a template for future reuse."""
         try:
+            # Check if template with same name already exists
+            existing = CardTemplate.query.filter_by(name=card.name, genre=genre).first()
+            if existing:
+                # Link card to existing template
+                card.template_id = existing.id
+                logger.info(f"Linked card to existing template: {card.name}")
+                return existing
+
             template = CardTemplate(
                 name=card.name,
                 description=card.description,
@@ -391,8 +395,14 @@ class CardService:
                 is_active=True,
             )
             db.session.add(template)
-            # Don't commit here, let the caller handle transaction
-            logger.info(f"Saved new template: {card.name} for genre {genre}")
+            db.session.flush()  # Get template ID
+
+            # Link card to template
+            card.template_id = template.id
+
+            logger.info(
+                f"Saved new template: {card.name} (id={template.id}) for genre {genre}"
+            )
             return template
         except Exception as e:
             logger.error(f"Failed to save template: {e}")
