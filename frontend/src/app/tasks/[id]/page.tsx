@@ -690,7 +690,7 @@ export default function TaskDetailPage() {
         <Progress value={task.progress_percent} color="primary" />
       </Card>
 
-      {/* Action Button or Active Session Timer */}
+      {/* Action Buttons or Active Session Timer */}
       {task.status !== 'completed' && (
         activeSession ? (
           <FocusTimer
@@ -702,14 +702,25 @@ export default function TaskDetailPage() {
             t={t}
           />
         ) : (
-          <Button
-            variant="primary"
-            onClick={() => setShowActionModal(true)}
-            className="w-full h-14"
-          >
-            <Play className="w-5 h-5 mr-2" />
-            {t('start')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              onClick={() => handleStartFocus()}
+              className="flex-1 h-14"
+            >
+              <Timer className="w-5 h-5 mr-2" />
+              {t('startFocusButton')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => completeTaskMutation.mutate()}
+              isLoading={completeTaskMutation.isPending}
+              className="flex-1 h-14 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400"
+            >
+              <Check className="w-5 h-5 mr-2" />
+              {t('completeTask')}
+            </Button>
+          </div>
         )
       )}
 
@@ -737,21 +748,28 @@ export default function TaskDetailPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-white">{t('steps')}</h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAddSubtask(true)}
-                className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                {t('add')}
-              </button>
-              <button
-                onClick={handleDecompose}
-                className="text-sm text-gray-400 hover:text-gray-300 flex items-center gap-1"
-              >
-                <Wand2 className="w-4 h-4" />
-              </button>
-            </div>
+            {task.status !== 'completed' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddSubtask(true)}
+                  className="text-sm text-primary-500 hover:text-primary-600 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t('add')}
+                </button>
+                <button
+                  onClick={handleDecompose}
+                  disabled={decomposeMutation.isPending}
+                  className="text-sm text-gray-400 hover:text-gray-300 flex items-center gap-1 disabled:opacity-50"
+                >
+                  {decomposeMutation.isPending ? (
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -782,7 +800,7 @@ export default function TaskDetailPage() {
       )}
 
       {/* Add Subtask when no subtasks exist */}
-      {subtasks.length === 0 && (
+      {subtasks.length === 0 && task.status !== 'completed' && (
         <Button
           variant="secondary"
           onClick={() => setShowAddSubtask(true)}

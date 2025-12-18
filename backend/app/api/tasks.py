@@ -328,6 +328,7 @@ def update_task(task_id: int):
         return not_found("Task not found")
 
     data = request.get_json() or {}
+    old_status = task.status  # Save old status to check for completion transition
 
     if "title" in data:
         title = data["title"].strip()
@@ -370,12 +371,17 @@ def update_task(task_id: int):
 
     db.session.commit()
 
-    # Check achievements if task completed
+    # Check achievements if task just completed (transition from non-completed to completed)
     xp_info = None
     achievements_unlocked = []
     generated_card = None
 
-    if task.status == TaskStatus.COMPLETED.value:
+    task_just_completed = (
+        old_status != TaskStatus.COMPLETED.value
+        and task.status == TaskStatus.COMPLETED.value
+    )
+
+    if task_just_completed:
         user = User.query.get(user_id)
         xp_info = user.add_xp(XPCalculator.task_completed())
         user.update_streak()
