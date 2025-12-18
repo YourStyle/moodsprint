@@ -96,14 +96,14 @@ class AIDecomposer:
         task_type: str | None = None,
         mood: int | None = None,
         energy: int | None = None,
-    ) -> list[dict[str, Any]]:
+        existing_subtasks_count: int = 0,
+    ) -> dict[str, Any]:
         """
         Decompose a task into subtasks based on strategy, task type, and user state.
 
-        Returns list of subtask dicts with:
-        - title: str
-        - estimated_minutes: int
-        - order: int
+        Returns dict with:
+        - subtasks: list of subtask dicts (title, estimated_minutes, order)
+        - no_new_steps: bool - True if task doesn't need more decomposition
         """
         strategy_config = self.STRATEGIES.get(strategy, self.STRATEGIES["standard"])
         type_context = self.TASK_TYPE_CONTEXT.get(task_type) if task_type else None
@@ -119,14 +119,16 @@ class AIDecomposer:
                     strategy,
                     mood,
                     energy,
+                    existing_subtasks_count,
                 )
             except Exception as e:
                 current_app.logger.error(f"AI decomposition failed: {e}")
 
         # Fallback to simple decomposition
-        return self._simple_decompose(
+        subtasks = self._simple_decompose(
             task_title, task_description, strategy_config, task_type
         )
+        return {"subtasks": subtasks, "no_new_steps": False}
 
     # Mood/energy labels for AI context
     MOOD_LABELS_RU = {
@@ -153,7 +155,8 @@ class AIDecomposer:
         strategy: str | None = None,
         mood: int | None = None,
         energy: int | None = None,
-    ) -> list[dict[str, Any]]:
+        existing_subtasks_count: int = 0,
+    ) -> dict[str, Any]:
         """Use OpenAI to decompose task."""
         min_minutes, max_minutes = strategy_config["step_range"]
 
@@ -204,35 +207,47 @@ class AIDecomposer:
 - Предложи 4-6 шагов с учётом усталости
 """
 
+        # Add existing subtasks context
+        existing_steps_context = ""
+        if existing_subtasks_count > 0:
+            no_new = '{"no_new_steps": true}'
+            existing_steps_context = f"""
+ВАЖНО: У задачи уже есть {existing_subtasks_count} шагов!
+- Если задача уже достаточно разбита (простая с 2+ шагами, средняя с 4+) — верни {no_new}
+- Если можно добавить полезные шаги — предложи их
+"""
+
         prompt = f"""Разбей эту задачу на конкретные, выполнимые шаги.
 
 Задача: {task_title}
 {f'Описание: {task_description}' if task_description else ''}
-{type_instructions}{user_state_instructions}
-ВАЖНО - Подстрой декомпозицию под задачу:
-- Простая задача (купить молоко, позвонить другу) → 2-3 шага
-- Средняя задача (написать отчёт, убрать квартиру) → 4-6 шагов
-- Сложная задача (организовать мероприятие, изучить новую тему) → 6-10 шагов
+{type_instructions}{user_state_instructions}{existing_steps_context}
+КРИТИЧЕСКИ ВАЖНО - Подстрой количество шагов под сложность задачи:
+- Очень простая задача (сесть, выпить воды) → 1 шаг ИЛИ no_new_steps если уже разбита
+- Простая бытовая задача (постирать вещи, помыть посуду) → 1-2 шага максимум!
+- Средняя задача (написать отчёт, убрать квартиру, приготовить ужин) → 3-5 шагов
+- Сложная задача (организовать мероприятие, изучить новую тему, большой проект) → 5-8 шагов
+
+Если задача СЛИШКОМ ПРОСТАЯ для разбиения или уже разбита достаточно — верни:
+{{"no_new_steps": true, "reason": "Задача слишком простая/уже достаточно разбита"}}
 
 Креативность:
 - Если задача про путешествие/прогулку — предложи конкретные места
 - Если задача про обучение — предложи ресурсы, темы
 - Если задача про покупки — предложи список
-- Используй свои знания чтобы ОБОГАТИТЬ задачу
+- Используй свои знания чтобы ОБОГАТИТЬ задачу, НО НЕ РАЗДУВАЙ простые задачи!
 
 Требования к шагам:
-- Количество шагов зависит от сложности задачи (от 2 до 10)
+- НЕ РАЗДУВАЙ простые задачи! «Постирать вещи» = максимум «Загрузить и запустить стирку»
 - Оценивай время РЕАЛИСТИЧНО: быстрые действия 2-5 мин, средние 10-20 мин, сложные 30-60+ мин
 - НЕ делай все шаги одинаковыми по времени — разные шаги занимают разное время!
-- Шаги должны быть КОНКРЕТНЫМИ и ПОЛЕЗНЫМИ (не "подготовиться", а что именно сделать)
+- Шаги должны быть КОНКРЕТНЫМИ и ПОЛЕЗНЫМИ
 - НЕ добавляй разминку/заминку если это не спортивная тренировка
 - Начинай каждый шаг с глагола
-- Добавляй реальные названия мест, ресурсов, инструментов где это уместно
 
-Верни ТОЛЬКО JSON массив:
-[
-  {{"title": "описание шага", "estimated_minutes": число}}
-]
+Верни ТОЛЬКО JSON:
+Либо массив шагов: [{{"title": "описание", "estimated_minutes": число}}]
+Либо отказ: {{"no_new_steps": true, "reason": "причина"}}
 """
 
         current_app.logger.info(f"AI decomposing task: {task_title}")
@@ -264,11 +279,22 @@ class AIDecomposer:
             if content.startswith("json"):
                 content = content[4:]
 
-        steps = json.loads(content)
+        parsed = json.loads(content)
 
-        # Validate and format (allow up to 12 steps for complex tasks)
+        # Check if AI returned no_new_steps
+        if isinstance(parsed, dict) and parsed.get("no_new_steps"):
+            return {
+                "subtasks": [],
+                "no_new_steps": True,
+                "reason": parsed.get("reason", "Задача уже достаточно разбита"),
+            }
+
+        # It's a list of steps
+        steps = parsed if isinstance(parsed, list) else []
+
+        # Validate and format (allow up to 10 steps for complex tasks)
         result = []
-        for i, step in enumerate(steps[:12]):
+        for i, step in enumerate(steps[:10]):
             # Allow realistic time estimates from AI (2-180 min range)
             estimated = int(step.get("estimated_minutes", 15))
             estimated = max(2, min(180, estimated))  # Clamp to reasonable bounds
@@ -280,7 +306,7 @@ class AIDecomposer:
                 }
             )
 
-        return result
+        return {"subtasks": result, "no_new_steps": False}
 
     # Type-specific fallback steps
     FALLBACK_STEPS = {

@@ -488,23 +488,41 @@ def decompose_task(task_id: int):
         mood_value = mood_check.mood
         energy_value = mood_check.energy
 
-    # Clear existing subtasks
-    Subtask.query.filter_by(task_id=task.id).delete()
+    # Count existing subtasks
+    existing_subtasks = Subtask.query.filter_by(task_id=task.id).all()
+    existing_count = len(existing_subtasks)
 
     # Decompose task with type context and user state
     decomposer = AIDecomposer()
-    subtask_data = decomposer.decompose_task(
+    result = decomposer.decompose_task(
         task.title,
         task.description,
         strategy,
         task.task_type,
         mood=mood_value,
         energy=energy_value,
+        existing_subtasks_count=existing_count,
     )
+
+    # Handle no_new_steps response
+    if result.get("no_new_steps"):
+        return success_response(
+            {
+                "subtasks": [s.to_dict() for s in existing_subtasks],
+                "strategy": strategy,
+                "no_new_steps": True,
+                "message": result.get(
+                    "reason", "Задача уже разбита на достаточное количество шагов"
+                ),
+            }
+        )
+
+    # Clear existing subtasks and create new ones
+    Subtask.query.filter_by(task_id=task.id).delete()
 
     # Create subtasks
     subtasks = []
-    for subtask_info in subtask_data:
+    for subtask_info in result["subtasks"]:
         subtask = Subtask(
             task_id=task.id,
             title=subtask_info["title"],

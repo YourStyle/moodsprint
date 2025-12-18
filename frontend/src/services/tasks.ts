@@ -52,6 +52,7 @@ interface DecomposeResponse {
   subtasks: Subtask[];
   strategy: string;
   message: string;
+  no_new_steps?: boolean;
 }
 
 interface PostponeStatusResponse {

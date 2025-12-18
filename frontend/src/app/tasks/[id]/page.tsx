@@ -210,11 +210,23 @@ export default function TaskDetailPage() {
     return getSessionForTask(taskId);
   }, [getSessionForTask, taskId, activeSessions]);
 
+  const [showNoNewStepsMessage, setShowNoNewStepsMessage] = useState(false);
+  const [noNewStepsReason, setNoNewStepsReason] = useState('');
+
   const decomposeMutation = useMutation({
     mutationFn: (moodId?: number) => tasksService.decomposeTask(taskId, moodId),
-    onSuccess: () => {
+    onSuccess: (result) => {
       refetch();
-      hapticFeedback('success');
+      if (result.data?.no_new_steps) {
+        // Task is already well-decomposed
+        setNoNewStepsReason(result.data.message || t('taskAlreadyDecomposed'));
+        setShowNoNewStepsMessage(true);
+        hapticFeedback('warning');
+        // Auto-hide after 3 seconds
+        setTimeout(() => setShowNoNewStepsMessage(false), 3000);
+      } else {
+        hapticFeedback('success');
+      }
     },
   });
 
@@ -603,8 +615,17 @@ export default function TaskDetailPage() {
         </div>
       )}
 
+      {/* No new steps notification */}
+      {showNoNewStepsMessage && (
+        <div className="fixed top-16 left-4 right-4 z-50 animate-in slide-in-from-top-2">
+          <div className="bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-xl p-3 text-sm text-center backdrop-blur-sm">
+            {noNewStepsReason}
+          </div>
+        </div>
+      )}
+
       {/* Subtasks */}
-      {subtasks.length > 0 && (
+      {(subtasks.length > 0 || decomposeMutation.isPending) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-white">{t('steps')}</h2>
@@ -633,7 +654,28 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="space-y-2">
-            {subtasks.map((subtask) => (
+            {/* Skeleton loaders while decomposing */}
+            {decomposeMutation.isPending && (
+              <>
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={`skeleton-${i}`}
+                    className="bg-gray-800/50 rounded-xl p-3 animate-pulse"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded-full bg-gray-700" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-700 rounded w-3/4 mb-1" />
+                        <div className="h-3 bg-gray-700/50 rounded w-1/4" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Actual subtasks */}
+            {!decomposeMutation.isPending && subtasks.map((subtask) => (
               <SubtaskItem
                 key={subtask.id}
                 subtask={subtask}
