@@ -187,11 +187,13 @@ jobs:
             cp nginx/nginx.staging.conf nginx/nginx.prod.conf
 
             # Pull and deploy with force recreate
+            # Migrations run automatically on container startup via entrypoint.sh
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # Run migrations
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
+            # Wait for migrations to complete (containers run them on startup)
+            echo "Waiting for backend to be ready (migrations run on startup)..."
+            sleep 15
 
             # Cleanup old images
             docker image prune -af --filter "until=24h"
@@ -254,11 +256,13 @@ jobs:
             docker compose exec -T db pg_dump -U moodsprint moodsprint > /backups/pre-deploy-$(date +%Y%m%d_%H%M%S).sql || true
 
             # Pull and deploy with force recreate
+            # Migrations run automatically on container startup via entrypoint.sh
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # Run migrations
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T --index 1 backend flask db upgrade
+            # Wait for migrations to complete (containers run them on startup)
+            echo "Waiting for backend to be ready (migrations run on startup)..."
+            sleep 15
 
             # Cleanup
             docker image prune -af --filter "until=24h"
