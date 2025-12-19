@@ -5,32 +5,10 @@
 import type {
   ApiResponse,
   Card,
-  MergeChances,
   MergeLog,
   MergeResult,
 } from '@/domain/types';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-
-async function fetchWithAuth<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('token');
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  return response.json();
-}
+import { api } from './api';
 
 export const mergeService = {
   /**
@@ -48,10 +26,7 @@ export const mergeService = {
       can_merge: boolean;
     }>
   > {
-    return fetchWithAuth('/cards/merge/preview', {
-      method: 'POST',
-      body: JSON.stringify({ card1_id: card1Id, card2_id: card2Id }),
-    });
+    return api.post('/cards/merge/preview', { card1_id: card1Id, card2_id: card2Id });
   },
 
   /**
@@ -62,10 +37,7 @@ export const mergeService = {
     card1Id: number,
     card2Id: number
   ): Promise<ApiResponse<MergeResult>> {
-    return fetchWithAuth('/cards/merge', {
-      method: 'POST',
-      body: JSON.stringify({ card1_id: card1Id, card2_id: card2Id }),
-    });
+    return api.post('/cards/merge', { card1_id: card1Id, card2_id: card2Id });
   },
 
   /**
@@ -74,7 +46,7 @@ export const mergeService = {
   async getMergeHistory(
     limit: number = 10
   ): Promise<ApiResponse<{ merges: MergeLog[] }>> {
-    return fetchWithAuth(`/cards/merge/history?limit=${limit}`);
+    return api.get(`/cards/merge/history?limit=${limit}`);
   },
 };
 
