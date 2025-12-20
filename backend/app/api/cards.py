@@ -515,6 +515,7 @@ def connect_referral():
     """
     Connect with referrer (auto-accept friendship).
     Used when existing user clicks invite link.
+    Both users get bonus cards.
 
     Request body:
     {
@@ -573,14 +574,37 @@ def connect_referral():
         accepted_at=datetime.utcnow(),
     )
     db.session.add(friendship)
+
+    # Give bonus cards to both users
+    rewards = {}
+    try:
+        service = CardService()
+
+        # Give bonus card to the inviter (referrer)
+        referrer_card = service.generate_referral_reward(referrer_id)
+        if referrer_card:
+            rewards["referrer_card"] = referrer_card.to_dict()
+
+        # Give bonus card to the invitee (current user)
+        invitee_card = service.generate_referral_reward(user_id)
+        if invitee_card:
+            rewards["invitee_card"] = invitee_card.to_dict()
+    except Exception as e:
+        # Don't fail the friendship creation if card generation fails
+        import logging
+
+        logging.error(f"Failed to generate referral reward cards: {e}")
+
     db.session.commit()
 
-    return success_response(
-        {
-            "message": "Теперь вы друзья!",
-            "friendship": friendship.to_dict(),
-        }
-    )
+    response = {
+        "message": "Теперь вы друзья!",
+        "friendship": friendship.to_dict(),
+    }
+    if rewards:
+        response["rewards"] = rewards
+
+    return success_response(response)
 
 
 # ============ Card Trading ============

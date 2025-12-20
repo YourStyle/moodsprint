@@ -124,7 +124,7 @@ function FocusTimer({
           className="flex-1"
         >
           <Check className="w-4 h-4 mr-1" />
-          {t('complete')}
+          {t('completeTask')}
         </Button>
         <Button
           variant="danger"
@@ -595,7 +595,7 @@ export default function TaskDetailPage() {
             session={activeSession}
             onPause={() => pauseSessionMutation.mutate()}
             onResume={() => resumeSessionMutation.mutate()}
-            onComplete={() => completeSessionMutation.mutate(activeSession.id)}
+            onComplete={() => completeTaskMutation.mutate()}
             onCancel={() => cancelSessionMutation.mutate(activeSession.id)}
             t={t}
           />

@@ -95,6 +95,14 @@ export function isMobileDevice(): boolean {
   return platform === 'ios' || platform === 'android';
 }
 
+export function isIOSDevice(): boolean {
+  const webApp = getTelegramWebApp();
+  if (!webApp) return false;
+
+  const platform = webApp.platform?.toLowerCase() || '';
+  return platform === 'ios';
+}
+
 export function readyTelegramWebApp() {
   const webApp = getTelegramWebApp();
   webApp?.ready();

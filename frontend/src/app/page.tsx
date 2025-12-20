@@ -180,6 +180,7 @@ function TaskCardCompact({
   task,
   onClick,
   onStart,
+  onCompleteTask,
   activeSession,
   onPause,
   onResume,
@@ -189,6 +190,7 @@ function TaskCardCompact({
   task: { id: number; title: string; progress_percent: number; estimated_minutes?: number; status: string; subtasks_count: number };
   onClick: () => void;
   onStart?: () => void;
+  onCompleteTask?: () => void;
   activeSession?: FocusSession;
   onPause?: () => void;
   onResume?: () => void;
@@ -236,16 +238,31 @@ function TaskCardCompact({
             onComplete={onComplete}
             onStop={onStop}
           />
-        ) : !isCompleted && onStart && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStart();
-            }}
-            className="w-8 h-8 rounded-lg bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <Play className="w-4 h-4 text-white" fill="white" />
-          </button>
+        ) : !isCompleted && (
+          <div className="flex items-center gap-1.5">
+            {onCompleteTask && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCompleteTask();
+                }}
+                className="w-8 h-8 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <CheckCircle2 className="w-4 h-4 text-green-400" />
+              </button>
+            )}
+            {onStart && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStart();
+                }}
+                className="w-8 h-8 rounded-lg bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <Play className="w-4 h-4 text-white" fill="white" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -400,6 +417,22 @@ export default function HomePage() {
       removeActiveSession(sessionId);
       queryClient.invalidateQueries({ queryKey: ['focus'] });
       hapticFeedback('light');
+    },
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: (taskId: number) => tasksService.updateTask(taskId, { status: 'completed' }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+      if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
+      // Show card earned modal if card was generated
+      if (result.data?.card_earned) {
+        setEarnedCard(result.data.card_earned as EarnedCard);
+        setShowCardModal(true);
+      }
+      hapticFeedback('success');
     },
   });
 
@@ -734,15 +767,26 @@ export default function HomePage() {
                                 {task.title}
                               </span>
                               {task.status !== 'completed' && !session && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    startFocusMutation.mutate(task.id);
-                                  }}
-                                  className="p-1 rounded bg-primary-500/20 hover:bg-primary-500/30 flex-shrink-0"
-                                >
-                                  <Play className="w-3 h-3 text-primary-400" fill="currentColor" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      completeTaskMutation.mutate(task.id);
+                                    }}
+                                    className="p-1 rounded bg-green-500/20 hover:bg-green-500/30 flex-shrink-0"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 text-green-400" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startFocusMutation.mutate(task.id);
+                                    }}
+                                    className="p-1 rounded bg-primary-500/20 hover:bg-primary-500/30 flex-shrink-0"
+                                  >
+                                    <Play className="w-3 h-3 text-primary-400" fill="currentColor" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -755,6 +799,7 @@ export default function HomePage() {
                             task={task}
                             onClick={() => router.push(`/tasks/${task.id}`)}
                             onStart={task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
+                            onCompleteTask={task.status !== 'completed' && !session ? () => completeTaskMutation.mutate(task.id) : undefined}
                             activeSession={session}
                             onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
                             onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}

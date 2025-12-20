@@ -14,6 +14,7 @@ import {
   enableClosingConfirmation,
   disableVerticalSwipes,
   isMobileDevice,
+  isIOSDevice,
   getStartParam,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
@@ -52,6 +53,11 @@ function AuthProvider({ children }: { children: ReactNode }) {
         if (isMobileDevice()) {
           requestFullscreen();
           disableVerticalSwipes();
+        }
+
+        // Set safe area only for iOS (Android doesn't need it)
+        if (!isIOSDevice()) {
+          document.documentElement.style.setProperty('--safe-area-top', '0px');
         }
       }
 
@@ -118,20 +124,28 @@ function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           // For existing users who clicked invite link, auto-connect with referrer
+          // Only do this once per session (check sessionStorage)
           if (!isNewUser && referrerId) {
-            console.log('[Deeplink] Existing user, connecting with referrer:', referrerId);
-            try {
-              const result = await cardsService.connectWithReferrer(referrerId);
-              if (result.success) {
-                console.log('[Deeplink] Connected with referrer:', result.data?.message);
-                // Only redirect to friends if onboarding is completed
-                const onboardingResult = await onboardingService.getStatus();
-                if (onboardingResult.data?.completed) {
-                  router.push('/friends');
+            const referralHandledKey = `referral_handled_${referrerId}`;
+            const alreadyHandled = sessionStorage.getItem(referralHandledKey);
+
+            if (!alreadyHandled) {
+              console.log('[Deeplink] Existing user, connecting with referrer:', referrerId);
+              sessionStorage.setItem(referralHandledKey, 'true');
+
+              try {
+                const result = await cardsService.connectWithReferrer(referrerId);
+                if (result.success) {
+                  console.log('[Deeplink] Connected with referrer:', result.data?.message);
+                  // Only redirect to friends if onboarding is completed and not already there
+                  const onboardingResult = await onboardingService.getStatus();
+                  if (onboardingResult.data?.completed && pathname !== '/friends') {
+                    router.push('/friends');
+                  }
                 }
+              } catch (err) {
+                console.log('[Deeplink] Failed to connect with referrer:', err);
               }
-            } catch (err) {
-              console.log('[Deeplink] Failed to connect with referrer:', err);
             }
           }
         }

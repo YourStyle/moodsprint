@@ -135,7 +135,7 @@ export function DeckCard({
       {!compact && (
         <div
           className={cn(
-            'absolute -top-0.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-b-md text-[10px] font-bold text-white z-20',
+            'absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md text-[10px] font-bold text-white z-20',
             config.labelBg
           )}
         >

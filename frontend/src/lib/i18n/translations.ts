@@ -82,6 +82,7 @@ export const translations = {
     pause: 'Пауза',
     resume: 'Продолжить',
     complete: 'Завершить',
+    completeTask: 'Завершить задачу',
 
     // Profile
     level: 'Уровень',
@@ -259,7 +260,6 @@ export const translations = {
     taskNotFound: 'Задача не найдена',
     backToTasks: 'Назад к задачам',
     startFocusButton: 'Начать фокус',
-    completeTask: 'Завершить',
     decomposeWithAI: 'Разбить на шаги с ИИ',
     taskAlreadyDecomposed: 'Задача уже разбита на достаточное количество шагов',
     steps: 'Шаги',
@@ -376,6 +376,7 @@ export const translations = {
     pause: 'Pause',
     resume: 'Resume',
     complete: 'Complete',
+    completeTask: 'Complete task',
 
     // Profile
     level: 'Level',
@@ -553,7 +554,6 @@ export const translations = {
     taskNotFound: 'Task not found',
     backToTasks: 'Back to tasks',
     startFocusButton: 'Start focus',
-    completeTask: 'Complete',
     decomposeWithAI: 'Break down with AI',
     taskAlreadyDecomposed: 'Task is already broken down into enough steps',
     steps: 'Steps',
