@@ -458,6 +458,37 @@ export default function HomePage() {
     }
   };
 
+  const allTasks = tasksData?.data?.tasks || [];
+  const postponeStatus = postponeData?.data;
+  const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
+
+  // Filter tasks by search query (must be before early returns)
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return allTasks;
+    const query = searchQuery.toLowerCase();
+    return allTasks.filter(task => task.title.toLowerCase().includes(query));
+  }, [allTasks, searchQuery]);
+
+  // Group tasks by priority (must be before early returns)
+  const groupedTasks = useMemo(() => {
+    const groups: Record<'high' | 'medium' | 'low', typeof allTasks> = {
+      high: [],
+      medium: [],
+      low: [],
+    };
+    for (const task of filteredTasks) {
+      const priority = (task.priority || 'medium') as 'high' | 'medium' | 'low';
+      groups[priority].push(task);
+    }
+    return groups;
+  }, [filteredTasks]);
+
+  const priorityConfig = {
+    high: { label: t('highPriority'), color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/30' },
+    medium: { label: t('mediumPriority'), color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30' },
+    low: { label: t('lowPriority'), color: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-500/30' },
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -489,37 +520,6 @@ export default function HomePage() {
       </div>
     );
   }
-
-  const allTasks = tasksData?.data?.tasks || [];
-  const postponeStatus = postponeData?.data;
-  const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
-
-  // Filter tasks by search query
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return allTasks;
-    const query = searchQuery.toLowerCase();
-    return allTasks.filter(task => task.title.toLowerCase().includes(query));
-  }, [allTasks, searchQuery]);
-
-  // Group tasks by priority
-  const groupedTasks = useMemo(() => {
-    const groups: Record<'high' | 'medium' | 'low', typeof filteredTasks> = {
-      high: [],
-      medium: [],
-      low: [],
-    };
-    for (const task of filteredTasks) {
-      const priority = (task.priority || 'medium') as 'high' | 'medium' | 'low';
-      groups[priority].push(task);
-    }
-    return groups;
-  }, [filteredTasks]);
-
-  const priorityConfig = {
-    high: { label: t('highPriority'), color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/30' },
-    medium: { label: t('mediumPriority'), color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30' },
-    low: { label: t('lowPriority'), color: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-500/30' },
-  };
 
   // Get greeting based on time
   const getGreeting = () => {
