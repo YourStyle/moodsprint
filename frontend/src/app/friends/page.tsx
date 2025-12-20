@@ -18,6 +18,7 @@ import {
   Swords,
   AlertCircle,
   Share2,
+  Gift,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
 import { cardsService } from '@/services';
@@ -286,13 +287,21 @@ export default function FriendsPage() {
 
   // Trade creation form
   if (showTradeForm && selectedFriend) {
+    const isGiftMode = !selectedFriendCard;
+
     return (
       <div className="min-h-screen p-4 pt-safe pb-24">
         <div className="text-center mb-6">
-          <ArrowLeftRight className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-          <h1 className="text-xl font-bold text-white">Предложить обмен</h1>
+          {isGiftMode ? (
+            <Gift className="w-10 h-10 text-pink-500 mx-auto mb-2" />
+          ) : (
+            <ArrowLeftRight className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+          )}
+          <h1 className="text-xl font-bold text-white">
+            {isGiftMode ? 'Подарить карту' : 'Предложить обмен'}
+          </h1>
           <p className="text-sm text-gray-400">
-            с {selectedFriend.first_name || selectedFriend.username}
+            {selectedFriend.first_name || selectedFriend.username}
           </p>
         </div>
 
@@ -321,11 +330,17 @@ export default function FriendsPage() {
           )}
         </Card>
 
-        {/* Friend's card selection (optional) */}
+        {/* Friend's card selection (optional for gifts) */}
         <Card className="mb-4">
-          <h3 className="text-sm font-medium text-white mb-3">
-            Карта друга (необязательно)
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-white">
+              Карта друга
+            </h3>
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              <Gift className="w-3 h-3" />
+              не выбирай для подарка
+            </span>
+          </div>
           {friendCardsLoading ? (
             <div className="h-32 bg-gray-700 rounded-xl animate-pulse" />
           ) : selectedFriendCard ? (
@@ -364,13 +379,22 @@ export default function FriendsPage() {
 
         {/* Submit */}
         <Button
-          className="w-full"
+          className={cn("w-full", isGiftMode && "bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600")}
           onClick={() => createTradeMutation.mutate()}
           disabled={!selectedMyCard}
           isLoading={createTradeMutation.isPending}
         >
-          <Send className="w-4 h-4 mr-2" />
-          Предложить обмен
+          {isGiftMode ? (
+            <>
+              <Gift className="w-4 h-4 mr-2" />
+              Подарить
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Предложить обмен
+            </>
+          )}
         </Button>
       </div>
     );
@@ -621,8 +645,9 @@ export default function FriendsPage() {
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
                               ) : (
-                                <div className="h-20 rounded-xl border border-dashed border-gray-700 flex items-center justify-center">
-                                  <span className="text-xs text-gray-500">Подарок</span>
+                                <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
+                                  <Gift className="w-4 h-4 text-pink-400" />
+                                  <span className="text-xs text-pink-400">Подарок</span>
                                 </div>
                               )}
                             </div>
@@ -690,8 +715,9 @@ export default function FriendsPage() {
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
                               ) : (
-                                <div className="h-20 rounded-xl border border-dashed border-gray-700 flex items-center justify-center">
-                                  <span className="text-xs text-gray-500">Подарок</span>
+                                <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
+                                  <Gift className="w-4 h-4 text-pink-400" />
+                                  <span className="text-xs text-pink-400">Подарок</span>
                                 </div>
                               )}
                             </div>
