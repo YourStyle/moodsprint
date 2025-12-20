@@ -166,6 +166,13 @@ export const translations = {
     newTask: 'Новая',
     noTasksYet: 'Пока нет задач',
     noTasksInCategory: 'Нет задач в этой категории',
+    searchTasks: 'Поиск задач...',
+    compactView: 'Компактный вид',
+    normalView: 'Обычный вид',
+    highPriority: 'Высокий приоритет',
+    mediumPriority: 'Средний приоритет',
+    lowPriority: 'Низкий приоритет',
+    tasksCount: 'задач',
     createFirstTask: 'Создать первую задачу',
 
     // Deck page
@@ -453,6 +460,13 @@ export const translations = {
     newTask: 'New',
     noTasksYet: 'No tasks yet',
     noTasksInCategory: 'No tasks in this category',
+    searchTasks: 'Search tasks...',
+    compactView: 'Compact view',
+    normalView: 'Normal view',
+    highPriority: 'High priority',
+    mediumPriority: 'Medium priority',
+    lowPriority: 'Low priority',
+    tasksCount: 'tasks',
     createFirstTask: 'Create first task',
 
     // Deck page

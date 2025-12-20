@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Filter } from 'lucide-react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, List, LayoutGrid } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
@@ -264,6 +264,14 @@ export default function HomePage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isCompactMode, setIsCompactMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('taskListCompact') === 'true';
+    }
+    return false;
+  });
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const selectedDateStr = formatDateForAPI(selectedDate);
 
@@ -404,6 +412,25 @@ export default function HomePage() {
     createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt });
   };
 
+  // Toggle compact mode
+  const toggleCompactMode = useCallback(() => {
+    setIsCompactMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem('taskListCompact', String(newValue));
+      return newValue;
+    });
+    hapticFeedback('light');
+  }, []);
+
+  // Toggle collapsed group
+  const toggleGroup = useCallback((priority: string) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [priority]: !prev[priority],
+    }));
+    hapticFeedback('light');
+  }, []);
+
   // Check for postponed tasks notification
   const { data: postponeData } = useQuery({
     queryKey: ['tasks', 'postpone-status'],
@@ -463,9 +490,36 @@ export default function HomePage() {
     );
   }
 
-  const tasks = tasksData?.data?.tasks || [];
+  const allTasks = tasksData?.data?.tasks || [];
   const postponeStatus = postponeData?.data;
   const showPostponeNotification = postponeStatus?.has_postponed && !postponeNotificationDismissed;
+
+  // Filter tasks by search query
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return allTasks;
+    const query = searchQuery.toLowerCase();
+    return allTasks.filter(task => task.title.toLowerCase().includes(query));
+  }, [allTasks, searchQuery]);
+
+  // Group tasks by priority
+  const groupedTasks = useMemo(() => {
+    const groups: Record<'high' | 'medium' | 'low', typeof filteredTasks> = {
+      high: [],
+      medium: [],
+      low: [],
+    };
+    for (const task of filteredTasks) {
+      const priority = (task.priority || 'medium') as 'high' | 'medium' | 'low';
+      groups[priority].push(task);
+    }
+    return groups;
+  }, [filteredTasks]);
+
+  const priorityConfig = {
+    high: { label: t('highPriority'), color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/30' },
+    medium: { label: t('mediumPriority'), color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30' },
+    low: { label: t('lowPriority'), color: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-500/30' },
+  };
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -566,14 +620,43 @@ export default function HomePage() {
       <div className="space-y-3 min-h-[180px]">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-white capitalize">{formatDateDisplay(selectedDate, language, t)}</h2>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            {t('add')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleCompactMode}
+              className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors"
+              title={isCompactMode ? t('normalView') : t('compactView')}
+            >
+              {isCompactMode ? <LayoutGrid className="w-4 h-4 text-gray-400" /> : <List className="w-4 h-4 text-gray-400" />}
+            </button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              {t('add')}
+            </Button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('searchTasks')}
+            className="w-full pl-10 pr-4 py-2 bg-gray-800/50 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-600 rounded"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
         </div>
 
         {/* Status Filters */}
@@ -604,22 +687,85 @@ export default function HomePage() {
               <Card key={i} variant="glass" className="h-14 animate-pulse" />
             ))}
           </div>
-        ) : tasks.length > 0 ? (
-          <div className="space-y-2">
-            {tasks.map((task) => {
-              const session = getSessionForTask(task.id);
+        ) : filteredTasks.length > 0 ? (
+          <div className="space-y-3">
+            {(['high', 'medium', 'low'] as const).map((priority) => {
+              const tasks = groupedTasks[priority];
+              if (tasks.length === 0) return null;
+              const config = priorityConfig[priority];
+              const isCollapsed = collapsedGroups[priority];
+
               return (
-                <TaskCardCompact
-                  key={task.id}
-                  task={task}
-                  onClick={() => router.push(`/tasks/${task.id}`)}
-                  onStart={task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
-                  activeSession={session}
-                  onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
-                  onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
-                  onComplete={session ? () => completeSessionMutation.mutate(session.id) : undefined}
-                  onStop={session ? () => cancelSessionMutation.mutate(session.id) : undefined}
-                />
+                <div key={priority} className={`rounded-xl border ${config.border} overflow-hidden`}>
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleGroup(priority)}
+                    className={`w-full flex items-center justify-between px-3 py-2 ${config.bg} hover:opacity-90 transition-opacity`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isCollapsed ? (
+                        <ChevronRight className={`w-4 h-4 ${config.color}`} />
+                      ) : (
+                        <ChevronDown className={`w-4 h-4 ${config.color}`} />
+                      )}
+                      <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
+                    </div>
+                    <span className="text-xs text-gray-400">{tasks.length} {t('tasksCount')}</span>
+                  </button>
+
+                  {/* Group Content */}
+                  {!isCollapsed && (
+                    <div className={`${isCompactMode ? 'divide-y divide-gray-800' : 'p-2 space-y-2'}`}>
+                      {tasks.map((task) => {
+                        const session = getSessionForTask(task.id);
+
+                        if (isCompactMode) {
+                          // Ultra compact row
+                          return (
+                            <div
+                              key={task.id}
+                              onClick={() => router.push(`/tasks/${task.id}`)}
+                              className={`flex items-center gap-2 px-3 py-2 hover:bg-gray-800/50 cursor-pointer ${task.status === 'completed' ? 'opacity-50' : ''}`}
+                            >
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                task.status === 'completed' ? 'bg-green-500' : 'bg-purple-500'
+                              }`} />
+                              <span className={`text-sm flex-1 min-w-0 ${task.status === 'completed' ? 'text-gray-500 line-through' : 'text-white'}`}>
+                                {task.title}
+                              </span>
+                              {task.status !== 'completed' && !session && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startFocusMutation.mutate(task.id);
+                                  }}
+                                  className="p-1 rounded bg-primary-500/20 hover:bg-primary-500/30 flex-shrink-0"
+                                >
+                                  <Play className="w-3 h-3 text-primary-400" fill="currentColor" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Normal card
+                        return (
+                          <TaskCardCompact
+                            key={task.id}
+                            task={task}
+                            onClick={() => router.push(`/tasks/${task.id}`)}
+                            onStart={task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
+                            activeSession={session}
+                            onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
+                            onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
+                            onComplete={session ? () => completeSessionMutation.mutate(session.id) : undefined}
+                            onStop={session ? () => cancelSessionMutation.mutate(session.id) : undefined}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -627,7 +773,9 @@ export default function HomePage() {
           <Card variant="glass" className="text-center py-8">
             <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
             <p className="text-gray-400 mb-4">
-              {filterStatus === 'all'
+              {searchQuery
+                ? t('noTasksInCategory')
+                : filterStatus === 'all'
                 ? `${t('noTasksForDate')} ${formatDateDisplay(selectedDate, language, t).toLowerCase()}`
                 : t('noTasksInCategory')}
             </p>
