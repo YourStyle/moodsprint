@@ -117,15 +117,21 @@ function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          // For existing users who clicked invite link, send friend request
+          // For existing users who clicked invite link, auto-connect with referrer
           if (!isNewUser && referrerId) {
-            console.log('[Deeplink] Existing user, sending friend request to:', referrerId);
+            console.log('[Deeplink] Existing user, connecting with referrer:', referrerId);
             try {
-              await cardsService.sendFriendRequest(referrerId);
-              console.log('[Deeplink] Friend request sent to inviter');
-              router.push('/friends');
+              const result = await cardsService.connectWithReferrer(referrerId);
+              if (result.success) {
+                console.log('[Deeplink] Connected with referrer:', result.data?.message);
+                // Only redirect to friends if onboarding is completed
+                const onboardingResult = await onboardingService.getStatus();
+                if (onboardingResult.data?.completed) {
+                  router.push('/friends');
+                }
+              }
             } catch (err) {
-              console.log('[Deeplink] Failed to send friend request:', err);
+              console.log('[Deeplink] Failed to connect with referrer:', err);
             }
           }
         }

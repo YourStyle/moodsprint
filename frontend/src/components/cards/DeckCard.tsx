@@ -131,11 +131,11 @@ export function DeckCard({
       className="relative w-full aspect-[3/4] perspective-1000"
       onClick={handleCardClick}
     >
-      {/* Rarity badge - outside of flip container so it doesn't rotate */}
+      {/* Rarity badge - centered, outside of flip container so it doesn't rotate */}
       {!compact && (
         <div
           className={cn(
-            'absolute -top-0.5 left-2 px-2 py-0.5 rounded-b-md text-[10px] font-bold text-white z-20',
+            'absolute -top-0.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-b-md text-[10px] font-bold text-white z-20',
             config.labelBg
           )}
         >
@@ -308,12 +308,19 @@ export function DeckCard({
                 <span className="text-green-400 font-medium">{currentHp}/{hp}</span>
               </div>
               {abilityInfo && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Способность</span>
-                  <span className="text-purple-400 font-medium flex items-center gap-1">
+                <div className="mt-1 pt-1 border-t border-white/10">
+                  <div className="flex items-center gap-1 text-xs text-purple-400 font-medium mb-1">
                     <Sparkles className="w-3 h-3" />
-                    {abilityInfo.name}
-                  </span>
+                    {abilityInfo.emoji} {abilityInfo.name}
+                  </div>
+                  <p className="text-[10px] text-gray-400 leading-relaxed">
+                    {abilityInfo.description}
+                  </p>
+                  {abilityInfo.cooldown > 0 && (
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      Перезарядка: {abilityInfo.cooldown} ход(а)
+                    </p>
+                  )}
                 </div>
               )}
               {createdAt && (

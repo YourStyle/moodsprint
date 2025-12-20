@@ -38,6 +38,8 @@ interface CardEarned {
 
 interface TaskWithXP extends TaskResponse, Partial<XPReward> {
   card_earned?: CardEarned;
+  quick_completion?: boolean;
+  quick_completion_message?: string;
 }
 
 interface SubtaskResponse {
@@ -46,6 +48,8 @@ interface SubtaskResponse {
 
 interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {
   card_earned?: CardEarned;
+  quick_completion?: boolean;
+  quick_completion_message?: string;
 }
 
 interface DecomposeResponse {

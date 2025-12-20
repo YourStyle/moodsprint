@@ -1,21 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Bell, Clock } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, dueDate: string) => void;
+  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
   initialDueDate?: string;
+  initialScheduledAt?: string;
   submitLabel?: string;
 }
 
 const formatDateForInput = (date: Date): string => {
   return date.toISOString().split('T')[0];
+};
+
+const formatTimeForInput = (date: Date): string => {
+  return date.toTimeString().slice(0, 5); // HH:MM
 };
 
 export function TaskForm({
@@ -24,6 +29,7 @@ export function TaskForm({
   initialTitle = '',
   initialDescription = '',
   initialDueDate,
+  initialScheduledAt,
   submitLabel,
 }: TaskFormProps) {
   const { t, language } = useLanguage();
@@ -31,10 +37,24 @@ export function TaskForm({
   const [description, setDescription] = useState(initialDescription);
   const [dueDate, setDueDate] = useState(initialDueDate || formatDateForInput(new Date()));
 
+  // Reminder state
+  const [enableReminder, setEnableReminder] = useState(!!initialScheduledAt);
+  const [reminderDate, setReminderDate] = useState(
+    initialScheduledAt ? initialScheduledAt.split('T')[0] : formatDateForInput(new Date())
+  );
+  const [reminderTime, setReminderTime] = useState(
+    initialScheduledAt ? initialScheduledAt.split('T')[1]?.slice(0, 5) : formatTimeForInput(new Date(Date.now() + 3600000))
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit(title.trim(), description.trim(), dueDate);
+      let scheduledAt: string | undefined;
+      if (enableReminder && reminderDate && reminderTime) {
+        // Create ISO string from local date and time
+        scheduledAt = `${reminderDate}T${reminderTime}:00`;
+      }
+      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt);
     }
   };
 
@@ -112,6 +132,53 @@ export function TaskForm({
             />
           </label>
         </div>
+      </div>
+
+      {/* Reminder section */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enableReminder}
+            onChange={(e) => setEnableReminder(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary-500 focus:ring-primary-500 focus:ring-offset-gray-800"
+          />
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-300">
+            <Bell className="w-4 h-4" />
+            {t('setReminder')}
+          </span>
+        </label>
+
+        {enableReminder && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                {t('date')}
+              </label>
+              <input
+                type="date"
+                value={reminderDate}
+                onChange={(e) => setReminderDate(e.target.value)}
+                min={today}
+                className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                {t('time')}
+              </label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Button

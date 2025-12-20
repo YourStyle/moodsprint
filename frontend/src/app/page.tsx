@@ -216,7 +216,7 @@ function TaskCardCompact({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className={`text-sm font-medium truncate ${isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
+          <h3 className={`text-sm font-medium ${isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
             {task.title}
           </h3>
           {!isCompleted && hasSubtasks && !hasActiveSession && (
@@ -328,7 +328,7 @@ export default function HomePage() {
   }, [weekTasksData]);
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; due_date: string }) =>
+    mutationFn: (input: { title: string; description: string; due_date: string; scheduled_at?: string }) =>
       tasksService.createTask(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -400,8 +400,8 @@ export default function HomePage() {
     return activeSessions.find(s => s.task_id === taskId);
   };
 
-  const handleCreateTask = (title: string, description: string, dueDate: string) => {
-    createMutation.mutate({ title, description, due_date: dueDate });
+  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string) => {
+    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt });
   };
 
   // Check for postponed tasks notification

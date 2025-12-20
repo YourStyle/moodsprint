@@ -168,6 +168,8 @@ export default function TaskDetailPage() {
   const [showEditTask, setShowEditTask] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [editTaskType, setEditTaskType] = useState<TaskType | null>(null);
   const [showEditSubtask, setShowEditSubtask] = useState(false);
   const [editingSubtask, setEditingSubtask] = useState<{ id: number; title: string; estimated_minutes: number } | null>(null);
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
@@ -246,7 +248,11 @@ export default function TaskDetailPage() {
       }
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
-        setEarnedCard(result.data.card_earned);
+        setEarnedCard({
+          ...result.data.card_earned,
+          quick_completion: result.data.quick_completion,
+          quick_completion_message: result.data.quick_completion_message,
+        });
         setShowCardModal(true);
       }
       hapticFeedback('success');
@@ -393,7 +399,11 @@ export default function TaskDetailPage() {
       }
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
-        setEarnedCard(result.data.card_earned);
+        setEarnedCard({
+          ...result.data.card_earned,
+          quick_completion: result.data.quick_completion,
+          quick_completion_message: result.data.quick_completion_message,
+        });
         setShowCardModal(true);
       }
       hapticFeedback('success');
@@ -423,7 +433,7 @@ export default function TaskDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: (data: { title?: string; description?: string }) =>
+    mutationFn: (data: { title?: string; description?: string; priority?: 'low' | 'medium' | 'high'; task_type?: TaskType }) =>
       tasksService.updateTask(taskId, data),
     onSuccess: () => {
       refetch();
@@ -497,23 +507,27 @@ export default function TaskDetailPage() {
   return (
     <div className="p-4 space-y-4 pt-safe">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-white truncate">{task.title}</h1>
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <h1 className="text-lg font-bold text-white break-words">{task.title}</h1>
         </div>
-        <button
-          onClick={() => {
-            setEditTitle(task.title);
-            setEditDescription(task.description || '');
-            setShowEditTask(true);
-          }}
-          className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white"
-        >
-          <Pencil className="w-5 h-5" />
-        </button>
+        {task.status !== 'completed' && (
+          <button
+            onClick={() => {
+              setEditTitle(task.title);
+              setEditDescription(task.description || '');
+              setEditPriority(task.priority as 'low' | 'medium' | 'high');
+              setEditTaskType(task.task_type as TaskType | null);
+              setShowEditTask(true);
+            }}
+            className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white flex-shrink-0"
+          >
+            <Pencil className="w-5 h-5" />
+          </button>
+        )}
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="p-2 hover:bg-red-500/20 rounded-full text-gray-400 hover:text-red-500"
+          className="p-2 hover:bg-red-500/20 rounded-full text-gray-400 hover:text-red-500 flex-shrink-0"
         >
           <Trash2 className="w-5 h-5" />
         </button>
@@ -524,14 +538,20 @@ export default function TaskDetailPage() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
             {task.task_type && (
-              <button
-                onClick={() => setShowTypeModal(true)}
-                className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${TASK_TYPE_COLORS[task.task_type]}`}
-              >
-                {TASK_TYPE_EMOJIS[task.task_type]} {TASK_TYPE_LABELS[task.task_type]}
-              </button>
+              task.status !== 'completed' ? (
+                <button
+                  onClick={() => setShowTypeModal(true)}
+                  className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${TASK_TYPE_COLORS[task.task_type]}`}
+                >
+                  {TASK_TYPE_EMOJIS[task.task_type]} {TASK_TYPE_LABELS[task.task_type]}
+                </button>
+              ) : (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${TASK_TYPE_COLORS[task.task_type]}`}>
+                  {TASK_TYPE_EMOJIS[task.task_type]} {TASK_TYPE_LABELS[task.task_type]}
+                </span>
+              )
             )}
-            {!task.task_type && (
+            {!task.task_type && task.status !== 'completed' && (
               <button
                 onClick={() => setShowTypeModal(true)}
                 className="text-xs px-2 py-0.5 rounded-full bg-gray-600/50 text-gray-400 border border-dashed border-gray-500 hover:bg-gray-600"
@@ -539,12 +559,18 @@ export default function TaskDetailPage() {
                 {t('addType')}
               </button>
             )}
-            <button
-              onClick={() => setShowPriorityModal(true)}
-              className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${PRIORITY_COLORS[task.priority]}`}
-            >
-              {task.priority === 'low' ? t('priorityLow') : task.priority === 'medium' ? t('priorityMedium') : t('priorityHigh')}
-            </button>
+            {task.status !== 'completed' ? (
+              <button
+                onClick={() => setShowPriorityModal(true)}
+                className={`text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 ${PRIORITY_COLORS[task.priority]}`}
+              >
+                {task.priority === 'low' ? t('priorityLow') : task.priority === 'medium' ? t('priorityMedium') : t('priorityHigh')}
+              </button>
+            ) : (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLORS[task.priority]}`}>
+                {task.priority === 'low' ? t('priorityLow') : task.priority === 'medium' ? t('priorityMedium') : t('priorityHigh')}
+              </span>
+            )}
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               task.status === 'completed'
                 ? 'bg-green-500/20 text-green-400'
@@ -556,10 +582,10 @@ export default function TaskDetailPage() {
             </span>
           </div>
           <span className="text-sm text-gray-500">
-            {task.progress_percent}{t('percentComplete')}
+            {task.status === 'completed' ? 100 : task.progress_percent}{t('percentComplete')}
           </span>
         </div>
-        <Progress value={task.progress_percent} color="primary" />
+        <Progress value={task.status === 'completed' ? 100 : task.progress_percent} color={task.status === 'completed' ? 'success' : 'primary'} />
       </Card>
 
       {/* Action Buttons or Active Session Timer */}
@@ -781,9 +807,53 @@ export default function TaskDetailPage() {
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               placeholder={t('taskDescriptionPlaceholder')}
-              rows={4}
+              rows={3}
               className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
+          </div>
+          {/* Priority */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              {t('taskPriority')}
+            </label>
+            <div className="flex gap-2">
+              {(['low', 'medium', 'high'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setEditPriority(p)}
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
+                    editPriority === p
+                      ? `${PRIORITY_COLORS[p]} ring-2 ring-offset-2 ring-offset-gray-900`
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {p === 'low' ? t('priorityLow') : p === 'medium' ? t('priorityMedium') : t('priorityHigh')}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Task Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              {t('taskType')}
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {TASK_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setEditTaskType(type)}
+                  className={`p-2 rounded-xl text-center transition-all ${
+                    editTaskType === type
+                      ? `${TASK_TYPE_COLORS[type]} ring-2 ring-offset-2 ring-offset-gray-900`
+                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                  }`}
+                >
+                  <span className="text-lg">{TASK_TYPE_EMOJIS[type]}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex gap-3">
             <Button
@@ -797,6 +867,8 @@ export default function TaskDetailPage() {
               onClick={() => updateTaskMutation.mutate({
                 title: editTitle.trim(),
                 description: editDescription.trim() || undefined,
+                priority: editPriority,
+                task_type: editTaskType || undefined,
               })}
               isLoading={updateTaskMutation.isPending}
               disabled={!editTitle.trim()}

@@ -509,6 +509,80 @@ def reject_friend_request(request_id: int):
     return success_response({"message": "Запрос отклонён"})
 
 
+@api_bp.route("/friends/connect-referral", methods=["POST"])
+@jwt_required()
+def connect_referral():
+    """
+    Connect with referrer (auto-accept friendship).
+    Used when existing user clicks invite link.
+
+    Request body:
+    {
+        "referrer_id": 123
+    }
+    """
+    from datetime import datetime
+
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    referrer_id = data.get("referrer_id")
+    if not referrer_id:
+        return validation_error({"error": "referrer_id is required"})
+
+    if user_id == referrer_id:
+        return validation_error({"error": "Нельзя добавить себя в друзья"})
+
+    # Check if referrer exists
+    referrer = User.query.get(referrer_id)
+    if not referrer:
+        return not_found("Пользователь не найден")
+
+    # Check if friendship already exists
+    existing = Friendship.query.filter(
+        ((Friendship.user_id == user_id) & (Friendship.friend_id == referrer_id))
+        | ((Friendship.user_id == referrer_id) & (Friendship.friend_id == user_id))
+    ).first()
+
+    if existing:
+        if existing.status == "accepted":
+            return success_response(
+                {
+                    "message": "Вы уже друзья!",
+                    "friendship": existing.to_dict(),
+                    "already_friends": True,
+                }
+            )
+        elif existing.status == "pending":
+            # Auto-accept pending request
+            existing.status = "accepted"
+            existing.accepted_at = datetime.utcnow()
+            db.session.commit()
+            return success_response(
+                {
+                    "message": "Запрос принят! Теперь вы друзья.",
+                    "friendship": existing.to_dict(),
+                }
+            )
+
+    # Create new accepted friendship
+    friendship = Friendship(
+        user_id=referrer_id,
+        friend_id=user_id,
+        status="accepted",
+        accepted_at=datetime.utcnow(),
+    )
+    db.session.add(friendship)
+    db.session.commit()
+
+    return success_response(
+        {
+            "message": "Теперь вы друзья!",
+            "friendship": friendship.to_dict(),
+        }
+    )
+
+
 # ============ Card Trading ============
 
 

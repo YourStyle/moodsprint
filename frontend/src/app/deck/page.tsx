@@ -16,7 +16,7 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, Modal } from '@/components/ui';
 import { DeckCard } from '@/components/cards/DeckCard';
 import { cardsService, mergeService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -781,14 +781,21 @@ export default function DeckPage() {
           )}
 
           {/* Merge result modal */}
-          {showMergeResult && mergeResult && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full text-center animate-in zoom-in-95">
+          <Modal
+            isOpen={showMergeResult && !!mergeResult}
+            onClose={() => {
+              setShowMergeResult(false);
+              setMergeResult(null);
+            }}
+            showClose={false}
+          >
+            {mergeResult && (
+              <div className="text-center">
                 <Sparkles className="w-12 h-12 text-yellow-400 mx-auto mb-4 animate-pulse" />
                 <h3 className="text-xl font-bold text-white mb-2">{t('newCard')}</h3>
                 <p className="text-sm text-gray-400 mb-6">{t('congratsMerge')}</p>
 
-                <div className="flex justify-center mb-6">
+                <div className="flex justify-center mb-6 max-w-[200px] mx-auto">
                   <DeckCard
                     id={mergeResult.id}
                     name={mergeResult.name}
@@ -801,7 +808,7 @@ export default function DeckPage() {
                     rarity={mergeResult.rarity}
                     genre={mergeResult.genre}
                     isInDeck={false}
-                    isGenerating={false}
+                    isGenerating={!mergeResult.image_url}
                     createdAt={mergeResult.created_at}
                     ability={mergeResult.ability}
                     abilityInfo={mergeResult.ability_info}
@@ -818,8 +825,8 @@ export default function DeckPage() {
                   {t('great')}
                 </Button>
               </div>
-            </div>
-          )}
+            )}
+          </Modal>
         </>
       )}
     </div>

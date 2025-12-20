@@ -178,6 +178,18 @@ class CardsService {
     return api.post<{ message: string }>(`/friends/reject/${requestId}`);
   }
 
+  async connectWithReferrer(referrerId: number): Promise<ApiResponse<{
+    message: string;
+    friendship: Friend;
+    already_friends?: boolean;
+  }>> {
+    return api.post<{
+      message: string;
+      friendship: Friend;
+      already_friends?: boolean;
+    }>('/friends/connect-referral', { referrer_id: referrerId });
+  }
+
   async getFriendCards(friendId: number): Promise<ApiResponse<{ cards: Card[]; total: number }>> {
     return api.get<{ cards: Card[]; total: number }>(`/friends/${friendId}/cards`);
   }

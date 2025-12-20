@@ -137,12 +137,13 @@ def get_tasks():
         current_time_slot = get_current_time_slot()
         today = date.today()
 
-        # Sort tasks by score (descending), then by due_date (ascending)
+        # Sort by score (desc), due_date (asc), created_at (desc - newer first)
         sorted_tasks = sorted(
             all_tasks,
             key=lambda t: (
                 -calculate_task_score(t, current_time_slot, favorite_types, today),
                 t.due_date or date.max,
+                -t.created_at.timestamp() if t.created_at else 0,
             ),
         )
 

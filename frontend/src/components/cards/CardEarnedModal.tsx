@@ -17,6 +17,8 @@ export interface EarnedCard {
   attack: number;
   emoji: string;
   image_url?: string | null;
+  quick_completion?: boolean;
+  quick_completion_message?: string;
 }
 
 // Rarity colors
@@ -137,6 +139,13 @@ export function CardEarnedModal({ isOpen, card, onClose, t }: CardEarnedModalPro
             {t(rarityKey)}
           </span>
         </div>
+
+        {/* Quick completion warning */}
+        {card.quick_completion && card.quick_completion_message && (
+          <div className="bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded-lg p-3 text-xs text-center mb-4">
+            {card.quick_completion_message}
+          </div>
+        )}
 
         <p className="text-gray-400 text-sm text-center mb-4">
           {t('cardAddedToCollection')}

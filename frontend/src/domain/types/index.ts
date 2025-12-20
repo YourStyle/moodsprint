@@ -320,6 +320,23 @@ export interface OnboardingInput {
   goals?: string;
 }
 
+export interface ReferralRewardCard {
+  id: number;
+  name: string;
+  description: string | null;
+  genre: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  hp: number;
+  attack: number;
+  emoji: string;
+}
+
+export interface ReferralRewards {
+  starter_deck?: ReferralRewardCard[];
+  referrer_rewarded?: boolean;
+  referrer_card_rarity?: string;
+}
+
 export interface OnboardingResponse {
   profile: UserProfile;
   analysis: {
@@ -330,6 +347,7 @@ export interface OnboardingResponse {
     recommended_session_duration: number;
   };
   welcome_message: string;
+  referral_rewards?: ReferralRewards;
 }
 
 // ============ API Responses ============

@@ -3,12 +3,29 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Heart, Swords, Gift } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { onboardingService, gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
-import type { OnboardingInput } from '@/domain/types';
+import type { OnboardingInput, ReferralRewardCard } from '@/domain/types';
 import type { Genre } from '@/services/gamification';
+
+const RARITY_COLORS: Record<string, string> = {
+  common: '#9CA3AF',
+  uncommon: '#22C55E',
+  rare: '#3B82F6',
+  epic: '#A855F7',
+  legendary: '#F59E0B',
+};
+
+const RARITY_LABELS: Record<string, string> = {
+  common: 'Обычная',
+  uncommon: 'Необычная',
+  rare: 'Редкая',
+  epic: 'Эпическая',
+  legendary: 'Легендарная',
+};
 
 type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'result';
 
@@ -91,6 +108,7 @@ export default function OnboardingPage() {
     message: string;
     tips: string[];
   } | null>(null);
+  const [starterDeck, setStarterDeck] = useState<ReferralRewardCard[]>([]);
 
   // Check if onboarding is already completed
   const { data: statusData } = useQuery({
@@ -125,6 +143,10 @@ export default function OnboardingPage() {
           message: response.data.welcome_message,
           tips: response.data.analysis.personalized_tips,
         });
+        // Save starter deck if present (from referral)
+        if (response.data.referral_rewards?.starter_deck) {
+          setStarterDeck(response.data.referral_rewards.starter_deck);
+        }
         setOnboardingCompleted(true);
         setStep('result');
         hapticFeedback('success');
@@ -375,6 +397,62 @@ export default function OnboardingPage() {
               <h1 className="text-2xl font-bold text-white mb-2">Готово!</h1>
               <p className="text-gray-400">{result.message}</p>
             </div>
+
+            {/* Starter deck from referral */}
+            {starterDeck.length > 0 && (
+              <Card className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Gift className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-medium text-white">
+                    Подарочные карты!
+                  </h3>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">
+                  Вы получили стартовую колоду за приглашение:
+                </p>
+                <div className="space-y-3">
+                  {starterDeck.map((card) => {
+                    const rarityColor = RARITY_COLORS[card.rarity] || '#9CA3AF';
+                    return (
+                      <div
+                        key={card.id}
+                        className="rounded-xl p-3 border"
+                        style={{
+                          borderColor: rarityColor + '50',
+                          background: `linear-gradient(135deg, ${rarityColor}20, ${rarityColor}10)`,
+                        }}
+                      >
+                        <div
+                          className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white mb-2"
+                          style={{ backgroundColor: rarityColor }}
+                        >
+                          {RARITY_LABELS[card.rarity]}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{card.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-white truncate">{card.name}</h4>
+                            {card.description && (
+                              <p className="text-xs text-gray-400 truncate">{card.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 text-xs">
+                              <span className="text-red-400 flex items-center gap-1">
+                                <Swords className="w-3 h-3" />
+                                {card.attack}
+                              </span>
+                              <span className="text-green-400 flex items-center gap-1">
+                                <Heart className="w-3 h-3" />
+                                {card.hp}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             {result.tips.length > 0 && (
               <Card className="mb-6">

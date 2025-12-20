@@ -54,6 +54,9 @@ export const translations = {
     whenToComplete: 'Когда выполнить',
     other: 'Другой',
     noTasksForDate: 'Нет задач на',
+    setReminder: 'Напомнить',
+    date: 'Дата',
+    time: 'Время',
     viewAll: 'Посмотреть все',
 
     // Priority
@@ -338,6 +341,9 @@ export const translations = {
     whenToComplete: 'When to complete',
     other: 'Other',
     noTasksForDate: 'No tasks for',
+    setReminder: 'Remind me',
+    date: 'Date',
+    time: 'Time',
     viewAll: 'View all',
 
     // Priority

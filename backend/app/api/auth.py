@@ -1,11 +1,14 @@
 """Authentication API endpoints."""
 
+from datetime import datetime
+
 from flask import request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
 from app.models import User
+from app.models.card import Friendship
 from app.utils import (
     parse_telegram_user,
     success_response,
@@ -72,6 +75,17 @@ def authenticate_telegram():
             referred_by=referrer_id,
         )
         db.session.add(user)
+        db.session.flush()  # Get user.id before commit
+
+        # Auto-create accepted friendship with referrer
+        if referrer_id:
+            friendship = Friendship(
+                user_id=referrer_id,
+                friend_id=user.id,
+                status="accepted",
+                accepted_at=datetime.utcnow(),
+            )
+            db.session.add(friendship)
 
     db.session.commit()
 
