@@ -28,6 +28,7 @@ export interface DeckCardProps {
   isGenerating?: boolean;
   createdAt?: string | null;
   onClick?: () => void;
+  onInfoClick?: () => void; // External handler - if provided, shows info in sheet instead of flip
   compact?: boolean;
   ability?: string | null;
   abilityInfo?: SimpleAbilityInfo | null;
@@ -98,6 +99,7 @@ export function DeckCard({
   isGenerating = false,
   createdAt,
   onClick,
+  onInfoClick,
   compact = false,
   ability,
   abilityInfo,
@@ -108,7 +110,11 @@ export function DeckCard({
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!compact) {
-      setIsFlipped(!isFlipped);
+      if (onInfoClick) {
+        onInfoClick();
+      } else {
+        setIsFlipped(!isFlipped);
+      }
     }
   };
 
@@ -161,19 +167,20 @@ export function DeckCard({
           <div className={cn('absolute inset-0 bg-gradient-to-br', config.gradient)} />
 
           <div className="relative h-full flex flex-col p-2">
-            {/* Info button */}
+            {/* Info button - more visible */}
             {!compact && (
               <button
                 onClick={handleInfoClick}
                 className={cn(
                   'absolute top-1.5 right-1.5 z-10',
-                  'w-6 h-6 rounded-full',
-                  'bg-gray-800/80 backdrop-blur-sm border border-white/20',
+                  'w-7 h-7 rounded-full',
+                  'bg-white/90 backdrop-blur-sm border-2 border-gray-200',
                   'flex items-center justify-center',
-                  'hover:bg-gray-700/80 transition-colors'
+                  'hover:bg-white transition-colors shadow-lg',
+                  'active:scale-95'
                 )}
               >
-                <Info className="w-3.5 h-3.5 text-white/80" />
+                <Info className="w-4 h-4 text-gray-700" />
               </button>
             )}
 

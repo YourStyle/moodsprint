@@ -357,7 +357,15 @@ export default function HomePage() {
       const result = await tasksService.createTask(input);
       if (result.success && result.data?.task && input.autoDecompose) {
         // Auto-decompose the task after creation
-        await tasksService.decomposeTask(result.data.task.id, latestMood?.id);
+        try {
+          const decomposeResult = await tasksService.decomposeTask(result.data.task.id, latestMood?.id);
+          // Invalidate queries to show new subtasks
+          if (decomposeResult.success) {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          }
+        } catch (err) {
+          console.error('[AutoDecompose] Failed:', err);
+        }
       }
       return result;
     },

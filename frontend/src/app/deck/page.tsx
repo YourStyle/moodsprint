@@ -17,7 +17,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { Card, Button, Modal } from '@/components/ui';
-import { DeckCard } from '@/components/cards/DeckCard';
+import { DeckCard, CardInfoSheet } from '@/components/cards';
 import { cardsService, mergeService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
@@ -60,6 +60,7 @@ export default function DeckPage() {
   const [activeTab, setActiveTab] = useState<Tab>('collection');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
+  const [infoCard, setInfoCard] = useState<CardType | null>(null);
 
   // Merge state
   const [mergeCard1, setMergeCard1] = useState<CardType | null>(null);
@@ -423,6 +424,7 @@ export default function DeckPage() {
                     ability={card.ability}
                     abilityInfo={card.ability_info}
                     onClick={() => handleCardClick(card)}
+                    onInfoClick={() => setInfoCard(card)}
                   />
                 ))}
               </div>
@@ -531,6 +533,7 @@ export default function DeckPage() {
                     ability={card.ability}
                     abilityInfo={card.ability_info}
                     onClick={() => handleCardClick(card)}
+                    onInfoClick={() => setInfoCard(card)}
                   />
                 ))}
               </div>
@@ -829,6 +832,25 @@ export default function DeckPage() {
           </Modal>
         </>
       )}
+
+      {/* Card Info Sheet */}
+      <CardInfoSheet
+        isOpen={!!infoCard}
+        onClose={() => setInfoCard(null)}
+        card={infoCard ? {
+          name: infoCard.name,
+          description: infoCard.description,
+          emoji: infoCard.emoji,
+          imageUrl: infoCard.image_url,
+          hp: infoCard.hp,
+          currentHp: infoCard.current_hp,
+          attack: infoCard.attack,
+          rarity: infoCard.rarity,
+          genre: infoCard.genre,
+          createdAt: infoCard.created_at,
+          abilityInfo: infoCard.ability_info,
+        } : null}
+      />
     </div>
   );
 }
