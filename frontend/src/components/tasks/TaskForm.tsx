@@ -55,8 +55,9 @@ export function TaskForm({
     if (title.trim()) {
       let scheduledAt: string | undefined;
       if (enableReminder && reminderDate && reminderTime) {
-        // Create ISO string from local date and time
-        scheduledAt = `${reminderDate}T${reminderTime}:00`;
+        // Create Date from local date and time, then convert to UTC ISO string
+        const localDate = new Date(`${reminderDate}T${reminderTime}:00`);
+        scheduledAt = localDate.toISOString();
       }
       onSubmit(title.trim(), description.trim(), dueDate, scheduledAt, showAutoDecompose && autoDecompose);
     }
