@@ -290,7 +290,7 @@ export default function FriendsPage() {
     const isGiftMode = !selectedFriendCard;
 
     return (
-      <div className="min-h-screen p-4 pt-safe pb-24">
+      <div className="min-h-screen p-4 pt-safe pb-4">
         <div className="text-center mb-6">
           {isGiftMode ? (
             <Gift className="w-10 h-10 text-pink-500 mx-auto mb-2" />
@@ -401,7 +401,7 @@ export default function FriendsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pt-safe pb-24">
+    <div className="min-h-screen p-4 pt-safe pb-4">
       {/* Header */}
       <div className="text-center mb-4">
         <Users className="w-10 h-10 text-purple-500 mx-auto mb-2" />

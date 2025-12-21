@@ -325,7 +325,7 @@ export default function ArenaPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pt-safe pb-24">
+    <div className="min-h-screen p-4 pt-safe pb-4">
       {/* Header */}
       <div className="text-center mb-4">
         <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />

@@ -90,7 +90,7 @@ export function CardEarnedModal({ isOpen, card, onClose, t }: CardEarnedModalPro
     <Modal isOpen={isOpen} onClose={onClose} title={t('newCardTitle')}>
       <div className="flex flex-col items-center">
         {/* Card Preview */}
-        <div className={`w-52 h-72 rounded-2xl bg-gradient-to-br ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} p-1.5 mb-4`}>
+        <div className={`w-56 h-80 rounded-2xl bg-gradient-to-br ${RARITY_COLORS[card.rarity] || RARITY_COLORS.common} p-1.5 mb-4`}>
           <div className="w-full h-full bg-gray-900 rounded-xl flex flex-col overflow-hidden">
             {/* Card Image or Emoji */}
             <div className="flex-1 flex items-center justify-center bg-gray-800 relative">
