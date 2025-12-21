@@ -115,7 +115,7 @@ export function CardEarnedModal({ isOpen, card, onClose, t }: CardEarnedModalPro
             </div>
 
             {/* Card Info */}
-            <div className="p-2 space-y-1">
+            <div className="p-2 pb-3 space-y-1">
               <p className="text-white font-bold text-sm truncate">{card.name}</p>
               <p className="text-gray-400 text-xs truncate">{card.description}</p>
 

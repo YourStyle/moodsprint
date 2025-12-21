@@ -676,9 +676,9 @@ export default function ArenaPage() {
               </div>
 
               {/* Attack Button */}
-              <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
+              <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-30">
                 <Button
-                  className="w-full"
+                  className="w-full disabled:opacity-100"
                   onClick={handleExecuteTurn}
                   disabled={!canAttack}
                   isLoading={executeTurnMutation.isPending}

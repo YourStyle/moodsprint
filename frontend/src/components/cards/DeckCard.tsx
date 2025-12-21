@@ -269,7 +269,7 @@ export function DeckCard({
         >
           <div className={cn('absolute inset-0 bg-gradient-to-br', config.gradient)} />
 
-          <div className="relative h-full flex flex-col p-3">
+          <div className="relative h-full flex flex-col p-3 pb-4">
             {/* Header */}
             <div className="text-center mb-3">
               <span className="text-2xl">{emoji || '🎴'}</span>

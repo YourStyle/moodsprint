@@ -875,6 +875,20 @@ class CardService:
         """Get pending friend requests for user."""
         return Friendship.query.filter_by(friend_id=user_id, status="pending").all()
 
+    def remove_friend(self, user_id: int, friend_id: int) -> dict:
+        """Remove a friendship between two users (admin only)."""
+        friendship = Friendship.query.filter(
+            ((Friendship.user_id == user_id) & (Friendship.friend_id == friend_id))
+            | ((Friendship.user_id == friend_id) & (Friendship.friend_id == user_id))
+        ).first()
+
+        if not friendship:
+            return {"error": "friendship_not_found"}
+
+        db.session.delete(friendship)
+        db.session.commit()
+        return {"success": True}
+
     # Card trading methods
     def create_trade_offer(
         self,

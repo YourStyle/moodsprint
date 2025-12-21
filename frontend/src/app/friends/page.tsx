@@ -314,7 +314,7 @@ export default function FriendsPage() {
               <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
               {myCards.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">
                   Нет карт для обмена
@@ -349,7 +349,7 @@ export default function FriendsPage() {
               <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
               {friendCards.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">
                   У друга нет карт для обмена
@@ -634,14 +634,14 @@ export default function FriendsPage() {
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Предлагает</p>
+                              <p className="text-xs text-gray-500 mb-2">Предлагает</p>
                               {trade.sender_card && renderCardMini(trade.sender_card)}
                             </div>
                             <div className="flex justify-center">
                               <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Хочет</p>
+                              <p className="text-xs text-gray-500 mb-2">Хочет</p>
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
                               ) : (
@@ -704,14 +704,14 @@ export default function FriendsPage() {
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Ваша карта</p>
+                              <p className="text-xs text-gray-500 mb-2">Ваша карта</p>
                               {trade.sender_card && renderCardMini(trade.sender_card)}
                             </div>
                             <div className="flex justify-center">
                               <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Взамен</p>
+                              <p className="text-xs text-gray-500 mb-2">Взамен</p>
                               {trade.receiver_card ? (
                                 renderCardMini(trade.receiver_card)
                               ) : (

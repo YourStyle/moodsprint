@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Bell, Clock } from 'lucide-react';
+import { Calendar, Bell, Clock, Sparkles } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string) => void;
+  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
@@ -46,6 +46,10 @@ export function TaskForm({
     initialScheduledAt ? initialScheduledAt.split('T')[1]?.slice(0, 5) : formatTimeForInput(new Date(Date.now() + 3600000))
   );
 
+  // Auto-decompose state
+  const [autoDecompose, setAutoDecompose] = useState(false);
+  const showAutoDecompose = description.length >= 50;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
@@ -54,7 +58,7 @@ export function TaskForm({
         // Create ISO string from local date and time
         scheduledAt = `${reminderDate}T${reminderTime}:00`;
       }
-      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt);
+      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt, showAutoDecompose && autoDecompose);
     }
   };
 
@@ -86,6 +90,27 @@ export function TaskForm({
         onChange={(e) => setDescription(e.target.value)}
         rows={3}
       />
+
+      {/* Auto-decompose toggle - appears when description is long enough */}
+      {showAutoDecompose && (
+        <label className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
+          <span className="flex items-center gap-2 text-sm font-medium text-purple-300">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            {t('autoDecomposeWithAI')}
+          </span>
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={autoDecompose}
+              onChange={(e) => setAutoDecompose(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={`w-10 h-5 rounded-full transition-colors ${autoDecompose ? 'bg-purple-500' : 'bg-gray-600'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoDecompose ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+          </div>
+        </label>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -136,17 +161,22 @@ export function TaskForm({
 
       {/* Reminder section */}
       <div>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={enableReminder}
-            onChange={(e) => setEnableReminder(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary-500 focus:ring-primary-500 focus:ring-offset-gray-800"
-          />
-          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-300">
-            <Bell className="w-4 h-4" />
+        <label className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-gray-800/50 border border-gray-700">
+          <span className="flex items-center gap-2 text-sm font-medium text-gray-300">
+            <Bell className="w-4 h-4 text-primary-400" />
             {t('setReminder')}
           </span>
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={enableReminder}
+              onChange={(e) => setEnableReminder(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={`w-10 h-5 rounded-full transition-colors ${enableReminder ? 'bg-primary-500' : 'bg-gray-600'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enableReminder ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+          </div>
         </label>
 
         {enableReminder && (

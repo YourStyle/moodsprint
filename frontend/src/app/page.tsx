@@ -353,8 +353,14 @@ export default function HomePage() {
   }, [weekTasksData]);
 
   const createMutation = useMutation({
-    mutationFn: (input: { title: string; description: string; due_date: string; scheduled_at?: string }) =>
-      tasksService.createTask(input),
+    mutationFn: async (input: { title: string; description: string; due_date: string; scheduled_at?: string; autoDecompose?: boolean }) => {
+      const result = await tasksService.createTask(input);
+      if (result.success && result.data?.task && input.autoDecompose) {
+        // Auto-decompose the task after creation
+        await tasksService.decomposeTask(result.data.task.id, latestMood?.id);
+      }
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setShowCreateModal(false);
@@ -441,8 +447,8 @@ export default function HomePage() {
     return activeSessions.find(s => s.task_id === taskId);
   };
 
-  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string) => {
-    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt });
+  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean) => {
+    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt, autoDecompose });
   };
 
   // Toggle compact mode
@@ -766,6 +772,15 @@ export default function HomePage() {
                               <span className={`text-sm flex-1 min-w-0 ${task.status === 'completed' ? 'text-gray-500 line-through' : 'text-white'}`}>
                                 {task.title}
                               </span>
+                              {task.status !== 'completed' && session && (
+                                <MiniTimer
+                                  session={session}
+                                  onPause={() => pauseSessionMutation.mutate(session.id)}
+                                  onResume={() => resumeSessionMutation.mutate(session.id)}
+                                  onComplete={() => completeTaskMutation.mutate(task.id)}
+                                  onStop={() => cancelSessionMutation.mutate(session.id)}
+                                />
+                              )}
                               {task.status !== 'completed' && !session && (
                                 <div className="flex items-center gap-1">
                                   <button
@@ -803,7 +818,7 @@ export default function HomePage() {
                             activeSession={session}
                             onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
                             onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
-                            onComplete={session ? () => completeSessionMutation.mutate(session.id) : undefined}
+                            onComplete={session ? () => completeTaskMutation.mutate(task.id) : undefined}
                             onStop={session ? () => cancelSessionMutation.mutate(session.id) : undefined}
                           />
                         );

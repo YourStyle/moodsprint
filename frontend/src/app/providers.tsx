@@ -55,10 +55,6 @@ function AuthProvider({ children }: { children: ReactNode }) {
           disableVerticalSwipes();
         }
 
-        // Set safe area only for iOS (Android doesn't need it)
-        if (!isIOSDevice()) {
-          document.documentElement.style.setProperty('--safe-area-top', '0px');
-        }
       }
 
       try {

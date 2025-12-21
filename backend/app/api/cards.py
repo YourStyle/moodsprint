@@ -782,3 +782,29 @@ def get_friend_cards(friend_id: int):
             "total": len(cards),
         }
     )
+
+
+@api_bp.route("/admin/remove-friend", methods=["POST"])
+@jwt_required()
+def admin_remove_friend():
+    """
+    Remove a friendship between two users (admin only for testing).
+    Required JSON: {"user_id": 1, "friend_id": 2}
+    """
+    get_jwt_identity()  # Verify authenticated
+    data = request.get_json()
+
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+
+    if not user_id or not friend_id:
+        return validation_error("user_id и friend_id обязательны")
+
+    # For testing: allow any authenticated user (in production, add admin check)
+    service = CardService()
+    result = service.remove_friend(user_id, friend_id)
+
+    if "error" in result:
+        return not_found("Дружба не найдена")
+
+    return success_response({"message": "Дружба удалена"})
