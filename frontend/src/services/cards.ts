@@ -283,6 +283,10 @@ class CardsService {
     return api.get<PendingRewardsResponse>('/cards/pending-rewards');
   }
 
+  async getPendingRewardsCount(): Promise<ApiResponse<{ count: number }>> {
+    return api.get<{ count: number }>('/cards/pending-rewards/count');
+  }
+
   async claimPendingRewards(): Promise<ApiResponse<{ claimed: number; message: string }>> {
     return api.post<{ claimed: number; message: string }>('/cards/pending-rewards/claim');
   }

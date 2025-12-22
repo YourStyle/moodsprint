@@ -148,6 +148,13 @@ async def main():
         id="monster_rotation",
     )
 
+    # New referral notifications - check every hour
+    scheduler.add_job(
+        notification_service.send_new_referral_notifications,
+        CronTrigger(minute=15, timezone=MOSCOW_TZ),  # Every hour at :15
+        id="referral_notifications",
+    )
+
     scheduler.start()
 
     # Set bot commands

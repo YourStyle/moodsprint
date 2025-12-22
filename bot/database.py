@@ -628,3 +628,49 @@ async def delete_task(task_id: int):
             {"task_id": task_id},
         )
         await session.commit()
+
+
+async def get_users_with_pending_referrals() -> list[dict]:
+    """
+    Get users who have pending referral rewards that haven't been notified.
+    Returns users with pending_count > 0 who need notification.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    u.telegram_id,
+                    u.first_name,
+                    COUNT(pr.id) as pending_count
+                FROM users u
+                JOIN pending_referral_rewards pr ON pr.user_id = u.id
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE pr.is_claimed = false
+                  AND pr.notified_at IS NULL
+                  AND COALESCE(up.notifications_enabled, true) = true
+                GROUP BY u.id, u.telegram_id, u.first_name
+                HAVING COUNT(pr.id) > 0
+            """
+            )
+        )
+        users = [dict(row._mapping) for row in result.fetchall()]
+
+        # Mark as notified
+        if users:
+            user_ids = [u["telegram_id"] for u in users]
+            await session.execute(
+                text(
+                    """
+                    UPDATE pending_referral_rewards
+                    SET notified_at = NOW()
+                    WHERE user_id IN (SELECT id FROM users WHERE telegram_id = ANY(:tids))
+                      AND is_claimed = false
+                      AND notified_at IS NULL
+                """
+                ),
+                {"tids": user_ids},
+            )
+            await session.commit()
+
+        return users

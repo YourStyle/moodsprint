@@ -570,3 +570,58 @@ class NotificationService:
                         )
         except Exception as e:
             logger.error(f"Monster rotation error: {e}")
+
+    async def send_new_referral_notifications(self):
+        """
+        Send notifications to users who have new friends via referral.
+        Runs every hour and notifies users with pending referral rewards.
+        """
+        from database import get_users_with_pending_referrals
+
+        logger.info("Checking for new referral notifications...")
+
+        users = await get_users_with_pending_referrals()
+
+        if not users:
+            logger.info("No users with pending referral notifications")
+            return
+
+        sent = 0
+        failed = 0
+
+        for user in users:
+            telegram_id = user["telegram_id"]
+            pending_count = user["pending_count"]
+            first_name = user.get("first_name") or "друг"
+
+            try:
+                if pending_count == 1:
+                    text = (
+                        f"🎉 {first_name}, у тебя новый друг в MoodSprint!\n\n"
+                        "Зайди в раздел Друзья, чтобы увидеть награду 🎁"
+                    )
+                else:
+                    text = (
+                        f"🎉 {first_name}, у тебя +{pending_count} новых друзей "
+                        f"в MoodSprint!\n\n"
+                        "Зайди в раздел Друзья, чтобы увидеть награды 🎁"
+                    )
+
+                await self.bot.send_message(
+                    telegram_id,
+                    text,
+                    reply_markup=get_webapp_button(),
+                )
+                sent += 1
+
+            except (TelegramForbiddenError, TelegramBadRequest):
+                failed += 1
+            except Exception as e:
+                logger.error(
+                    f"Failed to send referral notification to {telegram_id}: {e}"
+                )
+                failed += 1
+
+            await asyncio.sleep(0.05)
+
+        logger.info(f"Referral notifications: {sent} sent, {failed} failed")

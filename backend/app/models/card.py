@@ -585,6 +585,9 @@ class PendingReferralReward(db.Model):
         db.Boolean, default=True
     )  # True = you invited, False = you were invited
     is_claimed = db.Column(db.Boolean, default=False)
+    notified_at = db.Column(
+        db.DateTime, nullable=True
+    )  # When bot notification was sent
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships

@@ -370,6 +370,22 @@ def get_pending_rewards():
     )
 
 
+@api_bp.route("/cards/pending-rewards/count", methods=["GET"])
+@jwt_required()
+def get_pending_rewards_count():
+    """
+    Get count of unclaimed referral rewards.
+    Used to show notification bubble in the UI.
+    """
+    user_id = int(get_jwt_identity())
+
+    count = PendingReferralReward.query.filter_by(
+        user_id=user_id, is_claimed=False
+    ).count()
+
+    return success_response({"count": count})
+
+
 @api_bp.route("/cards/pending-rewards/claim", methods=["POST"])
 @jwt_required()
 def claim_pending_rewards():
@@ -643,16 +659,37 @@ def connect_referral():
     rewards = {}
     try:
         service = CardService()
+        current_user = User.query.get(user_id)
+        invitee_name = current_user.first_name or current_user.username or "друг"
+        referrer_name = referrer.first_name or referrer.username or "друг"
 
         # Give bonus card to the inviter (referrer)
         referrer_card = service.generate_referral_reward(referrer_id)
         if referrer_card:
             rewards["referrer_card"] = referrer_card.to_dict()
+            # Create pending reward for referrer
+            pending_referrer = PendingReferralReward(
+                user_id=referrer_id,
+                friend_id=user_id,
+                friend_name=invitee_name,
+                card_id=referrer_card.id,
+                is_referrer=True,
+            )
+            db.session.add(pending_referrer)
 
         # Give bonus card to the invitee (current user)
         invitee_card = service.generate_referral_reward(user_id)
         if invitee_card:
             rewards["invitee_card"] = invitee_card.to_dict()
+            # Create pending reward for invitee
+            pending_invitee = PendingReferralReward(
+                user_id=user_id,
+                friend_id=referrer_id,
+                friend_name=referrer_name,
+                card_id=invitee_card.id,
+                is_referrer=False,
+            )
+            db.session.add(pending_invitee)
     except Exception as e:
         # Don't fail the friendship creation if card generation fails
         import logging

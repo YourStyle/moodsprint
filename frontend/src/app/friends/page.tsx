@@ -21,11 +21,12 @@ import {
   Gift,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
+import { ReferralRewardModal } from '@/components/cards';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
-import type { Card as CardType, Friend, FriendRequest, Trade } from '@/services/cards';
+import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward } from '@/services/cards';
 
 type Tab = 'friends' | 'requests' | 'trades';
 
@@ -57,6 +58,23 @@ export default function FriendsPage() {
   const [selectedFriendCards, setSelectedFriendCards] = useState<CardType[]>([]);
   const [tradeMessage, setTradeMessage] = useState('');
   const [showTradeForm, setShowTradeForm] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [referralRewards, setReferralRewards] = useState<Array<{
+    friendName?: string;
+    friendId?: number;
+    isReferrer: boolean;
+    cards: Array<{
+      id: number;
+      name: string;
+      description?: string;
+      genre: string;
+      rarity: string;
+      hp: number;
+      attack: number;
+      emoji: string;
+      image_url?: string | null;
+    }>;
+  }>>([]);
 
   // Refetch data on mount to ensure fresh data when navigating to this page
   useEffect(() => {
@@ -65,6 +83,54 @@ export default function FriendsPage() {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
     }
   }, [user, queryClient]);
+
+  // Check for pending referral rewards when page loads
+  const { data: pendingRewardsData } = useQuery({
+    queryKey: ['cards', 'pending-rewards'],
+    queryFn: () => cardsService.getPendingRewards(),
+    enabled: !!user,
+    staleTime: 0, // Always refetch
+  });
+
+  // Show referral modal if there are pending rewards
+  useEffect(() => {
+    if (pendingRewardsData?.data?.rewards && pendingRewardsData.data.rewards.length > 0) {
+      const rewards = pendingRewardsData.data.rewards;
+      const rewardsToShow = rewards
+        .filter((r: PendingReward) => r.card)
+        .map((r: PendingReward) => ({
+          isReferrer: r.is_referrer,
+          friendName: r.friend_name || undefined,
+          friendId: r.friend_id,
+          cards: r.card ? [{
+            id: r.card.id,
+            name: r.card.name,
+            description: r.card.description || undefined,
+            genre: r.card.genre,
+            rarity: r.card.rarity,
+            hp: r.card.hp,
+            attack: r.card.attack,
+            emoji: r.card.emoji,
+            image_url: r.card.image_url,
+          }] : [],
+        }));
+
+      if (rewardsToShow.length > 0) {
+        setReferralRewards(rewardsToShow);
+        setShowReferralModal(true);
+      }
+    }
+  }, [pendingRewardsData]);
+
+  const handleCloseReferralModal = async () => {
+    setShowReferralModal(false);
+    setReferralRewards([]);
+    // Mark rewards as claimed
+    await cardsService.claimPendingRewards();
+    // Invalidate the count query to update the badge
+    queryClient.invalidateQueries({ queryKey: ['cards', 'pending-rewards-count'] });
+    queryClient.invalidateQueries({ queryKey: ['cards', 'pending-rewards'] });
+  };
 
   // Queries
   const { data: friendsData, isLoading: friendsLoading } = useQuery({
@@ -421,7 +487,7 @@ export default function FriendsPage() {
         >
           {isGiftMode ? (
             <>
-              <Gift className="w-4 h-4 mr-2" />
+              <Gift className="w-4 h-4 mr-1" />
               Подарить {selectedMyCards.length > 1 ? `(${selectedMyCards.length})` : ''}
             </>
           ) : (
@@ -800,6 +866,13 @@ export default function FriendsPage() {
           )}
         </>
       )}
+
+      {/* Referral Rewards Modal */}
+      <ReferralRewardModal
+        isOpen={showReferralModal}
+        rewards={referralRewards}
+        onClose={handleCloseReferralModal}
+      />
     </div>
   );
 }

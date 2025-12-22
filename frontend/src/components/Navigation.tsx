@@ -32,7 +32,19 @@ export function Navigation() {
     refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
   });
 
+  // Fetch pending referral rewards count
+  const { data: pendingRewardsData } = useQuery({
+    queryKey: ['cards', 'pending-rewards-count'],
+    queryFn: () => cardsService.getPendingRewardsCount(),
+    enabled: !!user,
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 60, // Refetch every minute
+  });
+
   const pendingRequestsCount = friendRequestsData?.data?.total || 0;
+  const pendingRewardsCount = pendingRewardsData?.data?.count || 0;
+  // Show badge if either friend requests OR pending referral rewards
+  const friendsBadgeCount = pendingRequestsCount + pendingRewardsCount;
 
   // Hide navigation on onboarding page
   if (pathname === '/onboarding') {
@@ -71,7 +83,7 @@ export function Navigation() {
               const isActive = pathname === item.href;
               const Icon = item.icon;
               const showFocusBadge = item.href === '/focus' && activeSession;
-              const showFriendsBadge = item.href === '/friends' && pendingRequestsCount > 0;
+              const showFriendsBadge = item.href === '/friends' && friendsBadgeCount > 0;
 
               return (
                 <Link
@@ -106,7 +118,7 @@ export function Navigation() {
                           animate={{ scale: 1 }}
                           exit={{ scale: 0 }}
                         >
-                          {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                          {friendsBadgeCount > 9 ? '9+' : friendsBadgeCount}
                         </motion.span>
                       )}
                     </AnimatePresence>
