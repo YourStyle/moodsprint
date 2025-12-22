@@ -37,6 +37,7 @@ services:
       BOT_SECRET: ${BOT_SECRET:-}
     volumes:
       - card_images:/app/static/card_images
+      - monster_images:/app/static/monster_images
     depends_on:
       db:
         condition: service_healthy
@@ -128,3 +129,4 @@ networks:
 volumes:
   postgres_data:
   card_images:
+  monster_images:
