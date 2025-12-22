@@ -9,12 +9,37 @@ import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
 import { CardEarnedModal, type EarnedCard } from '@/components/cards';
+import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 import type { MoodLevel, EnergyLevel, FocusSession, TaskStatus } from '@/domain/types';
+
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: 'create-task',
+    targetSelector: '[data-onboarding="create-task"]',
+    title: 'Создание задачи',
+    description: 'Нажми сюда, чтобы создать новую задачу. AI разобьёт её на маленькие шаги с учётом твоего настроения!',
+    position: 'bottom',
+  },
+  {
+    id: 'mood-check',
+    targetSelector: '[data-onboarding="mood-check"]',
+    title: 'Проверка настроения',
+    description: 'Здесь ты можешь отслеживать своё настроение. От него зависит как задачи будут разбиты на шаги.',
+    position: 'bottom',
+  },
+  {
+    id: 'cards-info',
+    targetSelector: '[data-onboarding="daily-bonus"]',
+    title: 'Карты за задачи',
+    description: 'За выполнение задач ты получаешь карты! Собирай колоду, обменивайся с друзьями и сражайся на арене.',
+    position: 'bottom',
+  },
+];
 
 type FilterStatus = TaskStatus | 'all';
 
@@ -584,9 +609,12 @@ export default function HomePage() {
   };
 
   return (
+    <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
     <div className="min-h-screen p-4 space-y-6">
       {/* Daily Bonus Modal */}
-      <DailyBonus />
+      <div data-onboarding="daily-bonus">
+        <DailyBonus />
+      </div>
 
       {/* Postponed Tasks Notification */}
       {showPostponeNotification && postponeStatus && (
@@ -631,6 +659,7 @@ export default function HomePage() {
           <button
             onClick={() => setShowMoodModal(true)}
             className="w-10 h-10 rounded-full bg-dark-700 border border-gray-700 flex items-center justify-center hover:bg-dark-600 transition-colors"
+            data-onboarding="mood-check"
           >
             {latestMood ? (
               <span className="text-lg">
@@ -679,6 +708,7 @@ export default function HomePage() {
               variant="primary"
               size="sm"
               onClick={() => setShowCreateModal(true)}
+              data-onboarding="create-task"
             >
               <Plus className="w-4 h-4 mr-1" />
               {t('add')}
@@ -888,5 +918,6 @@ export default function HomePage() {
         t={t}
       />
     </div>
+    </SpotlightOnboarding>
   );
 }
