@@ -335,7 +335,7 @@ export default function FriendsPage() {
         </div>
 
         {/* My cards selection */}
-        <Card className="mb-4">
+        <Card className="mb-4 overflow-visible">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-white">Ваши карты</h3>
             {selectedMyCards.length > 0 && (
@@ -344,7 +344,7 @@ export default function FriendsPage() {
               </span>
             )}
           </div>
-          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto overflow-x-visible px-1 pt-2 pb-2">
             {myCards.length === 0 ? (
               <p className="text-center text-gray-500 py-4">
                 Нет карт для обмена
@@ -353,7 +353,7 @@ export default function FriendsPage() {
               myCards.map((card) => {
                 const isSelected = selectedMyCards.some(c => c.id === card.id);
                 return (
-                  <div key={card.id} onClick={() => toggleMyCard(card)}>
+                  <div key={card.id}>
                     {renderCardMini(card, () => toggleMyCard(card), isSelected)}
                   </div>
                 );
@@ -363,7 +363,7 @@ export default function FriendsPage() {
         </Card>
 
         {/* Friend's cards selection (optional for gifts) */}
-        <Card className="mb-4">
+        <Card className="mb-4 overflow-visible">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-medium text-white">Карты друга</h3>
@@ -381,7 +381,7 @@ export default function FriendsPage() {
           {friendCardsLoading ? (
             <div className="h-32 bg-gray-700 rounded-xl animate-pulse" />
           ) : (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto overflow-x-visible px-1 pt-2 pb-2">
               {friendCards.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">
                   У друга нет карт для обмена
@@ -390,7 +390,7 @@ export default function FriendsPage() {
                 friendCards.map((card) => {
                   const isSelected = selectedFriendCards.some(c => c.id === card.id);
                   return (
-                    <div key={card.id} onClick={() => toggleFriendCard(card)}>
+                    <div key={card.id}>
                       {renderCardMini(card, () => toggleFriendCard(card), isSelected)}
                     </div>
                   );
