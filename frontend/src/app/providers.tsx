@@ -89,6 +89,9 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
         // Parse referrer from startParam before authentication
         const startParam = getStartParam();
+        console.log('[Referral] startParam:', startParam);
+        console.log('[Referral] URL:', typeof window !== 'undefined' ? window.location.href : 'SSR');
+
         let referrerId: number | undefined;
         if (startParam && startParam.startsWith('invite_')) {
           referrerId = parseInt(startParam.replace('invite_', ''), 10);

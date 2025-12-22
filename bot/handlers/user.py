@@ -1,30 +1,29 @@
 """User handlers."""
 
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-
-from keyboards import (
-    get_main_keyboard,
-    get_webapp_button,
-    get_settings_keyboard,
-    get_start_inline_button,
-    get_freetime_keyboard,
-    get_task_suggestion_keyboard,
-    get_cancel_keyboard,
-)
+from aiogram.types import CallbackQuery, Message
 from database import (
+    delete_task,
+    get_subtask_suggestions,
+    get_task_suggestions,
     get_user_by_telegram_id,
     get_user_stats,
-    update_user_notifications,
-    get_task_suggestions,
-    get_subtask_suggestions,
-    snooze_task_reminder,
-    reschedule_task_to_tomorrow,
     reschedule_task_to_days,
-    delete_task,
+    reschedule_task_to_tomorrow,
+    snooze_task_reminder,
+    update_user_notifications,
+)
+from keyboards import (
+    get_cancel_keyboard,
+    get_freetime_keyboard,
+    get_main_keyboard,
+    get_settings_keyboard,
+    get_start_inline_button,
+    get_task_suggestion_keyboard,
+    get_webapp_button,
 )
 
 router = Router()
@@ -36,9 +35,73 @@ class PostponeDaysState(StatesGroup):
     waiting_for_days = State()
 
 
+@router.message(CommandStart(deep_link=True))
+async def cmd_start_with_param(message: Message):
+    """Handle /start command with deep link parameter (e.g., invite links)."""
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+    from config import config
+
+    # Extract the deep link parameter
+    args = message.text.split(maxsplit=1)
+    start_param = args[1] if len(args) > 1 else None
+
+    user = await get_user_by_telegram_id(message.from_user.id)
+
+    # Build webapp URL with start param for referral tracking
+    webapp_url = config.WEBAPP_URL
+    if start_param:
+        # Pass start param to webapp via URL fragment
+        webapp_url = f"{config.WEBAPP_URL}?startapp={start_param}"
+
+    if user:
+        text = (
+            f"С возвращением, {message.from_user.first_name}!\n\n"
+            f"Уровень {user.get('level', 1)} | {user.get('xp', 0)} XP\n"
+            f"Серия: {user.get('streak_days', 0)} дн.\n\n"
+            "Нажми кнопку ниже, чтобы открыть MoodSprint!"
+        )
+    else:
+        if start_param and start_param.startswith("invite_"):
+            text = (
+                f"Привет, {message.from_user.first_name}!\n\n"
+                "Тебя пригласил друг в MoodSprint! 🎉\n\n"
+                "MoodSprint — твой умный менеджер задач:\n"
+                "• Разбивает задачи с учётом твоей энергии\n"
+                "• Помогает сохранять фокус\n"
+                "• Строит здоровые привычки продуктивности\n\n"
+                "Нажми кнопку ниже, чтобы получить стартовый набор карт!"
+            )
+        else:
+            text = (
+                f"Привет, {message.from_user.first_name}!\n\n"
+                "Добро пожаловать в MoodSprint — твой умный менеджер задач.\n\n"
+                "Я помогу тебе:\n"
+                "• Разбивать задачи с учётом твоей энергии\n"
+                "• Сохранять фокус с помощью таймер-сессий\n"
+                "• Строить здоровые привычки продуктивности\n\n"
+                "Нажми кнопку ниже, чтобы начать!"
+            )
+
+    # Send main message with reply keyboard
+    await message.answer(text, reply_markup=get_main_keyboard())
+
+    # Create inline button with webapp URL (including start param if present)
+    inline_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚀 Открыть MoodSprint",
+                    web_app=WebAppInfo(url=webapp_url),
+                )
+            ]
+        ]
+    )
+    await message.answer("👇 Нажми, чтобы открыть приложение:", reply_markup=inline_kb)
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    """Handle /start command."""
+    """Handle /start command without parameters."""
     user = await get_user_by_telegram_id(message.from_user.id)
 
     if user:

@@ -205,8 +205,23 @@ export function hideBackButton() {
 }
 
 export function getStartParam(): string | null {
+  // First try to get from Telegram WebApp initData
   const webApp = getTelegramWebApp();
-  return webApp?.initDataUnsafe?.start_param || null;
+  const telegramStartParam = webApp?.initDataUnsafe?.start_param;
+  if (telegramStartParam) {
+    return telegramStartParam;
+  }
+
+  // Fallback: check URL query parameter (for cases when bot passes it via webapp URL)
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlStartParam = urlParams.get('startapp');
+    if (urlStartParam) {
+      return urlStartParam;
+    }
+  }
+
+  return null;
 }
 
 export function openTelegramLink(url: string) {

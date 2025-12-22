@@ -416,22 +416,22 @@ function resetOnboarding(userId) {
 <!-- Activity Heatmap (GitHub-style) -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Активность (последние 12 месяцев)</h3>
-    <div id="heatmap-wrapper" class="overflow-x-auto">
+    <div id="heatmap-wrapper">
         <!-- Month labels -->
-        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px; min-width: max-content;"></div>
-        <div class="flex" style="min-width: max-content;">
+        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px;"></div>
+        <div class="flex">
             <!-- Day labels -->
-            <div class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px; gap: 1px;">
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Вс</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Пн</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Вт</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Ср</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Чт</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Пт</span>
-                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Сб</span>
+            <div id="day-labels" class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px;">
+                <span style="text-align: right; padding-right: 2px;">Вс</span>
+                <span style="text-align: right; padding-right: 2px;">Пн</span>
+                <span style="text-align: right; padding-right: 2px;">Вт</span>
+                <span style="text-align: right; padding-right: 2px;">Ср</span>
+                <span style="text-align: right; padding-right: 2px;">Чт</span>
+                <span style="text-align: right; padding-right: 2px;">Пт</span>
+                <span style="text-align: right; padding-right: 2px;">Сб</span>
             </div>
             <!-- Heatmap grid -->
-            <div id="heatmap" class="flex gap-px"></div>
+            <div id="heatmap" class="flex flex-1"></div>
         </div>
         <div class="flex items-center justify-end mt-3 text-xs text-gray-500 gap-2">
             <span>Меньше</span>
@@ -452,6 +452,7 @@ function resetOnboarding(userId) {
     const userId = {{ user.id }};
     const heatmapContainer = document.getElementById('heatmap');
     const monthLabels = document.getElementById('month-labels');
+    const dayLabels = document.getElementById('day-labels');
 
     const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -512,19 +513,67 @@ function resetOnboarding(userId) {
                 weeks.push(currentWeek);
             }
 
-            // Fixed cell size
-            const cellSize = 11;
-            const gap = 1;
+            // Calculate cell size to fill container width
+            const containerWidth = heatmapContainer.offsetWidth;
+            const monthGap = 8; // Gap between months
+            const cellGap = 2;
+
+            // Count month transitions for gaps
+            let lastMonthYear = null;
+            let monthTransitions = 0;
+            weeks.forEach((week) => {
+                const firstDay = week.find(d => d !== null);
+                if (firstDay) {
+                    const key = `${firstDay.year}-${firstDay.month}`;
+                    if (lastMonthYear !== null && lastMonthYear !== key) {
+                        monthTransitions++;
+                    }
+                    lastMonthYear = key;
+                }
+            });
+
+            const totalGaps = (weeks.length - 1) * cellGap + monthTransitions * monthGap;
+            const cellSize = Math.max(10, Math.floor((containerWidth - totalGaps) / weeks.length));
+
+            // Update day labels height
+            dayLabels.querySelectorAll('span').forEach(span => {
+                span.style.height = cellSize + 'px';
+                span.style.lineHeight = cellSize + 'px';
+            });
+            dayLabels.style.gap = cellGap + 'px';
 
             // Track months for labels
             let lastMonth = -1;
+            let lastYear = -1;
             const monthPositions = [];
+            let currentMonthStartIdx = 0;
 
             // Render heatmap
             weeks.forEach((week, weekIdx) => {
                 const weekCol = document.createElement('div');
                 weekCol.className = 'flex flex-col';
-                weekCol.style.gap = gap + 'px';
+                weekCol.style.gap = cellGap + 'px';
+
+                // Check for month change
+                const firstDay = week.find(d => d !== null);
+                if (firstDay && (firstDay.month !== lastMonth || firstDay.year !== lastYear)) {
+                    // Add gap before new month (except first)
+                    if (lastMonth !== -1) {
+                        weekCol.style.marginLeft = monthGap + 'px';
+                        // Record previous month width
+                        if (monthPositions.length > 0) {
+                            monthPositions[monthPositions.length - 1].endIdx = weekIdx;
+                        }
+                    }
+                    monthPositions.push({
+                        month: firstDay.month,
+                        year: firstDay.year,
+                        startIdx: weekIdx,
+                        endIdx: weeks.length
+                    });
+                    lastMonth = firstDay.month;
+                    lastYear = firstDay.year;
+                }
 
                 week.forEach(day => {
                     const cell = document.createElement('div');
@@ -535,12 +584,6 @@ function resetOnboarding(userId) {
                     if (day === null) {
                         cell.style.background = 'transparent';
                     } else {
-                        // Track month changes
-                        if (day.month !== lastMonth) {
-                            monthPositions.push({ month: day.month, weekIdx });
-                            lastMonth = day.month;
-                        }
-
                         const intensity = day.count / maxVal;
                         if (day.count === 0) {
                             cell.style.background = '#e5e7eb';
@@ -562,18 +605,36 @@ function resetOnboarding(userId) {
                 heatmapContainer.appendChild(weekCol);
             });
 
-            // Render month labels
+            // Render month labels with year for Dec/Jan
             monthLabels.innerHTML = '';
+            monthLabels.style.gap = '0';
+
+            // Track years to show on Dec/Jan
+            const yearsInRange = [...new Set(monthPositions.map(p => p.year))];
+            const hasYearChange = yearsInRange.length > 1;
+
             monthPositions.forEach((pos, idx) => {
-                const nextPos = monthPositions[idx + 1];
-                const weeksInMonth = (nextPos ? nextPos.weekIdx : weeks.length) - pos.weekIdx;
-                const width = weeksInMonth * (cellSize + gap);
+                const weeksInMonth = pos.endIdx - pos.startIdx;
+                // Calculate width including cell gaps
+                let width = weeksInMonth * (cellSize + cellGap) - cellGap;
+                // Add month gap for all except first
+                if (idx > 0) {
+                    width += monthGap;
+                }
 
                 const label = document.createElement('span');
-                label.textContent = monthNames[pos.month];
+                // Show year for December and January if year changes in range
+                if (hasYearChange && (pos.month === 11 || pos.month === 0)) {
+                    label.textContent = `${monthNames[pos.month]}'${String(pos.year).slice(-2)}`;
+                } else {
+                    label.textContent = monthNames[pos.month];
+                }
                 label.style.width = width + 'px';
                 label.style.textAlign = 'left';
                 label.style.flexShrink = '0';
+                if (idx > 0) {
+                    label.style.paddingLeft = monthGap + 'px';
+                }
                 monthLabels.appendChild(label);
             });
         })
