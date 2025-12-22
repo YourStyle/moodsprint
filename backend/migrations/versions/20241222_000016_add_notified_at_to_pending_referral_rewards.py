@@ -1,7 +1,7 @@
 """Add notified_at to pending_referral_rewards.
 
-Revision ID: 20241222_000014
-Revises: 20241222_000013_add_pending_referral_rewards
+Revision ID: 20241222_000016
+Revises: 20241222_000015
 Create Date: 2024-12-22
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "20241222_000014"
-down_revision = "20241222_000013_add_pending_referral_rewards"
+revision = "20241222_000016"
+down_revision = "20241222_000015"
 branch_labels = None
 depends_on = None
 
