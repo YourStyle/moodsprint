@@ -865,5 +865,141 @@ def realtime_metrics():
     )
 
 
+@app.route("/users/<int:user_id>/activity-heatmap")
+@login_required
+def user_activity_heatmap(user_id: int):
+    """Get user activity data for GitHub-style heatmap."""
+    # Get completions for the last 365 days
+    try:
+        task_completions = db.session.execute(
+            text(
+                """
+                SELECT DATE(completed_at) as completion_date, COUNT(*) as count
+                FROM tasks
+                WHERE user_id = :uid
+                    AND status = 'completed'
+                    AND completed_at >= CURRENT_DATE - INTERVAL '365 days'
+                GROUP BY DATE(completed_at)
+                """
+            ),
+            {"uid": user_id},
+        ).fetchall()
+
+        subtask_completions = db.session.execute(
+            text(
+                """
+                SELECT DATE(s.completed_at) as completion_date, COUNT(*) as count
+                FROM subtasks s
+                JOIN tasks t ON s.task_id = t.id
+                WHERE t.user_id = :uid
+                    AND s.status = 'completed'
+                    AND s.completed_at >= CURRENT_DATE - INTERVAL '365 days'
+                GROUP BY DATE(s.completed_at)
+                """
+            ),
+            {"uid": user_id},
+        ).fetchall()
+
+        # Combine into a single dict
+        activity = {}
+        for row in task_completions:
+            if row[0]:
+                date_str = str(row[0])
+                activity[date_str] = activity.get(date_str, 0) + row[1]
+
+        for row in subtask_completions:
+            if row[0]:
+                date_str = str(row[0])
+                activity[date_str] = activity.get(date_str, 0) + row[1]
+
+        return jsonify({"success": True, "activity": activity})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/friends")
+@login_required
+def friends_list():
+    """Friendships management page."""
+    # Get all friendships with user details
+    try:
+        friendships = db.session.execute(
+            text(
+                """
+                SELECT
+                    f.id,
+                    f.user_id,
+                    f.friend_id,
+                    f.created_at,
+                    u1.username as user_username,
+                    u1.first_name as user_first_name,
+                    u2.username as friend_username,
+                    u2.first_name as friend_first_name
+                FROM friendships f
+                JOIN users u1 ON f.user_id = u1.id
+                JOIN users u2 ON f.friend_id = u2.id
+                ORDER BY f.created_at DESC
+                LIMIT 100
+                """
+            )
+        ).fetchall()
+    except Exception:
+        friendships = []
+
+    return render_template(
+        "friends.html",
+        friendships=[dict(row._mapping) for row in friendships] if friendships else [],
+    )
+
+
+@app.route("/friends/<int:friendship_id>/remove", methods=["POST"])
+@login_required
+def remove_friendship(friendship_id: int):
+    """Remove a friendship."""
+    try:
+        db.session.execute(
+            text("DELETE FROM friendships WHERE id = :id"),
+            {"id": friendship_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True, "message": "Friendship removed"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/friends/remove-by-users", methods=["POST"])
+@login_required
+def remove_friendship_by_users():
+    """Remove friendship by user IDs."""
+    data = request.get_json() or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+
+    if not user_id or not friend_id:
+        return jsonify({"success": False, "error": "user_id and friend_id required"}), 400
+
+    try:
+        result = db.session.execute(
+            text(
+                """
+                DELETE FROM friendships
+                WHERE (user_id = :uid AND friend_id = :fid)
+                   OR (user_id = :fid AND friend_id = :uid)
+                """
+            ),
+            {"uid": user_id, "fid": friend_id},
+        )
+        db.session.commit()
+
+        if result.rowcount > 0:
+            return jsonify({"success": True, "message": "Friendship removed"})
+        else:
+            return jsonify({"success": False, "error": "Friendship not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

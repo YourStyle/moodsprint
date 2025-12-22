@@ -413,6 +413,115 @@ function resetOnboarding(userId) {
 </div>
 {% endif %}
 
+<!-- Activity Heatmap (GitHub-style) -->
+<div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Heatmap (Last 12 months)</h3>
+    <div id="heatmap-container" class="overflow-x-auto">
+        <div id="heatmap" class="flex gap-0.5" style="min-width: 720px;"></div>
+        <div class="flex items-center justify-between mt-3 text-xs text-gray-500">
+            <span>Less</span>
+            <div class="flex gap-1">
+                <div class="w-3 h-3 rounded-sm bg-gray-200"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-200"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-400"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-600"></div>
+                <div class="w-3 h-3 rounded-sm bg-green-800"></div>
+            </div>
+            <span>More</span>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const userId = {{ user.id }};
+    const heatmapContainer = document.getElementById('heatmap');
+
+    // Generate dates for the last 365 days
+    const today = new Date();
+    const days = [];
+    for (let i = 364; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        days.push(d.toISOString().split('T')[0]);
+    }
+
+    // Fetch activity data
+    fetch(`/users/${userId}/activity-heatmap`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) return;
+
+            const activity = data.activity || {};
+
+            // Find max for color scaling
+            const values = Object.values(activity);
+            const maxVal = Math.max(1, ...values);
+
+            // Group by weeks (columns)
+            const weeks = [];
+            let currentWeek = [];
+
+            // Find first Sunday or start from first day
+            const startDate = new Date(days[0]);
+            const startDow = startDate.getDay(); // 0 = Sunday
+
+            // Add empty cells for days before the start
+            for (let i = 0; i < startDow; i++) {
+                currentWeek.push(null);
+            }
+
+            days.forEach((dateStr, idx) => {
+                currentWeek.push({ date: dateStr, count: activity[dateStr] || 0 });
+                if (currentWeek.length === 7) {
+                    weeks.push(currentWeek);
+                    currentWeek = [];
+                }
+            });
+            if (currentWeek.length > 0) {
+                weeks.push(currentWeek);
+            }
+
+            // Render heatmap
+            weeks.forEach(week => {
+                const weekCol = document.createElement('div');
+                weekCol.className = 'flex flex-col gap-0.5';
+
+                week.forEach(day => {
+                    const cell = document.createElement('div');
+                    cell.className = 'w-3 h-3 rounded-sm';
+
+                    if (day === null) {
+                        cell.className += ' bg-transparent';
+                    } else {
+                        const intensity = day.count / maxVal;
+                        if (day.count === 0) {
+                            cell.className += ' bg-gray-200';
+                        } else if (intensity <= 0.25) {
+                            cell.className += ' bg-green-200';
+                        } else if (intensity <= 0.5) {
+                            cell.className += ' bg-green-400';
+                        } else if (intensity <= 0.75) {
+                            cell.className += ' bg-green-600';
+                        } else {
+                            cell.className += ' bg-green-800';
+                        }
+                        cell.title = `${day.date}: ${day.count} completed`;
+                    }
+
+                    weekCol.appendChild(cell);
+                });
+
+                heatmapContainer.appendChild(weekCol);
+            });
+        })
+        .catch(err => {
+            console.error('Failed to load heatmap:', err);
+            heatmapContainer.innerHTML = '<p class="text-gray-500">Failed to load activity data</p>';
+        });
+})();
+</script>
+
 <!-- Activity Log -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Log</h3>
