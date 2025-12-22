@@ -1051,9 +1051,16 @@ def remove_friendship_by_users():
 @login_required
 def events():
     """List all seasonal events."""
-    from backend.app.models.event import SeasonalEvent
+    all_events = db.session.execute(
+        text("""
+            SELECT id, code, name, description, event_type, start_date, end_date,
+                   emoji, theme_color, xp_multiplier, is_active, created_at,
+                   (is_active AND start_date <= NOW() AND end_date >= NOW()) as is_currently_active
+            FROM seasonal_events
+            ORDER BY start_date DESC
+        """)
+    ).fetchall()
 
-    all_events = SeasonalEvent.query.order_by(SeasonalEvent.start_date.desc()).all()
     active_events = [e for e in all_events if e.is_currently_active]
 
     return render_template(
@@ -1068,25 +1075,29 @@ def events():
 @login_required
 def create_event():
     """Create a new seasonal event."""
-    from backend.app.models.event import SeasonalEvent
-
     data = request.json
     try:
-        event = SeasonalEvent(
-            code=data["code"],
-            name=data["name"],
-            description=data.get("description"),
-            event_type=data.get("event_type", "seasonal"),
-            start_date=datetime.fromisoformat(data["start_date"]),
-            end_date=datetime.fromisoformat(data["end_date"]),
-            emoji=data.get("emoji", "🎉"),
-            theme_color=data.get("theme_color", "#FF6B00"),
-            xp_multiplier=data.get("xp_multiplier", 1.0),
-            is_active=True,
+        result = db.session.execute(
+            text("""
+                INSERT INTO seasonal_events (code, name, description, event_type, start_date, end_date, emoji, theme_color, xp_multiplier, is_active)
+                VALUES (:code, :name, :description, :event_type, :start_date, :end_date, :emoji, :theme_color, :xp_multiplier, true)
+                RETURNING id
+            """),
+            {
+                "code": data["code"],
+                "name": data["name"],
+                "description": data.get("description"),
+                "event_type": data.get("event_type", "seasonal"),
+                "start_date": datetime.fromisoformat(data["start_date"]),
+                "end_date": datetime.fromisoformat(data["end_date"]),
+                "emoji": data.get("emoji", "🎉"),
+                "theme_color": data.get("theme_color", "#FF6B00"),
+                "xp_multiplier": data.get("xp_multiplier", 1.0),
+            }
         )
-        db.session.add(event)
+        event_id = result.scalar()
         db.session.commit()
-        return jsonify({"success": True, "event_id": event.id})
+        return jsonify({"success": True, "event_id": event_id})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
@@ -1096,16 +1107,36 @@ def create_event():
 @login_required
 def event_detail(event_id: int):
     """Event detail page with monsters."""
-    from backend.app.models.character import Monster
-    from backend.app.models.event import EventMonster, SeasonalEvent
+    event = db.session.execute(
+        text("""
+            SELECT id, code, name, description, event_type, start_date, end_date,
+                   emoji, theme_color, xp_multiplier, is_active, created_at,
+                   (is_active AND start_date <= NOW() AND end_date >= NOW()) as is_currently_active
+            FROM seasonal_events
+            WHERE id = :event_id
+        """),
+        {"event_id": event_id}
+    ).fetchone()
 
-    event = SeasonalEvent.query.get_or_404(event_id)
-    event_monsters = (
-        EventMonster.query.filter_by(event_id=event_id)
-        .order_by(EventMonster.appear_day)
-        .all()
-    )
-    all_monsters = Monster.query.order_by(Monster.genre, Monster.name).all()
+    if not event:
+        return "Event not found", 404
+
+    event_monsters = db.session.execute(
+        text("""
+            SELECT em.id, em.event_id, em.monster_id, em.appear_day,
+                   em.exclusive_reward_name, em.guaranteed_rarity,
+                   m.name as monster_name, m.emoji as monster_emoji, m.genre as monster_genre
+            FROM event_monsters em
+            JOIN monsters m ON m.id = em.monster_id
+            WHERE em.event_id = :event_id
+            ORDER BY em.appear_day
+        """),
+        {"event_id": event_id}
+    ).fetchall()
+
+    all_monsters = db.session.execute(
+        text("SELECT id, name, emoji, genre FROM monsters ORDER BY genre, name")
+    ).fetchall()
 
     return render_template(
         "event_detail.html",
@@ -1120,30 +1151,44 @@ def event_detail(event_id: int):
 @login_required
 def update_event(event_id: int):
     """Update event details."""
-    from backend.app.models.event import SeasonalEvent
-
-    event = SeasonalEvent.query.get_or_404(event_id)
     data = request.json
 
     try:
-        if "code" in data:
-            event.code = data["code"]
-        if "name" in data:
-            event.name = data["name"]
-        if "description" in data:
-            event.description = data["description"]
-        if "start_date" in data:
-            event.start_date = datetime.fromisoformat(data["start_date"])
-        if "end_date" in data:
-            event.end_date = datetime.fromisoformat(data["end_date"])
-        if "emoji" in data:
-            event.emoji = data["emoji"]
-        if "theme_color" in data:
-            event.theme_color = data["theme_color"]
-        if "xp_multiplier" in data:
-            event.xp_multiplier = data["xp_multiplier"]
+        updates = []
+        params = {"event_id": event_id}
 
-        db.session.commit()
+        if "code" in data:
+            updates.append("code = :code")
+            params["code"] = data["code"]
+        if "name" in data:
+            updates.append("name = :name")
+            params["name"] = data["name"]
+        if "description" in data:
+            updates.append("description = :description")
+            params["description"] = data["description"]
+        if "start_date" in data:
+            updates.append("start_date = :start_date")
+            params["start_date"] = datetime.fromisoformat(data["start_date"])
+        if "end_date" in data:
+            updates.append("end_date = :end_date")
+            params["end_date"] = datetime.fromisoformat(data["end_date"])
+        if "emoji" in data:
+            updates.append("emoji = :emoji")
+            params["emoji"] = data["emoji"]
+        if "theme_color" in data:
+            updates.append("theme_color = :theme_color")
+            params["theme_color"] = data["theme_color"]
+        if "xp_multiplier" in data:
+            updates.append("xp_multiplier = :xp_multiplier")
+            params["xp_multiplier"] = data["xp_multiplier"]
+
+        if updates:
+            db.session.execute(
+                text(f"UPDATE seasonal_events SET {', '.join(updates)} WHERE id = :event_id"),
+                params
+            )
+            db.session.commit()
+
         return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
@@ -1154,13 +1199,23 @@ def update_event(event_id: int):
 @login_required
 def toggle_event(event_id: int):
     """Enable/disable an event."""
-    from backend.app.models.event import SeasonalEvent
-
-    event = SeasonalEvent.query.get_or_404(event_id)
     data = request.json
 
     try:
-        event.is_active = data.get("is_active", not event.is_active)
+        if "is_active" in data:
+            is_active = data["is_active"]
+        else:
+            # Toggle current state
+            current = db.session.execute(
+                text("SELECT is_active FROM seasonal_events WHERE id = :event_id"),
+                {"event_id": event_id}
+            ).scalar()
+            is_active = not current
+
+        db.session.execute(
+            text("UPDATE seasonal_events SET is_active = :is_active WHERE id = :event_id"),
+            {"event_id": event_id, "is_active": is_active}
+        )
         db.session.commit()
         return jsonify({"success": True})
     except Exception as e:
@@ -1172,21 +1227,26 @@ def toggle_event(event_id: int):
 @login_required
 def add_event_monster(event_id: int):
     """Add a monster to an event."""
-    from backend.app.models.event import EventMonster
-
     data = request.json
 
     try:
-        event_monster = EventMonster(
-            event_id=event_id,
-            monster_id=data["monster_id"],
-            appear_day=data.get("appear_day", 1),
-            exclusive_reward_name=data.get("exclusive_reward_name"),
-            guaranteed_rarity=data.get("guaranteed_rarity") or None,
+        result = db.session.execute(
+            text("""
+                INSERT INTO event_monsters (event_id, monster_id, appear_day, exclusive_reward_name, guaranteed_rarity)
+                VALUES (:event_id, :monster_id, :appear_day, :exclusive_reward_name, :guaranteed_rarity)
+                RETURNING id
+            """),
+            {
+                "event_id": event_id,
+                "monster_id": data["monster_id"],
+                "appear_day": data.get("appear_day", 1),
+                "exclusive_reward_name": data.get("exclusive_reward_name"),
+                "guaranteed_rarity": data.get("guaranteed_rarity") or None,
+            }
         )
-        db.session.add(event_monster)
+        event_monster_id = result.scalar()
         db.session.commit()
-        return jsonify({"success": True, "id": event_monster.id})
+        return jsonify({"success": True, "id": event_monster_id})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
@@ -1196,12 +1256,11 @@ def add_event_monster(event_id: int):
 @login_required
 def remove_event_monster(event_monster_id: int):
     """Remove a monster from an event."""
-    from backend.app.models.event import EventMonster
-
-    event_monster = EventMonster.query.get_or_404(event_monster_id)
-
     try:
-        db.session.delete(event_monster)
+        db.session.execute(
+            text("DELETE FROM event_monsters WHERE id = :id"),
+            {"id": event_monster_id}
+        )
         db.session.commit()
         return jsonify({"success": True})
     except Exception as e:
