@@ -1127,21 +1127,23 @@ def rotate_monsters():
 
 
 @api_bp.route("/events/active", methods=["GET"])
-@jwt_required()
+@jwt_required(optional=True)
 def get_active_event():
     """Get currently active event with user progress."""
-    user_id = int(get_jwt_identity())
-
     from app.services.event_service import EventService
 
     service = EventService()
     event = service.get_active_event()
 
     if not event:
-        return success_response({"event": None})
+        return success_response({"event": None, "progress": None, "monsters": []})
 
-    # Get user progress
-    progress = service.get_user_progress(user_id, event.id)
+    # Get user progress if authenticated
+    user_identity = get_jwt_identity()
+    progress = None
+    if user_identity:
+        user_id = int(user_identity)
+        progress = service.get_user_progress(user_id, event.id)
 
     # Get event monsters
     monsters = service.get_event_monsters(event.id)
