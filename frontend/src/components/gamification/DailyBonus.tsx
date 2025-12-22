@@ -14,9 +14,13 @@ export function DailyBonus() {
   const queryClient = useQueryClient();
   const { showXPAnimation } = useAppStore();
 
+  // Check if this is user's first visit - skip daily bonus on first login
+  const isFirstVisit = typeof window !== 'undefined' && !localStorage.getItem('first_visit_completed');
+
   const { data: bonusStatus, isLoading } = useQuery({
     queryKey: ['daily-bonus-status'],
     queryFn: () => gamificationService.getDailyBonusStatus(),
+    enabled: !isFirstVisit, // Don't fetch on first visit
   });
 
   const claimMutation = useMutation({
@@ -51,7 +55,8 @@ export function DailyBonus() {
 
   const status = bonusStatus?.data;
 
-  if (!status?.can_claim || isLoading) return null;
+  // Skip on first visit or if no bonus available
+  if (isFirstVisit || !status?.can_claim || isLoading) return null;
 
   return (
     <AnimatePresence>

@@ -22,6 +22,7 @@ from database import (
     update_task_priority,
 )
 from keyboards import (
+    get_morning_reminder_keyboard,
     get_task_reminder_keyboard,
     get_task_suggestion_keyboard,
     get_webapp_button,
@@ -56,7 +57,9 @@ class NotificationService:
         for user in users:
             try:
                 await self.bot.send_message(
-                    user["telegram_id"], f"{message}", reply_markup=get_webapp_button()
+                    user["telegram_id"],
+                    f"{message}",
+                    reply_markup=get_morning_reminder_keyboard(),
                 )
                 sent += 1
             except (TelegramForbiddenError, TelegramBadRequest):

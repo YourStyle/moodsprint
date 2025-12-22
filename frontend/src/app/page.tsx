@@ -316,6 +316,13 @@ export default function HomePage() {
     return true;
   });
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  // Track if this is user's first visit (to skip daily bonus & mood on first login)
+  const [isFirstVisit, setIsFirstVisit] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !localStorage.getItem('first_visit_completed');
+    }
+    return false;
+  });
 
   const selectedDateStr = formatDateForAPI(selectedDate);
 
@@ -333,19 +340,32 @@ export default function HomePage() {
   }, []);
 
   // Check if we should show mood modal on first entry
+  // Skip on first visit to reduce overwhelm for new users
   useEffect(() => {
-    if (user && !latestMood) {
+    if (user && !latestMood && !isFirstVisit) {
       // Check if mood was checked today
       moodService.getLatestMood().then((result) => {
         if (result.success && result.data?.mood_check) {
           setLatestMood(result.data.mood_check);
         } else {
-          // No mood today, show modal
+          // No mood today, show modal (only for returning users)
           setShowMoodModal(true);
         }
       });
     }
-  }, [user, latestMood, setLatestMood, setShowMoodModal]);
+  }, [user, latestMood, setLatestMood, setShowMoodModal, isFirstVisit]);
+
+  // Mark first visit as completed after spotlight onboarding finishes
+  useEffect(() => {
+    if (isFirstVisit && user) {
+      // Check after 5 seconds if spotlight was shown
+      const timer = setTimeout(() => {
+        localStorage.setItem('first_visit_completed', 'true');
+        setIsFirstVisit(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isFirstVisit, user]);
 
   // Query tasks for selected date with status filter
   const { data: tasksData, isLoading: tasksLoading, isFetching } = useQuery({

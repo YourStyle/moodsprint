@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import {
   Swords,
   Trophy,
@@ -17,6 +18,7 @@ import {
   Target,
   Calendar,
   Zap,
+  Plus,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
@@ -37,6 +39,7 @@ type GameState = 'select' | 'cards' | 'battle' | 'result';
 type LeaderboardType = 'weekly' | 'all_time';
 
 export default function ArenaPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
   const { t } = useLanguage();
@@ -714,6 +717,9 @@ export default function ArenaPage() {
                   <>
                     <Skull className="w-20 h-20 text-gray-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">{t('defeat')}</h2>
+                    <p className="text-gray-400 text-sm max-w-xs mx-auto">
+                      Ты всегда можешь навалять этому монстру, выполнив пару своих задач ;)
+                    </p>
                   </>
                 )}
               </div>
@@ -772,7 +778,19 @@ export default function ArenaPage() {
                 </Card>
               )}
 
-              <Button className="w-full max-w-sm" onClick={handleBackToSelect}>
+              {/* Show "Create Task" button only on defeat */}
+              {!battleResult.won && (
+                <Button
+                  variant="gradient"
+                  className="w-full max-w-sm mb-3"
+                  onClick={() => router.push('/')}
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Создать задачу
+                </Button>
+              )}
+
+              <Button className="w-full max-w-sm" variant={battleResult.won ? 'primary' : 'secondary'} onClick={handleBackToSelect}>
                 {t('returnToSelect')}
               </Button>
             </div>

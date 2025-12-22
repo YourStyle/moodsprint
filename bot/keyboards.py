@@ -1,11 +1,11 @@
 """Keyboard builders for the bot."""
 
 from aiogram.types import (
-    InlineKeyboardMarkup,
     InlineKeyboardButton,
-    WebAppInfo,
-    ReplyKeyboardMarkup,
+    InlineKeyboardMarkup,
     KeyboardButton,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 from config import config
 
@@ -199,5 +199,25 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_state")]
+        ]
+    )
+
+
+def get_morning_reminder_keyboard() -> InlineKeyboardMarkup:
+    """Morning reminder keyboard with open app and disable notifications options."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚀 Открыть приложение",
+                    web_app=WebAppInfo(url=config.WEBAPP_URL),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔕 Отключить уведомления",
+                    callback_data="notifications:off",
+                )
+            ],
         ]
     )
