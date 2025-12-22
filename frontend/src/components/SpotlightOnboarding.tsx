@@ -116,24 +116,29 @@ export function SpotlightOnboarding({
 
   const step = steps[currentStep];
   const padding = 8;
+  const tooltipWidth = 288; // w-72 = 18rem = 288px
+  const screenPadding = 16;
 
-  // Calculate tooltip position
+  // Calculate tooltip position with boundary checks
   const tooltipPosition = step.position || 'bottom';
   let tooltipStyle: React.CSSProperties = {};
+
+  // Calculate horizontal center of target
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+
+  // Check if tooltip would go off-screen when centered
+  const wouldOverflowRight = targetCenterX + tooltipWidth / 2 > window.innerWidth - screenPadding;
+  const wouldOverflowLeft = targetCenterX - tooltipWidth / 2 < screenPadding;
 
   switch (tooltipPosition) {
     case 'top':
       tooltipStyle = {
         bottom: `calc(100% - ${targetRect.top - padding - 10}px)`,
-        left: targetRect.left + targetRect.width / 2,
-        transform: 'translateX(-50%)',
       };
       break;
     case 'bottom':
       tooltipStyle = {
         top: targetRect.top + targetRect.height + padding + 10,
-        left: targetRect.left + targetRect.width / 2,
-        transform: 'translateX(-50%)',
       };
       break;
     case 'left':
@@ -150,6 +155,21 @@ export function SpotlightOnboarding({
         transform: 'translateY(-50%)',
       };
       break;
+  }
+
+  // For top/bottom positions, handle horizontal alignment
+  if (tooltipPosition === 'top' || tooltipPosition === 'bottom') {
+    if (wouldOverflowRight) {
+      // Align to right edge of screen
+      tooltipStyle.right = screenPadding;
+    } else if (wouldOverflowLeft) {
+      // Align to left edge of screen
+      tooltipStyle.left = screenPadding;
+    } else {
+      // Center on target
+      tooltipStyle.left = targetCenterX;
+      tooltipStyle.transform = 'translateX(-50%)';
+    }
   }
 
   return (

@@ -91,7 +91,9 @@ def get_tasks():
 
     Query params:
     - status: filter by status (pending, in_progress, completed)
-    - due_date: filter by due date (YYYY-MM-DD format)
+    - due_date: filter by exact due date (YYYY-MM-DD format)
+    - due_date_from: filter by due date >= (YYYY-MM-DD format)
+    - due_date_to: filter by due date <= (YYYY-MM-DD format)
     - limit: max results (default 50)
     - offset: pagination offset (default 0)
     - smart_sort: enable smart sorting (default true)
@@ -106,12 +108,29 @@ def get_tasks():
     if status and status in [s.value for s in TaskStatus]:
         query = query.filter_by(status=status)
 
-    # Filter by due_date
+    # Filter by due_date (exact match)
     due_date_str = request.args.get("due_date")
     if due_date_str:
         try:
             due_date_filter = datetime.strptime(due_date_str, "%Y-%m-%d").date()
             query = query.filter(Task.due_date == due_date_filter)
+        except ValueError:
+            pass
+
+    # Filter by date range
+    due_date_from = request.args.get("due_date_from")
+    if due_date_from:
+        try:
+            date_from = datetime.strptime(due_date_from, "%Y-%m-%d").date()
+            query = query.filter(Task.due_date >= date_from)
+        except ValueError:
+            pass
+
+    due_date_to = request.args.get("due_date_to")
+    if due_date_to:
+        try:
+            date_to = datetime.strptime(due_date_to, "%Y-%m-%d").date()
+            query = query.filter(Task.due_date <= date_to)
         except ValueError:
             pass
 

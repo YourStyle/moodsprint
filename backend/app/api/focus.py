@@ -9,6 +9,7 @@ from sqlalchemy import func
 from app import db
 from app.api import api_bp
 from app.models import FocusSession, Subtask, Task, User
+from app.models.card import CardRarity
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskStatus
@@ -183,6 +184,7 @@ def complete_focus_session():
 
     # Add XP for subtask completion if applicable
     generated_card = None
+    is_quick_completion = False
 
     if complete_subtask and session.subtask:
         xp_earned += XPCalculator.subtask_completed()
@@ -199,12 +201,28 @@ def complete_focus_session():
             xp_earned += XPCalculator.task_completed()
 
             # Generate card for task completion
+            # Check if task was completed too quickly (anti-cheat)
+            from app.api.tasks import (
+                MIN_TASK_TIME_FOR_CARD,
+                should_skip_time_check_for_card,
+            )
+
+            task_age_minutes = (
+                datetime.utcnow() - task.created_at
+            ).total_seconds() / 60
+            skip_time_check = should_skip_time_check_for_card(user_id)
+            is_quick_completion = (
+                not skip_time_check and task_age_minutes < MIN_TASK_TIME_FOR_CARD
+            )
+
             card_service = CardService()
+            max_rarity = CardRarity.UNCOMMON if is_quick_completion else None
             generated_card = card_service.generate_card_for_task(
                 user_id=user_id,
                 task_id=task.id,
                 task_title=task.title,
                 difficulty=task.difficulty,
+                max_rarity=max_rarity,
             )
 
     xp_info = user.add_xp(xp_earned)
@@ -224,6 +242,12 @@ def complete_focus_session():
 
     if generated_card:
         response_data["card_earned"] = generated_card.to_dict()
+        if is_quick_completion:
+            response_data["quick_completion"] = True
+            response_data["quick_completion_message"] = (
+                "Задача выполнена слишком быстро. "
+                "Максимальная редкость карты за такую задачу — Необычная."
+            )
 
     return success_response(response_data)
 

@@ -86,12 +86,16 @@ export const tasksService = {
   async getTasks(params?: {
     status?: string;
     due_date?: string;
+    due_date_from?: string;
+    due_date_to?: string;
     limit?: number;
     offset?: number;
   }): Promise<ApiResponse<TasksListResponse>> {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
     if (params?.due_date) searchParams.set('due_date', params.due_date);
+    if (params?.due_date_from) searchParams.set('due_date_from', params.due_date_from);
+    if (params?.due_date_to) searchParams.set('due_date_to', params.due_date_to);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
 

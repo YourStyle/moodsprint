@@ -81,6 +81,7 @@ export function Navigation() {
                     'flex flex-col items-center gap-1 relative group min-w-[60px] z-10',
                     isActive ? 'text-white' : 'text-gray-400 hover:text-gray-300'
                   )}
+                  data-onboarding={item.href === '/deck' ? 'nav-deck' : undefined}
                 >
                   <motion.div
                     className="relative"

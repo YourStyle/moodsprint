@@ -368,8 +368,10 @@ class CardTrade(db.Model):
 
     def get_sender_cards(self) -> list:
         """Get all sender cards (supports both single and multi-card)."""
-        if self.sender_card_ids:
-            cards = UserCard.query.filter(UserCard.id.in_(self.sender_card_ids)).all()
+        # Check for multi-card (with safety for pre-migration)
+        card_ids = getattr(self, "sender_card_ids", None)
+        if card_ids:
+            cards = UserCard.query.filter(UserCard.id.in_(card_ids)).all()
             return [c.to_dict() for c in cards]
         elif self.sender_card:
             return [self.sender_card.to_dict()]
@@ -377,8 +379,10 @@ class CardTrade(db.Model):
 
     def get_receiver_cards(self) -> list:
         """Get all receiver cards (supports both single and multi-card)."""
-        if self.receiver_card_ids:
-            cards = UserCard.query.filter(UserCard.id.in_(self.receiver_card_ids)).all()
+        # Check for multi-card (with safety for pre-migration)
+        card_ids = getattr(self, "receiver_card_ids", None)
+        if card_ids:
+            cards = UserCard.query.filter(UserCard.id.in_(card_ids)).all()
             return [c.to_dict() for c in cards]
         elif self.receiver_card:
             return [self.receiver_card.to_dict()]

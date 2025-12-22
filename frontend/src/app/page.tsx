@@ -33,11 +33,11 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
   },
   {
-    id: 'cards-info',
-    targetSelector: '[data-onboarding="daily-bonus"]',
-    title: 'Карты за задачи',
+    id: 'nav-deck',
+    targetSelector: '[data-onboarding="nav-deck"]',
+    title: 'Твоя колода карт',
     description: 'За выполнение задач ты получаешь карты! Собирай колоду, обменивайся с друзьями и сражайся на арене.',
-    position: 'bottom',
+    position: 'top',
   },
 ];
 
@@ -357,12 +357,17 @@ export default function HomePage() {
     placeholderData: keepPreviousData,
   });
 
-  // Query all tasks for week to show counts on calendar
+  // Query week tasks for calendar badges (reuse main query data when possible)
   const { data: weekTasksData } = useQuery({
     queryKey: ['tasks', 'week', weekDates[0], weekDates[6]],
-    queryFn: () => tasksService.getTasks({ limit: 200 }),
+    queryFn: () => tasksService.getTasks({
+      due_date_from: weekDates[0],
+      due_date_to: weekDates[6],
+      status: 'pending',
+      limit: 100,
+    }),
     enabled: !!user,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes - less frequent refresh
   });
 
   // Calculate task counts per day for the week
@@ -443,7 +448,11 @@ export default function HomePage() {
       if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
-        setEarnedCard(result.data.card_earned as EarnedCard);
+        setEarnedCard({
+          ...result.data.card_earned,
+          quick_completion: result.data.quick_completion,
+          quick_completion_message: result.data.quick_completion_message,
+        } as EarnedCard);
         setShowCardModal(true);
       }
       hapticFeedback('success');
@@ -468,7 +477,11 @@ export default function HomePage() {
       if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
-        setEarnedCard(result.data.card_earned as EarnedCard);
+        setEarnedCard({
+          ...result.data.card_earned,
+          quick_completion: result.data.quick_completion,
+          quick_completion_message: result.data.quick_completion_message,
+        } as EarnedCard);
         setShowCardModal(true);
       }
       hapticFeedback('success');
@@ -612,9 +625,7 @@ export default function HomePage() {
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
     <div className="min-h-screen p-4 space-y-6">
       {/* Daily Bonus Modal */}
-      <div data-onboarding="daily-bonus">
-        <DailyBonus />
-      </div>
+      <DailyBonus />
 
       {/* Postponed Tasks Notification */}
       {showPostponeNotification && postponeStatus && (

@@ -21,6 +21,8 @@ interface FocusSessionWithXP {
   xp_earned: number;
   achievements_unlocked: XPReward['achievements_unlocked'];
   card_earned?: Card;
+  quick_completion?: boolean;
+  quick_completion_message?: string;
 }
 
 interface FocusHistoryResponse {
