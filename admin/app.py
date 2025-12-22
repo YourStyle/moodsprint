@@ -1051,6 +1051,40 @@ def remove_friendship_by_users():
 # ============ Monsters ============
 
 
+@app.route("/monsters/generate-images", methods=["POST"])
+@login_required
+def generate_monster_images():
+    """Proxy to backend for generating monster images."""
+    import requests
+
+    try:
+        response = requests.post(
+            f"{API_URL}/api/v1/arena/monsters/generate-images-admin",
+            headers={"X-Bot-Secret": BOT_SECRET},
+            timeout=300,  # 5 minutes for image generation
+        )
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/monsters/rotate", methods=["POST"])
+@login_required
+def rotate_monsters_proxy():
+    """Proxy to backend for rotating monsters."""
+    import requests
+
+    try:
+        response = requests.post(
+            f"{API_URL}/api/v1/arena/monsters/rotate",
+            headers={"X-Bot-Secret": BOT_SECRET},
+            timeout=300,
+        )
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/monsters")
 @login_required
 def monsters():
@@ -1094,8 +1128,6 @@ def monsters():
         with_images=with_images,
         without_images=without_images,
         current_period=str(period_start),
-        api_url=API_URL,
-        bot_secret=BOT_SECRET,
     )
 
 
