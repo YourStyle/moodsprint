@@ -30,10 +30,10 @@ MERGE_RESULT_CHANCES = {
     },
     # Uncommon + Uncommon
     (CardRarity.UNCOMMON, CardRarity.UNCOMMON): {
-        CardRarity.UNCOMMON: 0.50,
+        CardRarity.UNCOMMON: 0.52,
         CardRarity.RARE: 0.35,
-        CardRarity.EPIC: 0.12,
-        CardRarity.LEGENDARY: 0.03,
+        CardRarity.EPIC: 0.11,
+        CardRarity.LEGENDARY: 0.02,
     },
     # Common + Rare
     (CardRarity.COMMON, CardRarity.RARE): {
@@ -43,39 +43,39 @@ MERGE_RESULT_CHANCES = {
     },
     # Uncommon + Rare
     (CardRarity.UNCOMMON, CardRarity.RARE): {
-        CardRarity.UNCOMMON: 0.30,
+        CardRarity.UNCOMMON: 0.32,
         CardRarity.RARE: 0.45,
         CardRarity.EPIC: 0.20,
-        CardRarity.LEGENDARY: 0.05,
+        CardRarity.LEGENDARY: 0.03,
     },
     # Rare + Rare
     (CardRarity.RARE, CardRarity.RARE): {
-        CardRarity.RARE: 0.40,
+        CardRarity.RARE: 0.45,
         CardRarity.EPIC: 0.40,
-        CardRarity.LEGENDARY: 0.20,
+        CardRarity.LEGENDARY: 0.15,
     },
     # Common + Epic
     (CardRarity.COMMON, CardRarity.EPIC): {
-        CardRarity.RARE: 0.60,
+        CardRarity.RARE: 0.62,
         CardRarity.EPIC: 0.35,
-        CardRarity.LEGENDARY: 0.05,
+        CardRarity.LEGENDARY: 0.03,
     },
     # Uncommon + Epic
     (CardRarity.UNCOMMON, CardRarity.EPIC): {
-        CardRarity.RARE: 0.40,
-        CardRarity.EPIC: 0.45,
-        CardRarity.LEGENDARY: 0.15,
+        CardRarity.RARE: 0.42,
+        CardRarity.EPIC: 0.48,
+        CardRarity.LEGENDARY: 0.10,
     },
     # Rare + Epic
     (CardRarity.RARE, CardRarity.EPIC): {
-        CardRarity.RARE: 0.20,
-        CardRarity.EPIC: 0.50,
-        CardRarity.LEGENDARY: 0.30,
+        CardRarity.RARE: 0.25,
+        CardRarity.EPIC: 0.55,
+        CardRarity.LEGENDARY: 0.20,
     },
     # Epic + Epic
     (CardRarity.EPIC, CardRarity.EPIC): {
-        CardRarity.EPIC: 0.40,
-        CardRarity.LEGENDARY: 0.60,
+        CardRarity.EPIC: 0.55,
+        CardRarity.LEGENDARY: 0.45,
     },
 }
 

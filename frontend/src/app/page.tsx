@@ -309,9 +309,11 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('taskListCompact') === 'true';
+      const stored = localStorage.getItem('taskListCompact');
+      // Default to compact mode if not explicitly set to 'false'
+      return stored !== 'false';
     }
-    return false;
+    return true;
   });
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 

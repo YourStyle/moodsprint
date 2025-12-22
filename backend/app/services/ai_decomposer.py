@@ -217,11 +217,38 @@ class AIDecomposer:
 - Если можно добавить полезные шаги — предложи их
 """
 
+        # Check if description contains explicit steps/list
+        description_has_steps = False
+        if task_description:
+            # Check for numbered lists or bullet points
+            import re
+
+            has_numbers = bool(
+                re.search(r"^\s*\d+[\.\)]\s", task_description, re.MULTILINE)
+            )
+            has_bullets = bool(
+                re.search(r"^\s*[-•*]\s", task_description, re.MULTILINE)
+            )
+            has_newlines = (
+                "\n" in task_description and len(task_description.split("\n")) >= 2
+            )
+            description_has_steps = has_numbers or has_bullets or has_newlines
+
+        description_instruction = ""
+        if description_has_steps:
+            description_instruction = """
+ВАЖНО: В описании задачи УЖЕ ЕСТЬ готовый список пунктов/шагов!
+- Извлеки эти пункты как основу для шагов
+- Используй формулировки пользователя, только улучши их если нужно
+- НЕ придумывай новые шаги, если пользователь уже расписал план
+- Добавляй свои шаги только если список явно неполный
+"""
+
         prompt = f"""Разбей эту задачу на конкретные, выполнимые шаги.
 
 Задача: {task_title}
-{f'Описание: {task_description}' if task_description else ''}
-{type_instructions}{user_state_instructions}{existing_steps_context}
+{f'Описание: {task_description}' if task_description else '(без описания)'}
+{description_instruction}{type_instructions}{user_state_instructions}{existing_steps_context}
 КРИТИЧЕСКИ ВАЖНО - Подстрой количество шагов под сложность задачи:
 - Очень простая задача (сесть, выпить воды) → 1 шаг ИЛИ no_new_steps если уже разбита
 - Простая бытовая задача (постирать вещи, помыть посуду) → 1-2 шага максимум!
