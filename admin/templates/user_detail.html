@@ -532,7 +532,8 @@ function resetOnboarding(userId) {
                 }
             });
 
-            const totalGaps = (weeks.length - 1) * cellGap + monthTransitions * monthGap;
+            // Total gaps = gaps between all columns + extra gap at month transitions
+            const totalGaps = (weeks.length - 1) * cellGap + monthTransitions * (monthGap - cellGap);
             const cellSize = Math.max(10, Math.floor((containerWidth - totalGaps) / weeks.length));
 
             // Update day labels height
@@ -548,6 +549,9 @@ function resetOnboarding(userId) {
             const monthPositions = [];
             let currentMonthStartIdx = 0;
 
+            // Set gap between week columns on the heatmap container
+            heatmapContainer.style.gap = cellGap + 'px';
+
             // Render heatmap
             weeks.forEach((week, weekIdx) => {
                 const weekCol = document.createElement('div');
@@ -559,7 +563,7 @@ function resetOnboarding(userId) {
                 if (firstDay && (firstDay.month !== lastMonth || firstDay.year !== lastYear)) {
                     // Add gap before new month (except first)
                     if (lastMonth !== -1) {
-                        weekCol.style.marginLeft = monthGap + 'px';
+                        weekCol.style.marginLeft = (monthGap - cellGap) + 'px'; // Subtract cellGap since container already has gap
                         // Record previous month width
                         if (monthPositions.length > 0) {
                             monthPositions[monthPositions.length - 1].endIdx = weekIdx;
@@ -615,11 +619,11 @@ function resetOnboarding(userId) {
 
             monthPositions.forEach((pos, idx) => {
                 const weeksInMonth = pos.endIdx - pos.startIdx;
-                // Calculate width including cell gaps
-                let width = weeksInMonth * (cellSize + cellGap) - cellGap;
-                // Add month gap for all except first
+                // Calculate width: cells + gaps between cells within month
+                let width = weeksInMonth * cellSize + (weeksInMonth - 1) * cellGap;
+                // Add extra month gap for all except first
                 if (idx > 0) {
-                    width += monthGap;
+                    width += (monthGap - cellGap);
                 }
 
                 const label = document.createElement('span');
