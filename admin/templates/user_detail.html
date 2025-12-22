@@ -452,22 +452,26 @@ function resetSpotlight(userId) {
 <!-- Activity Heatmap (GitHub-style) -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Активность (последние 12 месяцев)</h3>
-    <div id="heatmap-wrapper">
-        <!-- Month labels -->
-        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px;"></div>
-        <div class="flex">
-            <!-- Day labels -->
-            <div id="day-labels" class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px;">
-                <span style="text-align: right; padding-right: 2px;">Вс</span>
-                <span style="text-align: right; padding-right: 2px;">Пн</span>
-                <span style="text-align: right; padding-right: 2px;">Вт</span>
-                <span style="text-align: right; padding-right: 2px;">Ср</span>
-                <span style="text-align: right; padding-right: 2px;">Чт</span>
-                <span style="text-align: right; padding-right: 2px;">Пт</span>
-                <span style="text-align: right; padding-right: 2px;">Сб</span>
+    <!-- Date tooltip -->
+    <div id="heatmap-tooltip" class="hidden fixed bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg z-50 pointer-events-none"></div>
+    <div id="heatmap-wrapper" class="overflow-x-auto">
+        <div id="heatmap-content" style="min-width: max-content;">
+            <!-- Month labels -->
+            <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px;"></div>
+            <div class="flex">
+                <!-- Day labels -->
+                <div id="day-labels" class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px;">
+                    <span style="text-align: right; padding-right: 2px;">Вс</span>
+                    <span style="text-align: right; padding-right: 2px;">Пн</span>
+                    <span style="text-align: right; padding-right: 2px;">Вт</span>
+                    <span style="text-align: right; padding-right: 2px;">Ср</span>
+                    <span style="text-align: right; padding-right: 2px;">Чт</span>
+                    <span style="text-align: right; padding-right: 2px;">Пт</span>
+                    <span style="text-align: right; padding-right: 2px;">Сб</span>
+                </div>
+                <!-- Heatmap grid -->
+                <div id="heatmap" class="flex"></div>
             </div>
-            <!-- Heatmap grid -->
-            <div id="heatmap" class="flex flex-1"></div>
         </div>
         <div class="flex items-center justify-end mt-3 text-xs text-gray-500 gap-2">
             <span>Меньше</span>
@@ -489,10 +493,15 @@ function resetSpotlight(userId) {
     const heatmapContainer = document.getElementById('heatmap');
     const monthLabels = document.getElementById('month-labels');
     const dayLabels = document.getElementById('day-labels');
+    const tooltip = document.getElementById('heatmap-tooltip');
 
     const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
     const purpleColors = ['#e9d5ff', '#c084fc', '#9333ea', '#6b21a8'];
+
+    // Fixed cell size for scrollable view
+    const cellSize = 12;
+    const cellGap = 2;
 
     // Format date for tooltip
     function formatDate(dateStr) {
@@ -503,6 +512,25 @@ function resetSpotlight(userId) {
         const dayName = dayNames[d.getDay()];
         return `${dayName}, ${day} ${month} ${year}`;
     }
+
+    // Show tooltip on click
+    function showTooltip(e, text) {
+        tooltip.textContent = text;
+        tooltip.classList.remove('hidden');
+        tooltip.style.left = e.pageX + 10 + 'px';
+        tooltip.style.top = e.pageY - 30 + 'px';
+    }
+
+    function hideTooltip() {
+        tooltip.classList.add('hidden');
+    }
+
+    // Hide tooltip when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('heatmap-cell')) {
+            hideTooltip();
+        }
+    });
 
     // Generate dates for the last 365 days
     const today = new Date();
@@ -549,29 +577,6 @@ function resetSpotlight(userId) {
                 weeks.push(currentWeek);
             }
 
-            // Calculate cell size to fill container width
-            const containerWidth = heatmapContainer.offsetWidth;
-            const monthGap = 8; // Gap between months
-            const cellGap = 2;
-
-            // Count month transitions for gaps
-            let lastMonthYear = null;
-            let monthTransitions = 0;
-            weeks.forEach((week) => {
-                const firstDay = week.find(d => d !== null);
-                if (firstDay) {
-                    const key = `${firstDay.year}-${firstDay.month}`;
-                    if (lastMonthYear !== null && lastMonthYear !== key) {
-                        monthTransitions++;
-                    }
-                    lastMonthYear = key;
-                }
-            });
-
-            // Total gaps = gaps between all columns + extra gap at month transitions
-            const totalGaps = (weeks.length - 1) * cellGap + monthTransitions * (monthGap - cellGap);
-            const cellSize = Math.max(10, Math.floor((containerWidth - totalGaps) / weeks.length));
-
             // Update day labels height
             dayLabels.querySelectorAll('span').forEach(span => {
                 span.style.height = cellSize + 'px';
@@ -583,7 +588,6 @@ function resetSpotlight(userId) {
             let lastMonth = -1;
             let lastYear = -1;
             const monthPositions = [];
-            let currentMonthStartIdx = 0;
 
             // Set gap between week columns on the heatmap container
             heatmapContainer.style.gap = cellGap + 'px';
@@ -597,13 +601,9 @@ function resetSpotlight(userId) {
                 // Check for month change
                 const firstDay = week.find(d => d !== null);
                 if (firstDay && (firstDay.month !== lastMonth || firstDay.year !== lastYear)) {
-                    // Add gap before new month (except first)
-                    if (lastMonth !== -1) {
-                        weekCol.style.marginLeft = (monthGap - cellGap) + 'px'; // Subtract cellGap since container already has gap
-                        // Record previous month width
-                        if (monthPositions.length > 0) {
-                            monthPositions[monthPositions.length - 1].endIdx = weekIdx;
-                        }
+                    // Record previous month end
+                    if (monthPositions.length > 0) {
+                        monthPositions[monthPositions.length - 1].endIdx = weekIdx;
                     }
                     monthPositions.push({
                         month: firstDay.month,
@@ -617,7 +617,7 @@ function resetSpotlight(userId) {
 
                 week.forEach(day => {
                     const cell = document.createElement('div');
-                    cell.className = 'rounded-sm cursor-pointer';
+                    cell.className = 'rounded-sm heatmap-cell';
                     cell.style.width = cellSize + 'px';
                     cell.style.height = cellSize + 'px';
 
@@ -636,7 +636,12 @@ function resetSpotlight(userId) {
                         } else {
                             cell.style.background = purpleColors[3];
                         }
-                        cell.title = `${formatDate(day.date)}: ${day.count} выполнено`;
+                        cell.style.cursor = 'pointer';
+                        const tooltipText = `${formatDate(day.date)}: ${day.count} выполнено`;
+                        cell.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            showTooltip(e, tooltipText);
+                        });
                     }
 
                     weekCol.appendChild(cell);
@@ -657,9 +662,9 @@ function resetSpotlight(userId) {
                 const weeksInMonth = pos.endIdx - pos.startIdx;
                 // Calculate width: cells + gaps between cells within month
                 let width = weeksInMonth * cellSize + (weeksInMonth - 1) * cellGap;
-                // Add extra month gap for all except first
+                // Add gap for separator between months
                 if (idx > 0) {
-                    width += (monthGap - cellGap);
+                    width += cellGap;
                 }
 
                 const label = document.createElement('span');
@@ -672,9 +677,6 @@ function resetSpotlight(userId) {
                 label.style.width = width + 'px';
                 label.style.textAlign = 'left';
                 label.style.flexShrink = '0';
-                if (idx > 0) {
-                    label.style.paddingLeft = monthGap + 'px';
-                }
                 monthLabels.appendChild(label);
             });
         })
