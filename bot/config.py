@@ -32,6 +32,12 @@ class Config:
         default_factory=lambda: os.environ.get("REDIS_URL", "redis://redis:6379/0")
     )
 
+    # Backend API
+    API_URL: str = field(
+        default_factory=lambda: os.environ.get("API_URL", "http://backend:5000/api/v1")
+    )
+    BOT_SECRET: str = field(default_factory=lambda: os.environ.get("BOT_SECRET", ""))
+
     # Admin IDs (comma-separated)
     ADMIN_IDS: list[int] = field(default_factory=list)
 

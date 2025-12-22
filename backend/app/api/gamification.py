@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from flask import request
+from flask import current_app, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
@@ -1003,6 +1003,58 @@ def generate_all_monster_images():
             "generated": generated,
             "failed": failed,
             "total": len(monsters),
+        }
+    )
+
+
+# ============ Monster Rotation (Cron) ============
+
+
+@api_bp.route("/arena/monsters/rotate", methods=["POST"])
+def rotate_monsters():
+    """
+    Generate new monsters for current 3-day period.
+    Called by cron job from bot every 3 days.
+    Protected by BOT_SECRET header.
+    """
+    from flask import request
+
+    # Verify bot secret
+    bot_secret = request.headers.get("X-Bot-Secret")
+    expected_secret = current_app.config.get("BOT_SECRET", "")
+
+    if not expected_secret or bot_secret != expected_secret:
+        return validation_error({"error": "unauthorized"})
+
+    # Check if we need to generate (only on period start days)
+    from app.models.character import DailyMonster
+
+    period_start = DailyMonster.get_current_period_start()
+    today = date.today()
+
+    # Only generate on first day of period
+    if period_start != today:
+        return success_response(
+            {
+                "success": True,
+                "message": f"Not period start day. Current period: {period_start}",
+                "generated": {},
+            }
+        )
+
+    from app.services.monster_generator import MonsterGeneratorService
+
+    service = MonsterGeneratorService()
+    # Generate without images initially for speed, images can be generated on demand
+    results = service.generate_daily_monsters(generate_images=False)
+
+    total = sum(results.values())
+    return success_response(
+        {
+            "success": True,
+            "message": f"Generated {total} monsters for period {period_start}",
+            "generated": results,
+            "period_start": str(period_start),
         }
     )
 

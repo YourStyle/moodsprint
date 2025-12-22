@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.name }} - MoodSprint Admin{% endblock %}
+{% block header %}Event: {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Button -->
+    <a href="{{ url_for('events') }}" class="inline-flex items-center text-gray-600 hover:text-gray-800">
+        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Back to Events
+    </a>
+
+    <!-- Event Info Card -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <div class="flex items-start justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <span class="text-4xl">{{ event.emoji }}</span>
+                <div>
+                    <h2 class="text-2xl font-bold" style="color: {{ event.theme_color }}">{{ event.name }}</h2>
+                    <p class="text-gray-500">{{ event.code }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if event.is_currently_active %}
+                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">Active</span>
+                {% elif event.start_date > now %}
+                <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">Upcoming</span>
+                {% else %}
+                <span class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-sm font-medium">Ended</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm text-gray-500">Start Date</p>
+                <p class="font-semibold">{{ event.start_date.strftime('%d.%m.%Y %H:%M') }}</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm text-gray-500">End Date</p>
+                <p class="font-semibold">{{ event.end_date.strftime('%d.%m.%Y %H:%M') }}</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm text-gray-500">XP Multiplier</p>
+                <p class="font-semibold text-green-600">x{{ event.xp_multiplier }}</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <p class="text-sm text-gray-500">Days Remaining</p>
+                <p class="font-semibold">{{ event.days_remaining }} days</p>
+            </div>
+        </div>
+
+        {% if event.description %}
+        <div class="mb-6">
+            <p class="text-sm text-gray-500 mb-1">Description</p>
+            <p class="text-gray-700">{{ event.description }}</p>
+        </div>
+        {% endif %}
+
+        <div class="flex gap-3">
+            <button onclick="openEditModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                Edit Event
+            </button>
+            <button onclick="toggleEvent({{ event.id }}, {{ 'false' if event.is_active else 'true' }})"
+                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                {{ 'Disable' if event.is_active else 'Enable' }} Event
+            </button>
+        </div>
+    </div>
+
+    <!-- Event Monsters Section -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Event Monsters</h3>
+            <button onclick="openAddMonsterModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Add Monster
+            </button>
+        </div>
+
+        {% if event_monsters %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for em in event_monsters %}
+            <div class="border rounded-lg p-4 hover:border-purple-300 transition-colors">
+                <div class="flex items-center gap-3 mb-3">
+                    {% if em.monster.sprite_url %}
+                    <img src="{{ em.monster.sprite_url }}" alt="{{ em.monster.name }}" class="w-12 h-12 rounded-lg object-cover">
+                    {% else %}
+                    <span class="text-3xl">{{ em.monster.emoji }}</span>
+                    {% endif %}
+                    <div>
+                        <h4 class="font-semibold">{{ em.monster.name }}</h4>
+                        <p class="text-sm text-gray-500">Day {{ em.appear_day }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-500">
+                        {% if em.guaranteed_rarity %}
+                        <span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded">{{ em.guaranteed_rarity }}</span>
+                        {% endif %}
+                    </span>
+                    <span class="text-gray-400">Defeated: {{ em.times_defeated }}</span>
+                </div>
+                <div class="mt-3 pt-3 border-t flex justify-end">
+                    <button onclick="removeMonster({{ em.id }})" class="text-red-500 hover:text-red-700 text-sm">
+                        Remove
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <p>No monsters added to this event yet.</p>
+            <p class="text-sm">Add monsters to make this event special!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Event Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">Edit Event</h3>
+        <form id="editEventForm" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Code</label>
+                    <input type="text" name="code" value="{{ event.code }}" required
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="name" value="{{ event.name }}" required
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows="2"
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">{{ event.description or '' }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input type="datetime-local" name="start_date" value="{{ event.start_date.strftime('%Y-%m-%dT%H:%M') }}" required
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input type="datetime-local" name="end_date" value="{{ event.end_date.strftime('%Y-%m-%dT%H:%M') }}" required
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+                    <input type="text" name="emoji" value="{{ event.emoji }}" maxlength="10"
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Theme Color</label>
+                    <input type="color" name="theme_color" value="{{ event.theme_color }}"
+                           class="w-full h-10 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">XP Multiplier</label>
+                    <input type="number" name="xp_multiplier" value="{{ event.xp_multiplier }}" step="0.1" min="1" max="5"
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Monster Modal -->
+<div id="addMonsterModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">Add Event Monster</h3>
+        <form id="addMonsterForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Monster</label>
+                <select name="monster_id" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">Choose a monster...</option>
+                    {% for monster in all_monsters %}
+                    <option value="{{ monster.id }}">{{ monster.emoji }} {{ monster.name }} ({{ monster.genre }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Appear Day</label>
+                    <input type="number" name="appear_day" value="1" min="1"
+                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">Day of event when monster appears</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Guaranteed Rarity</label>
+                    <select name="guaranteed_rarity" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="">None (random)</option>
+                        <option value="common">Common</option>
+                        <option value="uncommon">Uncommon</option>
+                        <option value="rare">Rare</option>
+                        <option value="epic">Epic</option>
+                        <option value="legendary">Legendary</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Exclusive Reward Name</label>
+                <input type="text" name="exclusive_reward_name" placeholder="e.g., Halloween Card Pack"
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" onclick="closeAddMonsterModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    Add Monster
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const eventId = {{ event.id }};
+
+function openEditModal() {
+    document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+}
+function openAddMonsterModal() {
+    document.getElementById('addMonsterModal').classList.remove('hidden');
+}
+function closeAddMonsterModal() {
+    document.getElementById('addMonsterModal').classList.add('hidden');
+}
+
+document.getElementById('editEventForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    data.xp_multiplier = parseFloat(data.xp_multiplier);
+
+    try {
+        const response = await fetch(`/events/${eventId}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+});
+
+document.getElementById('addMonsterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    data.monster_id = parseInt(data.monster_id);
+    data.appear_day = parseInt(data.appear_day);
+
+    try {
+        const response = await fetch(`/events/${eventId}/monsters/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+});
+
+async function toggleEvent(eventId, enable) {
+    try {
+        const response = await fetch(`/events/${eventId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: enable })
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function removeMonster(eventMonsterId) {
+    if (!confirm('Remove this monster from the event?')) return;
+
+    try {
+        const response = await fetch(`/events/monsters/${eventMonsterId}/remove`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+// Close modals on outside click
+document.getElementById('editModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeEditModal();
+});
+document.getElementById('addMonsterModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeAddMonsterModal();
+});
+</script>
+{% endblock %}

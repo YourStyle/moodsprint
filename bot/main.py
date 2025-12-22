@@ -141,6 +141,13 @@ async def main():
         id="scheduled_task_reminders",
     )
 
+    # Monster rotation - run daily at 00:10, actual generation happens on period start days
+    scheduler.add_job(
+        notification_service.rotate_monsters,
+        CronTrigger(hour=0, minute=10, timezone=MOSCOW_TZ),
+        id="monster_rotation",
+    )
+
     scheduler.start()
 
     # Set bot commands

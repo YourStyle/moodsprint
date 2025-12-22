@@ -1,6 +1,7 @@
 """Admin panel application."""
 
 import os
+from datetime import datetime
 from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
@@ -349,9 +350,7 @@ def user_detail(user_id: int):
     # Get user's genre preference
     try:
         user_genre = db.session.execute(
-            text(
-                "SELECT favorite_genre FROM user_profiles WHERE user_id = :uid"
-            ),
+            text("SELECT favorite_genre FROM user_profiles WHERE user_id = :uid"),
             {"uid": user_id},
         ).fetchone()
     except Exception:
@@ -832,9 +831,16 @@ def reset_onboarding(user_id: int):
                 {"uid": user_id},
             )
             db.session.commit()
-            return jsonify({"success": True, "message": "Onboarding reset successfully"})
+            return jsonify(
+                {"success": True, "message": "Onboarding reset successfully"}
+            )
         else:
-            return jsonify({"success": True, "message": "No profile found, user will see onboarding"})
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No profile found, user will see onboarding",
+                }
+            )
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -868,9 +874,7 @@ def reset_spotlight(user_id: int):
                 {"success": True, "message": "Spotlight onboarding will be shown again"}
             )
         else:
-            return jsonify(
-                {"success": False, "error": "User profile not found"}
-            ), 404
+            return jsonify({"success": False, "error": "User profile not found"}), 404
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1013,7 +1017,10 @@ def remove_friendship_by_users():
     friend_id = data.get("friend_id")
 
     if not user_id or not friend_id:
-        return jsonify({"success": False, "error": "user_id and friend_id required"}), 400
+        return (
+            jsonify({"success": False, "error": "user_id and friend_id required"}),
+            400,
+        )
 
     try:
         result = db.session.execute(
@@ -1035,6 +1042,171 @@ def remove_friendship_by_users():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============ Seasonal Events ============
+
+
+@app.route("/events")
+@login_required
+def events():
+    """List all seasonal events."""
+    from backend.app.models.event import SeasonalEvent
+
+    all_events = SeasonalEvent.query.order_by(SeasonalEvent.start_date.desc()).all()
+    active_events = [e for e in all_events if e.is_currently_active]
+
+    return render_template(
+        "events.html",
+        events=all_events,
+        active_events=active_events,
+        now=datetime.utcnow(),
+    )
+
+
+@app.route("/events/create", methods=["POST"])
+@login_required
+def create_event():
+    """Create a new seasonal event."""
+    from backend.app.models.event import SeasonalEvent
+
+    data = request.json
+    try:
+        event = SeasonalEvent(
+            code=data["code"],
+            name=data["name"],
+            description=data.get("description"),
+            event_type=data.get("event_type", "seasonal"),
+            start_date=datetime.fromisoformat(data["start_date"]),
+            end_date=datetime.fromisoformat(data["end_date"]),
+            emoji=data.get("emoji", "🎉"),
+            theme_color=data.get("theme_color", "#FF6B00"),
+            xp_multiplier=data.get("xp_multiplier", 1.0),
+            is_active=True,
+        )
+        db.session.add(event)
+        db.session.commit()
+        return jsonify({"success": True, "event_id": event.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/events/<int:event_id>")
+@login_required
+def event_detail(event_id: int):
+    """Event detail page with monsters."""
+    from backend.app.models.character import Monster
+    from backend.app.models.event import EventMonster, SeasonalEvent
+
+    event = SeasonalEvent.query.get_or_404(event_id)
+    event_monsters = (
+        EventMonster.query.filter_by(event_id=event_id)
+        .order_by(EventMonster.appear_day)
+        .all()
+    )
+    all_monsters = Monster.query.order_by(Monster.genre, Monster.name).all()
+
+    return render_template(
+        "event_detail.html",
+        event=event,
+        event_monsters=event_monsters,
+        all_monsters=all_monsters,
+        now=datetime.utcnow(),
+    )
+
+
+@app.route("/events/<int:event_id>/update", methods=["POST"])
+@login_required
+def update_event(event_id: int):
+    """Update event details."""
+    from backend.app.models.event import SeasonalEvent
+
+    event = SeasonalEvent.query.get_or_404(event_id)
+    data = request.json
+
+    try:
+        if "code" in data:
+            event.code = data["code"]
+        if "name" in data:
+            event.name = data["name"]
+        if "description" in data:
+            event.description = data["description"]
+        if "start_date" in data:
+            event.start_date = datetime.fromisoformat(data["start_date"])
+        if "end_date" in data:
+            event.end_date = datetime.fromisoformat(data["end_date"])
+        if "emoji" in data:
+            event.emoji = data["emoji"]
+        if "theme_color" in data:
+            event.theme_color = data["theme_color"]
+        if "xp_multiplier" in data:
+            event.xp_multiplier = data["xp_multiplier"]
+
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/events/<int:event_id>/toggle", methods=["POST"])
+@login_required
+def toggle_event(event_id: int):
+    """Enable/disable an event."""
+    from backend.app.models.event import SeasonalEvent
+
+    event = SeasonalEvent.query.get_or_404(event_id)
+    data = request.json
+
+    try:
+        event.is_active = data.get("is_active", not event.is_active)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/events/<int:event_id>/monsters/add", methods=["POST"])
+@login_required
+def add_event_monster(event_id: int):
+    """Add a monster to an event."""
+    from backend.app.models.event import EventMonster
+
+    data = request.json
+
+    try:
+        event_monster = EventMonster(
+            event_id=event_id,
+            monster_id=data["monster_id"],
+            appear_day=data.get("appear_day", 1),
+            exclusive_reward_name=data.get("exclusive_reward_name"),
+            guaranteed_rarity=data.get("guaranteed_rarity") or None,
+        )
+        db.session.add(event_monster)
+        db.session.commit()
+        return jsonify({"success": True, "id": event_monster.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/events/monsters/<int:event_monster_id>/remove", methods=["POST"])
+@login_required
+def remove_event_monster(event_monster_id: int):
+    """Remove a monster from an event."""
+    from backend.app.models.event import EventMonster
+
+    event_monster = EventMonster.query.get_or_404(event_monster_id)
+
+    try:
+        db.session.delete(event_monster)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 if __name__ == "__main__":

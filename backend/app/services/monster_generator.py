@@ -4,7 +4,6 @@ import logging
 import os
 import random
 import uuid
-from datetime import date
 from pathlib import Path
 
 import requests
@@ -300,21 +299,25 @@ Be creative with names - avoid generic names. Each monster should feel unique an
 
     def generate_daily_monsters(self, generate_images: bool = True) -> dict[str, int]:
         """
-        Generate daily monsters for all genres.
+        Generate monsters for current 3-day period for all genres.
 
-        Called by cron job each night.
+        Called by cron job every 3 days.
 
         Returns dict of genre -> count of monsters generated.
         """
-        today = date.today()
+        period_start = DailyMonster.get_current_period_start()
         results = {}
 
         for genre in GENRE_THEMES.keys():
             try:
-                # Check if monsters already generated for today
-                existing = DailyMonster.query.filter_by(genre=genre, date=today).first()
+                # Check if monsters already generated for this period
+                existing = DailyMonster.query.filter_by(
+                    genre=genre, period_start=period_start
+                ).first()
                 if existing:
-                    logger.info(f"Monsters for {genre} already exist for {today}")
+                    logger.info(
+                        f"Monsters for {genre} already exist for period {period_start}"
+                    )
                     results[genre] = 0
                     continue
 
@@ -331,11 +334,12 @@ Be creative with names - avoid generic names. Each monster should feel unique an
                     db.session.add(monster)
                     db.session.flush()  # Get monster ID
 
-                    # Create daily monster entry
+                    # Create daily monster entry with period_start
                     daily = DailyMonster(
                         monster_id=monster.id,
                         genre=genre,
-                        date=today,
+                        period_start=period_start,
+                        date=period_start,  # Legacy compatibility
                         slot_number=i + 1,
                     )
                     db.session.add(daily)
@@ -343,7 +347,9 @@ Be creative with names - avoid generic names. Each monster should feel unique an
 
                 db.session.commit()
                 results[genre] = created_count
-                logger.info(f"Generated {created_count} monsters for {genre}")
+                logger.info(
+                    f"Generated {created_count} monsters for {genre} (period {period_start})"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to generate monsters for {genre}: {e}")
@@ -356,15 +362,15 @@ Be creative with names - avoid generic names. Each monster should feel unique an
         self, user_id: int, genre: str, player_level: int
     ) -> list[dict]:
         """
-        Get today's monsters for a user, scaled to their level.
+        Get current period's monsters for a user, scaled to their level.
 
         Returns list of monster dicts with scaled stats.
         """
-        today = date.today()
+        period_start = DailyMonster.get_current_period_start()
 
-        # Get daily monsters for genre
+        # Get daily monsters for genre in current period
         daily_monsters = (
-            DailyMonster.query.filter_by(genre=genre, date=today)
+            DailyMonster.query.filter_by(genre=genre, period_start=period_start)
             .order_by(DailyMonster.slot_number)
             .all()
         )

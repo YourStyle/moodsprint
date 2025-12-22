@@ -32,6 +32,9 @@ class Config:
     # Telegram
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
+    # Bot secret for cron job authentication
+    BOT_SECRET = os.environ.get("BOT_SECRET", "")
+
     # OpenAI
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
     OPENAI_PROXY = os.environ.get(

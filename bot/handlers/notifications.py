@@ -529,3 +529,44 @@ class NotificationService:
             await asyncio.sleep(0.05)  # Rate limiting
 
         logger.info(f"Task reminders: {reminders_sent} sent, {reminders_failed} failed")
+
+    async def rotate_monsters(self):
+        """
+        Trigger monster rotation via backend API.
+        Called every day at midnight, but only generates on period start days.
+        """
+        import aiohttp
+        from config import config
+
+        if not config.BOT_SECRET:
+            logger.warning("BOT_SECRET not configured, skipping monster rotation")
+            return
+
+        url = f"{config.API_URL}/arena/monsters/rotate"
+        headers = {"X-Bot-Secret": config.BOT_SECRET}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, timeout=60) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get("success"):
+                            generated = data.get("generated", {})
+                            total = sum(generated.values()) if generated else 0
+                            if total > 0:
+                                logger.info(
+                                    f"Monster rotation: generated {total} monsters"
+                                )
+                            else:
+                                logger.info(
+                                    f"Monster rotation: {data.get('message', 'no action needed')}"
+                                )
+                        else:
+                            logger.error(f"Monster rotation failed: {data}")
+                    else:
+                        text = await response.text()
+                        logger.error(
+                            f"Monster rotation API error: {response.status} - {text}"
+                        )
+        except Exception as e:
+            logger.error(f"Monster rotation error: {e}")
