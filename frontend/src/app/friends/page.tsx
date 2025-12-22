@@ -53,8 +53,8 @@ export default function FriendsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('friends');
   const [searchUsername, setSearchUsername] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
-  const [selectedMyCard, setSelectedMyCard] = useState<CardType | null>(null);
-  const [selectedFriendCard, setSelectedFriendCard] = useState<CardType | null>(null);
+  const [selectedMyCards, setSelectedMyCards] = useState<CardType[]>([]);
+  const [selectedFriendCards, setSelectedFriendCards] = useState<CardType[]>([]);
   const [tradeMessage, setTradeMessage] = useState('');
   const [showTradeForm, setShowTradeForm] = useState(false);
 
@@ -133,16 +133,16 @@ export default function FriendsPage() {
     mutationFn: () =>
       cardsService.createTrade(
         selectedFriend!.friend_id,
-        selectedMyCard!.id,
-        selectedFriendCard?.id,
+        selectedMyCards.map(c => c.id),
+        selectedFriendCards.length > 0 ? selectedFriendCards.map(c => c.id) : undefined,
         tradeMessage || undefined
       ),
     onSuccess: () => {
       hapticFeedback('success');
       setShowTradeForm(false);
       setSelectedFriend(null);
-      setSelectedMyCard(null);
-      setSelectedFriendCard(null);
+      setSelectedMyCards([]);
+      setSelectedFriendCards([]);
       setTradeMessage('');
       queryClient.invalidateQueries({ queryKey: ['trades'] });
     },
@@ -191,8 +191,8 @@ export default function FriendsPage() {
       showBackButton(() => {
         setShowTradeForm(false);
         setSelectedFriend(null);
-        setSelectedMyCard(null);
-        setSelectedFriendCard(null);
+        setSelectedMyCards([]);
+        setSelectedFriendCards([]);
         setTradeMessage('');
       });
     } else {
@@ -228,9 +228,27 @@ export default function FriendsPage() {
   const handleCloseTrade = () => {
     setShowTradeForm(false);
     setSelectedFriend(null);
-    setSelectedMyCard(null);
-    setSelectedFriendCard(null);
+    setSelectedMyCards([]);
+    setSelectedFriendCards([]);
     setTradeMessage('');
+  };
+
+  const toggleMyCard = (card: CardType) => {
+    setSelectedMyCards(prev =>
+      prev.some(c => c.id === card.id)
+        ? prev.filter(c => c.id !== card.id)
+        : [...prev, card]
+    );
+    hapticFeedback('light');
+  };
+
+  const toggleFriendCard = (card: CardType) => {
+    setSelectedFriendCards(prev =>
+      prev.some(c => c.id === card.id)
+        ? prev.filter(c => c.id !== card.id)
+        : [...prev, card]
+    );
+    hapticFeedback('light');
   };
 
   const handleShareInvite = () => {
@@ -298,7 +316,7 @@ export default function FriendsPage() {
 
   // Trade creation form
   if (showTradeForm && selectedFriend) {
-    const isGiftMode = !selectedFriendCard;
+    const isGiftMode = selectedFriendCards.length === 0;
 
     return (
       <div className="p-4 pb-4">
@@ -309,44 +327,52 @@ export default function FriendsPage() {
             <ArrowLeftRight className="w-10 h-10 text-purple-500 mx-auto mb-2" />
           )}
           <h1 className="text-xl font-bold text-white">
-            {isGiftMode ? 'Подарить карту' : 'Предложить обмен'}
+            {isGiftMode ? 'Подарить карты' : 'Предложить обмен'}
           </h1>
           <p className="text-sm text-gray-400">
             {selectedFriend.first_name || selectedFriend.username}
           </p>
         </div>
 
-        {/* My card selection */}
-        <Card className="mb-4">
-          <h3 className="text-sm font-medium text-white mb-3">Ваша карта (обязательно)</h3>
-          {selectedMyCard ? (
-            <div onClick={() => setSelectedMyCard(null)}>
-              {renderCardMini(selectedMyCard, () => setSelectedMyCard(null), true)}
-              <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
-              {myCards.length === 0 ? (
-                <p className="text-center text-gray-500 py-4">
-                  Нет карт для обмена
-                </p>
-              ) : (
-                myCards.map((card) => (
-                  <div key={card.id} onClick={() => setSelectedMyCard(card)}>
-                    {renderCardMini(card, () => setSelectedMyCard(card))}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Friend's card selection (optional for gifts) */}
+        {/* My cards selection */}
         <Card className="mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white">
-              Карта друга
-            </h3>
+            <h3 className="text-sm font-medium text-white">Ваши карты</h3>
+            {selectedMyCards.length > 0 && (
+              <span className="text-xs text-purple-400 font-medium">
+                Выбрано: {selectedMyCards.length}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
+            {myCards.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">
+                Нет карт для обмена
+              </p>
+            ) : (
+              myCards.map((card) => {
+                const isSelected = selectedMyCards.some(c => c.id === card.id);
+                return (
+                  <div key={card.id} onClick={() => toggleMyCard(card)}>
+                    {renderCardMini(card, () => toggleMyCard(card), isSelected)}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Card>
+
+        {/* Friend's cards selection (optional for gifts) */}
+        <Card className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-medium text-white">Карты друга</h3>
+              {selectedFriendCards.length > 0 && (
+                <span className="text-xs text-purple-400 font-medium">
+                  ({selectedFriendCards.length})
+                </span>
+              )}
+            </div>
             <span className="text-xs text-gray-500 flex items-center gap-1">
               <Gift className="w-3 h-3" />
               не выбирай для подарка
@@ -354,11 +380,6 @@ export default function FriendsPage() {
           </div>
           {friendCardsLoading ? (
             <div className="h-32 bg-gray-700 rounded-xl animate-pulse" />
-          ) : selectedFriendCard ? (
-            <div onClick={() => setSelectedFriendCard(null)}>
-              {renderCardMini(selectedFriendCard, () => setSelectedFriendCard(null), true)}
-              <p className="text-xs text-gray-400 text-center mt-2">Нажмите чтобы изменить</p>
-            </div>
           ) : (
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pt-2 pb-2">
               {friendCards.length === 0 ? (
@@ -366,11 +387,14 @@ export default function FriendsPage() {
                   У друга нет карт для обмена
                 </p>
               ) : (
-                friendCards.map((card) => (
-                  <div key={card.id} onClick={() => setSelectedFriendCard(card)}>
-                    {renderCardMini(card, () => setSelectedFriendCard(card))}
-                  </div>
-                ))
+                friendCards.map((card) => {
+                  const isSelected = selectedFriendCards.some(c => c.id === card.id);
+                  return (
+                    <div key={card.id} onClick={() => toggleFriendCard(card)}>
+                      {renderCardMini(card, () => toggleFriendCard(card), isSelected)}
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
@@ -392,18 +416,18 @@ export default function FriendsPage() {
         <Button
           className={cn("w-full", isGiftMode && "bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600")}
           onClick={() => createTradeMutation.mutate()}
-          disabled={!selectedMyCard}
+          disabled={selectedMyCards.length === 0}
           isLoading={createTradeMutation.isPending}
         >
           {isGiftMode ? (
             <>
               <Gift className="w-4 h-4 mr-2" />
-              Подарить
+              Подарить {selectedMyCards.length > 1 ? `(${selectedMyCards.length})` : ''}
             </>
           ) : (
             <>
               <Send className="w-4 h-4 mr-2" />
-              Предложить обмен
+              Обмен {selectedMyCards.length}:{selectedFriendCards.length}
             </>
           )}
         </Button>
@@ -645,16 +669,28 @@ export default function FriendsPage() {
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
-                              <p className="text-xs text-gray-500 mb-2">Предлагает</p>
-                              {trade.sender_card && renderCardMini(trade.sender_card)}
+                              <p className="text-xs text-gray-500 mb-2">
+                                Предлагает {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
+                              </p>
+                              <div className="space-y-2">
+                                {trade.sender_cards.map((card) => (
+                                  <div key={card.id}>{renderCardMini(card)}</div>
+                                ))}
+                              </div>
                             </div>
                             <div className="flex justify-center">
                               <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 mb-2">Хочет</p>
-                              {trade.receiver_card ? (
-                                renderCardMini(trade.receiver_card)
+                              <p className="text-xs text-gray-500 mb-2">
+                                Хочет {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
+                              </p>
+                              {trade.receiver_cards.length > 0 ? (
+                                <div className="space-y-2">
+                                  {trade.receiver_cards.map((card) => (
+                                    <div key={card.id}>{renderCardMini(card)}</div>
+                                  ))}
+                                </div>
                               ) : (
                                 <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
                                   <Gift className="w-4 h-4 text-pink-400" />
@@ -715,16 +751,28 @@ export default function FriendsPage() {
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
-                              <p className="text-xs text-gray-500 mb-2">Ваша карта</p>
-                              {trade.sender_card && renderCardMini(trade.sender_card)}
+                              <p className="text-xs text-gray-500 mb-2">
+                                Ваши карты {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
+                              </p>
+                              <div className="space-y-2">
+                                {trade.sender_cards.map((card) => (
+                                  <div key={card.id}>{renderCardMini(card)}</div>
+                                ))}
+                              </div>
                             </div>
                             <div className="flex justify-center">
                               <ArrowLeftRight className="w-5 h-5 text-gray-500 rotate-90" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 mb-2">Взамен</p>
-                              {trade.receiver_card ? (
-                                renderCardMini(trade.receiver_card)
+                              <p className="text-xs text-gray-500 mb-2">
+                                Взамен {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
+                              </p>
+                              {trade.receiver_cards.length > 0 ? (
+                                <div className="space-y-2">
+                                  {trade.receiver_cards.map((card) => (
+                                    <div key={card.id}>{renderCardMini(card)}</div>
+                                  ))}
+                                </div>
                               ) : (
                                 <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
                                   <Gift className="w-4 h-4 text-pink-400" />

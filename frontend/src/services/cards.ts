@@ -69,8 +69,12 @@ export interface Trade {
   id: number;
   sender_id: number;
   receiver_id: number;
+  // Single card (backward compatibility)
   sender_card: Card | null;
   receiver_card: Card | null;
+  // Multi-card support
+  sender_cards: Card[];
+  receiver_cards: Card[];
   status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   message: string | null;
   sender_name?: string;
@@ -217,14 +221,14 @@ class CardsService {
 
   async createTrade(
     receiverId: number,
-    senderCardId: number,
-    receiverCardId?: number,
+    senderCardIds: number[],
+    receiverCardIds?: number[],
     message?: string
   ): Promise<ApiResponse<{ message: string; trade: Trade }>> {
     return api.post<{ message: string; trade: Trade }>('/trades/create', {
       receiver_id: receiverId,
-      sender_card_id: senderCardId,
-      receiver_card_id: receiverCardId,
+      sender_card_ids: senderCardIds,
+      receiver_card_ids: receiverCardIds,
       message,
     });
   }

@@ -894,11 +894,13 @@ class CardService:
         self,
         sender_id: int,
         receiver_id: int,
-        sender_card_id: int,
+        sender_card_id: int | None = None,
         receiver_card_id: int | None = None,
         message: str | None = None,
+        sender_card_ids: list[int] | None = None,
+        receiver_card_ids: list[int] | None = None,
     ) -> dict:
-        """Create a card trade offer."""
+        """Create a card trade offer (supports single or multiple cards)."""
         # Verify friendship
         is_friend = Friendship.query.filter(
             (
@@ -913,31 +915,56 @@ class CardService:
         if not is_friend:
             return {"success": False, "error": "not_friends"}
 
-        # Verify sender's card
-        sender_card = UserCard.query.filter_by(
-            id=sender_card_id, user_id=sender_id, is_tradeable=True, is_destroyed=False
-        ).first()
+        # Determine which cards to use (prefer multi-card if provided)
+        actual_sender_ids = sender_card_ids or (
+            [sender_card_id] if sender_card_id else []
+        )
+        actual_receiver_ids = receiver_card_ids or (
+            [receiver_card_id] if receiver_card_id else []
+        )
 
-        if not sender_card:
+        if not actual_sender_ids:
+            return {"success": False, "error": "no_sender_cards"}
+
+        # Verify all sender's cards
+        sender_cards = UserCard.query.filter(
+            UserCard.id.in_(actual_sender_ids),
+            UserCard.user_id == sender_id,
+            UserCard.is_tradeable.is_(True),
+            UserCard.is_destroyed.is_(False),
+        ).all()
+
+        if len(sender_cards) != len(actual_sender_ids):
             return {"success": False, "error": "sender_card_invalid"}
 
-        # Verify receiver's card if exchange
-        if receiver_card_id:
-            receiver_card = UserCard.query.filter_by(
-                id=receiver_card_id,
-                user_id=receiver_id,
-                is_tradeable=True,
-                is_destroyed=False,
-            ).first()
+        # Verify all receiver's cards if exchange
+        if actual_receiver_ids:
+            receiver_cards = UserCard.query.filter(
+                UserCard.id.in_(actual_receiver_ids),
+                UserCard.user_id == receiver_id,
+                UserCard.is_tradeable.is_(True),
+                UserCard.is_destroyed.is_(False),
+            ).all()
 
-            if not receiver_card:
+            if len(receiver_cards) != len(actual_receiver_ids):
                 return {"success": False, "error": "receiver_card_invalid"}
 
+        # Create trade with multi-card support
         trade = CardTrade(
             sender_id=sender_id,
             receiver_id=receiver_id,
-            sender_card_id=sender_card_id,
-            receiver_card_id=receiver_card_id,
+            # Single card for backward compatibility
+            sender_card_id=(
+                actual_sender_ids[0] if len(actual_sender_ids) == 1 else None
+            ),
+            receiver_card_id=(
+                actual_receiver_ids[0] if len(actual_receiver_ids) == 1 else None
+            ),
+            # Multi-card arrays
+            sender_card_ids=actual_sender_ids if len(actual_sender_ids) > 1 else None,
+            receiver_card_ids=(
+                actual_receiver_ids if len(actual_receiver_ids) > 1 else None
+            ),
             message=message,
             status="pending",
         )
@@ -947,7 +974,7 @@ class CardService:
         return {"success": True, "trade": trade.to_dict()}
 
     def accept_trade(self, user_id: int, trade_id: int) -> dict:
-        """Accept a trade offer."""
+        """Accept a trade offer (supports multi-card trades)."""
         from datetime import datetime
 
         trade = CardTrade.query.filter_by(
@@ -957,16 +984,30 @@ class CardService:
         if not trade:
             return {"success": False, "error": "trade_not_found"}
 
-        # Transfer cards
-        sender_card = trade.sender_card
-        if sender_card:
-            sender_card.user_id = trade.receiver_id
-            sender_card.is_in_deck = False
+        # Get all sender card IDs
+        sender_card_ids = trade.sender_card_ids or (
+            [trade.sender_card_id] if trade.sender_card_id else []
+        )
+        # Get all receiver card IDs
+        receiver_card_ids = trade.receiver_card_ids or (
+            [trade.receiver_card_id] if trade.receiver_card_id else []
+        )
 
-        receiver_card = trade.receiver_card
-        if receiver_card:
-            receiver_card.user_id = trade.sender_id
-            receiver_card.is_in_deck = False
+        # Transfer sender cards to receiver
+        if sender_card_ids:
+            sender_cards = UserCard.query.filter(UserCard.id.in_(sender_card_ids)).all()
+            for card in sender_cards:
+                card.user_id = trade.receiver_id
+                card.is_in_deck = False
+
+        # Transfer receiver cards to sender (if exchange)
+        if receiver_card_ids:
+            receiver_cards = UserCard.query.filter(
+                UserCard.id.in_(receiver_card_ids)
+            ).all()
+            for card in receiver_cards:
+                card.user_id = trade.sender_id
+                card.is_in_deck = False
 
         trade.status = "accepted"
         trade.completed_at = datetime.utcnow()

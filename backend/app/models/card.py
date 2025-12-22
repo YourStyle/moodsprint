@@ -333,6 +333,8 @@ class CardTrade(db.Model):
         db.ForeignKey("user_cards.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # For multi-card trades
+    sender_card_ids = db.Column(db.JSON, nullable=True)
 
     # Receiver
     receiver_id = db.Column(
@@ -346,6 +348,8 @@ class CardTrade(db.Model):
         db.ForeignKey("user_cards.id", ondelete="SET NULL"),
         nullable=True,
     )  # Card offered in exchange (optional for gifts)
+    # For multi-card exchanges
+    receiver_card_ids = db.Column(db.JSON, nullable=True)
 
     status = db.Column(
         db.String(20), default="pending", nullable=False
@@ -362,16 +366,39 @@ class CardTrade(db.Model):
     sender_card = db.relationship("UserCard", foreign_keys=[sender_card_id])
     receiver_card = db.relationship("UserCard", foreign_keys=[receiver_card_id])
 
+    def get_sender_cards(self) -> list:
+        """Get all sender cards (supports both single and multi-card)."""
+        if self.sender_card_ids:
+            cards = UserCard.query.filter(UserCard.id.in_(self.sender_card_ids)).all()
+            return [c.to_dict() for c in cards]
+        elif self.sender_card:
+            return [self.sender_card.to_dict()]
+        return []
+
+    def get_receiver_cards(self) -> list:
+        """Get all receiver cards (supports both single and multi-card)."""
+        if self.receiver_card_ids:
+            cards = UserCard.query.filter(UserCard.id.in_(self.receiver_card_ids)).all()
+            return [c.to_dict() for c in cards]
+        elif self.receiver_card:
+            return [self.receiver_card.to_dict()]
+        return []
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
+        sender_cards = self.get_sender_cards()
+        receiver_cards = self.get_receiver_cards()
+
         return {
             "id": self.id,
             "sender_id": self.sender_id,
             "receiver_id": self.receiver_id,
-            "sender_card": self.sender_card.to_dict() if self.sender_card else None,
-            "receiver_card": (
-                self.receiver_card.to_dict() if self.receiver_card else None
-            ),
+            # Single card (backward compatibility)
+            "sender_card": sender_cards[0] if sender_cards else None,
+            "receiver_card": receiver_cards[0] if receiver_cards else None,
+            # Multi-card support
+            "sender_cards": sender_cards,
+            "receiver_cards": receiver_cards,
             "status": self.status,
             "message": self.message,
             "created_at": self.created_at.isoformat() if self.created_at else None,

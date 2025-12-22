@@ -711,13 +711,17 @@ def get_trades():
 @jwt_required()
 def create_trade():
     """
-    Create a trade offer.
+    Create a trade offer (supports single or multiple cards).
 
     Request body:
     {
         "receiver_id": 123,
+        // Single card (backward compatible):
         "sender_card_id": 1,
         "receiver_card_id": 2,  // optional, for exchange
+        // OR Multiple cards:
+        "sender_card_ids": [1, 2, 3],
+        "receiver_card_ids": [4, 5],  // optional, for exchange
         "message": "Trade message"  // optional
     }
     """
@@ -725,25 +729,37 @@ def create_trade():
     data = request.get_json() or {}
 
     receiver_id = data.get("receiver_id")
+    # Single card support (backward compatible)
     sender_card_id = data.get("sender_card_id")
     receiver_card_id = data.get("receiver_card_id")
+    # Multi-card support
+    sender_card_ids = data.get("sender_card_ids")
+    receiver_card_ids = data.get("receiver_card_ids")
     message = data.get("message")
 
-    if not receiver_id or not sender_card_id:
+    # Validate: need either sender_card_id or sender_card_ids
+    if not receiver_id or (not sender_card_id and not sender_card_ids):
         return validation_error(
-            {"error": "receiver_id and sender_card_id are required"}
+            {"error": "receiver_id and sender_card_id(s) are required"}
         )
 
     service = CardService()
     result = service.create_trade_offer(
-        user_id, receiver_id, sender_card_id, receiver_card_id, message
+        sender_id=user_id,
+        receiver_id=receiver_id,
+        sender_card_id=sender_card_id,
+        receiver_card_id=receiver_card_id,
+        message=message,
+        sender_card_ids=sender_card_ids,
+        receiver_card_ids=receiver_card_ids,
     )
 
     if not result["success"]:
         error_messages = {
             "not_friends": "Вы можете обмениваться только с друзьями",
-            "sender_card_invalid": "Ваша карта недоступна для обмена",
-            "receiver_card_invalid": "Карта получателя недоступна для обмена",
+            "sender_card_invalid": "Одна или несколько ваших карт недоступны для обмена",
+            "receiver_card_invalid": "Одна или несколько карт получателя недоступны",
+            "no_sender_cards": "Не выбрано ни одной карты для обмена",
         }
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}

@@ -271,15 +271,35 @@ class AIDecomposer:
         )
 
         content = response.choices[0].message.content.strip()
+        current_app.logger.info(f"AI raw response: {content[:500]}")
 
         # Parse JSON response
         # Handle potential markdown code blocks
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
+        if "```" in content:
+            # Extract content between ``` markers
+            parts = content.split("```")
+            for part in parts:
+                part = part.strip()
+                # Skip empty parts
+                if not part:
+                    continue
+                # Remove "json" language identifier if present
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                # Try to find JSON in this part
+                if part.startswith("[") or part.startswith("{"):
+                    content = part
+                    break
 
-        parsed = json.loads(content)
+        # Clean up any remaining whitespace
+        content = content.strip()
+        current_app.logger.info(f"AI cleaned content: {content[:500]}")
+
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as e:
+            current_app.logger.error(f"JSON parse error: {e}, content: {content[:200]}")
+            raise
 
         # Check if AI returned no_new_steps
         if isinstance(parsed, dict) and parsed.get("no_new_steps"):
@@ -295,16 +315,28 @@ class AIDecomposer:
         # Validate and format (allow up to 10 steps for complex tasks)
         result = []
         for i, step in enumerate(steps[:10]):
+            if not isinstance(step, dict):
+                continue
+            title = step.get("title")
+            if not title:
+                continue
             # Allow realistic time estimates from AI (2-180 min range)
             estimated = int(step.get("estimated_minutes", 15))
             estimated = max(2, min(180, estimated))  # Clamp to reasonable bounds
             result.append(
                 {
-                    "title": str(step.get("title", f"Step {i+1}"))[:500],
+                    "title": str(title)[:500],
                     "estimated_minutes": estimated,
                     "order": i + 1,
                 }
             )
+
+        # If AI returned empty list, fall back to simple decomposition
+        if not result:
+            current_app.logger.warning(
+                "AI returned empty subtasks, falling back to simple decomposition"
+            )
+            raise ValueError("AI returned empty subtasks list")
 
         return {"subtasks": result, "no_new_steps": False}
 
