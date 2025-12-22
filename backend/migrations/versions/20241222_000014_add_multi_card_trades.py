@@ -1,7 +1,7 @@
 """Add multi-card trades support.
 
-Revision ID: 000014
-Revises: 000013
+Revision ID: 20241222_000014
+Revises: 20241222_000013
 Create Date: 2024-12-22
 
 """
@@ -11,8 +11,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "000014"
-down_revision = "000013"
+revision = "20241222_000014"
+down_revision = "20241222_000013"
 branch_labels = None
 depends_on = None
 
