@@ -96,7 +96,8 @@ async function generateAllImages() {
             setTimeout(() => window.location.reload(), 2000);
         } else {
             resultDiv.classList.add('bg-red-100');
-            resultDiv.innerHTML = `<p class="text-red-700">Error: ${result.error || 'Unknown error'}</p>`;
+            const errMsg = typeof result.error === 'string' ? result.error : (result.error?.message || JSON.stringify(result.error) || 'Unknown error');
+            resultDiv.innerHTML = `<p class="text-red-700">Error: ${errMsg}</p>`;
         }
     } catch (err) {
         resultDiv.classList.remove('hidden', 'bg-green-100');
@@ -129,7 +130,8 @@ async function rotateMonsters() {
             setTimeout(() => window.location.reload(), 2000);
         } else {
             resultDiv.classList.add('bg-red-100');
-            resultDiv.innerHTML = `<p class="text-red-700">Error: ${result.error || 'Unknown error'}</p>`;
+            const errMsg = typeof result.error === 'string' ? result.error : (result.error?.message || JSON.stringify(result.error) || 'Unknown error');
+            resultDiv.innerHTML = `<p class="text-red-700">Error: ${errMsg}</p>`;
         }
     } catch (err) {
         resultDiv.classList.remove('hidden', 'bg-green-100');
