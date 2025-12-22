@@ -19,6 +19,7 @@ from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.services.card_service import CardService
 from app.utils import not_found, success_response, validation_error
+from app.utils.notifications import notify_trade_received
 
 # Healing requirements: tasks needed per heal
 # First heal = 3 tasks, second = 5 tasks (cumulative)
@@ -764,6 +765,29 @@ def create_trade():
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}
         )
+
+    # Send notification to receiver
+    try:
+        sender = User.query.get(user_id)
+        receiver = User.query.get(receiver_id)
+        if sender and receiver and receiver.telegram_id:
+            sender_name = sender.first_name or sender.username or "Пользователь"
+            # Count sender cards
+            cards_count = len(sender_card_ids) if sender_card_ids else 1
+            # Is gift if no receiver cards requested
+            is_gift = not receiver_card_id and not receiver_card_ids
+
+            notify_trade_received(
+                receiver_telegram_id=receiver.telegram_id,
+                sender_name=sender_name,
+                cards_count=cards_count,
+                is_gift=is_gift,
+            )
+    except Exception as e:
+        # Don't fail the trade if notification fails
+        import logging
+
+        logging.getLogger(__name__).warning(f"Failed to send trade notification: {e}")
 
     return success_response(
         {
