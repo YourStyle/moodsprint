@@ -5,11 +5,34 @@
 import { api } from './api';
 import type { User, ApiResponse } from '@/domain/types';
 
+interface ReferralCard {
+  id: number;
+  name: string;
+  description?: string;
+  genre: string;
+  rarity: string;
+  hp: number;
+  attack: number;
+  emoji: string;
+  image_url?: string | null;
+}
+
+interface ReferralRewards {
+  referrer_rewarded?: boolean;
+  referrer_card?: ReferralCard;
+  invitee_starter_deck?: ReferralCard[];
+  referrer_name?: string;
+}
+
 interface AuthResponse {
   user: User;
   token: string;
   is_new_user?: boolean;
+  friendship_created?: boolean;
+  referral_rewards?: ReferralRewards;
 }
+
+export type { ReferralCard, ReferralRewards, AuthResponse };
 
 export const authService = {
   async authenticateTelegram(initData: string, referrerId?: number): Promise<ApiResponse<AuthResponse>> {

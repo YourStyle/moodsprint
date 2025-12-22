@@ -113,6 +113,22 @@ interface TradesResponse {
   received: Trade[];
 }
 
+export interface PendingReward {
+  id: number;
+  user_id: number;
+  friend_id: number;
+  friend_name: string | null;
+  card: Card | null;
+  is_referrer: boolean;
+  is_claimed: boolean;
+  created_at: string | null;
+}
+
+interface PendingRewardsResponse {
+  rewards: PendingReward[];
+  total: number;
+}
+
 class CardsService {
   // Card collection
   async getCards(genre?: string, inDeck?: boolean): Promise<ApiResponse<CardsResponse>> {
@@ -244,6 +260,15 @@ class CardsService {
       card_id_1: cardId1,
       card_id_2: cardId2,
     });
+  }
+
+  // Pending referral rewards
+  async getPendingRewards(): Promise<ApiResponse<PendingRewardsResponse>> {
+    return api.get<PendingRewardsResponse>('/cards/pending-rewards');
+  }
+
+  async claimPendingRewards(): Promise<ApiResponse<{ claimed: number; message: string }>> {
+    return api.post<{ claimed: number; message: string }>('/cards/pending-rewards/claim');
   }
 }
 

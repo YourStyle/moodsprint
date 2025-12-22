@@ -7,7 +7,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models.card import CardTemplate, CardTrade, Friendship, UserCard
+from app.models.card import (
+    CardTemplate,
+    CardTrade,
+    Friendship,
+    PendingReferralReward,
+    UserCard,
+)
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -330,6 +336,63 @@ def heal_all_cards():
             "healed_count": healed_count,
             "message": f"Вылечено карт: {healed_count}",
             "heals_today": profile.heals_today,
+        }
+    )
+
+
+# ============ Pending Referral Rewards ============
+
+
+@api_bp.route("/cards/pending-rewards", methods=["GET"])
+@jwt_required()
+def get_pending_rewards():
+    """
+    Get pending referral rewards for the current user.
+    These are rewards the user should see in a modal when they log in.
+    """
+    user_id = int(get_jwt_identity())
+
+    pending = PendingReferralReward.query.filter_by(
+        user_id=user_id, is_claimed=False
+    ).all()
+
+    # Group rewards by friend (in case of multiple invites)
+    rewards = []
+    for p in pending:
+        rewards.append(p.to_dict())
+
+    return success_response(
+        {
+            "rewards": rewards,
+            "total": len(rewards),
+        }
+    )
+
+
+@api_bp.route("/cards/pending-rewards/claim", methods=["POST"])
+@jwt_required()
+def claim_pending_rewards():
+    """
+    Mark all pending referral rewards as claimed.
+    Called after user has seen the rewards modal.
+    """
+    user_id = int(get_jwt_identity())
+
+    pending = PendingReferralReward.query.filter_by(
+        user_id=user_id, is_claimed=False
+    ).all()
+
+    claimed_count = 0
+    for p in pending:
+        p.is_claimed = True
+        claimed_count += 1
+
+    db.session.commit()
+
+    return success_response(
+        {
+            "claimed": claimed_count,
+            "message": f"Получено {claimed_count} наград!",
         }
     )
 

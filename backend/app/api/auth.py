@@ -9,7 +9,7 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from app import db
 from app.api import api_bp
 from app.models import User
-from app.models.card import Friendship
+from app.models.card import Friendship, PendingReferralReward
 from app.utils import (
     parse_telegram_user,
     success_response,
@@ -109,6 +109,18 @@ def authenticate_telegram():
                         if referrer_card:
                             referral_rewards["referrer_rewarded"] = True
                             referral_rewards["referrer_card"] = referrer_card.to_dict()
+
+                            # Store pending reward for referrer to show on next login
+                            invitee_name = user.first_name or user.username or "друг"
+                            pending_reward = PendingReferralReward(
+                                user_id=referrer_id,
+                                friend_id=user.id,
+                                friend_name=invitee_name,
+                                card_id=referrer_card.id,
+                                is_referrer=True,
+                            )
+                            db.session.add(pending_reward)
+
                             logger.info(
                                 f"Gave referral reward to user {referrer_id}: "
                                 f"{referrer_card.name} ({referrer_card.rarity})"
@@ -120,6 +132,10 @@ def authenticate_telegram():
                             referral_rewards["invitee_starter_deck"] = [
                                 c.to_dict() for c in starter_deck
                             ]
+                            # Store friend name for invitee modal
+                            referral_rewards["referrer_name"] = (
+                                referrer.first_name or referrer.username or "друг"
+                            )
                             logger.info(
                                 f"Gave starter deck to user {user.id}: "
                                 f"{len(starter_deck)} cards"

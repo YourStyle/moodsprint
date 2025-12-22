@@ -538,3 +538,38 @@ class MergeLog(db.Model):
             "result_rarity": self.result_rarity,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class PendingReferralReward(db.Model):
+    """Store pending referral rewards to show when user logs in."""
+
+    __tablename__ = "pending_referral_rewards"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    friend_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    friend_name = db.Column(db.String(255), nullable=True)
+    card_id = db.Column(db.Integer, db.ForeignKey("user_cards.id"), nullable=False)
+    is_referrer = db.Column(
+        db.Boolean, default=True
+    )  # True = you invited, False = you were invited
+    is_claimed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship("User", foreign_keys=[user_id])
+    friend = db.relationship("User", foreign_keys=[friend_id])
+    card = db.relationship("UserCard")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "friend_id": self.friend_id,
+            "friend_name": self.friend_name,
+            "card": self.card.to_dict() if self.card else None,
+            "is_referrer": self.is_referrer,
+            "is_claimed": self.is_claimed,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
