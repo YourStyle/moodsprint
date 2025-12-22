@@ -264,7 +264,7 @@ class Monster(db.Model):
 
 
 class DailyMonster(db.Model):
-    """Rotating monsters shown to players per genre (updated every 3 days)."""
+    """Rotating monsters shown to players per genre (updated weekly)."""
 
     __tablename__ = "daily_monsters"
 
@@ -275,9 +275,9 @@ class DailyMonster(db.Model):
         nullable=False,
     )
     genre = db.Column(db.String(50), nullable=False)
-    # period_start is the first day of the 3-day period
+    # period_start is the first day of the weekly period (Monday)
     period_start = db.Column(db.Date, nullable=False)
-    slot_number = db.Column(db.Integer, default=1)  # 1-6 monsters per period
+    slot_number = db.Column(db.Integer, default=1)  # 1-3 monsters per period
 
     # Legacy column for backwards compatibility
     date = db.Column(db.Date, nullable=True)
@@ -295,16 +295,13 @@ class DailyMonster(db.Model):
 
     @staticmethod
     def get_current_period_start() -> "date":
-        """Get the start date of current 3-day period."""
+        """Get the start date of current weekly period (Monday)."""
         from datetime import date, timedelta
 
         today = date.today()
-        # Periods start on days 1, 4, 7, 10, etc. of each month
-        # Simple approach: use day of year divided by 3
-        day_of_year = today.timetuple().tm_yday
-        period_number = (day_of_year - 1) // 3
-        period_start_day = period_number * 3 + 1
-        return date(today.year, 1, 1) + timedelta(days=period_start_day - 1)
+        # Get Monday of current week (weekday 0 = Monday)
+        days_since_monday = today.weekday()
+        return today - timedelta(days=days_since_monday)
 
 
 class DefeatedMonster(db.Model):

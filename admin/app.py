@@ -1143,7 +1143,7 @@ def rotate_monsters_proxy():
 @login_required
 def monsters():
     """List all monsters with image generation controls."""
-    from datetime import date
+    from datetime import date, timedelta
 
     # Get all monsters
     all_monsters = db.session.execute(
@@ -1157,10 +1157,10 @@ def monsters():
         )
     ).fetchall()
 
-    # Get current period
+    # Get current period (Monday of current week)
     today = date.today()
-    day_of_year = today.timetuple().tm_yday
-    period_start = date.fromordinal(today.toordinal() - ((day_of_year - 1) % 3))
+    days_since_monday = today.weekday()
+    period_start = today - timedelta(days=days_since_monday)
 
     # Count stats
     total_monsters = len(all_monsters)

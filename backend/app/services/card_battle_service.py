@@ -339,8 +339,9 @@ class CardBattleService:
             return None
 
     def _create_period_monsters(self, genre: str, period_start: date) -> None:
-        """Create/reuse monsters with pre-generated decks for a 3-day period.
+        """Create/reuse monsters with pre-generated decks for a weekly period.
 
+        Creates 1 boss + 1-2 normal monsters per week.
         Reuses existing monsters from the database when possible,
         only generating new decks for each period.
         """
@@ -348,7 +349,8 @@ class CardBattleService:
         monster_names = genre_info.get("monsters", ["Враг", "Монстр", "Босс"])
 
         emojis = ["👾", "👹", "🐉", "👻", "🤖"]
-        types = ["normal", "normal", "normal", "elite", "boss"]
+        # 1 boss + 2 normal monsters per week
+        types = ["normal", "normal", "boss"]
 
         # Try to find existing monsters for this genre that we can reuse
         existing_monsters = (
@@ -359,7 +361,7 @@ class CardBattleService:
         existing_normal = [m for m in existing_monsters if not m.is_boss]
         existing_bosses = [m for m in existing_monsters if m.is_boss]
 
-        for i, name in enumerate(monster_names[:5]):
+        for i, name in enumerate(monster_names[:3]):
             monster_type = types[i] if i < len(types) else "normal"
             monster = None
 
