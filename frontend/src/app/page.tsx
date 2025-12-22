@@ -645,7 +645,7 @@ export default function HomePage() {
 
   return (
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
-    <div className="min-h-screen p-4 space-y-6">
+    <div className="p-4 space-y-6">
       {/* Daily Bonus Modal */}
       <DailyBonus />
 
