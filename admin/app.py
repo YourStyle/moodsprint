@@ -1059,18 +1059,19 @@ def monsters():
 
     # Get all monsters
     all_monsters = db.session.execute(
-        text("""
+        text(
+            """
             SELECT id, name, description, genre, base_level, base_hp, base_attack,
                    sprite_url, emoji, is_boss, ai_generated, created_at
             FROM monsters
             ORDER BY genre, is_boss DESC, base_level DESC
-        """)
+        """
+        )
     ).fetchall()
 
     # Get current period
     today = date.today()
     day_of_year = today.timetuple().tm_yday
-    period_number = (day_of_year - 1) // 3
     period_start = date.fromordinal(today.toordinal() - ((day_of_year - 1) % 3))
 
     # Count stats
@@ -1106,13 +1107,15 @@ def monsters():
 def events():
     """List all seasonal events."""
     all_events = db.session.execute(
-        text("""
+        text(
+            """
             SELECT id, code, name, description, event_type, start_date, end_date,
                    emoji, theme_color, xp_multiplier, is_active, created_at,
                    (is_active AND start_date <= NOW() AND end_date >= NOW()) as is_currently_active
             FROM seasonal_events
             ORDER BY start_date DESC
-        """)
+        """
+        )
     ).fetchall()
 
     active_events = [e for e in all_events if e.is_currently_active]
@@ -1132,11 +1135,13 @@ def create_event():
     data = request.json
     try:
         result = db.session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO seasonal_events (code, name, description, event_type, start_date, end_date, emoji, theme_color, xp_multiplier, is_active)
                 VALUES (:code, :name, :description, :event_type, :start_date, :end_date, :emoji, :theme_color, :xp_multiplier, true)
                 RETURNING id
-            """),
+            """
+            ),
             {
                 "code": data["code"],
                 "name": data["name"],
@@ -1147,7 +1152,7 @@ def create_event():
                 "emoji": data.get("emoji", "🎉"),
                 "theme_color": data.get("theme_color", "#FF6B00"),
                 "xp_multiplier": data.get("xp_multiplier", 1.0),
-            }
+            },
         )
         event_id = result.scalar()
         db.session.commit()
@@ -1162,21 +1167,24 @@ def create_event():
 def event_detail(event_id: int):
     """Event detail page with monsters."""
     event = db.session.execute(
-        text("""
+        text(
+            """
             SELECT id, code, name, description, event_type, start_date, end_date,
                    emoji, theme_color, xp_multiplier, is_active, created_at,
                    (is_active AND start_date <= NOW() AND end_date >= NOW()) as is_currently_active
             FROM seasonal_events
             WHERE id = :event_id
-        """),
-        {"event_id": event_id}
+        """
+        ),
+        {"event_id": event_id},
     ).fetchone()
 
     if not event:
         return "Event not found", 404
 
     event_monsters = db.session.execute(
-        text("""
+        text(
+            """
             SELECT em.id, em.event_id, em.monster_id, em.appear_day,
                    em.exclusive_reward_name, em.guaranteed_rarity,
                    m.name as monster_name, m.emoji as monster_emoji, m.genre as monster_genre
@@ -1184,8 +1192,9 @@ def event_detail(event_id: int):
             JOIN monsters m ON m.id = em.monster_id
             WHERE em.event_id = :event_id
             ORDER BY em.appear_day
-        """),
-        {"event_id": event_id}
+        """
+        ),
+        {"event_id": event_id},
     ).fetchall()
 
     all_monsters = db.session.execute(
@@ -1238,8 +1247,10 @@ def update_event(event_id: int):
 
         if updates:
             db.session.execute(
-                text(f"UPDATE seasonal_events SET {', '.join(updates)} WHERE id = :event_id"),
-                params
+                text(
+                    f"UPDATE seasonal_events SET {', '.join(updates)} WHERE id = :event_id"
+                ),
+                params,
             )
             db.session.commit()
 
@@ -1262,13 +1273,15 @@ def toggle_event(event_id: int):
             # Toggle current state
             current = db.session.execute(
                 text("SELECT is_active FROM seasonal_events WHERE id = :event_id"),
-                {"event_id": event_id}
+                {"event_id": event_id},
             ).scalar()
             is_active = not current
 
         db.session.execute(
-            text("UPDATE seasonal_events SET is_active = :is_active WHERE id = :event_id"),
-            {"event_id": event_id, "is_active": is_active}
+            text(
+                "UPDATE seasonal_events SET is_active = :is_active WHERE id = :event_id"
+            ),
+            {"event_id": event_id, "is_active": is_active},
         )
         db.session.commit()
         return jsonify({"success": True})
@@ -1285,18 +1298,20 @@ def add_event_monster(event_id: int):
 
     try:
         result = db.session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO event_monsters (event_id, monster_id, appear_day, exclusive_reward_name, guaranteed_rarity)
                 VALUES (:event_id, :monster_id, :appear_day, :exclusive_reward_name, :guaranteed_rarity)
                 RETURNING id
-            """),
+            """
+            ),
             {
                 "event_id": event_id,
                 "monster_id": data["monster_id"],
                 "appear_day": data.get("appear_day", 1),
                 "exclusive_reward_name": data.get("exclusive_reward_name"),
                 "guaranteed_rarity": data.get("guaranteed_rarity") or None,
-            }
+            },
         )
         event_monster_id = result.scalar()
         db.session.commit()
@@ -1312,8 +1327,7 @@ def remove_event_monster(event_monster_id: int):
     """Remove a monster from an event."""
     try:
         db.session.execute(
-            text("DELETE FROM event_monsters WHERE id = :id"),
-            {"id": event_monster_id}
+            text("DELETE FROM event_monsters WHERE id = :id"), {"id": event_monster_id}
         )
         db.session.commit()
         return jsonify({"success": True})
