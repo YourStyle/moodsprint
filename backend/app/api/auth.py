@@ -114,21 +114,15 @@ def authenticate_telegram():
                                 f"{referrer_card.name} ({referrer_card.rarity})"
                             )
 
-                        # Give a card to the invitee as well (uncommon-rare)
-                        from app.models.card import CardRarity
-
-                        invitee_card = card_service.generate_card_for_task(
-                            user_id=user.id,
-                            task_id=None,
-                            task_title="Бонус за принятие приглашения",
-                            difficulty="medium",
-                            max_rarity=CardRarity.RARE,
-                        )
-                        if invitee_card:
-                            referral_rewards["invitee_card"] = invitee_card.to_dict()
+                        # Give starter deck to invitee (3 cards, max rare)
+                        starter_deck = card_service.generate_starter_deck(user.id)
+                        if starter_deck:
+                            referral_rewards["invitee_starter_deck"] = [
+                                c.to_dict() for c in starter_deck
+                            ]
                             logger.info(
-                                f"Gave invite bonus to user {user.id}: "
-                                f"{invitee_card.name} ({invitee_card.rarity})"
+                                f"Gave starter deck to user {user.id}: "
+                                f"{len(starter_deck)} cards"
                             )
                     except Exception as e:
                         logger.error(f"Failed to give referral rewards: {e}")

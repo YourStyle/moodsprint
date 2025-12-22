@@ -415,26 +415,26 @@ function resetOnboarding(userId) {
 
 <!-- Activity Heatmap (GitHub-style) -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Heatmap (Last 12 months)</h3>
-    <div id="heatmap-wrapper" class="w-full">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Активность (последние 12 месяцев)</h3>
+    <div id="heatmap-wrapper" class="w-full overflow-hidden">
         <!-- Month labels -->
-        <div id="month-labels" class="flex text-xs text-gray-500 mb-1 ml-8"></div>
+        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px;"></div>
         <div class="flex">
             <!-- Day labels -->
-            <div id="day-labels" class="flex flex-col text-xs text-gray-500 mr-2 justify-between" style="height: 91px;">
-                <span class="h-3 leading-3"></span>
-                <span class="h-3 leading-3">Mon</span>
-                <span class="h-3 leading-3"></span>
-                <span class="h-3 leading-3">Wed</span>
-                <span class="h-3 leading-3"></span>
-                <span class="h-3 leading-3">Fri</span>
-                <span class="h-3 leading-3"></span>
+            <div class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px; gap: 1px;">
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Вс</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Пн</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Вт</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Ср</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Чт</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Пт</span>
+                <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Сб</span>
             </div>
             <!-- Heatmap grid -->
-            <div id="heatmap" class="flex gap-0.5 flex-1"></div>
+            <div id="heatmap" class="flex gap-px flex-1 overflow-hidden"></div>
         </div>
         <div class="flex items-center justify-end mt-3 text-xs text-gray-500 gap-2">
-            <span>Less</span>
+            <span>Меньше</span>
             <div class="flex gap-1">
                 <div class="w-3 h-3 rounded-sm bg-gray-200"></div>
                 <div class="w-3 h-3 rounded-sm" style="background: #e9d5ff;"></div>
@@ -442,7 +442,7 @@ function resetOnboarding(userId) {
                 <div class="w-3 h-3 rounded-sm" style="background: #9333ea;"></div>
                 <div class="w-3 h-3 rounded-sm" style="background: #6b21a8;"></div>
             </div>
-            <span>More</span>
+            <span>Больше</span>
         </div>
     </div>
 </div>
@@ -453,8 +453,19 @@ function resetOnboarding(userId) {
     const heatmapContainer = document.getElementById('heatmap');
     const monthLabels = document.getElementById('month-labels');
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
     const purpleColors = ['#e9d5ff', '#c084fc', '#9333ea', '#6b21a8'];
+
+    // Format date for tooltip
+    function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        const day = d.getDate();
+        const month = monthNames[d.getMonth()];
+        const year = d.getFullYear();
+        const dayName = dayNames[d.getDay()];
+        return `${dayName}, ${day} ${month} ${year}`;
+    }
 
     // Generate dates for the last 365 days
     const today = new Date();
@@ -501,9 +512,9 @@ function resetOnboarding(userId) {
                 weeks.push(currentWeek);
             }
 
-            // Calculate cell width based on available space
-            const containerWidth = heatmapContainer.offsetWidth || 800;
-            const cellSize = Math.max(8, Math.floor((containerWidth - weeks.length) / weeks.length));
+            // Fixed cell size
+            const cellSize = 11;
+            const gap = 1;
 
             // Track months for labels
             let lastMonth = -1;
@@ -512,12 +523,12 @@ function resetOnboarding(userId) {
             // Render heatmap
             weeks.forEach((week, weekIdx) => {
                 const weekCol = document.createElement('div');
-                weekCol.className = 'flex flex-col gap-0.5';
-                weekCol.style.minWidth = cellSize + 'px';
+                weekCol.className = 'flex flex-col';
+                weekCol.style.gap = gap + 'px';
 
                 week.forEach(day => {
                     const cell = document.createElement('div');
-                    cell.className = 'rounded-sm';
+                    cell.className = 'rounded-sm cursor-pointer';
                     cell.style.width = cellSize + 'px';
                     cell.style.height = cellSize + 'px';
 
@@ -542,7 +553,7 @@ function resetOnboarding(userId) {
                         } else {
                             cell.style.background = purpleColors[3];
                         }
-                        cell.title = `${day.date}: ${day.count} completed`;
+                        cell.title = `${formatDate(day.date)}: ${day.count} выполнено`;
                     }
 
                     weekCol.appendChild(cell);
@@ -553,23 +564,22 @@ function resetOnboarding(userId) {
 
             // Render month labels
             monthLabels.innerHTML = '';
-            const totalWidth = weeks.length * (cellSize + 2);
             monthPositions.forEach((pos, idx) => {
                 const nextPos = monthPositions[idx + 1];
                 const weeksInMonth = (nextPos ? nextPos.weekIdx : weeks.length) - pos.weekIdx;
-                const width = weeksInMonth * (cellSize + 2);
+                const width = weeksInMonth * (cellSize + gap);
 
                 const label = document.createElement('span');
                 label.textContent = monthNames[pos.month];
                 label.style.width = width + 'px';
                 label.style.textAlign = 'left';
-                label.style.paddingLeft = '2px';
+                label.style.flexShrink = '0';
                 monthLabels.appendChild(label);
             });
         })
         .catch(err => {
             console.error('Failed to load heatmap:', err);
-            heatmapContainer.innerHTML = '<p class="text-gray-500">Failed to load activity data</p>';
+            heatmapContainer.innerHTML = '<p class="text-gray-500">Не удалось загрузить данные</p>';
         });
 })();
 </script>
