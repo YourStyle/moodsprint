@@ -416,16 +416,31 @@ function resetOnboarding(userId) {
 <!-- Activity Heatmap (GitHub-style) -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Heatmap (Last 12 months)</h3>
-    <div id="heatmap-container" class="overflow-x-auto">
-        <div id="heatmap" class="flex gap-0.5" style="min-width: 720px;"></div>
-        <div class="flex items-center justify-between mt-3 text-xs text-gray-500">
+    <div id="heatmap-wrapper" class="w-full">
+        <!-- Month labels -->
+        <div id="month-labels" class="flex text-xs text-gray-500 mb-1 ml-8"></div>
+        <div class="flex">
+            <!-- Day labels -->
+            <div id="day-labels" class="flex flex-col text-xs text-gray-500 mr-2 justify-between" style="height: 91px;">
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3">Mon</span>
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3">Wed</span>
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3">Fri</span>
+                <span class="h-3 leading-3"></span>
+            </div>
+            <!-- Heatmap grid -->
+            <div id="heatmap" class="flex gap-0.5 flex-1"></div>
+        </div>
+        <div class="flex items-center justify-end mt-3 text-xs text-gray-500 gap-2">
             <span>Less</span>
             <div class="flex gap-1">
                 <div class="w-3 h-3 rounded-sm bg-gray-200"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-200"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-400"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-600"></div>
-                <div class="w-3 h-3 rounded-sm bg-green-800"></div>
+                <div class="w-3 h-3 rounded-sm" style="background: #e9d5ff;"></div>
+                <div class="w-3 h-3 rounded-sm" style="background: #c084fc;"></div>
+                <div class="w-3 h-3 rounded-sm" style="background: #9333ea;"></div>
+                <div class="w-3 h-3 rounded-sm" style="background: #6b21a8;"></div>
             </div>
             <span>More</span>
         </div>
@@ -436,6 +451,10 @@ function resetOnboarding(userId) {
 (function() {
     const userId = {{ user.id }};
     const heatmapContainer = document.getElementById('heatmap');
+    const monthLabels = document.getElementById('month-labels');
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const purpleColors = ['#e9d5ff', '#c084fc', '#9333ea', '#6b21a8'];
 
     // Generate dates for the last 365 days
     const today = new Date();
@@ -443,7 +462,7 @@ function resetOnboarding(userId) {
     for (let i = 364; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
-        days.push(d.toISOString().split('T')[0]);
+        days.push({ date: d.toISOString().split('T')[0], month: d.getMonth(), year: d.getFullYear() });
     }
 
     // Fetch activity data
@@ -463,7 +482,7 @@ function resetOnboarding(userId) {
             let currentWeek = [];
 
             // Find first Sunday or start from first day
-            const startDate = new Date(days[0]);
+            const startDate = new Date(days[0].date);
             const startDow = startDate.getDay(); // 0 = Sunday
 
             // Add empty cells for days before the start
@@ -471,8 +490,8 @@ function resetOnboarding(userId) {
                 currentWeek.push(null);
             }
 
-            days.forEach((dateStr, idx) => {
-                currentWeek.push({ date: dateStr, count: activity[dateStr] || 0 });
+            days.forEach((dayInfo) => {
+                currentWeek.push({ ...dayInfo, count: activity[dayInfo.date] || 0 });
                 if (currentWeek.length === 7) {
                     weeks.push(currentWeek);
                     currentWeek = [];
@@ -482,29 +501,46 @@ function resetOnboarding(userId) {
                 weeks.push(currentWeek);
             }
 
+            // Calculate cell width based on available space
+            const containerWidth = heatmapContainer.offsetWidth || 800;
+            const cellSize = Math.max(8, Math.floor((containerWidth - weeks.length) / weeks.length));
+
+            // Track months for labels
+            let lastMonth = -1;
+            const monthPositions = [];
+
             // Render heatmap
-            weeks.forEach(week => {
+            weeks.forEach((week, weekIdx) => {
                 const weekCol = document.createElement('div');
                 weekCol.className = 'flex flex-col gap-0.5';
+                weekCol.style.minWidth = cellSize + 'px';
 
                 week.forEach(day => {
                     const cell = document.createElement('div');
-                    cell.className = 'w-3 h-3 rounded-sm';
+                    cell.className = 'rounded-sm';
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
 
                     if (day === null) {
-                        cell.className += ' bg-transparent';
+                        cell.style.background = 'transparent';
                     } else {
+                        // Track month changes
+                        if (day.month !== lastMonth) {
+                            monthPositions.push({ month: day.month, weekIdx });
+                            lastMonth = day.month;
+                        }
+
                         const intensity = day.count / maxVal;
                         if (day.count === 0) {
-                            cell.className += ' bg-gray-200';
+                            cell.style.background = '#e5e7eb';
                         } else if (intensity <= 0.25) {
-                            cell.className += ' bg-green-200';
+                            cell.style.background = purpleColors[0];
                         } else if (intensity <= 0.5) {
-                            cell.className += ' bg-green-400';
+                            cell.style.background = purpleColors[1];
                         } else if (intensity <= 0.75) {
-                            cell.className += ' bg-green-600';
+                            cell.style.background = purpleColors[2];
                         } else {
-                            cell.className += ' bg-green-800';
+                            cell.style.background = purpleColors[3];
                         }
                         cell.title = `${day.date}: ${day.count} completed`;
                     }
@@ -513,6 +549,22 @@ function resetOnboarding(userId) {
                 });
 
                 heatmapContainer.appendChild(weekCol);
+            });
+
+            // Render month labels
+            monthLabels.innerHTML = '';
+            const totalWidth = weeks.length * (cellSize + 2);
+            monthPositions.forEach((pos, idx) => {
+                const nextPos = monthPositions[idx + 1];
+                const weeksInMonth = (nextPos ? nextPos.weekIdx : weeks.length) - pos.weekIdx;
+                const width = weeksInMonth * (cellSize + 2);
+
+                const label = document.createElement('span');
+                label.textContent = monthNames[pos.month];
+                label.style.width = width + 'px';
+                label.style.textAlign = 'left';
+                label.style.paddingLeft = '2px';
+                monthLabels.appendChild(label);
             });
         })
         .catch(err => {

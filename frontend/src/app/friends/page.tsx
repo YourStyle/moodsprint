@@ -58,23 +58,34 @@ export default function FriendsPage() {
   const [tradeMessage, setTradeMessage] = useState('');
   const [showTradeForm, setShowTradeForm] = useState(false);
 
+  // Refetch data on mount to ensure fresh data when navigating to this page
+  useEffect(() => {
+    if (user) {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+    }
+  }, [user, queryClient]);
+
   // Queries
   const { data: friendsData, isLoading: friendsLoading } = useQuery({
     queryKey: ['friends'],
     queryFn: () => cardsService.getFriends(),
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const { data: requestsData, isLoading: requestsLoading } = useQuery({
     queryKey: ['friends', 'requests'],
     queryFn: () => cardsService.getFriendRequests(),
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const { data: tradesData, isLoading: tradesLoading } = useQuery({
     queryKey: ['trades'],
     queryFn: () => cardsService.getTrades(),
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const { data: myCardsData } = useQuery({
