@@ -21,6 +21,10 @@ db = SQLAlchemy(app)
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "moodsprint")
 
+# Backend API URL and bot secret for calling protected endpoints
+API_URL = os.environ.get("API_URL", "http://backend:5000")
+BOT_SECRET = os.environ.get("BOT_SECRET", "")
+
 
 def login_required(f):
     """Login required decorator."""
@@ -1042,6 +1046,56 @@ def remove_friendship_by_users():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============ Monsters ============
+
+
+@app.route("/monsters")
+@login_required
+def monsters():
+    """List all monsters with image generation controls."""
+    from datetime import date
+
+    # Get all monsters
+    all_monsters = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_level, base_hp, base_attack,
+                   sprite_url, emoji, is_boss, ai_generated, created_at
+            FROM monsters
+            ORDER BY genre, is_boss DESC, base_level DESC
+        """)
+    ).fetchall()
+
+    # Get current period
+    today = date.today()
+    day_of_year = today.timetuple().tm_yday
+    period_number = (day_of_year - 1) // 3
+    period_start = date.fromordinal(today.toordinal() - ((day_of_year - 1) % 3))
+
+    # Count stats
+    total_monsters = len(all_monsters)
+    with_images = sum(1 for m in all_monsters if m.sprite_url)
+    without_images = total_monsters - with_images
+
+    # Group by genre
+    monsters_by_genre = {}
+    for monster in all_monsters:
+        genre = monster.genre or "unknown"
+        if genre not in monsters_by_genre:
+            monsters_by_genre[genre] = []
+        monsters_by_genre[genre].append(monster)
+
+    return render_template(
+        "monsters.html",
+        monsters_by_genre=monsters_by_genre,
+        total_monsters=total_monsters,
+        with_images=with_images,
+        without_images=without_images,
+        current_period=str(period_start),
+        api_url=API_URL,
+        bot_secret=BOT_SECRET,
+    )
 
 
 # ============ Seasonal Events ============

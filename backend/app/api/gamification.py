@@ -1007,6 +1007,67 @@ def generate_all_monster_images():
     )
 
 
+# ============ Monster Image Generation (Admin) ============
+
+
+@api_bp.route("/arena/monsters/generate-images-admin", methods=["POST"])
+def generate_all_monster_images_admin():
+    """
+    Generate images for all monsters that don't have images yet.
+    Protected by BOT_SECRET header for admin panel use.
+    """
+    from flask import request
+
+    # Verify bot secret
+    bot_secret = request.headers.get("X-Bot-Secret")
+    expected_secret = current_app.config.get("BOT_SECRET", "")
+
+    if not expected_secret or bot_secret != expected_secret:
+        return validation_error({"error": "unauthorized"})
+
+    from app.models.character import Monster
+
+    # Get monsters without images
+    monsters = Monster.query.filter(
+        (Monster.sprite_url.is_(None)) | (Monster.sprite_url == "")
+    ).all()
+
+    if not monsters:
+        return success_response(
+            {
+                "success": True,
+                "message": "All monsters already have images",
+                "generated": 0,
+                "total": 0,
+            }
+        )
+
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    generated = 0
+    failed = 0
+
+    for monster in monsters:
+        sprite_url = service._generate_monster_image(monster, monster.genre)
+        if sprite_url:
+            monster.sprite_url = sprite_url
+            generated += 1
+        else:
+            failed += 1
+
+    db.session.commit()
+
+    return success_response(
+        {
+            "success": True,
+            "generated": generated,
+            "failed": failed,
+            "total": len(monsters),
+        }
+    )
+
+
 # ============ Monster Rotation (Cron) ============
 
 
@@ -1045,8 +1106,8 @@ def rotate_monsters():
     from app.services.monster_generator import MonsterGeneratorService
 
     service = MonsterGeneratorService()
-    # Generate without images initially for speed, images can be generated on demand
-    results = service.generate_daily_monsters(generate_images=False)
+    # Generate with images so monsters are ready to display
+    results = service.generate_daily_monsters(generate_images=True)
 
     total = sum(results.values())
     return success_response(

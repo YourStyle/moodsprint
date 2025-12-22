@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Monsters - MoodSprint Admin{% endblock %}
+{% block header %}Monsters{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+            <p class="text-sm text-gray-500">Total Monsters</p>
+            <p class="text-3xl font-bold text-gray-800">{{ total_monsters }}</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+            <p class="text-sm text-gray-500">With Images</p>
+            <p class="text-3xl font-bold text-green-600">{{ with_images }}</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+            <p class="text-sm text-gray-500">Without Images</p>
+            <p class="text-3xl font-bold text-red-600">{{ without_images }}</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+            <p class="text-sm text-gray-500">Current Period</p>
+            <p class="text-xl font-bold text-purple-600">{{ current_period }}</p>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold mb-4">Actions</h3>
+        <div class="flex gap-4">
+            <button onclick="generateAllImages()" id="generateBtn"
+                    class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Generate All Missing Images
+            </button>
+            <button onclick="rotateMonsters()" id="rotateBtn"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Force Rotate Monsters
+            </button>
+        </div>
+        <div id="resultMessage" class="mt-4 hidden p-4 rounded-lg"></div>
+    </div>
+
+    <!-- Monsters by Genre -->
+    {% for genre, genre_monsters in monsters_by_genre.items() %}
+    <div class="bg-white rounded-xl p-6 shadow-sm">
+        <h3 class="text-lg font-semibold mb-4 capitalize">{{ genre }} ({{ genre_monsters|length }})</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {% for monster in genre_monsters %}
+            <div class="border rounded-lg p-3 text-center hover:border-purple-300 transition-colors">
+                {% if monster.sprite_url %}
+                <img src="{{ api_url }}{{ monster.sprite_url }}" alt="{{ monster.name }}"
+                     class="w-16 h-16 mx-auto rounded-lg object-cover mb-2">
+                {% else %}
+                <div class="w-16 h-16 mx-auto rounded-lg bg-gray-100 flex items-center justify-center mb-2">
+                    <span class="text-2xl">{{ monster.emoji }}</span>
+                </div>
+                {% endif %}
+                <p class="text-sm font-medium truncate" title="{{ monster.name }}">{{ monster.name }}</p>
+                <p class="text-xs text-gray-500">
+                    {% if monster.is_boss %}Boss{% else %}Lv.{{ monster.base_level }}{% endif %}
+                </p>
+                {% if not monster.sprite_url %}
+                <span class="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded">No image</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+const API_URL = "{{ api_url }}";
+const BOT_SECRET = "{{ bot_secret }}";
+
+async function generateAllImages() {
+    const btn = document.getElementById('generateBtn');
+    const resultDiv = document.getElementById('resultMessage');
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating...';
+
+    try {
+        const response = await fetch(`${API_URL}/api/v1/arena/monsters/generate-images-admin`, {
+            method: 'POST',
+            headers: {
+                'X-Bot-Secret': BOT_SECRET
+            }
+        });
+        const result = await response.json();
+
+        resultDiv.classList.remove('hidden', 'bg-red-100', 'bg-green-100');
+        if (result.success) {
+            resultDiv.classList.add('bg-green-100');
+            resultDiv.innerHTML = `<p class="text-green-700">Generated ${result.data.generated} images (${result.data.failed} failed, ${result.data.total} total without images)</p>`;
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            resultDiv.classList.add('bg-red-100');
+            resultDiv.innerHTML = `<p class="text-red-700">Error: ${result.error?.message || 'Unknown error'}</p>`;
+        }
+    } catch (err) {
+        resultDiv.classList.remove('hidden', 'bg-green-100');
+        resultDiv.classList.add('bg-red-100');
+        resultDiv.innerHTML = `<p class="text-red-700">Error: ${err.message}</p>`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Generate All Missing Images';
+}
+
+async function rotateMonsters() {
+    const btn = document.getElementById('rotateBtn');
+    const resultDiv = document.getElementById('resultMessage');
+
+    if (!confirm('This will force generate new monsters for the current period. Continue?')) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Rotating...';
+
+    try {
+        const response = await fetch(`${API_URL}/api/v1/arena/monsters/rotate`, {
+            method: 'POST',
+            headers: {
+                'X-Bot-Secret': BOT_SECRET
+            }
+        });
+        const result = await response.json();
+
+        resultDiv.classList.remove('hidden', 'bg-red-100', 'bg-green-100');
+        if (result.success) {
+            resultDiv.classList.add('bg-green-100');
+            resultDiv.innerHTML = `<p class="text-green-700">${result.data.message}</p>`;
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            resultDiv.classList.add('bg-red-100');
+            resultDiv.innerHTML = `<p class="text-red-700">Error: ${result.error?.message || 'Unknown error'}</p>`;
+        }
+    } catch (err) {
+        resultDiv.classList.remove('hidden', 'bg-green-100');
+        resultDiv.classList.add('bg-red-100');
+        resultDiv.innerHTML = `<p class="text-red-700">Error: ${err.message}</p>`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Force Rotate Monsters';
+}
+</script>
+{% endblock %}
