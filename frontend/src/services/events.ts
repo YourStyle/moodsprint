@@ -8,28 +8,7 @@ import type {
   SeasonalEvent,
   UserEventProgress,
 } from '@/domain/types';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-
-async function fetchWithAuth<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const token = localStorage.getItem('token');
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  return response.json();
-}
+import { api } from './api';
 
 export const eventsService = {
   /**
@@ -42,7 +21,7 @@ export const eventsService = {
       monsters: EventMonster[];
     }>
   > {
-    return fetchWithAuth('/events/active');
+    return api.get('/events/active');
   },
 
   /**
@@ -51,7 +30,7 @@ export const eventsService = {
   async getAllEvents(
     includePast: boolean = false
   ): Promise<ApiResponse<{ events: SeasonalEvent[] }>> {
-    return fetchWithAuth(`/events?include_past=${includePast}`);
+    return api.get(`/events?include_past=${includePast}`);
   },
 
   /**
@@ -64,7 +43,7 @@ export const eventsService = {
       monsters: EventMonster[];
     }>
   > {
-    return fetchWithAuth(`/events/${eventId}`);
+    return api.get(`/events/${eventId}`);
   },
 
   /**
@@ -76,7 +55,7 @@ export const eventsService = {
       progress: UserEventProgress;
     }>
   > {
-    return fetchWithAuth(`/events/${eventId}/progress`);
+    return api.get(`/events/${eventId}/progress`);
   },
 
   /**
@@ -97,10 +76,7 @@ export const eventsService = {
       message: string;
     }>
   > {
-    return fetchWithAuth('/admin/events', {
-      method: 'POST',
-      body: JSON.stringify(eventData),
-    });
+    return api.post('/admin/events', eventData);
   },
 };
 
