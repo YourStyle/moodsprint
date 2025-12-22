@@ -1325,3 +1325,102 @@ def get_boss_task_info(task_id: int):
             "stat_points_bonus": 2 if is_boss else 0,
         }
     )
+
+
+@api_bp.route("/admin/activity/<int:user_id>", methods=["GET"])
+@jwt_required()
+def get_user_activity_heatmap(user_id: int):
+    """
+    Get user activity data for GitHub-style heatmap.
+
+    Returns task completions grouped by date for the last year.
+    """
+    get_jwt_identity()  # Verify authenticated
+
+    # Get completions for the last 365 days
+    start_date = date.today() - timedelta(days=365)
+
+    # Query completed tasks grouped by completion date
+    task_completions = (
+        db.session.query(
+            func.date(Task.completed_at).label("completion_date"),
+            func.count(Task.id).label("count"),
+        )
+        .filter(
+            Task.user_id == user_id,
+            Task.status == TaskStatus.COMPLETED,
+            Task.completed_at >= start_date,
+        )
+        .group_by(func.date(Task.completed_at))
+        .all()
+    )
+
+    # Query completed subtasks grouped by completion date
+    subtask_completions = (
+        db.session.query(
+            func.date(Subtask.completed_at).label("completion_date"),
+            func.count(Subtask.id).label("count"),
+        )
+        .join(Task, Subtask.task_id == Task.id)
+        .filter(
+            Task.user_id == user_id,
+            Subtask.status == SubtaskStatus.COMPLETED,
+            Subtask.completed_at >= start_date,
+        )
+        .group_by(func.date(Subtask.completed_at))
+        .all()
+    )
+
+    # Combine into a single dict
+    activity = {}
+    for row in task_completions:
+        if row.completion_date:
+            date_str = row.completion_date.isoformat()
+            activity[date_str] = activity.get(date_str, 0) + row.count
+
+    for row in subtask_completions:
+        if row.completion_date:
+            date_str = row.completion_date.isoformat()
+            activity[date_str] = activity.get(date_str, 0) + row.count
+
+    # Get user info
+    user = User.query.get(user_id)
+    if not user:
+        return not_found("User not found")
+
+    return success_response(
+        {
+            "user_id": user_id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "activity": activity,
+        }
+    )
+
+
+@api_bp.route("/admin/users", methods=["GET"])
+@jwt_required()
+def get_all_users():
+    """
+    Get all users for admin panel.
+    """
+    get_jwt_identity()  # Verify authenticated
+
+    users = User.query.order_by(User.id.desc()).limit(100).all()
+
+    return success_response(
+        {
+            "users": [
+                {
+                    "id": u.id,
+                    "telegram_id": u.telegram_id,
+                    "username": u.username,
+                    "first_name": u.first_name,
+                    "level": u.level,
+                    "xp": u.xp,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in users
+            ]
+        }
+    )

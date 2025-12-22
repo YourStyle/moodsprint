@@ -424,4 +424,36 @@ export const gamificationService = {
   async getBossTaskInfo(taskId: number): Promise<ApiResponse<BossTaskInfo>> {
     return api.get<BossTaskInfo>(`/tasks/${taskId}/boss-info`);
   },
+
+  // Admin endpoints
+  async getAdminUsers(): Promise<ApiResponse<AdminUsersResponse>> {
+    return api.get<AdminUsersResponse>('/admin/users');
+  },
+
+  async getUserActivity(userId: number): Promise<ApiResponse<UserActivityResponse>> {
+    return api.get<UserActivityResponse>(`/admin/activity/${userId}`);
+  },
+
+  async removeFriend(userId: number, friendId: number): Promise<ApiResponse<{ message: string }>> {
+    return api.post<{ message: string }>('/admin/remove-friend', { user_id: userId, friend_id: friendId });
+  },
 };
+
+interface AdminUsersResponse {
+  users: {
+    id: number;
+    telegram_id: number;
+    username: string | null;
+    first_name: string | null;
+    level: number;
+    xp: number;
+    created_at: string | null;
+  }[];
+}
+
+interface UserActivityResponse {
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  activity: Record<string, number>;
+}
