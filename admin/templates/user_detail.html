@@ -416,10 +416,10 @@ function resetOnboarding(userId) {
 <!-- Activity Heatmap (GitHub-style) -->
 <div class="mt-6 bg-white rounded-xl p-6 shadow-sm">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Активность (последние 12 месяцев)</h3>
-    <div id="heatmap-wrapper" class="w-full overflow-hidden">
+    <div id="heatmap-wrapper" class="overflow-x-auto">
         <!-- Month labels -->
-        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px;"></div>
-        <div class="flex">
+        <div id="month-labels" class="flex text-xs text-gray-500 mb-1" style="margin-left: 28px; min-width: max-content;"></div>
+        <div class="flex" style="min-width: max-content;">
             <!-- Day labels -->
             <div class="flex flex-col text-xs text-gray-500 mr-1 flex-shrink-0" style="width: 24px; gap: 1px;">
                 <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Вс</span>
@@ -431,7 +431,7 @@ function resetOnboarding(userId) {
                 <span style="height: 11px; line-height: 11px; text-align: right; padding-right: 2px;">Сб</span>
             </div>
             <!-- Heatmap grid -->
-            <div id="heatmap" class="flex gap-px flex-1 overflow-hidden"></div>
+            <div id="heatmap" class="flex gap-px"></div>
         </div>
         <div class="flex items-center justify-end mt-3 text-xs text-gray-500 gap-2">
             <span>Меньше</span>

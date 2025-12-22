@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Bell, Clock, Sparkles } from 'lucide-react';
+import { Calendar, Bell, Sparkles } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
@@ -198,15 +198,12 @@ export function TaskForm({
               <label className="block text-xs text-gray-500 mb-1">
                 {t('time')}
               </label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
             </div>
           </div>
         )}
