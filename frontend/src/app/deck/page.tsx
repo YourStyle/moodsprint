@@ -23,7 +23,7 @@ import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
-import type { Card as CardType } from '@/services/cards';
+import type { Card as CardType, HealStatus } from '@/services/cards';
 
 type Tab = 'collection' | 'deck' | 'merge';
 type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
@@ -83,6 +83,13 @@ export default function DeckPage() {
     enabled: !!user,
   });
 
+  // Fetch heal status
+  const { data: healStatusData, refetch: refetchHealStatus } = useQuery({
+    queryKey: ['heal-status'],
+    queryFn: () => cardsService.getHealStatus(),
+    enabled: !!user,
+  });
+
   // Add to deck mutation
   const addToDeckMutation = useMutation({
     mutationFn: (cardId: number) => cardsService.addToDeck(cardId),
@@ -112,6 +119,7 @@ export default function DeckPage() {
       hapticFeedback('success');
       queryClient.invalidateQueries({ queryKey: ['cards'] });
       queryClient.invalidateQueries({ queryKey: ['deck'] });
+      refetchHealStatus();
     },
   });
 
@@ -156,6 +164,7 @@ export default function DeckPage() {
   const deckStats = deckData?.data?.stats;
   const maxDeckSize = deckData?.data?.max_size || 5;
   const rarityCounts = cardsData?.data?.rarity_counts || {};
+  const healStatus = healStatusData?.data;
 
   // Filter cards
   const filteredCards = rarityFilter === 'all'
@@ -364,21 +373,72 @@ export default function DeckPage() {
 
           {/* Heal all button */}
           {cardsNeedHealing && (
-            <Card className="mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <HeartPulse className="w-5 h-5 text-red-400" />
-                  <span className="text-sm text-gray-300">{t('healAllCards')}</span>
+            <Card className="mb-4 bg-gradient-to-r from-red-900/40 to-pink-900/40 border-red-500/40">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="w-5 h-5 text-red-400" />
+                    <span className="text-sm font-medium text-white">{t('healAllCards')}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className={cn(
+                      healStatus?.can_heal
+                        ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg shadow-red-500/25'
+                        : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    )}
+                    onClick={() => healStatus?.can_heal && healAllMutation.mutate()}
+                    isLoading={healAllMutation.isPending}
+                    disabled={!healStatus?.can_heal}
+                  >
+                    <Heart className="w-4 h-4 mr-1" />
+                    {t('heal')}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => healAllMutation.mutate()}
-                  isLoading={healAllMutation.isPending}
-                >
-                  <Heart className="w-4 h-4 mr-1" />
-                  {t('heal')}
-                </Button>
+
+                {/* Healing progress */}
+                {healStatus && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">
+                        {healStatus.heals_today === 0
+                          ? t('firstHealToday')
+                          : healStatus.heals_today === 1
+                            ? t('secondHealToday')
+                            : t('freeHealing')}
+                      </span>
+                      {healStatus.required_tasks > 0 && (
+                        <span className={cn(
+                          'font-medium',
+                          healStatus.can_heal ? 'text-green-400' : 'text-yellow-400'
+                        )}>
+                          {healStatus.completed_tasks}/{healStatus.required_tasks} {t('tasksCount')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Progress bar */}
+                    {healStatus.required_tasks > 0 && (
+                      <div className="h-2 bg-gray-700/50 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full transition-all duration-500 rounded-full',
+                            healStatus.can_heal
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+                              : 'bg-gradient-to-r from-yellow-500 to-orange-400'
+                          )}
+                          style={{
+                            width: `${Math.min(100, (healStatus.completed_tasks / healStatus.required_tasks) * 100)}%`
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {healStatus.required_tasks === 0 && healStatus.heals_today >= 2 && (
+                      <p className="text-xs text-green-400">{t('freeHealingAvailable')}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
           )}

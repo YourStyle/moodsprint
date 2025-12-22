@@ -133,6 +133,14 @@ interface PendingRewardsResponse {
   total: number;
 }
 
+export interface HealStatus {
+  heals_today: number;
+  required_tasks: number;
+  completed_tasks: number;
+  can_heal: boolean;
+  heal_requirements: number[];
+}
+
 class CardsService {
   // Card collection
   async getCards(genre?: string, inDeck?: boolean): Promise<ApiResponse<CardsResponse>> {
@@ -162,12 +170,16 @@ class CardsService {
   }
 
   // Card healing
+  async getHealStatus(): Promise<ApiResponse<HealStatus>> {
+    return api.get<HealStatus>('/cards/heal-status');
+  }
+
   async healCard(cardId: number): Promise<ApiResponse<{ card: Card; message: string }>> {
     return api.post<{ card: Card; message: string }>(`/cards/${cardId}/heal`);
   }
 
-  async healAllCards(): Promise<ApiResponse<{ healed_count: number; message: string }>> {
-    return api.post<{ healed_count: number; message: string }>('/cards/heal-all');
+  async healAllCards(): Promise<ApiResponse<{ healed_count: number; message: string; heals_today: number }>> {
+    return api.post<{ healed_count: number; message: string; heals_today: number }>('/cards/heal-all');
   }
 
   // Card templates

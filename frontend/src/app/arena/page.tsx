@@ -645,7 +645,7 @@ export default function ArenaPage() {
               </div>
 
               {/* Player's Cards */}
-              <div>
+              <div className="pb-28">
                 <h3 className="text-sm font-medium text-gray-400 mb-3">
                   {t('yourCards')} ({alivePlayerCards.length} {t('alive')})
                 </h3>
@@ -675,19 +675,28 @@ export default function ArenaPage() {
                 </div>
               </div>
 
-              {/* Attack Button */}
-              <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-30">
-                <Button
-                  className={`w-full ${!canAttack ? 'bg-gray-600 hover:bg-gray-600 shadow-none' : ''}`}
-                  onClick={handleExecuteTurn}
-                  disabled={!canAttack}
-                  isLoading={executeTurnMutation.isPending}
-                >
-                  <Target className="w-5 h-5 mr-2" />
-                  {selectedPlayerCard && selectedTargetCard
-                    ? t('attackButton')
-                    : t('selectCardAndTarget')}
-                </Button>
+              {/* Attack Button with background overlay */}
+              <div className="fixed bottom-0 left-0 right-0 z-30">
+                <div className="bg-gray-900/95 backdrop-blur-md border-t border-gray-700/50 pt-3 pb-24 px-4">
+                  <div className="max-w-md mx-auto">
+                    <Button
+                      className={cn(
+                        'w-full',
+                        !canAttack
+                          ? 'bg-gray-700 hover:bg-gray-700 text-gray-400 shadow-none'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25'
+                      )}
+                      onClick={handleExecuteTurn}
+                      disabled={!canAttack}
+                      isLoading={executeTurnMutation.isPending}
+                    >
+                      <Target className="w-5 h-5 mr-2" />
+                      {selectedPlayerCard && selectedTargetCard
+                        ? t('attackButton')
+                        : t('selectCardAndTarget')}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
