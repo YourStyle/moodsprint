@@ -63,6 +63,48 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const [referralRewards, setReferralRewards] = useState<ReferralRewardData[]>([]);
   const [showReferralModal, setShowReferralModal] = useState(false);
 
+  // Check for pending referral rewards in background (non-blocking)
+  const checkPendingRewardsInBackground = () => {
+    // Fire and forget - don't await
+    (async () => {
+      try {
+        const pendingResult = await cardsService.getPendingRewards();
+        if (pendingResult.success && pendingResult.data && pendingResult.data.rewards.length > 0) {
+          const pendingRewards = pendingResult.data.rewards;
+          // Group rewards - each reward is one friend invitation
+          const rewardsToShow: ReferralRewardData[] = pendingRewards
+            .filter(r => r.card) // Only show if card exists
+            .map(r => ({
+              isReferrer: r.is_referrer,
+              friendName: r.friend_name || undefined,
+              friendId: r.friend_id,
+              cards: r.card ? [{
+                id: r.card.id,
+                name: r.card.name,
+                description: r.card.description || undefined,
+                genre: r.card.genre,
+                rarity: r.card.rarity,
+                hp: r.card.hp,
+                attack: r.card.attack,
+                emoji: r.card.emoji,
+                image_url: r.card.image_url,
+              }] : [],
+            }));
+
+          if (rewardsToShow.length > 0) {
+            setReferralRewards(prev => [...prev, ...rewardsToShow]);
+            // Show modal after a short delay
+            setTimeout(() => setShowReferralModal(true), 800);
+            // Mark rewards as claimed
+            await cardsService.claimPendingRewards();
+          }
+        }
+      } catch (err) {
+        console.log('[Referral] Failed to fetch pending rewards:', err);
+      }
+    })();
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       // Initialize Telegram WebApp
@@ -130,42 +172,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
 
-            // Check for pending referral rewards (for referrers who haven't seen their rewards yet)
-            try {
-              const pendingResult = await cardsService.getPendingRewards();
-              if (pendingResult.success && pendingResult.data && pendingResult.data.rewards.length > 0) {
-                const pendingRewards = pendingResult.data.rewards;
-                // Group rewards - each reward is one friend invitation
-                const rewardsToShow: ReferralRewardData[] = pendingRewards
-                  .filter(r => r.card) // Only show if card exists
-                  .map(r => ({
-                    isReferrer: r.is_referrer,
-                    friendName: r.friend_name || undefined,
-                    friendId: r.friend_id,
-                    cards: r.card ? [{
-                      id: r.card.id,
-                      name: r.card.name,
-                      description: r.card.description || undefined,
-                      genre: r.card.genre,
-                      rarity: r.card.rarity,
-                      hp: r.card.hp,
-                      attack: r.card.attack,
-                      emoji: r.card.emoji,
-                      image_url: r.card.image_url,
-                    }] : [],
-                  }));
-
-                if (rewardsToShow.length > 0) {
-                  setReferralRewards(prev => [...prev, ...rewardsToShow]);
-                  // Show modal after a short delay
-                  setTimeout(() => setShowReferralModal(true), 800);
-                  // Mark rewards as claimed
-                  await cardsService.claimPendingRewards();
-                }
-              }
-            } catch (err) {
-              console.log('[Referral] Failed to fetch pending rewards:', err);
-            }
+            // Check for pending referral rewards in background (non-blocking)
+            checkPendingRewardsInBackground();
           }
         } else if (process.env.NODE_ENV === 'development') {
           // Dev mode: use dev auth
