@@ -840,6 +840,42 @@ def reset_onboarding(user_id: int):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/users/<int:user_id>/reset-spotlight", methods=["POST"])
+@login_required
+def reset_spotlight(user_id: int):
+    """Reset spotlight onboarding for a user."""
+    try:
+        # Check if profile exists
+        profile = db.session.execute(
+            text("SELECT id FROM user_profiles WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+
+        if profile:
+            # Set spotlight_reset_at to current time
+            db.session.execute(
+                text(
+                    """
+                    UPDATE user_profiles
+                    SET spotlight_reset_at = NOW()
+                    WHERE user_id = :uid
+                    """
+                ),
+                {"uid": user_id},
+            )
+            db.session.commit()
+            return jsonify(
+                {"success": True, "message": "Spotlight onboarding will be shown again"}
+            )
+        else:
+            return jsonify(
+                {"success": False, "error": "User profile not found"}
+            ), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/metrics/realtime")
 @login_required
 def realtime_metrics():

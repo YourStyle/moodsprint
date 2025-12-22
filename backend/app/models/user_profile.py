@@ -73,6 +73,9 @@ class UserProfile(db.Model):
     heals_today = db.Column(db.Integer, default=0, nullable=False)
     last_heal_date = db.Column(db.Date, nullable=True)
 
+    # Spotlight onboarding reset (set by admin to force re-show spotlight)
+    spotlight_reset_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -119,6 +122,9 @@ class UserProfile(db.Model):
             "work_days": self.work_days,
             "timezone": self.timezone,
             "favorite_genre": self.favorite_genre,
+            "spotlight_reset_at": (
+                self.spotlight_reset_at.isoformat() if self.spotlight_reset_at else None
+            ),
         }
 
     def __repr__(self) -> str:

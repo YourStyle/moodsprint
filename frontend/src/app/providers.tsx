@@ -198,6 +198,31 @@ function AuthProvider({ children }: { children: ReactNode }) {
             const completed = onboardingResult.data.completed;
             setOnboardingCompleted(completed);
 
+            // Check if spotlight should be reset (admin triggered)
+            const profile = onboardingResult.data.profile;
+            if (profile?.spotlight_reset_at) {
+              const serverResetAt = new Date(profile.spotlight_reset_at).getTime();
+              const localResetAt = parseInt(
+                localStorage.getItem('spotlight_last_reset') || '0',
+                10
+              );
+
+              if (serverResetAt > localResetAt) {
+                // Clear all spotlight onboarding localStorage entries
+                const keysToRemove: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key?.startsWith('onboarding_')) {
+                    keysToRemove.push(key);
+                  }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                // Store the new reset timestamp
+                localStorage.setItem('spotlight_last_reset', serverResetAt.toString());
+                console.log('[Spotlight] Reset triggered by admin, cleared localStorage');
+              }
+            }
+
             // Redirect to onboarding if not completed and not already there
             if (!completed && pathname !== '/onboarding') {
               router.push('/onboarding');

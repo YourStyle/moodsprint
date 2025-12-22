@@ -299,6 +299,8 @@ export interface UserProfile {
   timezone: string | null;
   // Gamification
   favorite_genre: 'magic' | 'fantasy' | 'scifi' | 'cyberpunk' | 'anime' | null;
+  // Spotlight reset (set by admin to force re-show)
+  spotlight_reset_at: string | null;
 }
 
 export interface GptAnalysis {
