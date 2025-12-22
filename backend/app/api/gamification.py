@@ -1068,6 +1068,40 @@ def generate_all_monster_images_admin():
     )
 
 
+@api_bp.route("/arena/monsters/<int:monster_id>/generate-image-admin", methods=["POST"])
+def generate_single_monster_image_admin(monster_id: int):
+    """
+    Generate image for a single monster.
+    Protected by BOT_SECRET header for admin panel use.
+    """
+    from flask import request
+
+    # Verify bot secret
+    bot_secret = request.headers.get("X-Bot-Secret")
+    expected_secret = current_app.config.get("BOT_SECRET", "")
+
+    if not expected_secret or bot_secret != expected_secret:
+        return validation_error({"error": "unauthorized"})
+
+    from app.models.character import Monster
+
+    monster = Monster.query.get(monster_id)
+    if not monster:
+        return validation_error({"error": "monster_not_found"})
+
+    from app.services.card_battle_service import CardBattleService
+
+    service = CardBattleService()
+    sprite_url = service._generate_monster_image(monster, monster.genre)
+
+    if sprite_url:
+        monster.sprite_url = sprite_url
+        db.session.commit()
+        return success_response({"success": True, "sprite_url": sprite_url})
+
+    return success_response({"success": False, "error": "generation_failed"})
+
+
 # ============ Monster Rotation (Cron) ============
 
 

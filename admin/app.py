@@ -1054,18 +1054,72 @@ def remove_friendship_by_users():
 @app.route("/monsters/generate-images", methods=["POST"])
 @login_required
 def generate_monster_images():
-    """Proxy to backend for generating monster images."""
+    """Generate images for monsters without images, one by one."""
     import requests
 
-    try:
-        response = requests.post(
-            f"{API_URL}/api/v1/arena/monsters/generate-images-admin",
-            headers={"X-Bot-Secret": BOT_SECRET},
-            timeout=300,  # 5 minutes for image generation
-        )
-        return jsonify(response.json())
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    genre = request.args.get("genre")
+
+    # Count total monsters without images
+    count_query = """
+        SELECT COUNT(*) FROM monsters
+        WHERE sprite_url IS NULL OR sprite_url = ''
+    """
+    if genre:
+        count_query += f" AND genre = '{genre}'"
+    total_without_images = db.session.execute(text(count_query)).scalar() or 0
+
+    if total_without_images == 0:
+        return jsonify({
+            "success": True,
+            "data": {
+                "message": "All monsters already have images" if not genre else f"All {genre} monsters have images",
+                "generated": 0,
+                "failed": 0,
+                "remaining": 0
+            }
+        })
+
+    # Get monsters without images (limit 5 at a time)
+    query = """
+        SELECT id, name, description, genre
+        FROM monsters
+        WHERE sprite_url IS NULL OR sprite_url = ''
+    """
+    if genre:
+        query += f" AND genre = '{genre}'"
+    query += " LIMIT 5"
+
+    monsters = db.session.execute(text(query)).fetchall()
+
+    generated = 0
+    failed = 0
+
+    for monster in monsters:
+        try:
+            response = requests.post(
+                f"{API_URL}/api/v1/arena/monsters/{monster.id}/generate-image-admin",
+                headers={"X-Bot-Secret": BOT_SECRET},
+                timeout=60,
+            )
+            result = response.json()
+            if result.get("success"):
+                generated += 1
+            else:
+                failed += 1
+        except Exception:
+            failed += 1
+
+    remaining = total_without_images - generated
+
+    return jsonify({
+        "success": True,
+        "data": {
+            "generated": generated,
+            "failed": failed,
+            "remaining": remaining,
+            "message": f"Generated {generated} images. {remaining} remaining."
+        }
+    })
 
 
 @app.route("/monsters/rotate", methods=["POST"])
