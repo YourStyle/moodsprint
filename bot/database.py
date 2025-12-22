@@ -525,9 +525,11 @@ async def get_scheduled_tasks_for_reminder() -> list[dict]:
     Get tasks that are scheduled and need reminder notification.
 
     Returns tasks where:
-    - scheduled_at <= NOW()
+    - scheduled_at <= NOW() (in UTC)
     - reminder_sent = false
     - status != completed
+
+    Note: scheduled_at is stored in UTC, so we compare with UTC time.
     """
     async with async_session() as session:
         result = await session.execute(
@@ -542,7 +544,7 @@ async def get_scheduled_tasks_for_reminder() -> list[dict]:
                     u.first_name
                 FROM tasks t
                 JOIN users u ON t.user_id = u.id
-                WHERE t.scheduled_at <= NOW()
+                WHERE t.scheduled_at <= (NOW() AT TIME ZONE 'UTC')
                 AND t.reminder_sent = false
                 AND t.status != 'completed'
                 ORDER BY t.scheduled_at ASC

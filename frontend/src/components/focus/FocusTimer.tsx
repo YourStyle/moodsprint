@@ -141,36 +141,39 @@ export function FocusTimer({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-8">
-        <Button
-          variant="ghost"
-          iconOnly
-          onClick={onCancel}
-          className="w-14 h-14 rounded-full"
-        >
-          <X className="w-6 h-6" />
-        </Button>
+      <div className="flex flex-col items-center gap-4 mt-8">
+        {/* Row 1: Pause/Play + Stop */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant={isPaused ? 'primary' : 'secondary'}
+            iconOnly
+            onClick={isPaused ? onResume : onPause}
+            className="w-16 h-16 rounded-full"
+          >
+            {isPaused ? (
+              <Play className="w-7 h-7" />
+            ) : (
+              <Pause className="w-7 h-7" />
+            )}
+          </Button>
 
-        <Button
-          variant={isPaused ? 'primary' : 'secondary'}
-          iconOnly
-          onClick={isPaused ? onResume : onPause}
-          className="w-16 h-16 rounded-full"
-        >
-          {isPaused ? (
-            <Play className="w-7 h-7" />
-          ) : (
-            <Pause className="w-7 h-7" />
-          )}
-        </Button>
+          <Button
+            variant="ghost"
+            iconOnly
+            onClick={onCancel}
+            className="w-14 h-14 rounded-full"
+          >
+            <X className="w-6 h-6" />
+          </Button>
+        </div>
 
+        {/* Row 2: Complete */}
         <Button
-          variant="primary"
-          iconOnly
           onClick={() => onComplete(true)}
-          className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600"
+          className="w-full max-w-[200px] bg-green-500 hover:bg-green-600"
         >
-          <Check className="w-6 h-6" />
+          <Check className="w-5 h-5 mr-2" />
+          Завершить
         </Button>
       </div>
 

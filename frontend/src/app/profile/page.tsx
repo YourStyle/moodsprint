@@ -87,7 +87,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="p-4 space-y-4 pt-safe">
+    <div className="p-4 space-y-4">
       {/* User Info */}
       <Card className="text-center relative z-10">
         {user.photo_url ? (

@@ -59,7 +59,7 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pt-safe">
+    <div className="p-4 space-y-4">
       {/* Header */}
       <div className="text-center mb-6">
         <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-2" />

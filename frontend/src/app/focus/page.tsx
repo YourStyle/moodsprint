@@ -133,7 +133,7 @@ export default function FocusPage() {
   }
 
   return (
-    <div className="p-4 space-y-6 pt-safe">
+    <div className="p-4 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white">Режим фокуса</h1>

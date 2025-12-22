@@ -584,7 +584,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen p-4 space-y-6 safe-area-top safe-area-bottom">
+    <div className="min-h-screen p-4 space-y-6">
       {/* Daily Bonus Modal */}
       <DailyBonus />
 

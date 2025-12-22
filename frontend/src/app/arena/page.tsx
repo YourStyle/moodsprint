@@ -325,7 +325,7 @@ export default function ArenaPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pt-safe pb-4">
+    <div className="min-h-screen p-4 pb-4">
       {/* Header */}
       <div className="text-center mb-4">
         <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
@@ -678,7 +678,7 @@ export default function ArenaPage() {
               {/* Attack Button */}
               <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-30">
                 <Button
-                  className="w-full disabled:opacity-100"
+                  className={`w-full ${!canAttack ? 'bg-gray-600 hover:bg-gray-600 shadow-none' : ''}`}
                   onClick={handleExecuteTurn}
                   disabled={!canAttack}
                   isLoading={executeTurnMutation.isPending}

@@ -193,7 +193,7 @@ export default function OnboardingPage() {
   const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
 
   return (
-    <div className="min-h-screen flex flex-col pt-safe pb-20">
+    <div className="min-h-screen flex flex-col pb-20">
       {/* Progress - fixed at top */}
       <div className="flex gap-1 px-4 pt-4 pb-2 flex-shrink-0">
         {progressSteps.map((s, i) => (

@@ -36,7 +36,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Providers>
-          <div className="min-h-screen flex flex-col">
+          <div className="min-h-screen flex flex-col pt-safe">
             <main className="flex-1 pb-20">{children}</main>
             <Navigation />
           </div>

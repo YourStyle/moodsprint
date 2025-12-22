@@ -113,7 +113,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 pt-safe">
+      <div className="p-4 space-y-4">
         <Card className="h-24 animate-pulse" />
         <Card className="h-32 animate-pulse" />
       </div>
@@ -121,7 +121,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pt-safe">
+    <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
