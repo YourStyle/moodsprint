@@ -148,6 +148,12 @@ export interface Monster {
   sprite_url: string | null;
   emoji: string;
   is_boss: boolean;
+  // Event monster fields
+  is_event_monster?: boolean;
+  event_id?: number;
+  event_name?: string;
+  event_emoji?: string;
+  guaranteed_rarity?: string;
   required_cards?: {
     min_cards: number;
     max_cards: number;

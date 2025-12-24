@@ -297,7 +297,12 @@ export default function ArenaPage() {
     }
   };
 
-  const monsters = monstersData?.data?.monsters || [];
+  // Sort monsters: event monsters first, then regular monsters
+  const monsters = (monstersData?.data?.monsters || []).sort((a, b) => {
+    if (a.is_event_monster && !b.is_event_monster) return -1;
+    if (!a.is_event_monster && b.is_event_monster) return 1;
+    return 0;
+  });
   const deck = monstersData?.data?.deck || [];
   const leaderboard = leaderboardData?.data?.leaderboard || [];
   const activeEvent = eventData?.data?.event || null;
@@ -464,23 +469,44 @@ export default function ArenaPage() {
                 </Card>
               ) : (
                 <div className="space-y-3">
+                  {/* Event monsters first */}
+                  {monsters.filter(m => m.is_event_monster).length > 0 && (
+                    <div className="mb-2">
+                      <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        {t('eventMonsters')}
+                      </h3>
+                    </div>
+                  )}
                   {monsters.map((monster) => (
                     <Card
                       key={monster.id}
-                      className={`cursor-pointer transition-all ${
+                      className={cn(
+                        'cursor-pointer transition-all',
                         deck.length === 0
                           ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-gray-700/50'
-                      }`}
+                          : 'hover:bg-gray-700/50',
+                        monster.is_event_monster && 'ring-2 ring-amber-500/50 bg-gradient-to-r from-amber-500/10 to-orange-500/10'
+                      )}
                       onClick={() => deck.length > 0 && handleSelectMonster(monster)}
                     >
+                      {/* Event badge */}
+                      {monster.is_event_monster && (
+                        <div className="flex items-center gap-1.5 mb-2 px-2 py-1 bg-amber-500/20 rounded-lg w-fit">
+                          <span className="text-sm">{monster.event_emoji || '🎄'}</span>
+                          <span className="text-xs font-medium text-amber-400">{monster.event_name || t('event')}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden ${
-                            monster.is_boss
-                              ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30'
-                              : 'bg-gray-700'
-                          }`}
+                          className={cn(
+                            'w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden',
+                            monster.is_event_monster
+                              ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30'
+                              : monster.is_boss
+                                ? 'bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30'
+                                : 'bg-gray-700'
+                          )}
                         >
                           {monster.sprite_url ? (
                             <img src={monster.sprite_url} alt={monster.name} className="w-full h-full object-cover" />
@@ -494,11 +520,19 @@ export default function ArenaPage() {
                             {monster.is_boss && (
                               <Star className="w-4 h-4 text-yellow-500" />
                             )}
+                            {monster.is_event_monster && (
+                              <Sparkles className="w-4 h-4 text-amber-400" />
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs">
                             <span className="text-purple-400">
                               {monster.is_boss ? '5' : '3'} {t('cardsInMonsterDeck')}
                             </span>
+                            {monster.guaranteed_rarity && (
+                              <span className="text-amber-400">
+                                🎁 {monster.guaranteed_rarity}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs">
                             <span className="text-red-400">ATK {monster.attack}</span>
