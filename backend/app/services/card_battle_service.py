@@ -207,7 +207,14 @@ class CardBattleService:
         return "fantasy"
 
     def get_available_monsters(self, user_id: int) -> list[dict]:
-        """Get monsters available for battle (excluding defeated ones)."""
+        """Get monsters available for battle (excluding defeated ones).
+
+        Includes both regular period monsters and event monsters if an event is active.
+        """
+        from datetime import datetime
+
+        from app.models.event import EventMonster, SeasonalEvent
+
         genre = self.get_user_genre(user_id)
         deck = self.get_user_deck(user_id)
         deck_power = sum(card.attack + card.hp for card in deck) if deck else 0
@@ -223,7 +230,36 @@ class CardBattleService:
             ).all()
         }
 
-        # Try to get period monsters first
+        result = []
+
+        # Check for active event and include event monsters
+        now = datetime.utcnow()
+        active_event = SeasonalEvent.query.filter(
+            SeasonalEvent.is_active.is_(True),
+            SeasonalEvent.start_date <= now,
+            SeasonalEvent.end_date >= now,
+        ).first()
+
+        if active_event:
+            event_monsters = EventMonster.query.filter_by(
+                event_id=active_event.id
+            ).all()
+            for em in event_monsters:
+                if em.monster and em.monster.id not in defeated_ids:
+                    monster_dict = em.monster.to_dict()
+                    scaled = self._scale_monster_for_deck(em.monster, deck_power)
+                    monster_dict.update(scaled)
+                    monster_dict["deck_size"] = self._get_monster_deck_size(em.monster)
+                    monster_dict["cards_count"] = em.monster.cards.count()
+                    monster_dict["is_event_monster"] = True
+                    monster_dict["event_id"] = active_event.id
+                    monster_dict["event_name"] = active_event.name
+                    monster_dict["event_emoji"] = active_event.emoji
+                    if em.guaranteed_rarity:
+                        monster_dict["guaranteed_rarity"] = em.guaranteed_rarity
+                    result.append(monster_dict)
+
+        # Try to get period monsters
         period_monsters = (
             DailyMonster.query.filter_by(genre=genre, period_start=period_start)
             .order_by(DailyMonster.slot_number)
@@ -231,15 +267,14 @@ class CardBattleService:
         )
 
         if period_monsters:
-            result = []
             for dm in period_monsters:
                 if dm.monster and dm.monster.id not in defeated_ids:
                     monster_dict = dm.monster.to_dict()
                     scaled = self._scale_monster_for_deck(dm.monster, deck_power)
                     monster_dict.update(scaled)
                     monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
-                    # Include pre-generated cards count
                     monster_dict["cards_count"] = dm.monster.cards.count()
+                    monster_dict["is_event_monster"] = False
                     result.append(monster_dict)
             if result:
                 return result
@@ -254,7 +289,6 @@ class CardBattleService:
             .all()
         )
 
-        result = []
         for dm in period_monsters:
             if dm.monster and dm.monster.id not in defeated_ids:
                 monster_dict = dm.monster.to_dict()
@@ -262,6 +296,7 @@ class CardBattleService:
                 monster_dict.update(scaled)
                 monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
                 monster_dict["cards_count"] = dm.monster.cards.count()
+                monster_dict["is_event_monster"] = False
                 result.append(monster_dict)
 
         return result
