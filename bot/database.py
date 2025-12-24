@@ -125,7 +125,7 @@ async def get_overdue_tasks_by_user() -> dict[int, list[dict]]:
                        t.postponed_count, t.due_date, u.telegram_id
                 FROM tasks t
                 JOIN users u ON t.user_id = u.id
-                WHERE t.due_date < CURRENT_DATE
+                WHERE t.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow')::date
                 AND t.status != 'completed'
                 ORDER BY t.user_id
             """
@@ -147,17 +147,17 @@ async def get_overdue_tasks_by_user() -> dict[int, list[dict]]:
 
 async def postpone_task(task_id: int) -> int:
     """
-    Postpone a task to today and increment postponed_count.
+    Postpone a task to today (Moscow time) and increment postponed_count.
 
     Returns new postponed_count.
     """
     async with async_session() as session:
-        # Update task
+        # Update task - use Moscow timezone for date
         await session.execute(
             text(
                 """
                 UPDATE tasks
-                SET due_date = CURRENT_DATE,
+                SET due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow')::date,
                     postponed_count = COALESCE(postponed_count, 0) + 1,
                     updated_at = NOW()
                 WHERE id = :task_id
