@@ -177,7 +177,7 @@ export default function GuildsPage() {
 
                     <div className="flex gap-2">
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => router.push(`/guilds/${myGuild.id}`)}
                         className="flex-1"
@@ -262,7 +262,7 @@ export default function GuildsPage() {
                     <div className="p-4 text-center space-y-3">
                       <Swords className="w-10 h-10 text-gray-500 mx-auto" />
                       <p className="text-gray-400">Нет активного рейда</p>
-                      <Button variant="outline" size="sm">
+                      <Button variant="secondary" size="sm">
                         <Plus className="w-4 h-4 mr-1" />
                         Начать рейд
                       </Button>
@@ -285,7 +285,7 @@ export default function GuildsPage() {
                       <Search className="w-4 h-4 mr-1" />
                       Найти гильдию
                     </Button>
-                    <Button variant="outline">
+                    <Button variant="secondary">
                       <Plus className="w-4 h-4 mr-1" />
                       Создать
                     </Button>
