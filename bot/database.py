@@ -674,3 +674,329 @@ async def get_users_with_pending_referrals() -> list[dict]:
             await session.commit()
 
         return users
+
+
+# ============ Marketplace/Payment Functions ============
+
+
+async def check_listing_available(listing_id: int) -> bool:
+    """Check if a marketplace listing is still active."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT id FROM market_listings
+                WHERE id = :listing_id AND status = 'active'
+            """
+            ),
+            {"listing_id": listing_id},
+        )
+        return result.fetchone() is not None
+
+
+async def check_card_on_cooldown(card_id: int, user_id: int) -> bool:
+    """Check if a card is on cooldown and belongs to user."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT id FROM user_cards
+                WHERE id = :card_id
+                  AND user_id = :user_id
+                  AND cooldown_until > NOW()
+            """
+            ),
+            {"card_id": card_id, "user_id": user_id},
+        )
+        return result.fetchone() is not None
+
+
+async def get_listing_for_purchase(listing_id: int) -> dict | None:
+    """Get listing with card info for purchase."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    ml.id,
+                    ml.seller_id,
+                    ml.price_stars,
+                    uc.id as card_id,
+                    uc.name as card_name,
+                    uc.rarity as card_rarity
+                FROM market_listings ml
+                JOIN user_cards uc ON ml.card_id = uc.id
+                WHERE ml.id = :listing_id AND ml.status = 'active'
+            """
+            ),
+            {"listing_id": listing_id},
+        )
+        row = result.fetchone()
+        if not row:
+            return None
+
+        data = dict(row._mapping)
+        return {
+            "id": data["id"],
+            "seller_id": data["seller_id"],
+            "price_stars": data["price_stars"],
+            "card": {
+                "id": data["card_id"],
+                "name": data["card_name"],
+                "rarity": data["card_rarity"],
+            },
+        }
+
+
+async def get_card_cooldown_info(card_id: int, user_id: int) -> dict | None:
+    """Get card cooldown info for skip purchase."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    id, name, cooldown_until,
+                    EXTRACT(EPOCH FROM (cooldown_until - NOW())) / 3600 as remaining_hours
+                FROM user_cards
+                WHERE id = :card_id AND user_id = :user_id
+            """
+            ),
+            {"card_id": card_id, "user_id": user_id},
+        )
+        row = result.fetchone()
+        if not row:
+            return None
+
+        data = dict(row._mapping)
+        is_on_cooldown = (
+            data["cooldown_until"] is not None and data["remaining_hours"] > 0
+        )
+
+        return {
+            "id": data["id"],
+            "name": data["name"],
+            "is_on_cooldown": is_on_cooldown,
+            "remaining_hours": (
+                max(1, int(data["remaining_hours"] or 0) + 1) if is_on_cooldown else 0
+            ),
+        }
+
+
+async def complete_marketplace_purchase(
+    listing_id: int, buyer_id: int, telegram_payment_id: str
+) -> dict:
+    """Complete a marketplace purchase after successful payment."""
+    async with async_session() as session:
+        # Get listing
+        listing_result = await session.execute(
+            text(
+                """
+                SELECT ml.*, uc.name as card_name
+                FROM market_listings ml
+                JOIN user_cards uc ON ml.card_id = uc.id
+                WHERE ml.id = :listing_id AND ml.status = 'active'
+                FOR UPDATE
+            """
+            ),
+            {"listing_id": listing_id},
+        )
+        listing_row = listing_result.fetchone()
+
+        if not listing_row:
+            return {"error": "listing_not_found"}
+
+        listing = dict(listing_row._mapping)
+
+        if listing["seller_id"] == buyer_id:
+            return {"error": "cannot_buy_own"}
+
+        seller_id = listing["seller_id"]
+        card_id = listing["card_id"]
+        price = listing["price_stars"]
+        card_name = listing["card_name"]
+
+        # Commission 10%
+        commission = int(price * 0.10)
+        seller_revenue = price - commission
+
+        # Transfer card
+        await session.execute(
+            text(
+                """
+                UPDATE user_cards SET user_id = :buyer_id, is_in_deck = false
+                WHERE id = :card_id
+            """
+            ),
+            {"buyer_id": buyer_id, "card_id": card_id},
+        )
+
+        # Update listing
+        await session.execute(
+            text(
+                """
+                UPDATE market_listings
+                SET status = 'sold', buyer_id = :buyer_id, sold_at = NOW()
+                WHERE id = :listing_id
+            """
+            ),
+            {"buyer_id": buyer_id, "listing_id": listing_id},
+        )
+
+        # Record buyer transaction
+        await session.execute(
+            text(
+                """
+                INSERT INTO stars_transactions
+                    (user_id, amount, type, reference_type, reference_id,
+                     telegram_payment_id, description, created_at)
+                VALUES
+                    (:user_id, :amount, 'card_purchase', 'listing', :listing_id,
+                     :payment_id, :description, NOW())
+            """
+            ),
+            {
+                "user_id": buyer_id,
+                "amount": -price,
+                "listing_id": listing_id,
+                "payment_id": telegram_payment_id,
+                "description": f"Покупка карты: {card_name}",
+            },
+        )
+
+        # Record seller transaction
+        await session.execute(
+            text(
+                """
+                INSERT INTO stars_transactions
+                    (user_id, amount, type, reference_type, reference_id,
+                     description, created_at)
+                VALUES
+                    (:user_id, :amount, 'card_sale', 'listing', :listing_id,
+                     :description, NOW())
+            """
+            ),
+            {
+                "user_id": seller_id,
+                "amount": seller_revenue,
+                "listing_id": listing_id,
+                "description": f"Продажа карты: {card_name}",
+            },
+        )
+
+        # Update seller balance
+        await session.execute(
+            text(
+                """
+                INSERT INTO user_stars_balances (user_id, pending_balance, total_earned)
+                VALUES (:user_id, :amount, :amount)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    pending_balance = user_stars_balances.pending_balance + :amount,
+                    total_earned = user_stars_balances.total_earned + :amount,
+                    updated_at = NOW()
+            """
+            ),
+            {"user_id": seller_id, "amount": seller_revenue},
+        )
+
+        # Update buyer stats
+        await session.execute(
+            text(
+                """
+                INSERT INTO user_stars_balances (user_id, total_spent)
+                VALUES (:user_id, :amount)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    total_spent = user_stars_balances.total_spent + :amount,
+                    updated_at = NOW()
+            """
+            ),
+            {"user_id": buyer_id, "amount": price},
+        )
+
+        await session.commit()
+
+        return {
+            "success": True,
+            "card": {"id": card_id, "name": card_name},
+            "price_paid": price,
+            "seller_revenue": seller_revenue,
+        }
+
+
+async def complete_cooldown_skip(
+    card_id: int, user_id: int, telegram_payment_id: str, price: int
+) -> dict:
+    """Complete cooldown skip after successful payment."""
+    async with async_session() as session:
+        # Get card
+        card_result = await session.execute(
+            text(
+                """
+                SELECT id, name, hp FROM user_cards
+                WHERE id = :card_id AND user_id = :user_id
+            """
+            ),
+            {"card_id": card_id, "user_id": user_id},
+        )
+        card_row = card_result.fetchone()
+
+        if not card_row:
+            return {"error": "card_not_found"}
+
+        card = dict(card_row._mapping)
+
+        # Clear cooldown and restore HP
+        await session.execute(
+            text(
+                """
+                UPDATE user_cards
+                SET cooldown_until = NULL, current_hp = hp
+                WHERE id = :card_id
+            """
+            ),
+            {"card_id": card_id},
+        )
+
+        # Record transaction
+        await session.execute(
+            text(
+                """
+                INSERT INTO stars_transactions
+                    (user_id, amount, type, reference_type, reference_id,
+                     telegram_payment_id, description, created_at)
+                VALUES
+                    (:user_id, :amount, 'skip_cooldown', 'card', :card_id,
+                     :payment_id, :description, NOW())
+            """
+            ),
+            {
+                "user_id": user_id,
+                "amount": -price,
+                "card_id": card_id,
+                "payment_id": telegram_payment_id,
+                "description": f"Пропуск перезарядки: {card['name']}",
+            },
+        )
+
+        # Update balance stats
+        await session.execute(
+            text(
+                """
+                INSERT INTO user_stars_balances (user_id, total_spent)
+                VALUES (:user_id, :amount)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    total_spent = user_stars_balances.total_spent + :amount,
+                    updated_at = NOW()
+            """
+            ),
+            {"user_id": user_id, "amount": price},
+        )
+
+        await session.commit()
+
+        return {
+            "success": True,
+            "card": {"id": card_id, "name": card["name"]},
+        }

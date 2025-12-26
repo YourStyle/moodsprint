@@ -1,0 +1,294 @@
+"""Guild system models for social features and raids."""
+
+from datetime import datetime
+
+from app import db
+
+
+class Guild(db.Model):
+    """Guild/Clan for social features."""
+
+    __tablename__ = "guilds"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.String(200), nullable=True)
+    emoji = db.Column(db.String(10), default="⚔️")
+
+    # Leader
+    leader_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Guild progression
+    level = db.Column(db.Integer, default=1)
+    xp = db.Column(db.Integer, default=0)
+
+    # Settings
+    is_public = db.Column(db.Boolean, default=True)  # Anyone can join
+    max_members = db.Column(db.Integer, default=30)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    leader = db.relationship("User", foreign_keys=[leader_id])
+    members = db.relationship(
+        "GuildMember", backref="guild", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    raids = db.relationship(
+        "GuildRaid", backref="guild", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+    @property
+    def member_count(self) -> int:
+        """Get current member count."""
+        return self.members.count()
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "emoji": self.emoji,
+            "leader_id": self.leader_id,
+            "level": self.level,
+            "xp": self.xp,
+            "is_public": self.is_public,
+            "max_members": self.max_members,
+            "member_count": self.member_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class GuildMember(db.Model):
+    """Guild membership."""
+
+    __tablename__ = "guild_members"
+
+    id = db.Column(db.Integer, primary_key=True)
+    guild_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guilds.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Role: leader, officer, member
+    role = db.Column(db.String(20), default="member")
+
+    # Contribution tracking
+    contribution_xp = db.Column(db.Integer, default=0)
+    raids_participated = db.Column(db.Integer, default=0)
+    total_damage_dealt = db.Column(db.Integer, default=0)
+
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Unique constraint
+    __table_args__ = (
+        db.UniqueConstraint("guild_id", "user_id", name="unique_guild_member"),
+    )
+
+    # Relationships
+    user = db.relationship(
+        "User", backref=db.backref("guild_membership", uselist=False)
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "guild_id": self.guild_id,
+            "user_id": self.user_id,
+            "role": self.role,
+            "contribution_xp": self.contribution_xp,
+            "raids_participated": self.raids_participated,
+            "total_damage_dealt": self.total_damage_dealt,
+            "joined_at": self.joined_at.isoformat() if self.joined_at else None,
+            "user": self.user.to_dict() if self.user else None,
+        }
+
+
+class GuildRaid(db.Model):
+    """Guild raid against a powerful boss."""
+
+    __tablename__ = "guild_raids"
+
+    id = db.Column(db.Integer, primary_key=True)
+    guild_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guilds.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    monster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("monsters.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Boss stats (scaled for guild size)
+    boss_name = db.Column(db.String(100), nullable=False)
+    boss_emoji = db.Column(db.String(10), default="👹")
+    total_hp = db.Column(db.Integer, nullable=False)  # Total HP to defeat
+    current_hp = db.Column(db.Integer, nullable=False)  # Remaining HP
+
+    # Status: active, won, expired, cancelled
+    status = db.Column(db.String(20), default="active")
+
+    # Rewards
+    xp_reward = db.Column(db.Integer, default=500)
+    card_reward_rarity = db.Column(db.String(20), default="rare")  # Minimum rarity
+
+    # Timing
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)  # 24-48 hours from start
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    # Stats
+    total_damage_dealt = db.Column(db.Integer, default=0)
+    participants_count = db.Column(db.Integer, default=0)
+
+    # Relationships
+    monster = db.relationship("Monster")
+    contributions = db.relationship(
+        "GuildRaidContribution",
+        backref="raid",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "guild_id": self.guild_id,
+            "monster_id": self.monster_id,
+            "boss_name": self.boss_name,
+            "boss_emoji": self.boss_emoji,
+            "total_hp": self.total_hp,
+            "current_hp": self.current_hp,
+            "hp_percentage": (
+                int((self.current_hp / self.total_hp) * 100) if self.total_hp > 0 else 0
+            ),
+            "status": self.status,
+            "xp_reward": self.xp_reward,
+            "card_reward_rarity": self.card_reward_rarity,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "total_damage_dealt": self.total_damage_dealt,
+            "participants_count": self.participants_count,
+        }
+
+
+class GuildRaidContribution(db.Model):
+    """Individual contribution to a guild raid."""
+
+    __tablename__ = "guild_raid_contributions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    raid_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guild_raids.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Contribution stats
+    damage_dealt = db.Column(db.Integer, default=0)
+    attacks_count = db.Column(db.Integer, default=0)
+    last_attack_at = db.Column(db.DateTime, nullable=True)
+
+    # Daily limit tracking (3 attacks per day)
+    attacks_today = db.Column(db.Integer, default=0)
+    attacks_reset_date = db.Column(db.Date, nullable=True)
+
+    # Unique constraint
+    __table_args__ = (
+        db.UniqueConstraint("raid_id", "user_id", name="unique_raid_contribution"),
+    )
+
+    # Relationships
+    user = db.relationship("User")
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "raid_id": self.raid_id,
+            "user_id": self.user_id,
+            "damage_dealt": self.damage_dealt,
+            "attacks_count": self.attacks_count,
+            "attacks_today": self.attacks_today,
+            "last_attack_at": (
+                self.last_attack_at.isoformat() if self.last_attack_at else None
+            ),
+        }
+
+
+class GuildInvite(db.Model):
+    """Invite to join a guild."""
+
+    __tablename__ = "guild_invites"
+
+    id = db.Column(db.Integer, primary_key=True)
+    guild_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guilds.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    invited_by_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Status: pending, accepted, rejected, expired
+    status = db.Column(db.String(20), default="pending")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    guild = db.relationship("Guild")
+    user = db.relationship("User", foreign_keys=[user_id])
+    invited_by = db.relationship("User", foreign_keys=[invited_by_id])
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "guild_id": self.guild_id,
+            "guild": self.guild.to_dict() if self.guild else None,
+            "user_id": self.user_id,
+            "invited_by_id": self.invited_by_id,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

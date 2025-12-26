@@ -12,3 +12,6 @@ export { onboardingService } from './onboarding';
 export { cardsService } from './cards';
 export { mergeService } from './merge';
 export { eventsService } from './events';
+export { guildsService } from './guilds';
+export { marketplaceService } from './marketplace';
+export { campaignService } from './campaign';

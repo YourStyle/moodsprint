@@ -1,6 +1,6 @@
 """Card system models for RPG mechanics."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from app import db
@@ -182,7 +182,12 @@ class UserCard(db.Model):
     # Status
     is_in_deck = db.Column(db.Boolean, default=False)  # In active battle deck
     is_tradeable = db.Column(db.Boolean, default=True)
-    is_destroyed = db.Column(db.Boolean, default=False)  # Lost in battle
+    is_destroyed = db.Column(db.Boolean, default=False)  # Lost in battle (legacy)
+
+    # Cooldown system (replaces permanent death)
+    cooldown_until = db.Column(
+        db.DateTime, nullable=True
+    )  # When card becomes available
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
@@ -196,6 +201,30 @@ class UserCard(db.Model):
     def heal(self):
         """Restore card HP to full."""
         self.current_hp = self.hp
+
+    def is_on_cooldown(self) -> bool:
+        """Check if card is on cooldown."""
+        if not self.cooldown_until:
+            return False
+        return datetime.utcnow() < self.cooldown_until
+
+    def start_cooldown(self, hours: int = 1):
+        """Put card on cooldown after battle defeat."""
+        self.cooldown_until = datetime.utcnow() + timedelta(hours=hours)
+        self.current_hp = 0
+        self.is_in_deck = False
+
+    def clear_cooldown(self):
+        """Clear cooldown and restore HP (after cooldown expires or skip)."""
+        self.cooldown_until = None
+        self.current_hp = self.hp
+
+    def get_cooldown_remaining(self) -> int | None:
+        """Get remaining cooldown time in seconds, or None if not on cooldown."""
+        if not self.cooldown_until:
+            return None
+        remaining = (self.cooldown_until - datetime.utcnow()).total_seconds()
+        return max(0, int(remaining))
 
     def take_damage(self, damage: int) -> int:
         """Take damage and return actual damage taken."""
@@ -254,6 +283,11 @@ class UserCard(db.Model):
             "is_in_deck": self.is_in_deck,
             "is_tradeable": self.is_tradeable,
             "is_alive": self.is_alive,
+            "is_on_cooldown": self.is_on_cooldown(),
+            "cooldown_remaining": self.get_cooldown_remaining(),
+            "cooldown_until": (
+                self.cooldown_until.isoformat() if self.cooldown_until else None
+            ),
             "rarity_color": self.rarity_color,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

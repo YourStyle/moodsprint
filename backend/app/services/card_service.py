@@ -21,19 +21,24 @@ from app.models.card import (
     UserCard,
 )
 from app.models.character import GENRE_THEMES
+from app.models.user import User
 from app.models.user_profile import UserProfile
+
+# Level scaling: each level adds 5% to card stats
+# Level 1 = 1.05x, Level 10 = 1.5x, Level 20 = 2x
+LEVEL_STAT_MULTIPLIER = 0.05
 
 logger = logging.getLogger(__name__)
 
 # Probability-based rarity distribution (independent of task difficulty)
 # Each tuple is (rarity, cumulative_probability)
-# Common: 50%, Uncommon: 30%, Rare: 15%, Epic: 4%, Legendary: 1%
+# Common: 50%, Uncommon: 30%, Rare: 16%, Epic: 3.5%, Legendary: 0.5%
 RARITY_PROBABILITIES = [
     (CardRarity.COMMON, 0.50),
     (CardRarity.UNCOMMON, 0.80),
-    (CardRarity.RARE, 0.95),
-    (CardRarity.EPIC, 0.99),
-    (CardRarity.LEGENDARY, 1.00),
+    (CardRarity.RARE, 0.96),
+    (CardRarity.EPIC, 0.995),
+    (CardRarity.LEGENDARY, 1.00),  # 0.5% (reduced from 1%)
 ]
 
 # Base number of templates for all genres (before user scaling)
@@ -229,6 +234,17 @@ class CardService:
         if profile and profile.favorite_genre:
             return profile.favorite_genre
         return "fantasy"
+
+    def get_user_level(self, user_id: int) -> int:
+        """Get user's level for stat scaling."""
+        user = User.query.get(user_id)
+        if user:
+            return user.level
+        return 1
+
+    def _get_level_multiplier(self, user_level: int) -> float:
+        """Calculate stat multiplier based on user level."""
+        return 1 + (user_level * LEVEL_STAT_MULTIPLIER)
 
     def _count_users_in_genre(self, genre: str) -> int:
         """Count how many users have this genre as their favorite."""
@@ -438,11 +454,14 @@ class CardService:
     def _create_card_from_template(
         self, user_id: int, task_id: int, template: CardTemplate, rarity: CardRarity
     ) -> UserCard:
-        """Create a user card from a template with rarity modifiers."""
-        multipliers = RARITY_MULTIPLIERS[rarity]
+        """Create a user card from a template with rarity and level modifiers."""
+        rarity_mult = RARITY_MULTIPLIERS[rarity]
+        user_level = self.get_user_level(user_id)
+        level_mult = self._get_level_multiplier(user_level)
 
-        hp = int(template.base_hp * multipliers["hp"])
-        attack = int(template.base_attack * multipliers["attack"])
+        # Apply both rarity and level multipliers
+        hp = int(template.base_hp * rarity_mult["hp"] * level_mult)
+        attack = int(template.base_attack * rarity_mult["attack"] * level_mult)
 
         # Roll for ability based on rarity
         ability = get_random_ability(rarity)
@@ -479,13 +498,17 @@ class CardService:
             genre, genre_info, rarity, task_title
         )
 
-        # Calculate stats based on rarity
-        multipliers = RARITY_MULTIPLIERS[rarity]
+        # Calculate stats based on rarity and user level
+        rarity_mult = RARITY_MULTIPLIERS[rarity]
+        user_level = self.get_user_level(user_id)
+        level_mult = self._get_level_multiplier(user_level)
+
         base_hp = random.randint(40, 60)
         base_attack = random.randint(12, 20)
 
-        hp = int(base_hp * multipliers["hp"])
-        attack = int(base_attack * multipliers["attack"])
+        # Apply both rarity and level multipliers
+        hp = int(base_hp * rarity_mult["hp"] * level_mult)
+        attack = int(base_attack * rarity_mult["attack"] * level_mult)
 
         # Select emoji
         emojis = GENRE_CARD_EMOJIS.get(genre, GENRE_CARD_EMOJIS["fantasy"])

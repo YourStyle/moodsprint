@@ -2,6 +2,13 @@
 
 from app.models.achievement import Achievement, UserAchievement
 from app.models.activity_log import ActivityType, UserActivityLog
+from app.models.campaign import (
+    CampaignChapter,
+    CampaignLevel,
+    CampaignLevelCompletion,
+    CampaignReward,
+    UserCampaignProgress,
+)
 from app.models.card import (
     CardAbility,
     CardRarity,
@@ -24,6 +31,14 @@ from app.models.character import (
 )
 from app.models.event import EventMonster, EventType, SeasonalEvent, UserEventProgress
 from app.models.focus_session import FocusSession
+from app.models.guild import (
+    Guild,
+    GuildInvite,
+    GuildMember,
+    GuildRaid,
+    GuildRaidContribution,
+)
+from app.models.marketplace import MarketListing, StarsTransaction, UserStarsBalance
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
 from app.models.quest import DailyQuest
@@ -67,4 +82,20 @@ __all__ = [
     "EventMonster",
     "UserEventProgress",
     "EventType",
+    # Guilds
+    "Guild",
+    "GuildMember",
+    "GuildRaid",
+    "GuildRaidContribution",
+    "GuildInvite",
+    # Marketplace
+    "MarketListing",
+    "StarsTransaction",
+    "UserStarsBalance",
+    # Campaign
+    "CampaignChapter",
+    "CampaignLevel",
+    "CampaignLevelCompletion",
+    "CampaignReward",
+    "UserCampaignProgress",
 ]

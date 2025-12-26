@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Info, Layers, Calendar, Sparkles } from 'lucide-react';
+import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap } from 'lucide-react';
 
 interface SimpleAbilityInfo {
   type: string;
@@ -32,6 +32,10 @@ export interface DeckCardProps {
   compact?: boolean;
   ability?: string | null;
   abilityInfo?: SimpleAbilityInfo | null;
+  // Cooldown system
+  isOnCooldown?: boolean;
+  cooldownRemaining?: number | null; // seconds remaining
+  onSkipCooldown?: () => void;
 }
 
 const rarityConfig = {
@@ -85,6 +89,18 @@ const genreLabels: Record<string, string> = {
   anime: 'Аниме',
 };
 
+// Format cooldown time
+function formatCooldownTime(seconds: number): string {
+  if (seconds <= 0) return '0:00';
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 export function DeckCard({
   name,
   description,
@@ -103,9 +119,29 @@ export function DeckCard({
   compact = false,
   ability,
   abilityInfo,
+  isOnCooldown = false,
+  cooldownRemaining = null,
+  onSkipCooldown,
 }: DeckCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [displayCooldown, setDisplayCooldown] = useState(cooldownRemaining || 0);
   const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
+
+  // Update cooldown timer every second
+  useEffect(() => {
+    if (!isOnCooldown || !cooldownRemaining) {
+      setDisplayCooldown(0);
+      return;
+    }
+
+    setDisplayCooldown(cooldownRemaining);
+
+    const interval = setInterval(() => {
+      setDisplayCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isOnCooldown, cooldownRemaining]);
 
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -204,8 +240,9 @@ export function DeckCard({
 
             {/* Image - takes most of the space */}
             <div className={cn(
-              'flex-1 rounded-lg overflow-hidden border border-white/10',
-              compact ? 'mt-1 mb-1' : 'mt-4 mb-2'
+              'flex-1 rounded-lg overflow-hidden border border-white/10 relative',
+              compact ? 'mt-1 mb-1' : 'mt-4 mb-2',
+              isOnCooldown && 'grayscale'
             )}>
               {imageUrl ? (
                 <img
@@ -220,6 +257,29 @@ export function DeckCard({
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cooldown overlay */}
+              {isOnCooldown && displayCooldown > 0 && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
+                  <Clock className="w-8 h-8 text-blue-400 animate-pulse mb-2" />
+                  <span className="text-lg font-bold text-white font-mono">
+                    {formatCooldownTime(displayCooldown)}
+                  </span>
+                  <span className="text-xs text-gray-400 mt-1">Восстановление</span>
+                  {onSkipCooldown && !compact && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSkipCooldown();
+                      }}
+                      className="mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-lg"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Пропустить
+                    </button>
                   )}
                 </div>
               )}

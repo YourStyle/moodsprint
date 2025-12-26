@@ -53,9 +53,9 @@ MONSTER_REWARD_CONFIG = {
         "rarity_weights": {
             CardRarity.COMMON: 0,
             CardRarity.UNCOMMON: 0,
-            CardRarity.RARE: 0.50,  # 50% Rare
+            CardRarity.RARE: 0.55,  # 55% Rare
             CardRarity.EPIC: 0.40,  # 40% Epic
-            CardRarity.LEGENDARY: 0.10,  # 10% Legendary
+            CardRarity.LEGENDARY: 0.05,  # 5% Legendary (reduced from 10%)
         },
     },
 }
@@ -590,6 +590,15 @@ class CardBattleService:
         low_hp_cards = [c for c in cards if c.current_hp <= 0]
         if low_hp_cards:
             return {"error": "cards_no_hp", "message": "Некоторые карты без здоровья"}
+
+        # Check cards are not on cooldown
+        cooldown_cards = [c for c in cards if c.is_on_cooldown()]
+        if cooldown_cards:
+            return {
+                "error": "cards_on_cooldown",
+                "message": "Некоторые карты на перезарядке",
+                "cooldown_cards": [c.id for c in cooldown_cards],
+            }
 
         # Get deck power for scaling
         deck = self.get_user_deck(user_id)
@@ -1268,8 +1277,8 @@ class CardBattleService:
             if card:
                 card.current_hp = max(0, card_state["hp"])
                 if not card_state["alive"]:
-                    card.is_destroyed = True
-                    card.is_in_deck = False
+                    # Put card on cooldown instead of destroying it
+                    card.start_cooldown(hours=1)
                     cards_lost.append(card_state["id"])
 
         # Log battle
