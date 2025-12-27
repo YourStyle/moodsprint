@@ -15,9 +15,11 @@ import {
   X,
   Check,
   AlertTriangle,
+  Store,
 } from 'lucide-react';
 import { Card, Button, Modal } from '@/components/ui';
 import { DeckCard, CardInfoSheet } from '@/components/cards';
+import { MarketplaceContent } from '@/components/marketplace';
 import { cardsService, mergeService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
@@ -25,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
 import type { Card as CardType, HealStatus } from '@/services/cards';
 
-type Tab = 'collection' | 'deck' | 'merge';
+type Tab = 'collection' | 'deck' | 'merge' | 'market';
 type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 interface MergePreview {
@@ -299,26 +301,26 @@ export default function DeckPage() {
         <button
           onClick={() => setActiveTab('collection')}
           className={cn(
-            'flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
+            'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'collection'
               ? 'bg-purple-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t('collection')}</span> ({cards.length})
+          <span className="hidden sm:inline">{t('collection')}</span>
         </button>
         <button
           onClick={() => setActiveTab('deck')}
           className={cn(
-            'flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
+            'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'deck'
               ? 'bg-purple-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >
           <Layers className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t('deck')}</span> ({deck.length}/{maxDeckSize})
+          <span className="hidden sm:inline">{t('deck')}</span>
         </button>
         <button
           onClick={() => {
@@ -326,7 +328,7 @@ export default function DeckPage() {
             clearMergeSelection();
           }}
           className={cn(
-            'flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
+            'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'merge'
               ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
               : 'text-gray-400 hover:text-white'
@@ -334,6 +336,18 @@ export default function DeckPage() {
         >
           <Merge className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">{t('merge')}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('market')}
+          className={cn(
+            'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
+            activeTab === 'market'
+              ? 'bg-amber-500 text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          <Store className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Маркет</span>
         </button>
       </div>
 
@@ -892,6 +906,9 @@ export default function DeckPage() {
           </Modal>
         </>
       )}
+
+      {/* Market Tab */}
+      {activeTab === 'market' && <MarketplaceContent />}
 
       {/* Card Info Sheet */}
       <CardInfoSheet

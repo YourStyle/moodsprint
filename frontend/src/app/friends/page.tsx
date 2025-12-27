@@ -19,16 +19,18 @@ import {
   AlertCircle,
   Share2,
   Gift,
+  Shield,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
 import { ReferralRewardModal } from '@/components/cards';
+import { GuildsContent } from '@/components/guilds';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward } from '@/services/cards';
 
-type Tab = 'friends' | 'requests' | 'trades';
+type Tab = 'friends' | 'requests' | 'trades' | 'guilds';
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#9CA3AF',
@@ -520,30 +522,30 @@ export default function FriendsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-gray-800 rounded-xl mb-4">
+      <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
         <button
           onClick={() => setActiveTab('friends')}
           className={cn(
-            'flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1',
+            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'friends'
               ? 'bg-purple-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >
           <Users className="w-4 h-4" />
-          Друзья
+          <span className="hidden sm:inline">Друзья</span>
         </button>
         <button
           onClick={() => setActiveTab('requests')}
           className={cn(
-            'flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 relative',
+            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 relative',
             activeTab === 'requests'
               ? 'bg-purple-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >
           <UserPlus className="w-4 h-4" />
-          Запросы
+          <span className="hidden sm:inline">Запросы</span>
           {pendingRequestsCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
               {pendingRequestsCount}
@@ -553,19 +555,31 @@ export default function FriendsPage() {
         <button
           onClick={() => setActiveTab('trades')}
           className={cn(
-            'flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 relative',
+            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 relative',
             activeTab === 'trades'
               ? 'bg-purple-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >
           <ArrowLeftRight className="w-4 h-4" />
-          Обмены
+          <span className="hidden sm:inline">Обмены</span>
           {pendingTradesCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
               {pendingTradesCount}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab('guilds')}
+          className={cn(
+            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1',
+            activeTab === 'guilds'
+              ? 'bg-purple-500 text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          <Shield className="w-4 h-4" />
+          <span className="hidden sm:inline">Гильдии</span>
         </button>
       </div>
 
@@ -866,6 +880,9 @@ export default function FriendsPage() {
           )}
         </>
       )}
+
+      {/* Guilds Tab */}
+      {activeTab === 'guilds' && <GuildsContent />}
 
       {/* Referral Rewards Modal */}
       <ReferralRewardModal

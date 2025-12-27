@@ -1,0 +1,1 @@
+export { GuildsContent } from './GuildsContent';

@@ -61,7 +61,7 @@ export function Navigation() {
       <div className="max-w-md mx-auto px-4">
         <nav className="flex items-center justify-center">
           <motion.div
-            className="relative rounded-full px-6 py-3 flex items-center justify-center gap-2 overflow-hidden"
+            className="relative rounded-full px-4 sm:px-6 py-3 flex items-center justify-center gap-1 sm:gap-2 overflow-hidden"
             style={{
               background: 'rgba(17, 24, 39, 0.85)',
               backdropFilter: 'blur(20px) saturate(180%)',
@@ -90,7 +90,7 @@ export function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex flex-col items-center gap-1 relative group min-w-[60px] z-10',
+                    'flex flex-col items-center gap-1 relative group min-w-[52px] sm:min-w-[60px] z-10',
                     isActive ? 'text-white' : 'text-gray-400 hover:text-gray-300'
                   )}
                   data-onboarding={item.href === '/deck' ? 'nav-deck' : undefined}

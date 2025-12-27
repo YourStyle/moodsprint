@@ -7,7 +7,12 @@ Create Date: 2024-12-26
 """
 
 import sqlalchemy as sa
-from alembic import op
+
+from migrations.helpers import (
+    create_index_if_not_exists,
+    create_table_if_not_exists,
+    drop_table_if_exists,
+)
 
 # revision identifiers, used by Alembic.
 revision = "20241226_000018"
@@ -21,7 +26,7 @@ def upgrade():
 
     # ============ GUILDS ============
 
-    op.create_table(
+    create_table_if_not_exists(
         "guilds",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(50), nullable=False, unique=True),
@@ -38,7 +43,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_table(
+    create_table_if_not_exists(
         "guild_members",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("guild_id", sa.Integer(), nullable=False),
@@ -53,10 +58,12 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("guild_id", "user_id", name="unique_guild_member"),
     )
-    op.create_index("ix_guild_members_guild_id", "guild_members", ["guild_id"])
-    op.create_index("ix_guild_members_user_id", "guild_members", ["user_id"])
+    create_index_if_not_exists(
+        "ix_guild_members_guild_id", "guild_members", ["guild_id"]
+    )
+    create_index_if_not_exists("ix_guild_members_user_id", "guild_members", ["user_id"])
 
-    op.create_table(
+    create_table_if_not_exists(
         "guild_raids",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("guild_id", sa.Integer(), nullable=False),
@@ -77,9 +84,9 @@ def upgrade():
         sa.ForeignKeyConstraint(["monster_id"], ["monsters.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_guild_raids_guild_id", "guild_raids", ["guild_id"])
+    create_index_if_not_exists("ix_guild_raids_guild_id", "guild_raids", ["guild_id"])
 
-    op.create_table(
+    create_table_if_not_exists(
         "guild_raid_contributions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("raid_id", sa.Integer(), nullable=False),
@@ -94,14 +101,14 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("raid_id", "user_id", name="unique_raid_contribution"),
     )
-    op.create_index(
+    create_index_if_not_exists(
         "ix_guild_raid_contributions_raid_id", "guild_raid_contributions", ["raid_id"]
     )
-    op.create_index(
+    create_index_if_not_exists(
         "ix_guild_raid_contributions_user_id", "guild_raid_contributions", ["user_id"]
     )
 
-    op.create_table(
+    create_table_if_not_exists(
         "guild_invites",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("guild_id", sa.Integer(), nullable=False),
@@ -115,12 +122,14 @@ def upgrade():
         sa.ForeignKeyConstraint(["invited_by_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_guild_invites_guild_id", "guild_invites", ["guild_id"])
-    op.create_index("ix_guild_invites_user_id", "guild_invites", ["user_id"])
+    create_index_if_not_exists(
+        "ix_guild_invites_guild_id", "guild_invites", ["guild_id"]
+    )
+    create_index_if_not_exists("ix_guild_invites_user_id", "guild_invites", ["user_id"])
 
     # ============ MARKETPLACE ============
 
-    op.create_table(
+    create_table_if_not_exists(
         "market_listings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("seller_id", sa.Integer(), nullable=False),
@@ -136,10 +145,14 @@ def upgrade():
         sa.ForeignKeyConstraint(["card_id"], ["user_cards.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_market_listings_seller_id", "market_listings", ["seller_id"])
-    op.create_index("ix_market_listings_status", "market_listings", ["status"])
+    create_index_if_not_exists(
+        "ix_market_listings_seller_id", "market_listings", ["seller_id"]
+    )
+    create_index_if_not_exists(
+        "ix_market_listings_status", "market_listings", ["status"]
+    )
 
-    op.create_table(
+    create_table_if_not_exists(
         "stars_transactions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -153,9 +166,11 @@ def upgrade():
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_stars_transactions_user_id", "stars_transactions", ["user_id"])
+    create_index_if_not_exists(
+        "ix_stars_transactions_user_id", "stars_transactions", ["user_id"]
+    )
 
-    op.create_table(
+    create_table_if_not_exists(
         "user_stars_balances",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False, unique=True),
@@ -170,7 +185,7 @@ def upgrade():
 
     # ============ CAMPAIGN ============
 
-    op.create_table(
+    create_table_if_not_exists(
         "campaign_chapters",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("number", sa.Integer(), nullable=False, unique=True),
@@ -189,7 +204,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_table(
+    create_table_if_not_exists(
         "campaign_levels",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("chapter_id", sa.Integer(), nullable=False),
@@ -211,9 +226,11 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("chapter_id", "number", name="unique_chapter_level"),
     )
-    op.create_index("ix_campaign_levels_chapter_id", "campaign_levels", ["chapter_id"])
+    create_index_if_not_exists(
+        "ix_campaign_levels_chapter_id", "campaign_levels", ["chapter_id"]
+    )
 
-    op.create_table(
+    create_table_if_not_exists(
         "campaign_rewards",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("chapter_id", sa.Integer(), nullable=False),
@@ -228,7 +245,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_table(
+    create_table_if_not_exists(
         "user_campaign_progress",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False, unique=True),
@@ -242,7 +259,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.create_table(
+    create_table_if_not_exists(
         "campaign_level_completions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("progress_id", sa.Integer(), nullable=False),
@@ -262,7 +279,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("progress_id", "level_id", name="unique_level_completion"),
     )
-    op.create_index(
+    create_index_if_not_exists(
         "ix_campaign_level_completions_progress_id",
         "campaign_level_completions",
         ["progress_id"],
@@ -272,20 +289,20 @@ def upgrade():
 def downgrade():
     """Drop all new tables."""
     # Campaign
-    op.drop_table("campaign_level_completions")
-    op.drop_table("user_campaign_progress")
-    op.drop_table("campaign_rewards")
-    op.drop_table("campaign_levels")
-    op.drop_table("campaign_chapters")
+    drop_table_if_exists("campaign_level_completions")
+    drop_table_if_exists("user_campaign_progress")
+    drop_table_if_exists("campaign_rewards")
+    drop_table_if_exists("campaign_levels")
+    drop_table_if_exists("campaign_chapters")
 
     # Marketplace
-    op.drop_table("user_stars_balances")
-    op.drop_table("stars_transactions")
-    op.drop_table("market_listings")
+    drop_table_if_exists("user_stars_balances")
+    drop_table_if_exists("stars_transactions")
+    drop_table_if_exists("market_listings")
 
     # Guilds
-    op.drop_table("guild_invites")
-    op.drop_table("guild_raid_contributions")
-    op.drop_table("guild_raids")
-    op.drop_table("guild_members")
-    op.drop_table("guilds")
+    drop_table_if_exists("guild_invites")
+    drop_table_if_exists("guild_raid_contributions")
+    drop_table_if_exists("guild_raids")
+    drop_table_if_exists("guild_members")
+    drop_table_if_exists("guilds")

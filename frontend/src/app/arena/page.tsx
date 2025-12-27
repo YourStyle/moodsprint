@@ -19,9 +19,11 @@ import {
   Calendar,
   Zap,
   Plus,
+  Map,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
+import { CampaignContent } from '@/components/campaign';
 import { gamificationService, eventsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -34,7 +36,7 @@ import type {
   BattleLogEntry,
 } from '@/services/gamification';
 
-type Tab = 'battle' | 'leaderboard';
+type Tab = 'battle' | 'campaign' | 'leaderboard';
 type GameState = 'select' | 'cards' | 'battle' | 'result';
 type LeaderboardType = 'weekly' | 'all_time';
 
@@ -385,30 +387,45 @@ export default function ArenaPage() {
 
       {/* Tab Switcher */}
       {gameState === 'select' && (
-        <div className="flex gap-2 p-1 bg-gray-800 rounded-xl mb-4">
+        <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
           <button
             onClick={() => handleTabChange('battle')}
             className={cn(
-              'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2',
+              'flex-1 py-2 px-2 sm:px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5',
               activeTab === 'battle'
                 ? 'bg-purple-500 text-white'
                 : 'text-gray-400 hover:text-white'
             )}
           >
             <Swords className="w-4 h-4" />
-            {t('battle')}
+            <span className="hidden sm:inline">{t('battle')}</span>
+            <span className="sm:hidden">Бой</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('campaign')}
+            className={cn(
+              'flex-1 py-2 px-2 sm:px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5',
+              activeTab === 'campaign'
+                ? 'bg-purple-500 text-white'
+                : 'text-gray-400 hover:text-white'
+            )}
+          >
+            <Map className="w-4 h-4" />
+            <span className="hidden sm:inline">Кампания</span>
+            <span className="sm:hidden">Кампания</span>
           </button>
           <button
             onClick={() => handleTabChange('leaderboard')}
             className={cn(
-              'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2',
+              'flex-1 py-2 px-2 sm:px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5',
               activeTab === 'leaderboard'
                 ? 'bg-purple-500 text-white'
                 : 'text-gray-400 hover:text-white'
             )}
           >
             <Trophy className="w-4 h-4" />
-            {t('rating')}
+            <span className="hidden sm:inline">{t('rating')}</span>
+            <span className="sm:hidden">Топ</span>
           </button>
         </div>
       )}
@@ -830,6 +847,11 @@ export default function ArenaPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Campaign Tab */}
+      {activeTab === 'campaign' && gameState === 'select' && (
+        <CampaignContent />
       )}
 
       {/* Leaderboard Tab */}

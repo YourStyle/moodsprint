@@ -12,6 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import text
 
+from migrations.helpers import add_column_if_not_exists, drop_column_if_exists
+
 # revision identifiers, used by Alembic.
 revision = "20241226_000017"
 down_revision = "20241222_000016"
@@ -41,7 +43,7 @@ def get_user_level(xp):
 def upgrade():
     """Add cooldown_until column and recalculate card stats by user level."""
     # 1. Add cooldown_until column
-    op.add_column(
+    add_column_if_not_exists(
         "user_cards",
         sa.Column("cooldown_until", sa.DateTime(), nullable=True),
     )
@@ -108,6 +110,6 @@ def upgrade():
 
 def downgrade():
     """Remove cooldown_until column."""
-    op.drop_column("user_cards", "cooldown_until")
+    drop_column_if_exists("user_cards", "cooldown_until")
     # Note: Card stats changes are not reverted as it would require
     # storing original values which is impractical
