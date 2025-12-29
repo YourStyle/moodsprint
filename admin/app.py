@@ -1185,6 +1185,212 @@ def monsters():
     )
 
 
+@app.route("/monsters/<int:monster_id>")
+@login_required
+def monster_detail(monster_id: int):
+    """Monster detail page with cards."""
+    monster = db.session.execute(
+        text(
+            """
+            SELECT id, name, description, genre, base_level, base_hp, base_attack,
+                   sprite_url, emoji, is_boss, ai_generated, created_at
+            FROM monsters
+            WHERE id = :monster_id
+        """
+        ),
+        {"monster_id": monster_id},
+    ).fetchone()
+
+    if not monster:
+        return "Monster not found", 404
+
+    # Get monster's cards
+    monster_cards = db.session.execute(
+        text(
+            """
+            SELECT id, name, description, emoji, attack, hp, ability
+            FROM monster_cards
+            WHERE monster_id = :monster_id
+            ORDER BY id
+        """
+        ),
+        {"monster_id": monster_id},
+    ).fetchall()
+
+    return render_template(
+        "monster_detail.html",
+        monster=dict(monster._mapping),
+        cards=[dict(row._mapping) for row in monster_cards] if monster_cards else [],
+    )
+
+
+@app.route("/monsters/new", methods=["POST"])
+@login_required
+def create_monster():
+    """Create a new monster."""
+    data = request.json
+    try:
+        result = db.session.execute(
+            text(
+                """
+                INSERT INTO monsters (name, description, genre, base_level, base_hp, base_attack,
+                    sprite_url, emoji, is_boss)
+                VALUES (:name, :description, :genre, :base_level, :base_hp, :base_attack,
+                    :sprite_url, :emoji, :is_boss)
+                RETURNING id
+            """
+            ),
+            {
+                "name": data["name"],
+                "description": data.get("description"),
+                "genre": data["genre"],
+                "base_level": data.get("base_level", 1),
+                "base_hp": data.get("base_hp", 100),
+                "base_attack": data.get("base_attack", 10),
+                "sprite_url": data.get("sprite_url"),
+                "emoji": data.get("emoji", "👹"),
+                "is_boss": data.get("is_boss", False),
+            },
+        )
+        monster_id = result.scalar()
+        db.session.commit()
+        return jsonify({"success": True, "id": monster_id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/monsters/<int:monster_id>/update", methods=["POST"])
+@login_required
+def update_monster(monster_id: int):
+    """Update monster details."""
+    data = request.json
+
+    try:
+        updates = []
+        params = {"monster_id": monster_id}
+
+        for field in ["name", "description", "genre", "base_level", "base_hp",
+                      "base_attack", "sprite_url", "emoji", "is_boss"]:
+            if field in data:
+                updates.append(f"{field} = :{field}")
+                params[field] = data[field]
+
+        if updates:
+            db.session.execute(
+                text(
+                    f"UPDATE monsters SET {', '.join(updates)} WHERE id = :monster_id"
+                ),
+                params,
+            )
+            db.session.commit()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/monsters/<int:monster_id>/delete", methods=["POST"])
+@login_required
+def delete_monster(monster_id: int):
+    """Delete a monster."""
+    try:
+        # Delete monster cards first
+        db.session.execute(
+            text("DELETE FROM monster_cards WHERE monster_id = :monster_id"),
+            {"monster_id": monster_id},
+        )
+        # Delete monster
+        db.session.execute(
+            text("DELETE FROM monsters WHERE id = :monster_id"),
+            {"monster_id": monster_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/monsters/<int:monster_id>/cards/add", methods=["POST"])
+@login_required
+def add_monster_card(monster_id: int):
+    """Add a card to a monster."""
+    data = request.json
+    try:
+        result = db.session.execute(
+            text(
+                """
+                INSERT INTO monster_cards (monster_id, name, description, emoji, attack, hp, ability)
+                VALUES (:monster_id, :name, :description, :emoji, :attack, :hp, :ability)
+                RETURNING id
+            """
+            ),
+            {
+                "monster_id": monster_id,
+                "name": data["name"],
+                "description": data.get("description"),
+                "emoji": data.get("emoji", "⚔️"),
+                "attack": data.get("attack", 10),
+                "hp": data.get("hp", 20),
+                "ability": data.get("ability"),
+            },
+        )
+        card_id = result.scalar()
+        db.session.commit()
+        return jsonify({"success": True, "id": card_id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/monsters/cards/<int:card_id>/update", methods=["POST"])
+@login_required
+def update_monster_card(card_id: int):
+    """Update a monster card."""
+    data = request.json
+
+    try:
+        updates = []
+        params = {"card_id": card_id}
+
+        for field in ["name", "description", "emoji", "attack", "hp", "ability"]:
+            if field in data:
+                updates.append(f"{field} = :{field}")
+                params[field] = data[field]
+
+        if updates:
+            db.session.execute(
+                text(
+                    f"UPDATE monster_cards SET {', '.join(updates)} WHERE id = :card_id"
+                ),
+                params,
+            )
+            db.session.commit()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/monsters/cards/<int:card_id>/delete", methods=["POST"])
+@login_required
+def delete_monster_card(card_id: int):
+    """Delete a monster card."""
+    try:
+        db.session.execute(
+            text("DELETE FROM monster_cards WHERE id = :card_id"),
+            {"card_id": card_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 # ============ Seasonal Events ============
 
 
@@ -1502,7 +1708,7 @@ def chapter_detail(chapter_id: int):
         text(
             """
             SELECT id, number, name, genre, description, emoji, background_color,
-                   required_power, xp_reward, guaranteed_card_rarity, is_active,
+                   image_url, required_power, xp_reward, guaranteed_card_rarity, is_active,
                    story_intro, story_outro
             FROM campaign_chapters
             WHERE id = :chapter_id
@@ -1553,7 +1759,7 @@ def update_chapter(chapter_id: int):
         params = {"chapter_id": chapter_id}
 
         for field in ["name", "genre", "description", "emoji", "background_color",
-                      "required_power", "xp_reward", "guaranteed_card_rarity",
+                      "image_url", "required_power", "xp_reward", "guaranteed_card_rarity",
                       "story_intro", "story_outro", "is_active"]:
             if field in data:
                 updates.append(f"{field} = :{field}")

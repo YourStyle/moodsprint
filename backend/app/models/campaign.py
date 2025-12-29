@@ -22,6 +22,7 @@ class CampaignChapter(db.Model):
 
     # Visual
     emoji = db.Column(db.String(10), default="📖")
+    image_url = db.Column(db.String(500), nullable=True)  # Chapter cover image
     background_color = db.Column(db.String(20), default="#1a1a2e")
 
     # Requirements
@@ -60,6 +61,7 @@ class CampaignChapter(db.Model):
             "story_intro": self.story_intro,
             "story_outro": self.story_outro,
             "emoji": self.emoji,
+            "image_url": self.image_url,
             "background_color": self.background_color,
             "required_power": self.required_power,
             "xp_reward": self.xp_reward,

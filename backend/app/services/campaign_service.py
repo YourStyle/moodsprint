@@ -14,6 +14,7 @@ from app.models.campaign import (
     UserCampaignProgress,
 )
 from app.models.card import CardRarity
+from app.models.user_profile import UserProfile
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +31,32 @@ class CampaignService:
             db.session.commit()
         return progress
 
+    def get_user_genre(self, user_id: int) -> str:
+        """Get user's preferred genre."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if profile and profile.favorite_genre:
+            return profile.favorite_genre
+        return "fantasy"
+
     def get_campaign_overview(self, user_id: int) -> dict[str, Any]:
-        """Get campaign overview for user."""
+        """Get campaign overview for user (filtered by user's genre)."""
         progress = self.get_user_progress(user_id)
+        user_genre = self.get_user_genre(user_id)
+
+        # Get chapters filtered by user's genre
         chapters = (
-            CampaignChapter.query.filter_by(is_active=True)
+            CampaignChapter.query.filter_by(is_active=True, genre=user_genre)
             .order_by(CampaignChapter.number)
             .all()
         )
+
+        # If no chapters for user's genre, show all chapters
+        if not chapters:
+            chapters = (
+                CampaignChapter.query.filter_by(is_active=True)
+                .order_by(CampaignChapter.number)
+                .all()
+            )
 
         chapters_data = []
         for chapter in chapters:
