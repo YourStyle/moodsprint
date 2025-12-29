@@ -248,3 +248,25 @@ export function shareInviteLink(userId: number, text?: string) {
     window.open(telegramShareUrl, '_blank');
   }
 }
+
+export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
+
+export function openInvoice(
+  url: string,
+  callback?: (status: InvoiceStatus) => void
+): Promise<InvoiceStatus> {
+  return new Promise((resolve) => {
+    const webApp = getTelegramWebApp();
+    if (webApp && webApp.openInvoice) {
+      webApp.openInvoice(url, (status) => {
+        callback?.(status);
+        resolve(status);
+      });
+    } else {
+      // Fallback for non-Telegram environment
+      console.warn('openInvoice not available outside Telegram');
+      callback?.('failed');
+      resolve('failed');
+    }
+  });
+}

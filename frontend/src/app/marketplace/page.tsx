@@ -17,12 +17,13 @@ import {
   ShoppingCart,
   Tag,
   X,
+  Loader2,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { DeckCard } from '@/components/cards';
 import { marketplaceService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
+import { hapticFeedback, showBackButton, hideBackButton, openInvoice, showTelegramAlert } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { MarketListing } from '@/services/marketplace';
 
@@ -98,6 +99,41 @@ export default function MarketplacePage() {
       queryClient.invalidateQueries({ queryKey: ['marketplace'] });
     },
   });
+
+  // Purchase mutation
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  const handlePurchase = async (listing: MarketListing) => {
+    setIsPurchasing(true);
+    try {
+      // Create invoice
+      const result = await marketplaceService.createPurchaseInvoice(listing.id);
+
+      if (!result.success || !result.data?.invoice_url) {
+        showTelegramAlert(result.error?.message || 'Не удалось создать платёж');
+        return;
+      }
+
+      // Open Telegram Stars payment
+      const status = await openInvoice(result.data.invoice_url);
+
+      if (status === 'paid') {
+        hapticFeedback('success');
+        showTelegramAlert('Покупка завершена! Карта добавлена в коллекцию.');
+        setSelectedListing(null);
+        queryClient.invalidateQueries({ queryKey: ['marketplace'] });
+        queryClient.invalidateQueries({ queryKey: ['cards'] });
+      } else if (status === 'cancelled') {
+        hapticFeedback('warning');
+      } else {
+        showTelegramAlert('Ошибка оплаты. Попробуйте ещё раз.');
+      }
+    } catch (e) {
+      showTelegramAlert('Произошла ошибка');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
 
   const balance = balanceData?.data;
 
@@ -432,14 +468,15 @@ export default function MarketplacePage() {
 
                 <Button
                   className="w-full bg-gradient-to-r from-amber-500 to-orange-500"
-                  onClick={() => {
-                    hapticFeedback('medium');
-                    // In real app, this would trigger Telegram payment
-                    alert('Открываем Telegram Stars платёж...');
-                  }}
+                  onClick={() => handlePurchase(selectedListing)}
+                  disabled={isPurchasing}
                 >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Купить
+                  {isPurchasing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                  )}
+                  {isPurchasing ? 'Загрузка...' : 'Купить'}
                 </Button>
               </div>
             </Card>

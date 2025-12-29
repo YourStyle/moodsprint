@@ -107,7 +107,14 @@ class MarketplaceService {
   }
 
   async createPurchaseInvoice(listingId: number): Promise<ApiResponse<{
-    invoice_data: InvoiceData;
+    invoice_url: string;
+    listing_id: number;
+    price: number;
+    card: {
+      id: number;
+      name: string;
+      rarity: string;
+    };
   }>> {
     return api.post(`/marketplace/${listingId}/buy`);
   }
@@ -125,7 +132,9 @@ class MarketplaceService {
   }
 
   async skipCardCooldown(cardId: number): Promise<ApiResponse<{
-    invoice_data: InvoiceData;
+    invoice_url: string;
+    card_id: number;
+    price: number;
   }>> {
     return api.post(`/cards/${cardId}/skip-cooldown`);
   }

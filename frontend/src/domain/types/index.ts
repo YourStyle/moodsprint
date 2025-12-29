@@ -647,6 +647,7 @@ export interface TelegramWebApp {
   openTelegramLink: (url: string) => void;
   openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
   switchInlineQuery: (query: string, choose_chat_types?: ('users' | 'bots' | 'groups' | 'channels')[]) => void;
+  openInvoice: (url: string, callback?: (status: 'paid' | 'cancelled' | 'failed' | 'pending') => void) => void;
 }
 
 declare global {

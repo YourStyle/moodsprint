@@ -17,6 +17,7 @@ import {
   Heart,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
+import { CreateGuildModal } from '@/components/guilds';
 import { guildsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -32,6 +33,7 @@ export default function GuildsPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('my-guild');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     showBackButton(() => router.back());
@@ -283,7 +285,7 @@ export default function GuildsPage() {
                       <Search className="w-4 h-4 mr-1" />
                       Найти гильдию
                     </Button>
-                    <Button variant="secondary">
+                    <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
                       <Plus className="w-4 h-4 mr-1" />
                       Создать
                     </Button>
@@ -383,6 +385,13 @@ export default function GuildsPage() {
             ))}
           </div>
         )}
+
+      {/* Create Guild Modal */}
+      <CreateGuildModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => setActiveTab('my-guild')}
+      />
     </div>
   );
 }

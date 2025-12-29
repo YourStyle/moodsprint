@@ -1,11 +1,16 @@
 """Marketplace API endpoints for Telegram Stars trading."""
 
+import os
+
+import httpx
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.api import api_bp
 from app.services.marketplace_service import MarketplaceService
 from app.utils import not_found, success_response, validation_error
+
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # ============ Listings ============
 
@@ -137,10 +142,9 @@ def get_my_listings():
 @jwt_required()
 def create_purchase_invoice(listing_id: int):
     """
-    Create invoice for purchasing a card.
+    Create invoice link for purchasing a card.
 
-    Returns data needed to create Telegram Stars payment.
-    The actual payment is processed by the Telegram bot.
+    Returns invoice_url to open via WebApp.openInvoice().
     """
     user_id = int(get_jwt_identity())
 
@@ -156,7 +160,37 @@ def create_purchase_invoice(listing_id: int):
             {"error": error_messages.get(result["error"], result["error"])}
         )
 
-    return success_response(result)
+    # Create invoice link via Telegram Bot API
+    invoice_data = result["invoice_data"]
+
+    try:
+        with httpx.Client() as client:
+            response = client.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/createInvoiceLink",
+                json={
+                    "title": invoice_data["title"],
+                    "description": invoice_data["description"],
+                    "payload": invoice_data["payload"],
+                    "currency": "XTR",  # Telegram Stars
+                    "prices": [{"label": "Карта", "amount": invoice_data["price"]}],
+                },
+                timeout=10,
+            )
+            data = response.json()
+
+            if not data.get("ok"):
+                return validation_error({"error": "Не удалось создать платёж"})
+
+            return success_response(
+                {
+                    "invoice_url": data["result"],
+                    "listing_id": listing_id,
+                    "price": invoice_data["price"],
+                    "card": invoice_data["card"],
+                }
+            )
+    except Exception as e:
+        return validation_error({"error": f"Ошибка создания платежа: {str(e)}"})
 
 
 @api_bp.route("/marketplace/complete-purchase", methods=["POST"])
@@ -206,7 +240,7 @@ def complete_purchase():
 @jwt_required()
 def create_cooldown_skip_invoice(card_id: int):
     """
-    Create invoice for skipping card cooldown.
+    Create invoice link for skipping card cooldown.
 
     Price: 2 Stars per hour remaining.
     """
@@ -224,7 +258,38 @@ def create_cooldown_skip_invoice(card_id: int):
             {"error": error_messages.get(result["error"], result["error"])}
         )
 
-    return success_response(result)
+    # Create invoice link via Telegram Bot API
+    invoice_data = result["invoice_data"]
+
+    try:
+        with httpx.Client() as client:
+            response = client.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/createInvoiceLink",
+                json={
+                    "title": invoice_data["title"],
+                    "description": invoice_data["description"],
+                    "payload": invoice_data["payload"],
+                    "currency": "XTR",  # Telegram Stars
+                    "prices": [
+                        {"label": "Восстановление", "amount": invoice_data["price"]}
+                    ],
+                },
+                timeout=10,
+            )
+            data = response.json()
+
+            if not data.get("ok"):
+                return validation_error({"error": "Не удалось создать платёж"})
+
+            return success_response(
+                {
+                    "invoice_url": data["result"],
+                    "card_id": card_id,
+                    "price": invoice_data["price"],
+                }
+            )
+    except Exception as e:
+        return validation_error({"error": f"Ошибка создания платежа: {str(e)}"})
 
 
 @api_bp.route("/cards/complete-cooldown-skip", methods=["POST"])
