@@ -109,18 +109,16 @@ export default function GuildsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 p-4 pb-24">
-      <div className="max-w-md mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="w-6 h-6 text-purple-400" />
-            <h1 className="text-xl font-bold text-white">Гильдии</h1>
-          </div>
-        </div>
+    <div className="p-4 pb-4">
+      {/* Header */}
+      <div className="text-center mb-4">
+        <Shield className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+        <h1 className="text-2xl font-bold text-white">Гильдии</h1>
+        <p className="text-sm text-gray-400">Объединяйтесь и сражайтесь вместе</p>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 bg-gray-800/50 rounded-xl p-1">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
           {[
             { id: 'my-guild', label: 'Моя гильдия', icon: Shield },
             { id: 'browse', label: 'Поиск', icon: Search },
@@ -140,10 +138,10 @@ export default function GuildsPage() {
               {label}
             </button>
           ))}
-        </div>
+      </div>
 
-        {/* My Guild Tab */}
-        {activeTab === 'my-guild' && (
+      {/* My Guild Tab */}
+      {activeTab === 'my-guild' && (
           <div className="space-y-4">
             {myGuildLoading ? (
               <div className="text-center text-gray-400 py-8">Загрузка...</div>
@@ -296,8 +294,8 @@ export default function GuildsPage() {
           </div>
         )}
 
-        {/* Browse Tab */}
-        {activeTab === 'browse' && (
+      {/* Browse Tab */}
+      {activeTab === 'browse' && (
           <div className="space-y-4">
             {/* Search */}
             <div className="relative">
@@ -347,8 +345,8 @@ export default function GuildsPage() {
           </div>
         )}
 
-        {/* Leaderboard Tab */}
-        {activeTab === 'leaderboard' && (
+      {/* Leaderboard Tab */}
+      {activeTab === 'leaderboard' && (
           <div className="space-y-3">
             {leaderboardData?.data?.guilds?.map((guild, index) => (
               <Card
@@ -385,7 +383,6 @@ export default function GuildsPage() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }

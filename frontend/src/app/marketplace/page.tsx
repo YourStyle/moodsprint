@@ -102,24 +102,22 @@ export default function MarketplacePage() {
   const balance = balanceData?.data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 p-4 pb-24">
-      <div className="max-w-md mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Store className="w-6 h-6 text-amber-400" />
-            <h1 className="text-xl font-bold text-white">Маркетплейс</h1>
+    <div className="p-4 pb-4">
+      {/* Header */}
+      <div className="text-center mb-4">
+        <Store className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+        <h1 className="text-2xl font-bold text-white">Маркетплейс</h1>
+        <p className="text-sm text-gray-400">Покупай и продавай карты за Stars</p>
+        {balance && (
+          <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
+            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span className="text-amber-400 font-medium">{balance.balance + balance.pending_balance}</span>
           </div>
-          {balance && (
-            <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span className="text-amber-400 font-medium">{balance.balance + balance.pending_balance}</span>
-            </div>
-          )}
-        </div>
+        )}
+      </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 bg-gray-800/50 rounded-xl p-1">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
           {[
             { id: 'browse', label: 'Карты', icon: ShoppingCart },
             { id: 'my-listings', label: 'Мои', icon: Tag },
@@ -139,10 +137,10 @@ export default function MarketplacePage() {
               {label}
             </button>
           ))}
-        </div>
+      </div>
 
-        {/* Browse Tab */}
-        {activeTab === 'browse' && (
+      {/* Browse Tab */}
+      {activeTab === 'browse' && (
           <div className="space-y-4">
             {/* Filters */}
             <div className="flex gap-2">
@@ -258,8 +256,8 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* My Listings Tab */}
-        {activeTab === 'my-listings' && (
+      {/* My Listings Tab */}
+      {activeTab === 'my-listings' && (
           <div className="space-y-4">
             {myListingsData?.data?.listings?.length ? (
               <div className="grid grid-cols-2 gap-3">
@@ -316,8 +314,8 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Balance Tab */}
-        {activeTab === 'balance' && balance && (
+      {/* Balance Tab */}
+      {activeTab === 'balance' && balance && (
           <div className="space-y-4">
             {/* Balance Card */}
             <Card className="bg-gradient-to-br from-amber-900/30 to-yellow-900/30 border-amber-500/30">
@@ -382,8 +380,8 @@ export default function MarketplacePage() {
           </div>
         )}
 
-        {/* Selected Listing Modal */}
-        {selectedListing && (
+      {/* Selected Listing Modal */}
+      {selectedListing && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
             <Card className="bg-gray-900 border-gray-700 w-full max-w-sm">
               <div className="p-4 space-y-4">
@@ -447,7 +445,6 @@ export default function MarketplacePage() {
             </Card>
           </div>
         )}
-      </div>
     </div>
   );
 }

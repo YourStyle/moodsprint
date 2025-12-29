@@ -103,25 +103,23 @@ export default function CampaignPage() {
 
   if (!showLevelSelect) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 p-4 pb-24">
-        <div className="max-w-md mx-auto space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Map className="w-6 h-6 text-amber-400" />
-              <h1 className="text-xl font-bold text-white">Кампания</h1>
-            </div>
-            {progress && (
-              <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <span className="text-amber-400 font-medium">{progress.total_stars_earned}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Progress Overview */}
+      <div className="p-4 pb-4">
+        {/* Header */}
+        <div className="text-center mb-4">
+          <Map className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+          <h1 className="text-2xl font-bold text-white">Кампания</h1>
+          <p className="text-sm text-gray-400">Проходи главы и получай награды</p>
           {progress && (
-            <Card className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-500/30">
+            <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-amber-400 font-medium">{progress.total_stars_earned} звёзд</span>
+            </div>
+          )}
+        </div>
+
+        {/* Progress Overview */}
+        {progress && (
+          <Card className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-500/30 mb-4">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -141,12 +139,12 @@ export default function CampaignPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          )}
+            </div>
+          </Card>
+        )}
 
-          {/* Chapters List */}
-          {isLoading ? (
+        {/* Chapters List */}
+        {isLoading ? (
             <div className="text-center text-gray-400 py-8">Загрузка...</div>
           ) : (
             <div className="space-y-3">
@@ -219,17 +217,15 @@ export default function CampaignPage() {
               ))}
             </div>
           )}
-        </div>
       </div>
     );
   }
 
   // Level selection view
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 p-4 pb-24">
-      <div className="max-w-md mx-auto space-y-4">
-        {/* Chapter Header */}
-        {selectedChapter && (
+    <div className="p-4 pb-4">
+      {/* Chapter Header */}
+      {selectedChapter && (
           <Card
             className={cn(
               'overflow-hidden',
@@ -369,7 +365,6 @@ export default function CampaignPage() {
             </div>
           </Card>
         )}
-      </div>
     </div>
   );
 }
