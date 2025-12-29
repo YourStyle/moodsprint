@@ -915,6 +915,7 @@ export default function DeckPage() {
         isOpen={!!infoCard}
         onClose={() => setInfoCard(null)}
         card={infoCard ? {
+          id: infoCard.id,
           name: infoCard.name,
           description: infoCard.description,
           emoji: infoCard.emoji,
@@ -926,7 +927,9 @@ export default function DeckPage() {
           genre: infoCard.genre,
           createdAt: infoCard.created_at,
           abilityInfo: infoCard.ability_info,
+          isOwned: true,
         } : null}
+        showSellButton={true}
       />
     </div>
   );

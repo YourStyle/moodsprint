@@ -1422,5 +1422,254 @@ def remove_event_monster(event_monster_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+# ============ Campaign Chapters ============
+
+
+@app.route("/campaign")
+@login_required
+def campaign():
+    """List all campaign chapters."""
+    chapters = db.session.execute(
+        text(
+            """
+            SELECT c.id, c.number, c.name, c.genre, c.description,
+                   c.emoji, c.background_color, c.required_power,
+                   c.xp_reward, c.guaranteed_card_rarity, c.is_active,
+                   c.story_intro, c.story_outro,
+                   (SELECT COUNT(*) FROM campaign_levels WHERE chapter_id = c.id) as levels_count
+            FROM campaign_chapters c
+            ORDER BY c.number
+        """
+        )
+    ).fetchall()
+
+    return render_template(
+        "campaign.html",
+        chapters=[dict(row._mapping) for row in chapters] if chapters else [],
+    )
+
+
+@app.route("/campaign/chapters/new", methods=["POST"])
+@login_required
+def create_chapter():
+    """Create a new campaign chapter."""
+    data = request.json
+    try:
+        # Get next chapter number
+        max_number = db.session.execute(
+            text("SELECT COALESCE(MAX(number), 0) FROM campaign_chapters")
+        ).scalar()
+
+        result = db.session.execute(
+            text(
+                """
+                INSERT INTO campaign_chapters (number, name, genre, description, emoji,
+                    background_color, required_power, xp_reward, guaranteed_card_rarity,
+                    story_intro, story_outro, is_active)
+                VALUES (:number, :name, :genre, :description, :emoji,
+                    :background_color, :required_power, :xp_reward, :guaranteed_card_rarity,
+                    :story_intro, :story_outro, true)
+                RETURNING id
+            """
+            ),
+            {
+                "number": max_number + 1,
+                "name": data["name"],
+                "genre": data["genre"],
+                "description": data.get("description"),
+                "emoji": data.get("emoji", "📖"),
+                "background_color": data.get("background_color", "#1a1a2e"),
+                "required_power": data.get("required_power", 0),
+                "xp_reward": data.get("xp_reward", 500),
+                "guaranteed_card_rarity": data.get("guaranteed_card_rarity", "rare"),
+                "story_intro": data.get("story_intro"),
+                "story_outro": data.get("story_outro"),
+            },
+        )
+        chapter_id = result.scalar()
+        db.session.commit()
+        return jsonify({"success": True, "id": chapter_id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/chapters/<int:chapter_id>")
+@login_required
+def chapter_detail(chapter_id: int):
+    """Chapter detail page with levels."""
+    chapter = db.session.execute(
+        text(
+            """
+            SELECT id, number, name, genre, description, emoji, background_color,
+                   required_power, xp_reward, guaranteed_card_rarity, is_active,
+                   story_intro, story_outro
+            FROM campaign_chapters
+            WHERE id = :chapter_id
+        """
+        ),
+        {"chapter_id": chapter_id},
+    ).fetchone()
+
+    if not chapter:
+        return "Chapter not found", 404
+
+    levels = db.session.execute(
+        text(
+            """
+            SELECT l.id, l.number, l.monster_id, l.is_boss, l.title,
+                   l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
+                   l.required_power, l.xp_reward, l.stars_max, l.is_active,
+                   m.name as monster_name, m.emoji as monster_emoji
+            FROM campaign_levels l
+            LEFT JOIN monsters m ON m.id = l.monster_id
+            WHERE l.chapter_id = :chapter_id
+            ORDER BY l.number
+        """
+        ),
+        {"chapter_id": chapter_id},
+    ).fetchall()
+
+    all_monsters = db.session.execute(
+        text("SELECT id, name, emoji, genre FROM monsters ORDER BY genre, name")
+    ).fetchall()
+
+    return render_template(
+        "campaign_chapter.html",
+        chapter=dict(chapter._mapping),
+        levels=[dict(row._mapping) for row in levels] if levels else [],
+        all_monsters=all_monsters,
+    )
+
+
+@app.route("/campaign/chapters/<int:chapter_id>/update", methods=["POST"])
+@login_required
+def update_chapter(chapter_id: int):
+    """Update chapter details."""
+    data = request.json
+
+    try:
+        updates = []
+        params = {"chapter_id": chapter_id}
+
+        for field in ["name", "genre", "description", "emoji", "background_color",
+                      "required_power", "xp_reward", "guaranteed_card_rarity",
+                      "story_intro", "story_outro", "is_active"]:
+            if field in data:
+                updates.append(f"{field} = :{field}")
+                params[field] = data[field]
+
+        if updates:
+            db.session.execute(
+                text(
+                    f"UPDATE campaign_chapters SET {', '.join(updates)} WHERE id = :chapter_id"
+                ),
+                params,
+            )
+            db.session.commit()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/chapters/<int:chapter_id>/levels/new", methods=["POST"])
+@login_required
+def create_level(chapter_id: int):
+    """Create a new level in a chapter."""
+    data = request.json
+    try:
+        # Get next level number
+        max_number = db.session.execute(
+            text(
+                """SELECT COALESCE(MAX(number), 0)
+                   FROM campaign_levels WHERE chapter_id = :chapter_id"""
+            ),
+            {"chapter_id": chapter_id},
+        ).scalar()
+
+        result = db.session.execute(
+            text(
+                """
+                INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, title,
+                    dialogue_before, dialogue_after, difficulty_multiplier,
+                    required_power, xp_reward, stars_max, is_active)
+                VALUES (:chapter_id, :number, :monster_id, :is_boss, :title,
+                    :dialogue_before, :dialogue_after, :difficulty_multiplier,
+                    :required_power, :xp_reward, :stars_max, true)
+                RETURNING id
+            """
+            ),
+            {
+                "chapter_id": chapter_id,
+                "number": max_number + 1,
+                "monster_id": data.get("monster_id"),
+                "is_boss": data.get("is_boss", False),
+                "title": data.get("title"),
+                "dialogue_before": data.get("dialogue_before"),
+                "dialogue_after": data.get("dialogue_after"),
+                "difficulty_multiplier": data.get("difficulty_multiplier", 1.0),
+                "required_power": data.get("required_power", 0),
+                "xp_reward": data.get("xp_reward", 50),
+                "stars_max": data.get("stars_max", 3),
+            },
+        )
+        level_id = result.scalar()
+        db.session.commit()
+        return jsonify({"success": True, "id": level_id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/levels/<int:level_id>/update", methods=["POST"])
+@login_required
+def update_level(level_id: int):
+    """Update level details."""
+    data = request.json
+
+    try:
+        updates = []
+        params = {"level_id": level_id}
+
+        for field in ["monster_id", "is_boss", "title", "dialogue_before",
+                      "dialogue_after", "difficulty_multiplier", "required_power",
+                      "xp_reward", "stars_max", "is_active"]:
+            if field in data:
+                updates.append(f"{field} = :{field}")
+                params[field] = data[field]
+
+        if updates:
+            db.session.execute(
+                text(
+                    f"UPDATE campaign_levels SET {', '.join(updates)} WHERE id = :level_id"
+                ),
+                params,
+            )
+            db.session.commit()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/levels/<int:level_id>/delete", methods=["POST"])
+@login_required
+def delete_level(level_id: int):
+    """Delete a level."""
+    try:
+        db.session.execute(
+            text("DELETE FROM campaign_levels WHERE id = :level_id"),
+            {"level_id": level_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

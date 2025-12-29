@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Campaign - MoodSprint Admin{% endblock %}
+{% block header %}Campaign Chapters{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="text-3xl font-bold text-purple-600">{{ chapters|length }}</div>
+            <div class="text-gray-500">Total Chapters</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="text-3xl font-bold text-green-600">
+                {{ chapters|selectattr('is_active')|list|length }}
+            </div>
+            <div class="text-gray-500">Active Chapters</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="text-3xl font-bold text-blue-600">
+                {{ chapters|sum(attribute='levels_count') }}
+            </div>
+            <div class="text-gray-500">Total Levels</div>
+        </div>
+    </div>
+
+    <!-- Add Chapter Button -->
+    <div class="flex justify-end">
+        <button onclick="showAddChapterModal()"
+                class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+            + Add Chapter
+        </button>
+    </div>
+
+    <!-- Chapters List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Chapter</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Genre</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Levels</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reward</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for chapter in chapters %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ chapter.number }}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center">
+                            <span class="text-2xl mr-2">{{ chapter.emoji }}</span>
+                            <div>
+                                <div class="font-medium text-gray-900">{{ chapter.name }}</div>
+                                <div class="text-xs text-gray-500 max-w-xs truncate">{{ chapter.description or '' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-900 capitalize">{{ chapter.genre }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ chapter.levels_count }}</td>
+                    <td class="px-4 py-3 text-sm">
+                        <span class="px-2 py-1 rounded text-xs
+                            {% if chapter.guaranteed_card_rarity == 'legendary' %}bg-amber-100 text-amber-800
+                            {% elif chapter.guaranteed_card_rarity == 'epic' %}bg-purple-100 text-purple-800
+                            {% elif chapter.guaranteed_card_rarity == 'rare' %}bg-blue-100 text-blue-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ chapter.guaranteed_card_rarity }}
+                        </span>
+                        + {{ chapter.xp_reward }} XP
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if chapter.is_active %}
+                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">Active</span>
+                        {% else %}
+                        <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <a href="{{ url_for('chapter_detail', chapter_id=chapter.id) }}"
+                           class="text-purple-600 hover:text-purple-800">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if not chapters %}
+        <div class="text-center py-12 text-gray-500">
+            No chapters yet. Create your first chapter!
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Chapter Modal -->
+<div id="addChapterModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+        <div class="p-4 border-b">
+            <h3 class="text-lg font-semibold">Add New Chapter</h3>
+        </div>
+        <form id="addChapterForm" class="p-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input type="text" name="name" required
+                       class="w-full border rounded-lg px-3 py-2"
+                       placeholder="Chapter name">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Genre *</label>
+                    <select name="genre" required class="w-full border rounded-lg px-3 py-2">
+                        <option value="fantasy">Fantasy</option>
+                        <option value="magic">Magic</option>
+                        <option value="scifi">Sci-Fi</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="anime">Anime</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+                    <input type="text" name="emoji" value="📖"
+                           class="w-full border rounded-lg px-3 py-2">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows="2"
+                          class="w-full border rounded-lg px-3 py-2"
+                          placeholder="Chapter description"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">XP Reward</label>
+                    <input type="number" name="xp_reward" value="500"
+                           class="w-full border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Card Rarity</label>
+                    <select name="guaranteed_card_rarity" class="w-full border rounded-lg px-3 py-2">
+                        <option value="rare">Rare</option>
+                        <option value="epic">Epic</option>
+                        <option value="legendary">Legendary</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro</label>
+                <textarea name="story_intro" rows="3"
+                          class="w-full border rounded-lg px-3 py-2"
+                          placeholder="Text shown at the beginning of the chapter"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro</label>
+                <textarea name="story_outro" rows="3"
+                          class="w-full border rounded-lg px-3 py-2"
+                          placeholder="Text shown after completing the chapter"></textarea>
+            </div>
+        </form>
+        <div class="p-4 border-t flex justify-end gap-2">
+            <button onclick="hideAddChapterModal()"
+                    class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onclick="createChapter()"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Create</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAddChapterModal() {
+    document.getElementById('addChapterModal').classList.remove('hidden');
+}
+
+function hideAddChapterModal() {
+    document.getElementById('addChapterModal').classList.add('hidden');
+    document.getElementById('addChapterForm').reset();
+}
+
+async function createChapter() {
+    const form = document.getElementById('addChapterForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    data.xp_reward = parseInt(data.xp_reward) || 500;
+
+    try {
+        const response = await fetch('/campaign/chapters/new', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Close modal on backdrop click
+document.getElementById('addChapterModal').addEventListener('click', function(e) {
+    if (e.target === this) hideAddChapterModal();
+});
+</script>
+{% endblock %}

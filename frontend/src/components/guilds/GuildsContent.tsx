@@ -19,6 +19,7 @@ import { guildsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { CreateGuildModal } from './CreateGuildModal';
 
 type GuildTab = 'my-guild' | 'browse' | 'top';
 
@@ -29,6 +30,7 @@ export function GuildsContent() {
 
   const [activeTab, setActiveTab] = useState<GuildTab>('my-guild');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Get user's guild
   const { data: myGuildData, isLoading: myGuildLoading } = useQuery({
@@ -102,6 +104,15 @@ export function GuildsContent() {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="text-center pb-2">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 mb-2">
+          <Shield className="w-7 h-7 text-blue-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white">Гильдии</h2>
+        <p className="text-sm text-gray-400">Объединяйтесь и сражайтесь вместе</p>
+      </div>
+
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-gray-700/50 rounded-lg p-1">
         {[
@@ -115,7 +126,7 @@ export function GuildsContent() {
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-colors',
               activeTab === id
-                ? 'bg-purple-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'text-gray-400 hover:text-white'
             )}
           >
@@ -133,11 +144,11 @@ export function GuildsContent() {
           ) : myGuild ? (
             <>
               {/* Guild Card */}
-              <Card className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-500/30">
+              <Card className="bg-gradient-to-br from-blue-900/30 to-indigo-900/30 border-blue-500/30">
                 <div className="p-4 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 bg-purple-600/30 rounded-xl flex items-center justify-center text-2xl">
+                      <div className="w-14 h-14 bg-blue-600/30 rounded-xl flex items-center justify-center text-2xl">
                         {myGuild.emoji}
                       </div>
                       <div>
@@ -145,7 +156,7 @@ export function GuildsContent() {
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Users className="w-4 h-4" />
                           <span>{myGuild.members_count}/{myGuild.max_members}</span>
-                          <span className="text-purple-400">Ур. {myGuild.level}</span>
+                          <span className="text-blue-400">Ур. {myGuild.level}</span>
                         </div>
                       </div>
                     </div>
@@ -265,7 +276,7 @@ export function GuildsContent() {
                     <Search className="w-4 h-4 mr-1" />
                     Найти
                   </Button>
-                  <Button variant="secondary">
+                  <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
                     <Plus className="w-4 h-4 mr-1" />
                     Создать
                   </Button>
@@ -286,7 +297,7 @@ export function GuildsContent() {
               placeholder="Поиск гильдий..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-800/50 border border-gray-700/50 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              className="w-full bg-gray-800/50 border border-gray-700/50 rounded-xl py-2.5 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -297,11 +308,11 @@ export function GuildsContent() {
               {guildsData.data.guilds.map((guild) => (
                 <Card
                   key={guild.id}
-                  className="bg-gray-800/50 border-gray-700/50 hover:border-purple-500/50 transition-colors cursor-pointer"
+                  className="bg-gray-800/50 border-gray-700/50 hover:border-blue-500/50 transition-colors cursor-pointer"
                   onClick={() => joinGuildMutation.mutate(guild.id)}
                 >
                   <div className="p-4 flex items-center gap-3">
-                    <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center text-xl">
+                    <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center text-xl">
                       {guild.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -309,7 +320,7 @@ export function GuildsContent() {
                       <div className="flex items-center gap-2 text-sm text-gray-400">
                         <Users className="w-3.5 h-3.5" />
                         <span>{guild.members_count}/{guild.max_members}</span>
-                        <span className="text-purple-400">Ур. {guild.level}</span>
+                        <span className="text-blue-400">Ур. {guild.level}</span>
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-500" />
@@ -349,7 +360,7 @@ export function GuildsContent() {
                 )}>
                   {index + 1}
                 </div>
-                <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center text-lg">
+                <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center text-lg">
                   {guild.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -369,6 +380,12 @@ export function GuildsContent() {
           )}
         </div>
       )}
+
+      {/* Create Guild Modal */}
+      <CreateGuildModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 }

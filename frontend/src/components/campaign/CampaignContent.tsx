@@ -244,6 +244,15 @@ export function CampaignContent() {
   // Chapters list view
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="text-center pb-2">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 mb-2">
+          <Map className="w-7 h-7 text-purple-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white">Кампания</h2>
+        <p className="text-sm text-gray-400">Пройдите историю и получите награды</p>
+      </div>
+
       {/* Progress Overview */}
       {progress && (
         <Card className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-500/30">

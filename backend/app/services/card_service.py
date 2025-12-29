@@ -32,13 +32,13 @@ logger = logging.getLogger(__name__)
 
 # Probability-based rarity distribution (independent of task difficulty)
 # Each tuple is (rarity, cumulative_probability)
-# Common: 50%, Uncommon: 30%, Rare: 16%, Epic: 3.5%, Legendary: 0.5%
+# Common: 58%, Uncommon: 28%, Rare: 11%, Epic: 2.5%, Legendary: 0.5%
 RARITY_PROBABILITIES = [
-    (CardRarity.COMMON, 0.50),
-    (CardRarity.UNCOMMON, 0.80),
-    (CardRarity.RARE, 0.96),
+    (CardRarity.COMMON, 0.58),
+    (CardRarity.UNCOMMON, 0.86),
+    (CardRarity.RARE, 0.97),
     (CardRarity.EPIC, 0.995),
-    (CardRarity.LEGENDARY, 1.00),  # 0.5% (reduced from 1%)
+    (CardRarity.LEGENDARY, 1.00),  # 0.5%
 ]
 
 # Base number of templates for all genres (before user scaling)
@@ -1103,12 +1103,12 @@ class CardService:
         """
         Generate a guaranteed rare+ card for referring a new user.
 
-        Distribution: 60% rare, 30% epic, 10% legendary
+        Distribution: 80% rare, 17% epic, 3% legendary
         """
         # Referral reward rarity distribution (rare+)
         referral_probabilities = [
-            (CardRarity.RARE, 0.60),
-            (CardRarity.EPIC, 0.90),
+            (CardRarity.RARE, 0.80),
+            (CardRarity.EPIC, 0.97),
             (CardRarity.LEGENDARY, 1.00),
         ]
 

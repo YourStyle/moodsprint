@@ -574,7 +574,7 @@ export default function FriendsPage() {
           className={cn(
             'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'guilds'
-              ? 'bg-purple-500 text-white'
+              ? 'bg-blue-500 text-white'
               : 'text-gray-400 hover:text-white'
           )}
         >

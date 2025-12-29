@@ -1,8 +1,10 @@
 'use client';
 
-import { Heart, Swords, Sparkles, Calendar } from 'lucide-react';
-import { Modal } from '@/components/ui';
+import { useState } from 'react';
+import { Heart, Swords, Sparkles, Calendar, DollarSign } from 'lucide-react';
+import { Modal, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { SellCardModal } from '@/components/marketplace';
 
 interface AbilityInfo {
   type: string;
@@ -17,6 +19,7 @@ interface CardInfoSheetProps {
   isOpen: boolean;
   onClose: () => void;
   card: {
+    id?: number;
     name: string;
     description?: string | null;
     emoji?: string;
@@ -28,7 +31,9 @@ interface CardInfoSheetProps {
     genre?: string;
     createdAt?: string | null;
     abilityInfo?: AbilityInfo | null;
+    isOwned?: boolean;
   } | null;
+  showSellButton?: boolean;
 }
 
 const rarityConfig = {
@@ -67,10 +72,13 @@ const genreLabels: Record<string, string> = {
   anime: 'Аниме',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }: CardInfoSheetProps) {
+  const [showSellModal, setShowSellModal] = useState(false);
+
   if (!card) return null;
 
   const config = rarityConfig[card.rarity as keyof typeof rarityConfig] || rarityConfig.common;
+  const canSell = showSellButton && card.id && card.isOwned !== false;
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '';
@@ -170,7 +178,36 @@ export function CardInfoSheet({ isOpen, onClose, card }: CardInfoSheetProps) {
             </div>
           )}
         </div>
+
+        {/* Sell Button */}
+        {canSell && (
+          <Button
+            onClick={() => setShowSellModal(true)}
+            className="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+          >
+            <DollarSign className="w-4 h-4 mr-2" />
+            Продать за Stars
+          </Button>
+        )}
       </div>
+
+      {/* Sell Card Modal */}
+      {canSell && (
+        <SellCardModal
+          isOpen={showSellModal}
+          onClose={() => setShowSellModal(false)}
+          card={{
+            id: card.id!,
+            name: card.name,
+            emoji: card.emoji,
+            imageUrl: card.imageUrl ?? undefined,
+            rarity: card.rarity,
+            attack: card.attack,
+            hp: card.hp,
+          }}
+          onSuccess={onClose}
+        />
+      )}
     </Modal>
   );
 }

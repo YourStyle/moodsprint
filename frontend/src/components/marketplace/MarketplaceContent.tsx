@@ -93,15 +93,20 @@ export function MarketplaceContent() {
 
   return (
     <div className="space-y-4">
-      {/* Balance Header */}
-      {balance && (
-        <div className="flex items-center justify-end">
-          <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
+      {/* Header */}
+      <div className="text-center pb-2">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 mb-2">
+          <Store className="w-7 h-7 text-amber-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white">Маркетплейс</h2>
+        <p className="text-sm text-gray-400">Торгуйте картами за Telegram Stars</p>
+        {balance && (
+          <div className="inline-flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-2">
             <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
             <span className="text-amber-400 font-medium">{balance.balance + balance.pending_balance}</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-gray-700/50 rounded-lg p-1">
