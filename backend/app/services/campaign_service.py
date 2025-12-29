@@ -187,6 +187,61 @@ class CampaignService:
             "difficulty_multiplier": level.difficulty_multiplier,
         }
 
+    def process_dialogue_choice(
+        self, user_id: int, level_id: int, choice_action: str
+    ) -> dict[str, Any]:
+        """Process a dialogue choice event.
+
+        Supported events:
+        - skip_battle: Monster surrenders, level auto-completed with 1 star
+        - buff_player: +20% attack for next battle
+        - debuff_monster: -20% HP for next battle
+        - bonus_xp: +50 XP reward
+        - heal_cards: Heal all cards to full
+        """
+        level = CampaignLevel.query.get(level_id)
+        if not level:
+            return {"error": "level_not_found"}
+
+        result = {"success": True, "action": choice_action}
+
+        if choice_action == "skip_battle":
+            # Auto-complete the level with 1 star
+            complete_result = self.complete_level(
+                user_id=user_id,
+                level_id=level_id,
+                won=True,
+                rounds=0,
+                hp_remaining=100,
+                cards_lost=0,
+            )
+            result["skipped"] = True
+            result["completion"] = complete_result
+            result["message"] = "Монстр сдался! Уровень пройден."
+
+        elif choice_action == "buff_player":
+            result["buff"] = {"type": "attack", "multiplier": 1.2}
+            result["message"] = "Вы получили бонус +20% к атаке!"
+
+        elif choice_action == "debuff_monster":
+            result["debuff"] = {"type": "hp", "multiplier": 0.8}
+            result["message"] = "Монстр ослаблен на 20%!"
+
+        elif choice_action == "bonus_xp":
+            user = User.query.get(user_id)
+            if user:
+                user.add_xp(50)
+                db.session.commit()
+            result["xp_bonus"] = 50
+            result["message"] = "Вы получили +50 XP!"
+
+        elif choice_action == "heal_cards":
+            # This would be handled by the card service
+            result["heal_cards"] = True
+            result["message"] = "Все ваши карты восстановлены!"
+
+        return result
+
     def complete_level(
         self,
         user_id: int,

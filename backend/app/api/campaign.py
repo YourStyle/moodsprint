@@ -87,6 +87,37 @@ def start_campaign_level(level_id: int):
     return success_response(result)
 
 
+@api_bp.route("/campaign/levels/<int:level_id>/dialogue-choice", methods=["POST"])
+@jwt_required()
+def process_dialogue_choice(level_id: int):
+    """
+    Process a dialogue choice with an event.
+
+    Request body:
+    {
+        "action": "skip_battle" | "buff_player" | "debuff_monster" | "bonus_xp" | "heal_cards"
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    action = data.get("action")
+    if not action:
+        return validation_error({"error": "Действие не указано"})
+
+    service = CampaignService()
+    result = service.process_dialogue_choice(
+        user_id=user_id,
+        level_id=level_id,
+        choice_action=action,
+    )
+
+    if "error" in result:
+        return not_found("Уровень не найден")
+
+    return success_response(result)
+
+
 @api_bp.route("/campaign/levels/<int:level_id>/complete", methods=["POST"])
 @jwt_required()
 def complete_campaign_level(level_id: int):

@@ -26,14 +26,27 @@ export interface CampaignChapter {
   max_stars: number;
 }
 
+export interface DialogueChoice {
+  text: string;
+  next?: string; // '' = continue, '_end' = end, '_battle' = start battle, '_skip' = skip battle
+}
+
+export interface DialogueLine {
+  speaker: string;
+  text: string;
+  emoji?: string;
+  event?: 'start_battle' | 'skip_battle' | 'buff_player' | 'debuff_monster' | 'bonus_xp' | 'heal_cards';
+  choices?: DialogueChoice[];
+}
+
 export interface CampaignLevel {
   id: number;
   chapter_id: number;
   number: number;
   is_boss: boolean;
   title?: string;
-  dialogue_before?: Array<{ speaker: string; text: string }>;
-  dialogue_after?: Array<{ speaker: string; text: string }>;
+  dialogue_before?: DialogueLine[];
+  dialogue_after?: DialogueLine[];
   difficulty_multiplier: number;
   required_power: number;
   xp_reward: number;
@@ -96,9 +109,20 @@ export interface LevelCompletionResult {
     amount?: number;
     card?: unknown;
   }>;
-  dialogue_after?: Array<{ speaker: string; text: string }>;
+  dialogue_after?: DialogueLine[];
   story_outro?: string;
   message?: string;
+}
+
+export interface DialogueChoiceResult {
+  action: string;
+  message: string;
+  skipped?: boolean;
+  completion?: LevelCompletionResult;
+  buff?: { type: string; multiplier: number };
+  debuff?: { type: string; multiplier: number };
+  xp_bonus?: number;
+  heal_cards?: boolean;
 }
 
 class CampaignService {
@@ -140,6 +164,13 @@ class CampaignService {
 
   async getLevelBattleConfig(levelId: number): Promise<ApiResponse<LevelBattleConfig>> {
     return api.get(`/campaign/levels/${levelId}/battle-config`);
+  }
+
+  async processDialogueChoice(
+    levelId: number,
+    action: string
+  ): Promise<ApiResponse<DialogueChoiceResult>> {
+    return api.post(`/campaign/levels/${levelId}/dialogue-choice`, { action });
   }
 
   async seedCampaign(): Promise<ApiResponse<void>> {
