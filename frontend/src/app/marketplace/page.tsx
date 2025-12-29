@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { DeckCard } from '@/components/cards';
+import { SelectCardToSellModal, SellCardModal } from '@/components/marketplace';
 import { marketplaceService } from '@/services';
+import type { Card as CardType } from '@/services/cards';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton, openInvoice, showTelegramAlert } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
@@ -31,11 +33,11 @@ type Tab = 'browse' | 'my-listings' | 'balance';
 type SortOption = 'newest' | 'price_low' | 'price_high';
 
 const RARITY_COLORS: Record<string, string> = {
-  common: 'text-gray-400 border-gray-500',
-  uncommon: 'text-green-400 border-green-500',
-  rare: 'text-blue-400 border-blue-500',
-  epic: 'text-purple-400 border-purple-500',
-  legendary: 'text-amber-400 border-amber-500',
+  common: 'bg-slate-600 text-white',
+  uncommon: 'bg-emerald-600 text-white',
+  rare: 'bg-blue-600 text-white',
+  epic: 'bg-purple-600 text-white',
+  legendary: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
 };
 
 const RARITY_LABELS: Record<string, string> = {
@@ -55,6 +57,8 @@ export default function MarketplacePage() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [rarityFilter, setRarityFilter] = useState<string | null>(null);
   const [selectedListing, setSelectedListing] = useState<MarketListing | null>(null);
+  const [showSelectCardModal, setShowSelectCardModal] = useState(false);
+  const [cardToSell, setCardToSell] = useState<CardType | null>(null);
 
   useEffect(() => {
     showBackButton(() => router.back());
@@ -256,7 +260,7 @@ export default function MarketplacePage() {
                         </div>
                       )}
                       <div className={cn(
-                        'absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold',
+                        'absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold shadow-md',
                         RARITY_COLORS[listing.card.rarity]
                       )}>
                         {RARITY_LABELS[listing.card.rarity]}
@@ -295,6 +299,15 @@ export default function MarketplacePage() {
       {/* My Listings Tab */}
       {activeTab === 'my-listings' && (
           <div className="space-y-4">
+            {/* Sell Card Button */}
+            <Button
+              onClick={() => setShowSelectCardModal(true)}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500"
+            >
+              <Tag className="w-4 h-4 mr-2" />
+              Продать карту
+            </Button>
+
             {myListingsData?.data?.listings?.length ? (
               <div className="grid grid-cols-2 gap-3">
                 {myListingsData.data.listings.map((listing) => (
@@ -443,7 +456,7 @@ export default function MarketplacePage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className={cn('text-sm font-medium', RARITY_COLORS[selectedListing.card.rarity])}>
+                  <div className={cn('px-2 py-0.5 rounded text-sm font-medium', RARITY_COLORS[selectedListing.card.rarity])}>
                     {RARITY_LABELS[selectedListing.card.rarity]}
                   </div>
                   <div className="flex items-center gap-3">
@@ -482,6 +495,33 @@ export default function MarketplacePage() {
             </Card>
           </div>
         )}
+
+      {/* Select Card to Sell Modal */}
+      <SelectCardToSellModal
+        isOpen={showSelectCardModal}
+        onClose={() => setShowSelectCardModal(false)}
+        onSelectCard={(card) => {
+          setCardToSell(card);
+        }}
+      />
+
+      {/* Sell Card Modal */}
+      <SellCardModal
+        isOpen={!!cardToSell}
+        onClose={() => setCardToSell(null)}
+        card={cardToSell ? {
+          id: cardToSell.id,
+          name: cardToSell.name,
+          emoji: cardToSell.emoji,
+          imageUrl: cardToSell.image_url || undefined,
+          rarity: cardToSell.rarity,
+          attack: cardToSell.attack,
+          hp: cardToSell.hp,
+        } : null}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['marketplace'] });
+        }}
+      />
     </div>
   );
 }
