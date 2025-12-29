@@ -1069,15 +1069,21 @@ def generate_monster_images():
     total_without_images = db.session.execute(text(count_query)).scalar() or 0
 
     if total_without_images == 0:
-        return jsonify({
-            "success": True,
-            "data": {
-                "message": "All monsters already have images" if not genre else f"All {genre} monsters have images",
-                "generated": 0,
-                "failed": 0,
-                "remaining": 0
+        return jsonify(
+            {
+                "success": True,
+                "data": {
+                    "message": (
+                        "All monsters already have images"
+                        if not genre
+                        else f"All {genre} monsters have images"
+                    ),
+                    "generated": 0,
+                    "failed": 0,
+                    "remaining": 0,
+                },
             }
-        })
+        )
 
     # Get monsters without images (limit 5 at a time)
     query = """
@@ -1111,15 +1117,17 @@ def generate_monster_images():
 
     remaining = total_without_images - generated
 
-    return jsonify({
-        "success": True,
-        "data": {
-            "generated": generated,
-            "failed": failed,
-            "remaining": remaining,
-            "message": f"Generated {generated} images. {remaining} remaining."
+    return jsonify(
+        {
+            "success": True,
+            "data": {
+                "generated": generated,
+                "failed": failed,
+                "remaining": remaining,
+                "message": f"Generated {generated} images. {remaining} remaining.",
+            },
         }
-    })
+    )
 
 
 @app.route("/monsters/rotate", methods=["POST"])
@@ -1270,8 +1278,17 @@ def update_monster(monster_id: int):
         updates = []
         params = {"monster_id": monster_id}
 
-        for field in ["name", "description", "genre", "base_level", "base_hp",
-                      "base_attack", "sprite_url", "emoji", "is_boss"]:
+        for field in [
+            "name",
+            "description",
+            "genre",
+            "base_level",
+            "base_hp",
+            "base_attack",
+            "sprite_url",
+            "emoji",
+            "is_boss",
+        ]:
             if field in data:
                 updates.append(f"{field} = :{field}")
                 params[field] = data[field]
@@ -1634,24 +1651,34 @@ def remove_event_monster(event_monster_id: int):
 @app.route("/campaign")
 @login_required
 def campaign():
-    """List all campaign chapters."""
+    """List all campaign chapters grouped by genre."""
     chapters = db.session.execute(
         text(
             """
             SELECT c.id, c.number, c.name, c.genre, c.description,
                    c.emoji, c.background_color, c.required_power,
                    c.xp_reward, c.guaranteed_card_rarity, c.is_active,
-                   c.story_intro, c.story_outro,
+                   c.story_intro, c.story_outro, c.image_url,
                    (SELECT COUNT(*) FROM campaign_levels WHERE chapter_id = c.id) as levels_count
             FROM campaign_chapters c
-            ORDER BY c.number
+            ORDER BY c.genre, c.number
         """
         )
     ).fetchall()
 
+    # Group chapters by genre
+    chapters_by_genre = {}
+    for chapter in chapters:
+        chapter_dict = dict(chapter._mapping)
+        genre = chapter_dict.get("genre") or "other"
+        if genre not in chapters_by_genre:
+            chapters_by_genre[genre] = []
+        chapters_by_genre[genre].append(chapter_dict)
+
     return render_template(
         "campaign.html",
         chapters=[dict(row._mapping) for row in chapters] if chapters else [],
+        chapters_by_genre=chapters_by_genre,
     )
 
 
@@ -1661,9 +1688,14 @@ def create_chapter():
     """Create a new campaign chapter."""
     data = request.json
     try:
-        # Get next chapter number
+        genre = data["genre"]
+
+        # Get next chapter number for this specific genre
         max_number = db.session.execute(
-            text("SELECT COALESCE(MAX(number), 0) FROM campaign_chapters")
+            text(
+                "SELECT COALESCE(MAX(number), 0) FROM campaign_chapters WHERE genre = :genre"
+            ),
+            {"genre": genre},
         ).scalar()
 
         result = db.session.execute(
@@ -1681,7 +1713,7 @@ def create_chapter():
             {
                 "number": max_number + 1,
                 "name": data["name"],
-                "genre": data["genre"],
+                "genre": genre,
                 "description": data.get("description"),
                 "emoji": data.get("emoji", "📖"),
                 "background_color": data.get("background_color", "#1a1a2e"),
@@ -1758,9 +1790,20 @@ def update_chapter(chapter_id: int):
         updates = []
         params = {"chapter_id": chapter_id}
 
-        for field in ["name", "genre", "description", "emoji", "background_color",
-                      "image_url", "required_power", "xp_reward", "guaranteed_card_rarity",
-                      "story_intro", "story_outro", "is_active"]:
+        for field in [
+            "name",
+            "genre",
+            "description",
+            "emoji",
+            "background_color",
+            "image_url",
+            "required_power",
+            "xp_reward",
+            "guaranteed_card_rarity",
+            "story_intro",
+            "story_outro",
+            "is_active",
+        ]:
             if field in data:
                 updates.append(f"{field} = :{field}")
                 params[field] = data[field]
@@ -1839,9 +1882,18 @@ def update_level(level_id: int):
         updates = []
         params = {"level_id": level_id}
 
-        for field in ["monster_id", "is_boss", "title", "dialogue_before",
-                      "dialogue_after", "difficulty_multiplier", "required_power",
-                      "xp_reward", "stars_max", "is_active"]:
+        for field in [
+            "monster_id",
+            "is_boss",
+            "title",
+            "dialogue_before",
+            "dialogue_after",
+            "difficulty_multiplier",
+            "required_power",
+            "xp_reward",
+            "stars_max",
+            "is_active",
+        ]:
             if field in data:
                 updates.append(f"{field} = :{field}")
                 params[field] = data[field]

@@ -19,18 +19,17 @@ import {
   AlertCircle,
   Share2,
   Gift,
-  Shield,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
 import { ReferralRewardModal } from '@/components/cards';
-import { GuildsContent } from '@/components/guilds';
+import { FeatureBanner } from '@/components/features';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward } from '@/services/cards';
 
-type Tab = 'friends' | 'requests' | 'trades' | 'guilds';
+type Tab = 'friends' | 'requests' | 'trades';
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#9CA3AF',
@@ -569,18 +568,11 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
-        <button
-          onClick={() => setActiveTab('guilds')}
-          className={cn(
-            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1',
-            activeTab === 'guilds'
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-400 hover:text-white'
-          )}
-        >
-          <Shield className="w-4 h-4" />
-          <span className="hidden sm:inline">Гильдии</span>
-        </button>
+      </div>
+
+      {/* Guilds Banner */}
+      <div className="mb-4">
+        <FeatureBanner type="guilds" />
       </div>
 
       {/* Friends Tab */}
@@ -880,9 +872,6 @@ export default function FriendsPage() {
           )}
         </>
       )}
-
-      {/* Guilds Tab */}
-      {activeTab === 'guilds' && <GuildsContent />}
 
       {/* Referral Rewards Modal */}
       <ReferralRewardModal

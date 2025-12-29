@@ -15,11 +15,10 @@ import {
   X,
   Check,
   AlertTriangle,
-  Store,
 } from 'lucide-react';
 import { Card, Button, Modal } from '@/components/ui';
 import { DeckCard, CardInfoSheet } from '@/components/cards';
-import { MarketplaceContent } from '@/components/marketplace';
+import { FeatureBanner } from '@/components/features';
 import { cardsService, mergeService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
@@ -27,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
 import type { Card as CardType, HealStatus } from '@/services/cards';
 
-type Tab = 'collection' | 'deck' | 'merge' | 'market';
+type Tab = 'collection' | 'deck' | 'merge';
 type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 interface MergePreview {
@@ -337,18 +336,11 @@ export default function DeckPage() {
           <Merge className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">{t('merge')}</span>
         </button>
-        <button
-          onClick={() => setActiveTab('market')}
-          className={cn(
-            'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
-            activeTab === 'market'
-              ? 'bg-amber-500 text-white'
-              : 'text-gray-400 hover:text-white'
-          )}
-        >
-          <Store className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Маркет</span>
-        </button>
+      </div>
+
+      {/* Marketplace Banner */}
+      <div className="mb-4">
+        <FeatureBanner type="marketplace" />
       </div>
 
       {/* Collection Tab */}
@@ -906,9 +898,6 @@ export default function DeckPage() {
           </Modal>
         </>
       )}
-
-      {/* Market Tab */}
-      {activeTab === 'market' && <MarketplaceContent />}
 
       {/* Card Info Sheet */}
       <CardInfoSheet

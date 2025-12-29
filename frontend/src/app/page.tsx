@@ -10,9 +10,8 @@ import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
 import { CardEarnedModal, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
-import { FeatureBannersSection } from '@/components/features';
 import { useAppStore } from '@/lib/store';
-import { tasksService, moodService, focusService, campaignService, guildsService } from '@/services';
+import { tasksService, moodService, focusService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
@@ -547,22 +546,6 @@ export default function HomePage() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Campaign progress for feature banner
-  const { data: campaignData } = useQuery({
-    queryKey: ['campaign', 'overview'],
-    queryFn: () => campaignService.getCampaignOverview(),
-    enabled: !!user,
-    staleTime: 1000 * 60 * 10, // 10 minutes
-  });
-
-  // Guild info for feature banner
-  const { data: guildData } = useQuery({
-    queryKey: ['guilds', 'my'],
-    queryFn: () => guildsService.getMyGuild(),
-    enabled: !!user,
-    staleTime: 1000 * 60 * 10, // 10 minutes
-  });
-
   const handleMoodSubmit = async (mood: MoodLevel, energy: EnergyLevel, note?: string) => {
     setMoodLoading(true);
     try {
@@ -933,21 +916,6 @@ export default function HomePage() {
             </Button>
           </Card>
         )}
-      </div>
-
-      {/* Feature Banners */}
-      <div className="mt-6 space-y-3">
-        <h2 className="font-semibold text-white mb-3">Исследуй</h2>
-        <FeatureBannersSection
-          campaignStats={{
-            currentChapter: campaignData?.data?.progress?.current_chapter,
-            starsEarned: campaignData?.data?.progress?.total_stars_earned,
-          }}
-          guildStats={{
-            hasGuild: !!guildData?.data?.guild,
-            memberCount: guildData?.data?.guild?.members_count,
-          }}
-        />
       </div>
 
       {/* Mood Modal */}
