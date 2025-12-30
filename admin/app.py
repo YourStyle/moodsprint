@@ -743,9 +743,15 @@ def business_metrics():
         SELECT
             DATE_TRUNC('week', u.created_at)::date as cohort_week,
             COUNT(DISTINCT u.id) as users,
-            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '7 days' THEN u.id END) as week1,
-            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '14 days' THEN u.id END) as week2,
-            COUNT(DISTINCT CASE WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '21 days' THEN u.id END) as week3
+            COUNT(DISTINCT CASE
+                WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '7 days'
+                THEN u.id END) as week1,
+            COUNT(DISTINCT CASE
+                WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '14 days'
+                THEN u.id END) as week2,
+            COUNT(DISTINCT CASE
+                WHEN u.last_activity_date >= DATE_TRUNC('week', u.created_at) + INTERVAL '21 days'
+                THEN u.id END) as week3
         FROM users u
         WHERE u.created_at >= CURRENT_DATE - INTERVAL '8 weeks'
         GROUP BY DATE_TRUNC('week', u.created_at)
@@ -1453,8 +1459,12 @@ def create_event():
         result = db.session.execute(
             text(
                 """
-                INSERT INTO seasonal_events (code, name, description, event_type, start_date, end_date, emoji, theme_color, xp_multiplier, is_active)
-                VALUES (:code, :name, :description, :event_type, :start_date, :end_date, :emoji, :theme_color, :xp_multiplier, true)
+                INSERT INTO seasonal_events
+                    (code, name, description, event_type, start_date, end_date,
+                     emoji, theme_color, xp_multiplier, is_active)
+                VALUES
+                    (:code, :name, :description, :event_type, :start_date, :end_date,
+                     :emoji, :theme_color, :xp_multiplier, true)
                 RETURNING id
             """
             ),
@@ -1998,7 +2008,7 @@ def generate_dialogue():
 Можешь добавить намёк на следующее приключение."""
 
     if existing_lines:
-        context += f"\n\nУже есть такие реплики (продолжи их):\n"
+        context += "\n\nУже есть такие реплики (продолжи их):\n"
         for line in existing_lines[-3:]:
             context += f"- {line.get('speaker', 'Персонаж')}: {line.get('text', '')}\n"
 
