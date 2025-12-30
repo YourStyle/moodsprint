@@ -19,6 +19,15 @@ class Config:
         )
     )
 
+    # TON Integration
+    TON_DEPOSIT_ADDRESS: str = field(
+        default_factory=lambda: os.environ.get(
+            "TON_DEPOSIT_ADDRESS",
+            "UQDNO2S4MTD9avQJIVx_9W7pQgs6vXH7QIKOR-mj98xyT4ct",
+        )
+    )
+    TONAPI_KEY: str = field(default_factory=lambda: os.environ.get("TONAPI_KEY", ""))
+
     # Database
     DATABASE_URL: str = field(
         default_factory=lambda: os.environ.get(

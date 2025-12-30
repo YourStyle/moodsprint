@@ -12,6 +12,7 @@ from apscheduler.triggers.cron import CronTrigger
 from config import config
 from handlers import main_router
 from handlers.notifications import NotificationService
+from services.deposit_service import check_deposits
 
 # Moscow timezone for all scheduled jobs
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
@@ -153,6 +154,14 @@ async def main():
         notification_service.send_new_referral_notifications,
         CronTrigger(minute=15, timezone=MOSCOW_TZ),  # Every hour at :15
         id="referral_notifications",
+    )
+
+    # TON deposit monitoring - check every 30 seconds
+    scheduler.add_job(
+        check_deposits,
+        "interval",
+        seconds=30,
+        id="ton_deposit_monitor",
     )
 
     scheduler.start()
