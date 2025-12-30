@@ -26,7 +26,7 @@ def get_guilds():
     search = request.args.get("search")
 
     service = GuildService()
-    result = service.get_public_guilds(page=page, per_page=per_page, search=search)
+    result = service.list_guilds(page=page, per_page=per_page, search=search)
 
     return success_response(result)
 
@@ -78,15 +78,20 @@ def create_guild():
 @jwt_required()
 def get_guild(guild_id: int):
     """Get guild details."""
-    user_id = int(get_jwt_identity())
-
     service = GuildService()
-    result = service.get_guild_details(guild_id, user_id)
+    guild = service.get_guild(guild_id)
 
-    if "error" in result:
+    if not guild:
         return not_found("Гильдия не найдена")
 
-    return success_response(result)
+    members = service.get_members(guild_id)
+
+    return success_response(
+        {
+            "guild": guild.to_dict(),
+            "members": members,
+        }
+    )
 
 
 @api_bp.route("/guilds/<int:guild_id>", methods=["PUT"])
@@ -129,12 +134,22 @@ def get_my_guild():
     user_id = int(get_jwt_identity())
 
     service = GuildService()
-    result = service.get_user_guild(user_id)
+    guild = service.get_user_guild(user_id)
 
-    if "error" in result:
+    if not guild:
         return success_response({"guild": None, "membership": None})
 
-    return success_response(result)
+    # Get membership details
+    from app.models.guild import GuildMember
+
+    membership = GuildMember.query.filter_by(guild_id=guild.id, user_id=user_id).first()
+
+    return success_response(
+        {
+            "guild": guild.to_dict(),
+            "membership": membership.to_dict() if membership else None,
+        }
+    )
 
 
 # ============ Membership ============
@@ -213,7 +228,7 @@ def kick_member(guild_id: int, member_id: int):
 
 @api_bp.route("/guilds/<int:guild_id>/promote/<int:member_id>", methods=["POST"])
 @jwt_required()
-def promote_member(guild_id: int, member_id: int):
+def promote_member_endpoint(guild_id: int, member_id: int):
     """
     Promote a member (leader only).
 
@@ -227,12 +242,13 @@ def promote_member(guild_id: int, member_id: int):
     role = data.get("role", "officer")
 
     service = GuildService()
-    result = service.promote_member(guild_id, user_id, member_id, role)
+    result = service.promote_member(user_id, member_id, role)
 
     if "error" in result:
         error_messages = {
             "guild_not_found": "Гильдия не найдена",
             "not_authorized": "Недостаточно прав",
+            "not_leader": "Недостаточно прав",
             "member_not_found": "Участник не найден",
             "invalid_role": "Некорректная роль",
         }
@@ -329,6 +345,26 @@ def reject_invite(invite_id: int):
         return not_found("Приглашение не найдено")
 
     return success_response({"message": "Приглашение отклонено"})
+
+
+@api_bp.route("/guilds/my/invite-link", methods=["GET"])
+@jwt_required()
+def get_invite_link():
+    """Get shareable invite link for current user's guild."""
+    user_id = int(get_jwt_identity())
+
+    service = GuildService()
+    result = service.get_invite_link(user_id)
+
+    if "error" in result:
+        error_messages = {
+            "not_in_guild": "Вы не состоите в гильдии",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(result)
 
 
 # ============ Raids ============
@@ -445,11 +481,11 @@ def get_guild_leaderboard():
     - page: page number
     - per_page: items per page
     """
-    sort_by = request.args.get("sort_by", "level")
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
 
+    # Sorted by level by default
     service = GuildService()
-    result = service.get_leaderboard(sort_by=sort_by, page=page, per_page=per_page)
+    result = service.list_guilds(page=page, per_page=per_page)
 
     return success_response(result)

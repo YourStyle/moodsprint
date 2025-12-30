@@ -544,3 +544,131 @@ class GuildService:
         """Get pending invites for user."""
         invites = GuildInvite.query.filter_by(user_id=user_id, status="pending").all()
         return [i.to_dict() for i in invites]
+
+    def update_guild(self, guild_id: int, user_id: int, data: dict) -> dict[str, Any]:
+        """Update guild settings (leader/officer only)."""
+        membership = GuildMember.query.filter_by(user_id=user_id).first()
+        if not membership or membership.guild_id != guild_id:
+            return {"error": "not_authorized"}
+
+        if membership.role not in ["leader", "officer"]:
+            return {"error": "not_authorized"}
+
+        guild = Guild.query.get(guild_id)
+        if not guild:
+            return {"error": "guild_not_found"}
+
+        # Update fields
+        if "name" in data and data["name"]:
+            # Check name uniqueness
+            existing = Guild.query.filter(
+                Guild.name == data["name"], Guild.id != guild_id
+            ).first()
+            if existing:
+                return {"error": "name_taken"}
+            guild.name = data["name"]
+
+        if "description" in data:
+            guild.description = data["description"]
+
+        if "emoji" in data:
+            guild.emoji = data["emoji"]
+
+        if "is_public" in data:
+            guild.is_public = data["is_public"]
+
+        db.session.commit()
+        return {"success": True, "guild": guild.to_dict()}
+
+    def kick_member(
+        self, guild_id: int, user_id: int, member_id: int
+    ) -> dict[str, Any]:
+        """Kick a member from guild (leader/officer only)."""
+        membership = GuildMember.query.filter_by(user_id=user_id).first()
+        if not membership or membership.guild_id != guild_id:
+            return {"error": "not_authorized"}
+
+        if membership.role not in ["leader", "officer"]:
+            return {"error": "not_authorized"}
+
+        if user_id == member_id:
+            return {"error": "cannot_kick_self"}
+
+        target = GuildMember.query.filter_by(
+            guild_id=guild_id, user_id=member_id
+        ).first()
+        if not target:
+            return {"error": "member_not_found"}
+
+        if target.role == "leader":
+            return {"error": "cannot_kick_leader"}
+
+        db.session.delete(target)
+        db.session.commit()
+
+        logger.info(f"User {member_id} kicked from guild {guild_id} by {user_id}")
+        return {"success": True}
+
+    def invite_to_guild(
+        self, guild_id: int, inviter_id: int, user_id: int
+    ) -> dict[str, Any]:
+        """Invite a user to guild (wrapper for invite_user)."""
+        membership = GuildMember.query.filter_by(user_id=inviter_id).first()
+        if not membership or membership.guild_id != guild_id:
+            return {"error": "not_authorized"}
+
+        return self.invite_user(inviter_id, user_id)
+
+    def get_guild_raids(self, guild_id: int, user_id: int) -> dict[str, Any]:
+        """Get guild's raids (active and recent completed)."""
+        membership = GuildMember.query.filter_by(user_id=user_id).first()
+        if not membership or membership.guild_id != guild_id:
+            return {"error": "not_member"}
+
+        active_raid = self.get_active_raid(guild_id)
+        recent_raids = (
+            GuildRaid.query.filter_by(guild_id=guild_id)
+            .filter(GuildRaid.status != "active")
+            .order_by(GuildRaid.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
+        return {
+            "active_raid": active_raid.to_dict() if active_raid else None,
+            "recent_raids": [r.to_dict() for r in recent_raids],
+        }
+
+    def get_raid_details(self, raid_id: int, user_id: int) -> dict[str, Any]:
+        """Get raid details with leaderboard."""
+        raid = GuildRaid.query.get(raid_id)
+        if not raid:
+            return {"error": "raid_not_found"}
+
+        leaderboard = self.get_raid_leaderboard(raid_id)
+
+        return {
+            "raid": raid.to_dict(),
+            "leaderboard": leaderboard,
+        }
+
+    def get_invite_link(self, user_id: int) -> dict[str, Any]:
+        """Get shareable invite link for the guild."""
+        import os
+
+        membership = GuildMember.query.filter_by(user_id=user_id).first()
+        if not membership:
+            return {"error": "not_in_guild"}
+
+        guild = membership.guild
+        bot_username = os.environ.get("BOT_USERNAME", "moodsprintbot")
+
+        # Create Telegram deep link with start parameter
+        invite_link = f"https://t.me/{bot_username}?start=guild_{guild.id}"
+
+        return {
+            "success": True,
+            "invite_link": invite_link,
+            "guild_name": guild.name,
+            "guild_id": guild.id,
+        }
