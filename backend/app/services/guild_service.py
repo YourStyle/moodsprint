@@ -32,14 +32,15 @@ class GuildService:
 
     def create_guild(
         self,
-        user_id: int,
+        leader_id: int,
         name: str,
         description: str | None = None,
         emoji: str = "⚔️",
+        is_public: bool = True,
     ) -> dict[str, Any]:
         """Create a new guild."""
         # Check if user is already in a guild
-        existing_membership = GuildMember.query.filter_by(user_id=user_id).first()
+        existing_membership = GuildMember.query.filter_by(user_id=leader_id).first()
         if existing_membership:
             return {"error": "already_in_guild"}
 
@@ -55,7 +56,8 @@ class GuildService:
             name=name,
             description=description,
             emoji=emoji,
-            leader_id=user_id,
+            leader_id=leader_id,
+            is_public=is_public,
         )
         db.session.add(guild)
         db.session.flush()
@@ -63,13 +65,13 @@ class GuildService:
         # Add creator as leader
         member = GuildMember(
             guild_id=guild.id,
-            user_id=user_id,
+            user_id=leader_id,
             role="leader",
         )
         db.session.add(member)
         db.session.commit()
 
-        logger.info(f"Guild created: {name} by user {user_id}")
+        logger.info(f"Guild created: {name} by user {leader_id}")
         return {"success": True, "guild": guild.to_dict()}
 
     def get_guild(self, guild_id: int) -> Guild | None:

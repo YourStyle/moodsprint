@@ -105,9 +105,14 @@ class MarketplaceService:
         min_price: int | None = None,
         max_price: int | None = None,
         sort_by: str = "newest",
+        exclude_seller_id: int | None = None,
     ) -> dict[str, Any]:
         """Browse marketplace listings."""
         query = MarketListing.query.filter_by(status="active")
+
+        # Exclude user's own listings
+        if exclude_seller_id:
+            query = query.filter(MarketListing.seller_id != exclude_seller_id)
 
         if rarity:
             query = query.join(UserCard).filter(UserCard.rarity == rarity)

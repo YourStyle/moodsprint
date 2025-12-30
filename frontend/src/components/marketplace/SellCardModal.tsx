@@ -25,12 +25,13 @@ interface SellCardModalProps {
   onSuccess?: () => void;
 }
 
+// Must match backend MIN_PRICES in app/models/marketplace.py
 const rarityConfig: Record<string, { min: number; suggested: number; label: string; color: string }> = {
   common: { min: 1, suggested: 5, label: 'Обычная', color: 'text-slate-400' },
-  uncommon: { min: 3, suggested: 10, label: 'Необычная', color: 'text-emerald-400' },
-  rare: { min: 10, suggested: 25, label: 'Редкая', color: 'text-blue-400' },
-  epic: { min: 25, suggested: 50, label: 'Эпическая', color: 'text-purple-400' },
-  legendary: { min: 50, suggested: 100, label: 'Легендарная', color: 'text-amber-400' },
+  uncommon: { min: 5, suggested: 15, label: 'Необычная', color: 'text-emerald-400' },
+  rare: { min: 15, suggested: 40, label: 'Редкая', color: 'text-blue-400' },
+  epic: { min: 50, suggested: 100, label: 'Эпическая', color: 'text-purple-400' },
+  legendary: { min: 200, suggested: 500, label: 'Легендарная', color: 'text-amber-400' },
 };
 
 export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModalProps) {

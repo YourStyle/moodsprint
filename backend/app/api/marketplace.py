@@ -30,6 +30,7 @@ def browse_marketplace():
     - max_price: maximum price in Stars
     - sort_by: "newest" (default), "price_low", "price_high"
     """
+    user_id = int(get_jwt_identity())
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     rarity = request.args.get("rarity")
@@ -47,6 +48,7 @@ def browse_marketplace():
         min_price=min_price,
         max_price=max_price,
         sort_by=sort_by,
+        exclude_seller_id=user_id,  # Don't show user's own listings
     )
 
     return success_response(result)

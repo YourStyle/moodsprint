@@ -65,6 +65,7 @@ def create_guild():
         error_messages = {
             "name_taken": "Гильдия с таким названием уже существует",
             "already_in_guild": "Вы уже состоите в гильдии",
+            "invalid_name_length": "Название должно быть от 3 до 50 символов",
         }
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}

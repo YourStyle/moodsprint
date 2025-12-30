@@ -18,6 +18,8 @@ import {
   Tag,
   X,
   Loader2,
+  HelpCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { DeckCard } from '@/components/cards';
@@ -392,6 +394,30 @@ export default function MarketplacePage() {
                     <div className="text-red-400 font-medium">-{balance.total_spent}</div>
                   </div>
                 </div>
+              </div>
+            </Card>
+
+            {/* How to get Stars */}
+            <Card className="bg-gray-800/50 border-gray-700/50">
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-medium text-white">Как получить Stars?</h3>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-400">1.</span>
+                    <span>Продавайте карты другим игрокам на маркетплейсе</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-400">2.</span>
+                    <span>Stars можно купить в Telegram через меню профиля</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-amber-400">3.</span>
+                    <span>Получайте Stars за достижения и участие в событиях</span>
+                  </li>
+                </ul>
               </div>
             </Card>
 
