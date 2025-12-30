@@ -379,6 +379,27 @@ export default function HomePage() {
     placeholderData: keepPreviousData,
   });
 
+  // Query all tasks for selected date to calculate status counts
+  const { data: allTasksForCounts } = useQuery({
+    queryKey: ['tasks', 'by_date', selectedDateStr, 'all'],
+    queryFn: () => tasksService.getTasks({
+      due_date: selectedDateStr,
+      limit: 100,
+    }),
+    enabled: !!user,
+    staleTime: 1000 * 30, // 30 seconds
+  });
+
+  // Calculate status counts for badges
+  const statusCounts = useMemo(() => {
+    const tasks = allTasksForCounts?.data?.tasks || [];
+    return {
+      pending: tasks.filter(t => t.status === 'pending').length,
+      in_progress: tasks.filter(t => t.status === 'in_progress').length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+    };
+  }, [allTasksForCounts]);
+
   // Query week tasks for calendar badges (reuse main query data when possible)
   const { data: weekTasksData } = useQuery({
     queryKey: ['tasks', 'week', weekDates[0], weekDates[6]],
@@ -776,19 +797,33 @@ export default function HomePage() {
             { value: 'in_progress' as const, labelKey: 'statusInProgress' as const },
             { value: 'completed' as const, labelKey: 'statusCompleted' as const },
             { value: 'all' as const, labelKey: 'all' as const },
-          ]).map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setFilterStatus(filter.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                filterStatus === filter.value
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {t(filter.labelKey)}
-            </button>
-          ))}
+          ]).map((filter) => {
+            const count = filter.value !== 'all' ? statusCounts[filter.value] : 0;
+            const showBadge = filter.value !== 'all' && count > 0;
+
+            return (
+              <button
+                key={filter.value}
+                onClick={() => setFilterStatus(filter.value)}
+                className={`relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  filterStatus === filter.value
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {t(filter.labelKey)}
+                {showBadge && (
+                  <span className={`ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+                    filterStatus === filter.value
+                      ? 'bg-white/20 text-white'
+                      : 'bg-primary-500/80 text-white'
+                  }`}>
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {tasksLoading && !tasksData ? (
