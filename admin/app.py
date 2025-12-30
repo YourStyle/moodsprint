@@ -1238,13 +1238,17 @@ def create_monster():
     """Create a new monster."""
     data = request.json
     try:
+        base_level = data.get("base_level", 1)
+        base_hp = data.get("base_hp", 100)
+        base_attack = data.get("base_attack", 10)
+
         result = db.session.execute(
             text(
                 """
                 INSERT INTO monsters (name, description, genre, base_level, base_hp, base_attack,
-                    sprite_url, emoji, is_boss)
+                    level, hp, attack, sprite_url, emoji, is_boss)
                 VALUES (:name, :description, :genre, :base_level, :base_hp, :base_attack,
-                    :sprite_url, :emoji, :is_boss)
+                    :level, :hp, :attack, :sprite_url, :emoji, :is_boss)
                 RETURNING id
             """
             ),
@@ -1252,9 +1256,12 @@ def create_monster():
                 "name": data["name"],
                 "description": data.get("description"),
                 "genre": data["genre"],
-                "base_level": data.get("base_level", 1),
-                "base_hp": data.get("base_hp", 100),
-                "base_attack": data.get("base_attack", 10),
+                "base_level": base_level,
+                "base_hp": base_hp,
+                "base_attack": base_attack,
+                "level": base_level,
+                "hp": base_hp,
+                "attack": base_attack,
                 "sprite_url": data.get("sprite_url"),
                 "emoji": data.get("emoji", "👹"),
                 "is_boss": data.get("is_boss", False),
@@ -1927,6 +1934,134 @@ def delete_level(level_id: int):
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/generate-dialogue", methods=["POST"])
+@login_required
+def generate_dialogue():
+    """Generate dialogue using AI."""
+    import json
+
+    import openai
+
+    data = request.json
+    chapter_name = data.get("chapter_name", "")
+    chapter_genre = data.get("chapter_genre", "fantasy")
+    chapter_description = data.get("chapter_description", "")
+    monster_name = data.get("monster_name", "Монстр")
+    dialog_type = data.get("dialog_type", "before")
+    existing_lines = data.get("existing_lines", [])
+
+    # Genre descriptions for context
+    genre_contexts = {
+        "fantasy": "эпическое фэнтези в стиле Властелина Колец, рыцари и магия",
+        "magic": "волшебный мир как в Гарри Поттере, заклинания и магические существа",
+        "scifi": "научная фантастика, космос и технологии будущего",
+        "cyberpunk": "киберпанк, неоновые города и хакеры",
+        "anime": "аниме стиль, драматичные битвы и эмоциональные персонажи",
+    }
+
+    genre_context = genre_contexts.get(chapter_genre, "фэнтези")
+
+    # Build prompt
+    if dialog_type == "before":
+        context = f"""Ты пишешь диалог ПЕРЕД битвой для мобильной игры в жанре {genre_context}.
+
+Глава: {chapter_name}
+{f"Описание: {chapter_description}" if chapter_description else ""}
+Монстр: {monster_name}
+
+Напиши короткий диалог (3-5 реплик) где монстр угрожает герою, а герой храбро отвечает.
+Диалог должен быть драматичным и подходящим для жанра."""
+    else:
+        context = f"""Ты пишешь диалог ПОСЛЕ победы над монстром для мобильной игры в жанре {genre_context}.
+
+Глава: {chapter_name}
+{f"Описание: {chapter_description}" if chapter_description else ""}
+Монстр: {monster_name}
+
+Напиши короткий диалог (2-4 реплики) где монстр признаёт поражение, а герой торжествует.
+Можешь добавить намёк на следующее приключение."""
+
+    if existing_lines:
+        context += f"\n\nУже есть такие реплики (продолжи их):\n"
+        for line in existing_lines[-3:]:
+            context += f"- {line.get('speaker', 'Персонаж')}: {line.get('text', '')}\n"
+
+    # Available events for AI to use
+    context += """
+
+Для каждой реплики можешь указать событие (опционально):
+- start_battle: начать битву
+- skip_battle: монстр сдаётся, битва пропускается
+- buff_player: усилить игрока (+20% атаки)
+- debuff_monster: ослабить монстра (-20% HP)
+- bonus_xp: бонусный опыт (+50 XP)
+- heal_cards: исцелить все карты
+
+Верни JSON массив в формате:
+[
+  {"speaker": "Monster", "text": "Текст реплики монстра", "emoji": "👹"},
+  {"speaker": "Hero", "text": "Ответ героя", "emoji": "🦸"},
+  {"speaker": "Narrator", "text": "Описание действия", "emoji": "📖", "event": "start_battle"}
+]
+
+Допустимые speaker: Monster, Hero, Narrator.
+Выбирай подходящие эмодзи для жанра и настроения."""
+
+    try:
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if not openai_key:
+            return jsonify({"success": False, "error": "OpenAI API key not configured"})
+
+        client = openai.OpenAI(api_key=openai_key)
+
+        response = client.chat.completions.create(
+            model="gpt-5.2",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Ты сценарист для мобильной RPG игры. Пиши короткие драматичные диалоги на русском языке. Отвечай ТОЛЬКО валидным JSON массивом.",
+                },
+                {"role": "user", "content": context},
+            ],
+            temperature=0.8,
+            max_tokens=1000,
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # Parse JSON from response
+        # Handle markdown code blocks
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+
+        dialogue = json.loads(content)
+
+        # Validate structure
+        valid_dialogue = []
+        for line in dialogue:
+            if isinstance(line, dict) and "speaker" in line and "text" in line:
+                valid_line = {
+                    "speaker": line.get("speaker", "Narrator"),
+                    "text": line.get("text", ""),
+                    "emoji": line.get("emoji", "💬"),
+                }
+                if line.get("event"):
+                    valid_line["event"] = line["event"]
+                if line.get("choices"):
+                    valid_line["choices"] = line["choices"]
+                valid_dialogue.append(valid_line)
+
+        return jsonify({"success": True, "dialogue": valid_dialogue})
+
+    except json.JSONDecodeError as e:
+        return jsonify({"success": False, "error": f"Invalid JSON from AI: {str(e)}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 if __name__ == "__main__":
