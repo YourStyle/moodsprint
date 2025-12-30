@@ -324,7 +324,7 @@ class CardService:
 Ответь ТОЛЬКО одним словом: easy, medium, hard или very_hard"""
 
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",
@@ -687,7 +687,7 @@ class CardService:
 ОПИСАНИЕ: [описание]"""
 
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",

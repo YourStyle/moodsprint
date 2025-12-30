@@ -50,7 +50,7 @@ class QuestService:
 {{"title": "Название квеста", "description": "Тематическое описание"}}"""
 
                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-5-mini",
                     messages=[
                         {
                             "role": "system",

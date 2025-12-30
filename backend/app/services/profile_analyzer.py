@@ -62,11 +62,14 @@ Return ONLY valid JSON, no other text.
 
         current_app.logger.info("AI analyzing user profile from onboarding")
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a productivity coach analyzing user profiles. Always respond with valid JSON only.",
+                    "content": (
+                        "You are a productivity coach analyzing user profiles. "
+                        "Always respond with valid JSON only."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],

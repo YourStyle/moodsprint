@@ -2129,7 +2129,7 @@ def generate_dialogue():
 
         # Build API request with conversation memory
         api_params = {
-            "model": "gpt-5.2",
+            "model": "gpt-5-mini",
             "input": full_input,
         }
 

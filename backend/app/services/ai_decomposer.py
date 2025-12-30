@@ -297,7 +297,7 @@ class AIDecomposer:
 
         current_app.logger.info(f"AI decomposing task: {task_title}")
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "system",

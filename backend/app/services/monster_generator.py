@@ -111,7 +111,7 @@ Be creative with names - avoid generic names. Each monster should feel unique an
                 "Always respond with valid JSON only."
             )
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": prompt},

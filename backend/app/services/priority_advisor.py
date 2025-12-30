@@ -87,11 +87,14 @@ class PriorityAdvisor:
 
         current_app.logger.info(f"AI advising priority for task: {task_title}")
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты помощник по продуктивности. Отвечай только валидным JSON на русском.",
+                    "content": (
+                        "Ты помощник по продуктивности. "
+                        "Отвечай только валидным JSON на русском."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -136,19 +139,29 @@ class PriorityAdvisor:
         should_increase = postponed_count >= 3
 
         if not should_increase:
+            reason = (
+                f"Задача перенесена {postponed_count} раз(а), "
+                "пока не требует повышения приоритета"
+            )
             return {
                 "should_increase": False,
-                "reason": f"Задача перенесена {postponed_count} раз(а), пока не требует повышения приоритета",
+                "reason": reason,
                 "new_priority": current_priority,
             }
 
         # Determine new priority
         if current_priority == "low":
             new_priority = "medium"
-            reason = f"Задача переносилась {postponed_count} раз(а). Повышен приоритет с низкого до среднего."
+            reason = (
+                f"Задача переносилась {postponed_count} раз(а). "
+                "Повышен приоритет с низкого до среднего."
+            )
         elif current_priority == "medium":
             new_priority = "high"
-            reason = f"Задача переносилась {postponed_count} раз(а). Повышен приоритет до высокого."
+            reason = (
+                f"Задача переносилась {postponed_count} раз(а). "
+                "Повышен приоритет до высокого."
+            )
         else:
             new_priority = "high"
             reason = "Задача уже имеет высокий приоритет."
