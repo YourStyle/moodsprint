@@ -1840,6 +1840,84 @@ def update_chapter(chapter_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+@app.route("/campaign/chapters/<int:chapter_id>/delete", methods=["POST"])
+@login_required
+def delete_chapter(chapter_id: int):
+    """Delete a campaign chapter and its levels."""
+    try:
+        # Get chapter genre for renumbering
+        chapter = db.session.execute(
+            text("SELECT genre, number FROM campaign_chapters WHERE id = :id"),
+            {"id": chapter_id},
+        ).fetchone()
+
+        if not chapter:
+            return jsonify({"success": False, "error": "Chapter not found"}), 404
+
+        genre = chapter[0]
+        deleted_number = chapter[1]
+
+        # Delete levels first (cascade should handle this but being explicit)
+        db.session.execute(
+            text("DELETE FROM campaign_levels WHERE chapter_id = :id"),
+            {"id": chapter_id},
+        )
+
+        # Delete chapter
+        db.session.execute(
+            text("DELETE FROM campaign_chapters WHERE id = :id"),
+            {"id": chapter_id},
+        )
+
+        # Renumber remaining chapters in same genre
+        db.session.execute(
+            text("""
+                UPDATE campaign_chapters
+                SET number = number - 1
+                WHERE genre = :genre AND number > :deleted_number
+            """),
+            {"genre": genre, "deleted_number": deleted_number},
+        )
+
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/chapters/renumber/<genre>", methods=["POST"])
+@login_required
+def renumber_chapters(genre: str):
+    """Renumber chapters in a genre to be sequential starting from 1."""
+    try:
+        # Get all chapters in genre ordered by current number
+        chapters = db.session.execute(
+            text("""
+                SELECT id FROM campaign_chapters
+                WHERE genre = :genre
+                ORDER BY number
+            """),
+            {"genre": genre},
+        ).fetchall()
+
+        # Update each chapter with sequential number
+        for idx, chapter in enumerate(chapters, start=1):
+            db.session.execute(
+                text("UPDATE campaign_chapters SET number = :num WHERE id = :id"),
+                {"num": idx, "id": chapter[0]},
+            )
+
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": f"Renumbered {len(chapters)} chapters in {genre}",
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @app.route("/campaign/chapters/<int:chapter_id>/levels/new", methods=["POST"])
 @login_required
 def create_level(chapter_id: int):
