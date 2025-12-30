@@ -337,12 +337,20 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
             </div>
 
             <!-- Add Node Button -->
-            <button onclick="addDialogNode()" class="mt-4 w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Add Dialogue Line
-            </button>
+            <div class="mt-4 flex gap-2">
+                <button onclick="addDialogNode()" class="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Добавить строку
+                </button>
+                <button onclick="generateDialogueWithAI()" id="aiGenerateBtn" class="px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg text-purple-500 hover:border-purple-500 hover:text-purple-700 hover:bg-purple-50 transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                    🤖 AI Генерация
+                </button>
+            </div>
         </div>
 
         <div class="p-4 border-t flex justify-end gap-2">
@@ -358,13 +366,13 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
         <div class="flex items-start gap-4">
             <!-- Speaker Section -->
             <div class="flex-shrink-0">
-                <select class="node-speaker border rounded-lg px-3 py-2 text-sm w-28" onchange="updateNodePreview(this)">
-                    <option value="Monster">Monster</option>
-                    <option value="Hero">Hero</option>
-                    <option value="Narrator">Narrator</option>
-                    <option value="Custom">Custom...</option>
+                <select class="node-speaker border rounded-lg px-3 py-2 text-sm w-32" onchange="updateNodePreview(this)">
+                    <option value="Monster">👹 Монстр</option>
+                    <option value="Hero">🦸 Герой</option>
+                    <option value="Narrator">📖 Рассказчик</option>
+                    <option value="Custom">✏️ Свой...</option>
                 </select>
-                <input type="text" class="node-custom-speaker hidden mt-2 border rounded-lg px-3 py-2 text-sm w-28" placeholder="Name">
+                <input type="text" class="node-custom-speaker hidden mt-2 border rounded-lg px-3 py-2 text-sm w-32" placeholder="Имя персонажа">
             </div>
 
             <!-- Content Section -->
@@ -669,6 +677,10 @@ function renderDialogNodes() {
 }
 
 function addDialogNode() {
+    // IMPORTANT: Save current data from DOM before adding new node
+    const existingData = collectDialogData();
+    dialogData[currentDialogType] = existingData;
+
     const defaultEmoji = currentDialogType === 'before' ? '👹' : '🎉';
     const defaultSpeaker = currentDialogType === 'before' ? 'Monster' : 'Hero';
 
@@ -680,12 +692,21 @@ function addDialogNode() {
 
     renderDialogNodes();
 
-    // Scroll to new node
+    // Scroll to new node and focus on text field
     const container = document.getElementById('dialogNodes');
-    container.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+    const lastNode = container.lastElementChild;
+    if (lastNode) {
+        lastNode.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+            lastNode.querySelector('.node-text')?.focus();
+        }, 100);
+    }
 }
 
 function removeNode(btn) {
+    // Save current data first
+    dialogData[currentDialogType] = collectDialogData();
+
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
     dialogData[currentDialogType].splice(index, 1);
@@ -693,6 +714,9 @@ function removeNode(btn) {
 }
 
 function moveNodeUp(btn) {
+    // Save current data first
+    dialogData[currentDialogType] = collectDialogData();
+
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
     if (index > 0) {
@@ -704,6 +728,9 @@ function moveNodeUp(btn) {
 }
 
 function moveNodeDown(btn) {
+    // Save current data first
+    dialogData[currentDialogType] = collectDialogData();
+
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
     if (index < dialogData[currentDialogType].length - 1) {
@@ -878,5 +905,71 @@ showAddLevelModal = function() {
 document.getElementById('dialogBuilderModal').addEventListener('click', function(e) {
     if (e.target === this) closeDialogBuilder();
 });
+
+// ============ AI Dialogue Generation ============
+async function generateDialogueWithAI() {
+    const btn = document.getElementById('aiGenerateBtn');
+    const originalText = btn.innerHTML;
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Генерация...
+    `;
+
+    // Get context
+    const chapterName = '{{ chapter.name }}';
+    const chapterGenre = '{{ chapter.genre }}';
+    const chapterDescription = '{{ chapter.description or "" }}';
+    const dialogType = currentDialogType;
+
+    // Get monster from level form if available
+    const monsterSelect = document.querySelector('[name="monster_id"]');
+    const monsterOption = monsterSelect?.selectedOptions[0];
+    const monsterName = monsterOption?.textContent || 'Монстр';
+
+    // Get existing dialogue for context
+    const existingLines = collectDialogData();
+
+    const prompt = dialogType === 'before'
+        ? `Напиши диалог перед битвой с монстром. Монстр угрожает герою, герой отвечает.`
+        : `Напиши диалог после победы над монстром. Монстр побеждён, герой торжествует.`;
+
+    try {
+        const response = await fetch('/campaign/generate-dialogue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chapter_name: chapterName,
+                chapter_genre: chapterGenre,
+                chapter_description: chapterDescription,
+                monster_name: monsterName,
+                dialog_type: dialogType,
+                existing_lines: existingLines,
+                prompt: prompt
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.dialogue) {
+            // Save current data first
+            dialogData[currentDialogType] = collectDialogData();
+            // Append AI generated lines
+            dialogData[currentDialogType] = dialogData[currentDialogType].concat(result.dialogue);
+            renderDialogNodes();
+        } else {
+            alert('Ошибка генерации: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 </script>
 {% endblock %}

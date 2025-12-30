@@ -19,7 +19,8 @@ gunicorn==23.0.0
 requests>=2.31.0
 
 # AI (OpenAI for task decomposition)
-openai>=1.40.0
+# Requires >=2.11.0 for GPT-5.2 Responses API support
+openai>=2.11.0
 
 # Security
 cryptography==43.0.0
