@@ -2,9 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users } from 'lucide-react';
+import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users, Wallet } from 'lucide-react';
 import { Card, Progress, Button } from '@/components/ui';
+import { TonConnectButton } from '@/components/ui/TonConnectButton';
 import { XPBar, StreakBadge, AchievementCard, DailyQuests } from '@/components/gamification';
+import { SparksBalance } from '@/components/sparks';
 import { GenreSelector } from '@/components/GenreSelector';
 import { useAppStore } from '@/lib/store';
 import { gamificationService, onboardingService } from '@/services';
@@ -118,6 +120,20 @@ export default function ProfilePage() {
           >
             <Settings className="w-5 h-5" />
           </button>
+        </div>
+      </Card>
+
+      {/* Sparks Balance */}
+      <SparksBalance />
+
+      {/* Wallet */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-cyan-500" />
+            <span className="font-medium text-white">TON Кошелёк</span>
+          </div>
+          <TonConnectButton />
         </div>
       </Card>
 

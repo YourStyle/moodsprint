@@ -24,6 +24,12 @@ class User(db.Model):
     last_activity_date = db.Column(db.Date, nullable=True)
     last_daily_bonus_date = db.Column(db.Date, nullable=True)
 
+    # Sparks - internal currency
+    sparks = db.Column(db.Integer, default=0, nullable=False)
+
+    # TON wallet integration
+    ton_wallet_address = db.Column(db.String(48), nullable=True, index=True)
+
     # Referral system
     referred_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     referral_reward_given = db.Column(db.Boolean, default=False, nullable=False)
@@ -93,6 +99,18 @@ class User(db.Model):
             "new_level": new_level,
         }
 
+    def add_sparks(self, amount: int) -> int:
+        """Add sparks to user. Returns new balance."""
+        self.sparks += amount
+        return self.sparks
+
+    def spend_sparks(self, amount: int) -> bool:
+        """Spend sparks. Returns True if successful, False if insufficient."""
+        if self.sparks >= amount:
+            self.sparks -= amount
+            return True
+        return False
+
     def update_streak(self) -> bool:
         """Update streak based on activity. Returns True if streak increased."""
         today = date.today()
@@ -134,6 +152,8 @@ class User(db.Model):
             "xp_progress_percent": self.xp_progress_percent,
             "streak_days": self.streak_days,
             "longest_streak": self.longest_streak,
+            "sparks": self.sparks,
+            "ton_wallet_address": self.ton_wallet_address,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

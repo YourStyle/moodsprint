@@ -14,4 +14,5 @@ from app.api import guilds  # noqa: F401, E402
 from app.api import marketplace  # noqa: F401, E402
 from app.api import mood  # noqa: F401, E402
 from app.api import onboarding  # noqa: F401, E402
+from app.api import sparks  # noqa: F401, E402
 from app.api import tasks  # noqa: F401, E402

@@ -2116,7 +2116,15 @@ def generate_dialogue():
         if not openai_key:
             return jsonify({"success": False, "error": "OpenAI API key not configured"})
 
-        client = openai.OpenAI(api_key=openai_key)
+        # Create client with optional proxy support
+        openai_proxy = os.environ.get("OPENAI_PROXY")
+        if openai_proxy:
+            import httpx
+
+            http_client = httpx.Client(proxy=openai_proxy)
+            client = openai.OpenAI(api_key=openai_key, http_client=http_client)
+        else:
+            client = openai.OpenAI(api_key=openai_key)
 
         # GPT-5.2 uses the Responses API with conversation memory
         system_instruction = f"""Ты сценарист для мобильной RPG игры в жанре {genre_context}.

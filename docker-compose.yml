@@ -95,6 +95,7 @@ services:
       BOT_SECRET: ${BOT_SECRET:-}
       API_URL: http://backend:5000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_PROXY: ${OPENAI_PROXY:-}
     depends_on:
       db:
         condition: service_healthy

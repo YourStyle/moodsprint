@@ -16,6 +16,7 @@ requests==2.31.0
 # AI (OpenAI for dialogue generation)
 # Requires >=2.11.0 for GPT-5.2 Responses API support
 openai>=2.11.0
+httpx>=0.27.0  # For proxy support
 
 # Testing
 pytest==8.3.4

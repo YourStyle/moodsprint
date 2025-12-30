@@ -15,3 +15,4 @@ export { eventsService } from './events';
 export { guildsService } from './guilds';
 export { marketplaceService } from './marketplace';
 export { campaignService } from './campaign';
+export { sparksService } from './sparks';

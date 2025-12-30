@@ -22,6 +22,7 @@ import { XPPopup } from '@/components/gamification';
 import { GenreSelectionModal } from '@/components/GenreSelectionModal';
 import { ReferralRewardModal } from '@/components/cards';
 import { LanguageProvider } from '@/lib/i18n';
+import { TonConnectProvider } from '@/components/TonConnectProvider';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -305,13 +306,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <AuthProvider>
-          {children}
-          <XPPopup />
-          <GenreSelectionModal />
-        </AuthProvider>
-      </LanguageProvider>
+      <TonConnectProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            {children}
+            <XPPopup />
+            <GenreSelectionModal />
+          </AuthProvider>
+        </LanguageProvider>
+      </TonConnectProvider>
     </QueryClientProvider>
   );
 }
