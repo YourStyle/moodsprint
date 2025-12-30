@@ -1939,7 +1939,7 @@ def delete_level(level_id: int):
 @app.route("/campaign/generate-dialogue", methods=["POST"])
 @login_required
 def generate_dialogue():
-    """Generate dialogue using AI."""
+    """Generate dialogue using AI with genre-based conversation memory."""
     import json
 
     import openai
@@ -1951,17 +1951,31 @@ def generate_dialogue():
     monster_name = data.get("monster_name", "Монстр")
     dialog_type = data.get("dialog_type", "before")
     existing_lines = data.get("existing_lines", [])
+    reset_context = data.get("reset_context", False)
 
     # Genre descriptions for context
     genre_contexts = {
-        "fantasy": "эпическое фэнтези в стиле Властелина Колец, рыцари и магия",
-        "magic": "волшебный мир как в Гарри Поттере, заклинания и магические существа",
-        "scifi": "научная фантастика, космос и технологии будущего",
-        "cyberpunk": "киберпанк, неоновые города и хакеры",
-        "anime": "аниме стиль, драматичные битвы и эмоциональные персонажи",
+        "fantasy": "эпическое фэнтези в стиле Властелина Колец, рыцари и магия, средневековье",
+        "magic": "волшебный мир как в Гарри Поттере, заклинания и магические существа, школа магии",
+        "scifi": "научная фантастика, космос и технологии будущего, инопланетяне и роботы",
+        "cyberpunk": "киберпанк, неоновые города и хакеры, корпорации и имплантаты",
+        "anime": "аниме стиль, драматичные битвы и эмоциональные персонажи, яркие атаки",
     }
 
     genre_context = genre_contexts.get(chapter_genre, "фэнтези")
+
+    # Get previous conversation state for this genre
+    previous_response_id = None
+    if not reset_context:
+        try:
+            state = db.session.execute(
+                text("SELECT last_response_id FROM ai_conversation_state WHERE genre = :genre"),
+                {"genre": chapter_genre},
+            ).fetchone()
+            if state and state[0]:
+                previous_response_id = state[0]
+        except Exception:
+            pass  # Table might not exist yet
 
     # Build prompt
     if dialog_type == "before":
@@ -2016,14 +2030,42 @@ def generate_dialogue():
 
         client = openai.OpenAI(api_key=openai_key)
 
-        # GPT-5.2 uses the Responses API
-        system_instruction = "Ты сценарист для мобильной RPG игры. Пиши короткие драматичные диалоги на русском языке. Отвечай ТОЛЬКО валидным JSON массивом."
+        # GPT-5.2 uses the Responses API with conversation memory
+        system_instruction = f"""Ты сценарист для мобильной RPG игры в жанре {genre_context}.
+Ты помнишь все предыдущие диалоги и персонажей этого жанра.
+Пиши короткие драматичные диалоги на русском языке.
+Сохраняй последовательность сюжета и характеры персонажей.
+Отвечай ТОЛЬКО валидным JSON массивом."""
+
         full_input = f"{system_instruction}\n\n{context}"
 
-        response = client.responses.create(
-            model="gpt-5.2",
-            input=full_input,
-        )
+        # Build API request with conversation memory
+        api_params = {
+            "model": "gpt-5.2",
+            "input": full_input,
+        }
+
+        # Chain with previous response for genre context continuity
+        if previous_response_id:
+            api_params["previous_response_id"] = previous_response_id
+
+        response = client.responses.create(**api_params)
+
+        # Save new response_id for this genre
+        try:
+            db.session.execute(
+                text("""
+                    INSERT INTO ai_conversation_state (genre, last_response_id, updated_at)
+                    VALUES (:genre, :response_id, NOW())
+                    ON CONFLICT (genre) DO UPDATE SET
+                        last_response_id = :response_id,
+                        updated_at = NOW()
+                """),
+                {"genre": chapter_genre, "response_id": response.id},
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # Non-critical, continue anyway
 
         content = response.output_text.strip()
 
@@ -2052,11 +2094,73 @@ def generate_dialogue():
                     valid_line["choices"] = line["choices"]
                 valid_dialogue.append(valid_line)
 
-        return jsonify({"success": True, "dialogue": valid_dialogue})
+        return jsonify({
+            "success": True,
+            "dialogue": valid_dialogue,
+            "context_used": previous_response_id is not None,
+            "genre": chapter_genre,
+        })
 
     except json.JSONDecodeError as e:
         return jsonify({"success": False, "error": f"Invalid JSON from AI: {str(e)}"})
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/ai-contexts")
+@login_required
+def ai_contexts():
+    """View AI conversation contexts by genre."""
+    try:
+        contexts = db.session.execute(
+            text("""
+                SELECT genre, last_response_id, updated_at
+                FROM ai_conversation_state
+                ORDER BY updated_at DESC
+            """)
+        ).fetchall()
+
+        return jsonify({
+            "success": True,
+            "contexts": [
+                {
+                    "genre": row[0],
+                    "has_context": row[1] is not None,
+                    "updated_at": str(row[2]) if row[2] else None,
+                }
+                for row in contexts
+            ],
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/ai-contexts/<genre>/reset", methods=["POST"])
+@login_required
+def reset_ai_context(genre: str):
+    """Reset AI conversation context for a specific genre."""
+    try:
+        db.session.execute(
+            text("DELETE FROM ai_conversation_state WHERE genre = :genre"),
+            {"genre": genre},
+        )
+        db.session.commit()
+        return jsonify({"success": True, "message": f"Context for {genre} reset"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/ai-contexts/reset-all", methods=["POST"])
+@login_required
+def reset_all_ai_contexts():
+    """Reset all AI conversation contexts."""
+    try:
+        db.session.execute(text("DELETE FROM ai_conversation_state"))
+        db.session.commit()
+        return jsonify({"success": True, "message": "All contexts reset"})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)})
 
 
