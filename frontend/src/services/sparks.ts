@@ -2,8 +2,8 @@
  * Sparks currency API service.
  */
 
-import { apiClient } from './api';
-import type { ApiResponse } from './api';
+import { api } from './api';
+import type { ApiResponse } from '@/domain/types';
 
 export interface SparksPack {
   id: string;
@@ -54,14 +54,14 @@ export const sparksService = {
       recent_transactions: SparksTransaction[];
     }>
   > {
-    return apiClient.get('/sparks/balance');
+    return api.get('/sparks/balance');
   },
 
   /**
    * Get available sparks packs for purchase.
    */
   async getPacks(): Promise<ApiResponse<{ packs: SparksPack[] }>> {
-    return apiClient.get('/sparks/packs');
+    return api.get('/sparks/packs');
   },
 
   /**
@@ -70,28 +70,28 @@ export const sparksService = {
   async saveWalletAddress(
     walletAddress: string
   ): Promise<ApiResponse<{ wallet_address: string; message: string }>> {
-    return apiClient.post('/sparks/wallet', { wallet_address: walletAddress });
+    return api.post('/sparks/wallet', { wallet_address: walletAddress });
   },
 
   /**
    * Disconnect TON wallet.
    */
   async disconnectWallet(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete('/sparks/wallet');
+    return api.delete('/sparks/wallet');
   },
 
   /**
    * Get deposit info for TON deposits.
    */
   async getDepositInfo(): Promise<ApiResponse<DepositInfo>> {
-    return apiClient.get('/sparks/deposit-info');
+    return api.get('/sparks/deposit-info');
   },
 
   /**
    * Get TON deposit history.
    */
   async getDeposits(): Promise<ApiResponse<{ deposits: TonDeposit[] }>> {
-    return apiClient.get('/sparks/deposits');
+    return api.get('/sparks/deposits');
   },
 
   /**
@@ -108,6 +108,6 @@ export const sparksService = {
       current_page: number;
     }>
   > {
-    return apiClient.get(`/sparks/transactions?page=${page}&per_page=${perPage}`);
+    return api.get(`/sparks/transactions?page=${page}&per_page=${perPage}`);
   },
 };

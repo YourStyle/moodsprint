@@ -18,6 +18,8 @@ export interface User {
   xp_progress_percent: number;
   streak_days: number;
   longest_streak: number;
+  sparks: number;
+  ton_wallet_address: string | null;
   created_at: string;
 }
 

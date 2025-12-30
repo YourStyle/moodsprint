@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Card, Button } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
 import { SparksBalance } from '@/components/sparks';
-import { sparksService } from '@/services/sparks';
+import { sparksService, SparksPack } from '@/services/sparks';
 import { useAppStore } from '@/lib/store';
 
 export default function StorePage() {
@@ -27,7 +27,7 @@ export default function StorePage() {
     enabled: !!user,
   });
 
-  const packs = packsData?.data?.packs || [];
+  const packs: SparksPack[] = packsData?.data?.packs || [];
   const depositInfo = depositData?.data;
 
   const handleCopyMemo = () => {
