@@ -1,4 +1,4 @@
-"""Marketplace service for Telegram Stars trading."""
+"""Marketplace service for Sparks trading."""
 
 import logging
 from datetime import datetime
@@ -6,35 +6,28 @@ from typing import Any
 
 from app import db
 from app.models.card import UserCard
-from app.models.marketplace import (
-    MIN_PRICES,
-    MarketListing,
-    StarsTransaction,
-    UserStarsBalance,
-)
+from app.models.marketplace import MIN_PRICES, MarketListing
+from app.models.sparks import SparksTransaction
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 # Platform commission (10%)
 COMMISSION_RATE = 0.10
 
-# Cooldown skip price per hour remaining (in Stars)
-COOLDOWN_SKIP_RATE = 2  # 2 Stars per hour
+# Cooldown skip price per hour remaining (in Sparks)
+COOLDOWN_SKIP_RATE = 2  # 2 Sparks per hour
 
 
 class MarketplaceService:
     """Service for managing marketplace listings and transactions."""
 
-    def get_user_balance(self, user_id: int) -> UserStarsBalance:
-        """Get or create user's Stars balance."""
-        balance = UserStarsBalance.query.filter_by(user_id=user_id).first()
-        if not balance:
-            balance = UserStarsBalance(user_id=user_id)
-            db.session.add(balance)
-            db.session.commit()
-        return balance
+    def get_user_sparks(self, user_id: int) -> int:
+        """Get user's Sparks balance."""
+        user = User.query.get(user_id)
+        return user.sparks if user else 0
 
-    def list_card(self, user_id: int, card_id: int, price_stars: int) -> dict[str, Any]:
+    def list_card(self, user_id: int, card_id: int, price: int) -> dict[str, Any]:
         """List a card for sale on the marketplace."""
         card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
         if not card:
@@ -64,22 +57,23 @@ class MarketplaceService:
 
         # Check minimum price
         min_price = MIN_PRICES.get(card.rarity, 1)
-        if price_stars < min_price:
+        if price < min_price:
             return {
                 "error": "price_too_low",
                 "min_price": min_price,
-                "message": f"Минимальная цена для {card.rarity}: {min_price} ⭐",
+                "message": f"Минимальная цена для {card.rarity}: {min_price} ✨",
             }
 
         listing = MarketListing(
             seller_id=user_id,
             card_id=card_id,
-            price_stars=price_stars,
+            price_stars=price,  # Keep for backwards compatibility
+            price_sparks=price,
         )
         db.session.add(listing)
         db.session.commit()
 
-        logger.info(f"Card {card_id} listed by user {user_id} for {price_stars} Stars")
+        logger.info(f"Card {card_id} listed by user {user_id} for {price} Sparks")
         return {"success": True, "listing": listing.to_dict()}
 
     def cancel_listing(self, user_id: int, listing_id: int) -> dict[str, Any]:
@@ -152,12 +146,8 @@ class MarketplaceService:
         ).all()
         return [listing.to_dict() for listing in listings]
 
-    def create_purchase_invoice(self, buyer_id: int, listing_id: int) -> dict[str, Any]:
-        """Create invoice data for Telegram Stars purchase.
-
-        Returns data needed to create a Telegram invoice.
-        The actual payment is processed by the bot.
-        """
+    def purchase_with_sparks(self, buyer_id: int, listing_id: int) -> dict[str, Any]:
+        """Purchase a listing directly with Sparks."""
         listing = MarketListing.query.filter_by(id=listing_id, status="active").first()
         if not listing:
             return {"error": "listing_not_found"}
@@ -165,45 +155,40 @@ class MarketplaceService:
         if listing.seller_id == buyer_id:
             return {"error": "cannot_buy_own"}
 
-        return {
-            "success": True,
-            "invoice_data": {
-                "title": f"Карта: {listing.card.name}",
-                "description": (
-                    f"Покупка карты {listing.card.name} "
-                    f"({listing.card.rarity}) за {listing.price_stars} ⭐"
-                ),
-                "payload": f"marketplace_purchase_{listing_id}_{buyer_id}",
-                "price": listing.price_stars,
-                "listing_id": listing_id,
-                "card": listing.card.to_dict(),
-            },
-        }
+        buyer = User.query.get(buyer_id)
+        if not buyer:
+            return {"error": "buyer_not_found"}
 
-    def complete_purchase(
-        self,
-        listing_id: int,
-        buyer_id: int,
-        telegram_payment_id: str,
-    ) -> dict[str, Any]:
-        """Complete a purchase after successful Telegram Stars payment.
+        seller = User.query.get(listing.seller_id)
+        if not seller:
+            return {"error": "seller_not_found"}
 
-        Called by bot after receiving successful_payment.
-        """
-        listing = MarketListing.query.filter_by(id=listing_id, status="active").first()
-        if not listing:
-            return {"error": "listing_not_found"}
+        # Use price_sparks if available, fall back to price_stars
+        price = listing.price_sparks or listing.price_stars
+        if not price:
+            return {"error": "invalid_price"}
 
-        if listing.seller_id == buyer_id:
-            return {"error": "cannot_buy_own"}
+        # Check buyer has enough Sparks
+        if buyer.sparks < price:
+            return {
+                "error": "insufficient_sparks",
+                "required": price,
+                "available": buyer.sparks,
+                "message": f"Недостаточно Sparks. Нужно: {price}, у вас: {buyer.sparks}",
+            }
 
         card = listing.card
         seller_id = listing.seller_id
-        price = listing.price_stars
 
         # Calculate seller revenue (after commission)
         commission = int(price * COMMISSION_RATE)
         seller_revenue = price - commission
+
+        # Deduct from buyer
+        buyer.spend_sparks(price)
+
+        # Add to seller
+        seller.add_sparks(seller_revenue)
 
         # Transfer card ownership
         card.user_id = buyer_id
@@ -215,20 +200,17 @@ class MarketplaceService:
         listing.sold_at = datetime.utcnow()
 
         # Record transactions
-        # Buyer transaction (spent)
-        buyer_tx = StarsTransaction(
+        buyer_tx = SparksTransaction(
             user_id=buyer_id,
             amount=-price,
             type="card_purchase",
             reference_type="listing",
             reference_id=listing_id,
-            telegram_payment_id=telegram_payment_id,
             description=f"Покупка карты: {card.name}",
         )
         db.session.add(buyer_tx)
 
-        # Seller transaction (received)
-        seller_tx = StarsTransaction(
+        seller_tx = SparksTransaction(
             user_id=seller_id,
             amount=seller_revenue,
             type="card_sale",
@@ -238,21 +220,12 @@ class MarketplaceService:
         )
         db.session.add(seller_tx)
 
-        # Update seller balance (pending until withdrawal)
-        seller_balance = self.get_user_balance(seller_id)
-        seller_balance.pending_balance += seller_revenue
-        seller_balance.total_earned += seller_revenue
-
-        # Update buyer stats
-        buyer_balance = self.get_user_balance(buyer_id)
-        buyer_balance.total_spent += price
-
         db.session.commit()
 
         logger.info(
             f"Purchase completed: listing {listing_id}, "
             f"buyer {buyer_id}, seller {seller_id}, "
-            f"price {price} Stars"
+            f"price {price} Sparks"
         )
 
         return {
@@ -261,12 +234,13 @@ class MarketplaceService:
             "price_paid": price,
             "seller_revenue": seller_revenue,
             "commission": commission,
+            "buyer_balance": buyer.sparks,
         }
 
     def skip_card_cooldown(self, user_id: int, card_id: int) -> dict[str, Any]:
-        """Skip card cooldown by paying Stars.
+        """Skip card cooldown by paying Sparks.
 
-        Price: 2 Stars per hour remaining.
+        Price: 2 Sparks per hour remaining.
         """
         card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
         if not card:
@@ -275,66 +249,55 @@ class MarketplaceService:
         if not card.is_on_cooldown():
             return {"error": "not_on_cooldown"}
 
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "user_not_found"}
+
         # Calculate price
         remaining_seconds = card.get_cooldown_remaining()
         remaining_hours = max(1, (remaining_seconds + 3599) // 3600)  # Round up
         price = remaining_hours * COOLDOWN_SKIP_RATE
 
-        return {
-            "success": True,
-            "invoice_data": {
-                "title": "Пропустить перезарядку",
-                "description": (f"Восстановить карту {card.name} сейчас за {price} ⭐"),
-                "payload": f"skip_cooldown_{card_id}_{user_id}",
-                "price": price,
-                "card_id": card_id,
-                "remaining_hours": remaining_hours,
-            },
-        }
+        # Check if user has enough Sparks
+        if user.sparks < price:
+            return {
+                "error": "insufficient_sparks",
+                "required": price,
+                "available": user.sparks,
+                "message": f"Недостаточно Sparks. Нужно: {price}, у вас: {user.sparks}",
+            }
 
-    def complete_cooldown_skip(
-        self,
-        card_id: int,
-        user_id: int,
-        telegram_payment_id: str,
-        price: int,
-    ) -> dict[str, Any]:
-        """Complete cooldown skip after payment."""
-        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
-        if not card:
-            return {"error": "card_not_found"}
-
-        # Clear cooldown and restore HP
+        # Deduct Sparks and clear cooldown
+        user.spend_sparks(price)
         card.clear_cooldown()
 
         # Record transaction
-        tx = StarsTransaction(
+        tx = SparksTransaction(
             user_id=user_id,
             amount=-price,
             type="skip_cooldown",
             reference_type="card",
             reference_id=card_id,
-            telegram_payment_id=telegram_payment_id,
             description=f"Пропуск перезарядки: {card.name}",
         )
         db.session.add(tx)
-
-        # Update balance stats
-        balance = self.get_user_balance(user_id)
-        balance.total_spent += price
-
         db.session.commit()
 
         logger.info(f"Cooldown skipped for card {card_id} by user {user_id}")
 
-        return {"success": True, "card": card.to_dict()}
+        return {
+            "success": True,
+            "card": card.to_dict(),
+            "price_paid": price,
+            "remaining_sparks": user.sparks,
+        }
 
     def get_transaction_history(
         self, user_id: int, page: int = 1, per_page: int = 20
     ) -> dict[str, Any]:
-        """Get user's transaction history."""
-        query = StarsTransaction.query.filter_by(user_id=user_id).order_by(
-            StarsTransaction.created_at.desc()
+        """Get user's Sparks transaction history."""
+        query = SparksTransaction.query.filter_by(user_id=user_id).order_by(
+            SparksTransaction.created_at.desc()
         )
 
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)

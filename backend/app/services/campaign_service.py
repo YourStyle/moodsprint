@@ -14,7 +14,12 @@ from app.models.campaign import (
     UserCampaignProgress,
 )
 from app.models.card import CardRarity
+from app.models.sparks import SparksTransaction
 from app.models.user_profile import UserProfile
+
+# Sparks rewards per star earned
+SPARKS_PER_STAR = 5  # 5 sparks per star = 15 max per level
+BOSS_SPARKS_BONUS = 50  # Bonus for defeating a boss
 
 logger = logging.getLogger(__name__)
 
@@ -325,11 +330,34 @@ class CampaignService:
                 # Give chapter rewards
                 rewards = self._give_chapter_rewards(user_id, level.chapter)
 
-        # Award XP
+        # Award XP and Sparks
         user = User.query.get(user_id)
         xp_earned = level.xp_reward * stars
+        sparks_earned = 0
+
         if user:
             user.add_xp(xp_earned)
+
+            # Award Sparks for level completion (only for new completions)
+            if is_new_completion:
+                sparks_earned = stars * SPARKS_PER_STAR
+
+                # Boss bonus
+                if level.is_boss:
+                    sparks_earned += BOSS_SPARKS_BONUS
+
+                user.add_sparks(sparks_earned)
+
+                # Record transaction
+                tx = SparksTransaction(
+                    user_id=user_id,
+                    amount=sparks_earned,
+                    type="campaign_reward",
+                    reference_type="level",
+                    reference_id=level_id,
+                    description=f"Награда за уровень: {level.name}",
+                )
+                db.session.add(tx)
 
         db.session.commit()
 
@@ -338,6 +366,7 @@ class CampaignService:
             "won": True,
             "stars_earned": stars,
             "xp_earned": xp_earned,
+            "sparks_earned": sparks_earned,
             "is_new_completion": is_new_completion,
             "chapter_completed": chapter_completed,
             "rewards": rewards,
