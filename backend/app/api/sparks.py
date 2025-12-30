@@ -1,18 +1,25 @@
 """Sparks currency API endpoints."""
 
+import os
+
 from flask import request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
 from app.models import SPARKS_PACKS, SparksTransaction, TonDeposit, User
-from app.utils.auth import get_current_user
 from app.utils.response import error_response, success_response
 
 
 @api_bp.route("/sparks/balance", methods=["GET"])
-@get_current_user
-def get_sparks_balance(current_user: User):
+@jwt_required()
+def get_user_sparks_balance():
     """Get user's sparks balance and recent transactions."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
     # Get recent transactions
     transactions = (
         SparksTransaction.query.filter_by(user_id=current_user.id)
@@ -30,8 +37,8 @@ def get_sparks_balance(current_user: User):
 
 
 @api_bp.route("/sparks/packs", methods=["GET"])
-@get_current_user
-def get_sparks_packs(current_user: User):
+@jwt_required()
+def get_sparks_packs():
     """Get available sparks packs for purchase."""
     packs = []
     for pack_id, pack_data in SPARKS_PACKS.items():
@@ -51,9 +58,14 @@ def get_sparks_packs(current_user: User):
 
 
 @api_bp.route("/sparks/wallet", methods=["POST"])
-@get_current_user
-def save_wallet_address(current_user: User):
+@jwt_required()
+def save_wallet_address():
     """Save user's TON wallet address."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
     data = request.get_json()
     wallet_address = data.get("wallet_address")
 
@@ -76,9 +88,14 @@ def save_wallet_address(current_user: User):
 
 
 @api_bp.route("/sparks/wallet", methods=["DELETE"])
-@get_current_user
-def disconnect_wallet(current_user: User):
+@jwt_required()
+def disconnect_wallet():
     """Disconnect user's TON wallet."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
     current_user.ton_wallet_address = None
     db.session.commit()
 
@@ -86,10 +103,13 @@ def disconnect_wallet(current_user: User):
 
 
 @api_bp.route("/sparks/deposit-info", methods=["GET"])
-@get_current_user
-def get_deposit_info(current_user: User):
+@jwt_required()
+def get_deposit_info():
     """Get information for making a TON deposit."""
-    import os
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
 
     deposit_address = os.environ.get("TON_DEPOSIT_ADDRESS")
 
@@ -110,9 +130,14 @@ def get_deposit_info(current_user: User):
 
 
 @api_bp.route("/sparks/deposits", methods=["GET"])
-@get_current_user
-def get_deposits(current_user: User):
+@jwt_required()
+def get_deposits():
     """Get user's TON deposit history."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
     deposits = (
         TonDeposit.query.filter_by(user_id=current_user.id)
         .order_by(TonDeposit.created_at.desc())
@@ -124,9 +149,14 @@ def get_deposits(current_user: User):
 
 
 @api_bp.route("/sparks/transactions", methods=["GET"])
-@get_current_user
-def get_transactions(current_user: User):
+@jwt_required()
+def get_sparks_transactions():
     """Get user's sparks transaction history."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     per_page = min(per_page, 100)  # Limit max per page

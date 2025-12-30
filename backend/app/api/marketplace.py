@@ -202,7 +202,7 @@ def skip_cooldown(card_id: int):
 
 @api_bp.route("/marketplace/balance", methods=["GET"])
 @jwt_required()
-def get_sparks_balance():
+def get_marketplace_balance():
     """Get user's Sparks balance."""
     user_id = int(get_jwt_identity())
 
@@ -219,7 +219,7 @@ def get_sparks_balance():
 
 @api_bp.route("/marketplace/transactions", methods=["GET"])
 @jwt_required()
-def get_transactions():
+def get_marketplace_transactions():
     """
     Get Sparks transaction history.
 
