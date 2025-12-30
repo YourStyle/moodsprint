@@ -240,4 +240,6 @@ class TestBattleConfig:
         assert response.status_code == 200
         data = response.json
         assert data["success"] is True
-        assert "monster" in data["data"]
+        assert "monster_id" in data["data"]
+        assert "monster_name" in data["data"]
+        assert "scaled_stats" in data["data"]
