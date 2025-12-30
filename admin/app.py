@@ -2016,20 +2016,16 @@ def generate_dialogue():
 
         client = openai.OpenAI(api_key=openai_key)
 
-        response = client.chat.completions.create(
+        # GPT-5.2 uses the Responses API
+        system_instruction = "Ты сценарист для мобильной RPG игры. Пиши короткие драматичные диалоги на русском языке. Отвечай ТОЛЬКО валидным JSON массивом."
+        full_input = f"{system_instruction}\n\n{context}"
+
+        response = client.responses.create(
             model="gpt-5.2",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Ты сценарист для мобильной RPG игры. Пиши короткие драматичные диалоги на русском языке. Отвечай ТОЛЬКО валидным JSON массивом.",
-                },
-                {"role": "user", "content": context},
-            ],
-            temperature=0.8,
-            max_tokens=1000,
+            input=full_input,
         )
 
-        content = response.choices[0].message.content.strip()
+        content = response.output_text.strip()
 
         # Parse JSON from response
         # Handle markdown code blocks
