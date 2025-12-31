@@ -18,7 +18,7 @@ import { Card, Button, Progress } from '@/components/ui';
 import { CreateGuildModal } from '@/components/guilds';
 import { guildsService } from '@/services';
 import { useAppStore } from '@/lib/store';
-import { hapticFeedback, getTelegramWebApp } from '@/lib/telegram';
+import { hapticFeedback, getTelegramWebApp, setupBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Guild, GuildMember } from '@/services/guilds';
 
@@ -32,6 +32,11 @@ export default function GuildsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('my-guild');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Setup native back button
+  useEffect(() => {
+    return setupBackButton(() => router.back());
+  }, [router]);
 
   // Get user's guild
   const { data: myGuildData, isLoading: myGuildLoading } = useQuery({
