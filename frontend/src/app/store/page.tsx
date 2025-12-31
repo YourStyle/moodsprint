@@ -1,18 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Star, ChevronLeft } from 'lucide-react';
+import { Sparkles, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, Button } from '@/components/ui';
 import { SparksBalance } from '@/components/sparks';
 import { sparksService, SparksPack } from '@/services/sparks';
 import { useAppStore } from '@/lib/store';
-import { openInvoice, hapticFeedback } from '@/lib/telegram';
+import { openInvoice, hapticFeedback, setupBackButton } from '@/lib/telegram';
 
 export default function StorePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+
+  // Setup native back button
+  useEffect(() => {
+    return setupBackButton(() => router.back());
+  }, [router]);
 
   const { data: packsData, isLoading: packsLoading } = useQuery({
     queryKey: ['sparks', 'packs'],
@@ -49,14 +55,9 @@ export default function StorePage() {
   return (
     <div className="p-4 space-y-4 pb-24">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <button
-          onClick={() => router.back()}
-          className="p-2 rounded-xl bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-bold text-white">Магазин Sparks</h1>
+      <div className="flex flex-col items-center mb-4">
+        <Sparkles className="w-8 h-8 text-amber-400 mb-1" />
+        <h1 className="text-xl font-bold text-white">Магазин</h1>
       </div>
 
       {/* Current Balance */}

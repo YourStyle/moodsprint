@@ -1,5 +1,7 @@
 """Database connection for bot."""
 
+from contextlib import asynccontextmanager
+
 from config import config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -8,8 +10,9 @@ engine = create_async_engine(config.DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+@asynccontextmanager
 async def get_session() -> AsyncSession:
-    """Get database session."""
+    """Get database session as async context manager."""
     async with async_session() as session:
         yield session
 
