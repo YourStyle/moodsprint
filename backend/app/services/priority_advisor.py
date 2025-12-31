@@ -87,7 +87,7 @@ class PriorityAdvisor:
 
         current_app.logger.info(f"AI advising priority for task: {task_title}")
         response = self.client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -98,7 +98,7 @@ class PriorityAdvisor:
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=200,
+            max_completion_tokens=200,
         )
         current_app.logger.info(
             f"AI priority advice result: {response.choices[0].message.content}"

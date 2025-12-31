@@ -62,7 +62,7 @@ Return ONLY valid JSON, no other text.
 
         current_app.logger.info("AI analyzing user profile from onboarding")
         response = self.client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
@@ -74,7 +74,7 @@ Return ONLY valid JSON, no other text.
                 {"role": "user", "content": prompt},
             ],
             temperature=0.7,
-            max_tokens=500,
+            max_completion_tokens=500,
         )
         current_app.logger.info(
             f"AI profile analysis result: {response.choices[0].message.content}"

@@ -50,7 +50,7 @@ class QuestService:
 {{"title": "Название квеста", "description": "Тематическое описание"}}"""
 
                 response = self.client.chat.completions.create(
-                    model="gpt-5-mini",
+                    model="gpt-4o-mini",
                     messages=[
                         {
                             "role": "system",
@@ -61,7 +61,7 @@ class QuestService:
                         },
                         {"role": "user", "content": prompt},
                     ],
-                    max_tokens=200,
+                    max_completion_tokens=200,
                 )
 
                 import json
