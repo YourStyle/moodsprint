@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Swords,
   Trophy,
@@ -19,11 +19,13 @@ import {
   Calendar,
   Zap,
   Plus,
+  Map,
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
+import { LoreSheet } from '@/components/campaign';
 import { FeatureBanner } from '@/components/features';
-import { gamificationService, eventsService } from '@/services';
+import { gamificationService, eventsService, campaignService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
@@ -34,6 +36,7 @@ import type {
   TurnResult,
   BattleLogEntry,
 } from '@/services/gamification';
+import type { LevelCompletionResult } from '@/services/campaign';
 
 type Tab = 'battle' | 'leaderboard';
 type GameState = 'select' | 'cards' | 'battle' | 'result';
@@ -41,9 +44,22 @@ type LeaderboardType = 'weekly' | 'all_time';
 
 export default function ArenaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
   const { t } = useLanguage();
+
+  // Campaign mode
+  const campaignLevelId = searchParams.get('campaign_level');
+  const [campaignMode, setCampaignMode] = useState(!!campaignLevelId);
+  const [campaignBattleConfig, setCampaignBattleConfig] = useState<{
+    monster_id: number;
+    monster_name: string;
+    is_boss: boolean;
+    scaled_stats: { hp: number; attack: number; defense: number; xp_reward: number };
+  } | null>(null);
+  const [campaignResult, setCampaignResult] = useState<LevelCompletionResult | null>(null);
+  const [showCampaignOutro, setShowCampaignOutro] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<Tab>('battle');
@@ -64,6 +80,9 @@ export default function ArenaPage() {
 
   // Leaderboard state
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('weekly');
+
+  // Campaign loading state
+  const [campaignLoading, setCampaignLoading] = useState(!!campaignLevelId);
 
   // Battle queries
   const { data: monstersData, isLoading: monstersLoading } = useQuery({
@@ -166,7 +185,7 @@ export default function ArenaPage() {
         }
 
         // Clear animations and update state
-        setTimeout(() => {
+        setTimeout(async () => {
           setShowTurnAnimation(false);
           setAttackingCardId(null);
           setAttackedCardId(null);
@@ -176,7 +195,39 @@ export default function ArenaPage() {
           setSelectedTargetCard(null);
 
           if (response.data!.status === 'won' || response.data!.status === 'lost') {
-            setBattleResult(response.data!.result || null);
+            const result = response.data!.result;
+            setBattleResult(result || null);
+
+            // Handle campaign level completion
+            if (campaignMode && campaignLevelId) {
+              try {
+                const completionData = {
+                  won: response.data!.status === 'won',
+                  rounds: result?.rounds || 0,
+                  hp_remaining: response.data!.battle.state.player_cards
+                    .filter(c => c.alive)
+                    .reduce((sum, c) => sum + c.hp, 0),
+                  cards_lost: result?.cards_lost?.length || 0,
+                };
+
+                const completionResponse = await campaignService.completeLevel(
+                  Number(campaignLevelId),
+                  completionData
+                );
+
+                if (completionResponse.success && completionResponse.data) {
+                  setCampaignResult(completionResponse.data);
+
+                  // Show outro dialogue if available
+                  if (completionResponse.data.dialogue_after?.length || completionResponse.data.story_outro) {
+                    setShowCampaignOutro(true);
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to complete campaign level:', error);
+              }
+            }
+
             setGameState('result');
             hapticFeedback(response.data!.status === 'won' ? 'success' : 'error');
           }
@@ -248,6 +299,12 @@ export default function ArenaPage() {
   };
 
   const handleBackToSelect = () => {
+    // In campaign mode, go back to campaign page
+    if (campaignMode) {
+      router.push('/campaign');
+      return;
+    }
+
     setGameState('select');
     setSelectedMonster(null);
     setSelectedCards([]);
@@ -255,6 +312,8 @@ export default function ArenaPage() {
     setBattleResult(null);
     setSelectedPlayerCard(null);
     setSelectedTargetCard(null);
+    setCampaignResult(null);
+    setShowCampaignOutro(false);
     queryClient.invalidateQueries({ queryKey: ['arena'] });
     queryClient.invalidateQueries({ queryKey: ['cards'] });
     queryClient.invalidateQueries({ queryKey: ['deck'] });
@@ -315,6 +374,67 @@ export default function ArenaPage() {
 
   const canAttack = selectedPlayerCard && selectedTargetCard && !executeTurnMutation.isPending;
 
+  // Campaign mode initialization
+  useEffect(() => {
+    if (!campaignLevelId || !user) {
+      setCampaignLoading(false);
+      return;
+    }
+
+    const initCampaignBattle = async () => {
+      try {
+        // Get battle config for this campaign level
+        const configResponse = await campaignService.getLevelBattleConfig(Number(campaignLevelId));
+        if (!configResponse.success || !configResponse.data) {
+          console.error('Failed to get campaign battle config');
+          router.push('/campaign');
+          return;
+        }
+
+        setCampaignBattleConfig(configResponse.data);
+        setCampaignMode(true);
+
+        // Find the monster in the list or create a virtual monster
+        const monster = monsters.find(m => m.id === configResponse.data!.monster_id);
+        if (monster) {
+          // Override monster stats with scaled stats from campaign
+          const scaledMonster = {
+            ...monster,
+            hp: configResponse.data.scaled_stats.hp,
+            attack: configResponse.data.scaled_stats.attack,
+            xp_reward: configResponse.data.scaled_stats.xp_reward,
+            is_boss: configResponse.data.is_boss,
+          };
+          setSelectedMonster(scaledMonster);
+        }
+        setCampaignLoading(false);
+      } catch (error) {
+        console.error('Campaign battle init error:', error);
+        setCampaignLoading(false);
+        router.push('/campaign');
+      }
+    };
+
+    if (monstersData?.data?.monsters && monstersData.data.deck) {
+      initCampaignBattle();
+    }
+  }, [campaignLevelId, user, monstersData, router, monsters]);
+
+  // Auto-start battle in campaign mode when monster and deck are ready
+  useEffect(() => {
+    if (!campaignMode || !selectedMonster || !campaignBattleConfig) return;
+    if (gameState !== 'select') return;
+
+    if (deck.length > 0 && !startBattleMutation.isPending && !activeBattle) {
+      const deckCardIds = deck.map((c: { id: number }) => c.id);
+      setSelectedCards(deckCardIds);
+      startBattleMutation.mutate({
+        monsterId: selectedMonster.id,
+        cardIds: deckCardIds,
+      });
+    }
+  }, [campaignMode, selectedMonster, campaignBattleConfig, gameState, deck, startBattleMutation, activeBattle]);
+
   // Show/hide Telegram back button based on game state
   useEffect(() => {
     if (gameState === 'cards') {
@@ -329,6 +449,29 @@ export default function ArenaPage() {
     return (
       <div className="p-4 text-center">
         <p className="text-gray-500">{t('loginToEnterArena')}</p>
+      </div>
+    );
+  }
+
+  // Campaign loading screen
+  if (campaignMode && (campaignLoading || (gameState === 'select' && !activeBattle))) {
+    return (
+      <div className="p-4 flex flex-col items-center justify-center min-h-[60vh]">
+        <Map className="w-16 h-16 text-purple-500 animate-pulse mb-4" />
+        <h2 className="text-xl font-bold text-white mb-2">Загрузка уровня...</h2>
+        <p className="text-gray-400 text-sm">Подготовка к битве</p>
+        {selectedMonster && (
+          <div className="mt-6 text-center">
+            <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 flex items-center justify-center mx-auto mb-2 overflow-hidden">
+              {selectedMonster.sprite_url ? (
+                <img src={selectedMonster.sprite_url} alt={selectedMonster.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">{selectedMonster.emoji}</span>
+              )}
+            </div>
+            <p className="text-white font-medium">{selectedMonster.name}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -756,6 +899,22 @@ export default function ArenaPage() {
                   <>
                     <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">{t('victory')}!</h2>
+                    {/* Campaign stars */}
+                    {campaignMode && campaignResult?.stars_earned && (
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        {[1, 2, 3].map((star) => (
+                          <Star
+                            key={star}
+                            className={cn(
+                              'w-8 h-8',
+                              star <= (campaignResult.stars_earned || 0)
+                                ? 'text-yellow-400 fill-yellow-400'
+                                : 'text-gray-600'
+                            )}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -794,9 +953,18 @@ export default function ArenaPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-400">{t('experience')}</span>
                         <span className="text-amber-400">
-                          +{battleResult.xp_earned} XP
+                          +{campaignResult?.xp_earned || battleResult.xp_earned} XP
                         </span>
                       </div>
+                      {/* Campaign sparks */}
+                      {campaignMode && campaignResult?.sparks_earned && campaignResult.sparks_earned > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Искры</span>
+                          <span className="text-purple-400">
+                            +{campaignResult.sparks_earned} ✨
+                          </span>
+                        </div>
+                      )}
                       {battleResult.level_up && (
                         <div className="text-center pt-2 text-amber-400 font-medium">
                           🎉 {t('newLevel')}
@@ -806,6 +974,38 @@ export default function ArenaPage() {
                   )}
                 </div>
               </Card>
+
+              {/* Campaign chapter completed */}
+              {campaignMode && campaignResult?.chapter_completed && (
+                <Card className="w-full max-w-sm mb-4 bg-gradient-to-br from-purple-500/20 to-blue-500/20 border-purple-500/30">
+                  <div className="flex items-center gap-3">
+                    <Map className="w-6 h-6 text-purple-400" />
+                    <div>
+                      <h3 className="font-medium text-white">Глава завершена!</h3>
+                      <p className="text-sm text-purple-400">
+                        Открыта следующая глава кампании
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Campaign rewards */}
+              {campaignMode && campaignResult?.rewards && campaignResult.rewards.length > 0 && (
+                <Card className="w-full max-w-sm mb-4 bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-amber-500/30">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Sparkles className="w-6 h-6 text-amber-400" />
+                    <h3 className="font-medium text-white">Награды</h3>
+                  </div>
+                  <div className="space-y-1">
+                    {campaignResult.rewards.map((reward, idx) => (
+                      <div key={idx} className="text-sm text-amber-400">
+                        {reward.name || reward.type}: {reward.amount || 'Получено!'}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
 
               {/* Reward card */}
               {battleResult.reward_card && (
@@ -822,8 +1022,8 @@ export default function ArenaPage() {
                 </Card>
               )}
 
-              {/* Show "Create Task" button only on defeat */}
-              {!battleResult.won && (
+              {/* Show "Create Task" button only on defeat and not in campaign */}
+              {!battleResult.won && !campaignMode && (
                 <Button
                   variant="gradient"
                   className="w-full max-w-sm mb-3"
@@ -835,9 +1035,29 @@ export default function ArenaPage() {
               )}
 
               <Button className="w-full max-w-sm" variant={battleResult.won ? 'primary' : 'secondary'} onClick={handleBackToSelect}>
-                {t('returnToSelect')}
+                {campaignMode ? (
+                  <>
+                    <Map className="w-5 h-5 mr-2" />
+                    Вернуться в кампанию
+                  </>
+                ) : (
+                  t('returnToSelect')
+                )}
               </Button>
             </div>
+          )}
+
+          {/* Campaign Outro LoreSheet */}
+          {campaignMode && showCampaignOutro && campaignResult?.story_outro && (
+            <LoreSheet
+              isOpen={showCampaignOutro}
+              onClose={() => setShowCampaignOutro(false)}
+              type="level_complete"
+              title="Эпилог"
+              text={campaignResult.story_outro}
+              emoji="📜"
+              starsEarned={campaignResult.stars_earned}
+            />
           )}
         </>
       )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Star, X } from 'lucide-react';
+import { Star, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
@@ -62,34 +62,6 @@ function useTypewriter(text: string, isOpen: boolean, delay: number = 30) {
   }, [text]);
 
   return { displayedText, isComplete, skipToEnd };
-}
-
-// Floating particle component
-function Particle({ delay, color }: { delay: number; color: string }) {
-  return (
-    <motion.div
-      className={cn('absolute w-1 h-1 rounded-full', color)}
-      initial={{
-        opacity: 0,
-        x: Math.random() * 100 - 50 + '%',
-        y: '100%',
-      }}
-      animate={{
-        opacity: [0, 1, 1, 0],
-        y: [100, -20],
-        x: [
-          Math.random() * 100 - 50 + '%',
-          Math.random() * 100 - 50 + '%',
-        ],
-      }}
-      transition={{
-        duration: 3 + Math.random() * 2,
-        delay: delay,
-        repeat: Infinity,
-        ease: 'easeOut',
-      }}
-    />
-  );
 }
 
 export function LoreSheet({
@@ -169,7 +141,7 @@ export function LoreSheet({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -182,13 +154,6 @@ export function LoreSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
-
-          {/* Floating particles */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {[...Array(20)].map((_, i) => (
-              <Particle key={i} delay={i * 0.2} color={theme.particle} />
-            ))}
-          </div>
 
           {/* Main content sheet */}
           <motion.div
@@ -254,18 +219,6 @@ export function LoreSheet({
                     <span className="text-5xl">{emoji}</span>
                   </div>
                 ) : null}
-
-                {/* Sparkle decoration */}
-                <motion.div
-                  className="absolute -top-2 -right-2"
-                  animate={{
-                    rotate: [0, 20, -20, 0],
-                    scale: [1, 1.2, 1],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Sparkles className={cn('w-6 h-6', theme.accent)} />
-                </motion.div>
               </motion.div>
 
               {/* Title */}

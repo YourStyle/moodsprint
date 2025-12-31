@@ -16,6 +16,7 @@ import {
   Play,
 } from 'lucide-react';
 import { Card, Button, Progress } from '@/components/ui';
+import { LoreSheet, DialogueSheet } from '@/components/campaign';
 import { campaignService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -29,10 +30,16 @@ export default function CampaignPage() {
 
   const [selectedChapter, setSelectedChapter] = useState<CampaignChapter | null>(null);
   const [showLevelSelect, setShowLevelSelect] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<CampaignLevel | null>(null);
+  const [showDialogue, setShowDialogue] = useState(false);
 
   useEffect(() => {
     showBackButton(() => {
-      if (showLevelSelect) {
+      if (showDialogue) {
+        setShowDialogue(false);
+        setSelectedLevel(null);
+      } else if (showLevelSelect) {
         setShowLevelSelect(false);
         setSelectedChapter(null);
       } else {
@@ -40,7 +47,7 @@ export default function CampaignPage() {
       }
     });
     return () => hideBackButton();
-  }, [router, showLevelSelect]);
+  }, [router, showLevelSelect, showDialogue]);
 
   // Get campaign overview
   const { data: campaignData, isLoading } = useQuery({
@@ -67,6 +74,15 @@ export default function CampaignPage() {
     hapticFeedback('light');
     setSelectedChapter(chapter);
     setShowLevelSelect(true);
+
+    // Show intro if chapter has one and not completed
+    if (chapter.story_intro && !chapter.is_completed) {
+      setShowIntro(true);
+    }
+  };
+
+  const handleIntroClose = () => {
+    setShowIntro(false);
   };
 
   const handleLevelStart = (level: CampaignLevel) => {
@@ -75,8 +91,37 @@ export default function CampaignPage() {
       return;
     }
     hapticFeedback('medium');
-    // Navigate to battle with level config
-    router.push(`/arena?campaign_level=${level.id}`);
+    setSelectedLevel(level);
+
+    // Show dialogue if level has one
+    if (level.dialogue_before && level.dialogue_before.length > 0) {
+      setShowDialogue(true);
+    } else {
+      // Navigate directly to battle
+      router.push(`/arena?campaign_level=${level.id}`);
+    }
+  };
+
+  const handleDialogueClose = () => {
+    setShowDialogue(false);
+    setSelectedLevel(null);
+  };
+
+  const handleDialogueContinue = () => {
+    if (selectedLevel) {
+      setShowDialogue(false);
+      router.push(`/arena?campaign_level=${selectedLevel.id}`);
+    }
+  };
+
+  // Get monster info for the selected level
+  const getMonsterForLevel = () => {
+    // This would need monster data from the level
+    // For now return placeholder - we'll get real data from chapterData
+    return {
+      name: selectedLevel?.is_boss ? 'Босс' : 'Монстр',
+      emoji: selectedLevel?.is_boss ? '👹' : '👾',
+    };
   };
 
   const getGenreGradient = (genre: string) => {
@@ -376,6 +421,35 @@ export default function CampaignPage() {
               </div>
             </div>
           </Card>
+        )}
+
+        {/* Intro Sheet */}
+        {selectedChapter && (
+          <LoreSheet
+            isOpen={showIntro}
+            onClose={handleIntroClose}
+            type="chapter_complete"
+            title={`Глава ${selectedChapter.number}`}
+            subtitle={selectedChapter.name}
+            emoji={selectedChapter.emoji}
+            text={chapterData?.data?.story_intro || selectedChapter.story_intro || ''}
+          />
+        )}
+
+        {/* Dialogue Sheet */}
+        {selectedLevel && selectedLevel.dialogue_before && (
+          <DialogueSheet
+            isOpen={showDialogue}
+            onClose={handleDialogueClose}
+            onContinue={handleDialogueContinue}
+            monsterName={getMonsterForLevel().name}
+            monsterEmoji={getMonsterForLevel().emoji}
+            dialogue={selectedLevel.dialogue_before.map(d => ({
+              speaker: d.speaker === 'monster' ? 'monster' : 'hero',
+              text: d.text,
+            }))}
+            title={selectedLevel.title || `Уровень ${selectedLevel.number}`}
+          />
         )}
     </div>
   );

@@ -66,9 +66,16 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                    <input type="url" name="image_url" value="{{ chapter.image_url or '' }}"
-                           class="w-full border rounded-lg px-3 py-2"
-                           placeholder="https://...">
+                    <div class="flex gap-2">
+                        <input type="url" name="image_url" value="{{ chapter.image_url or '' }}"
+                               class="flex-1 border rounded-lg px-3 py-2"
+                               placeholder="https://...">
+                        <button type="button" onclick="generateChapterImage()"
+                                class="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm whitespace-nowrap"
+                                title="Generate image with AI">
+                            🎨 AI
+                        </button>
+                    </div>
                 </div>
             </div>
             {% if chapter.image_url %}
@@ -269,6 +276,15 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
         <form id="levelForm" class="p-4 space-y-4">
             <input type="hidden" name="level_id" value="">
 
+            <!-- AI Generate Button -->
+            <div>
+                <button type="button" onclick="generateLevel()"
+                        class="w-full px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex items-center justify-center gap-2">
+                    🤖 Generate name & monster with AI
+                </button>
+                <div id="levelGenerationStatus" class="text-xs text-gray-500 mt-1 hidden"></div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -281,7 +297,7 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                     <select name="monster_id" class="w-full border rounded-lg px-3 py-2">
                         <option value="">Select monster...</option>
                         {% for monster in all_monsters %}
-                        <option value="{{ monster.id }}">{{ monster.emoji }} {{ monster.name }} ({{ monster.genre }})</option>
+                        <option value="{{ monster.id }}">{{ monster.emoji }} {{ monster.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -1170,5 +1186,89 @@ async function deleteReward(rewardId) {
 document.getElementById('rewardModal').addEventListener('click', function(e) {
     if (e.target === this) hideRewardModal();
 });
+
+// AI Generation Functions
+const chapterData = {
+    name: {{ chapter.name | tojson }},
+    genre: {{ chapter.genre | tojson }},
+    description: {{ chapter.description | tojson if chapter.description else '""' }}
+};
+
+async function generateChapterImage() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳...';
+    btn.disabled = true;
+
+    try {
+        const name = document.querySelector('[name="name"]').value || chapterData.name;
+        const description = document.querySelector('[name="description"]').value || chapterData.description;
+        const genre = document.querySelector('[name="genre"]').value || chapterData.genre;
+
+        const response = await fetch('/campaign/generate-chapter-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, genre })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            document.querySelector('[name="image_url"]').value = result.image_url;
+            alert('Image generated! Save the chapter to apply.');
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function generateLevel() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Generating...';
+    btn.disabled = true;
+
+    const statusDiv = document.getElementById('levelGenerationStatus');
+    statusDiv.textContent = 'Generating...';
+    statusDiv.classList.remove('hidden');
+
+    try {
+        const form = document.getElementById('levelForm');
+        const isBoss = form.querySelector('[name="is_boss"]').checked;
+        const levelNumber = document.querySelectorAll('#level-container > div').length + 1;
+        const totalLevels = document.querySelectorAll('#level-container > div').length + 5;
+
+        const response = await fetch('/campaign/generate-level', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chapter_name: chapterData.name,
+                chapter_genre: chapterData.genre,
+                chapter_description: chapterData.description,
+                is_boss: isBoss,
+                level_number: levelNumber,
+                total_levels: totalLevels
+            })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            form.querySelector('[name="title"]').value = result.level_name || '';
+            form.querySelector('[name="monster_id"]').value = result.monster_id || '';
+            statusDiv.textContent = `✅ ${result.monster_emoji} ${result.monster_name}: "${result.level_name}"`;
+        } else {
+            statusDiv.textContent = '❌ ' + result.error;
+        }
+    } catch (e) {
+        statusDiv.textContent = '❌ ' + e.message;
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 </script>
 {% endblock %}

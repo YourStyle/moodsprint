@@ -1786,8 +1786,11 @@ def chapter_detail(chapter_id: int):
         {"chapter_id": chapter_id},
     ).fetchall()
 
+    # Filter monsters by chapter genre
+    chapter_genre = chapter._mapping["genre"]
     all_monsters = db.session.execute(
-        text("SELECT id, name, emoji, genre FROM monsters ORDER BY genre, name")
+        text("SELECT id, name, emoji, genre FROM monsters WHERE genre = :genre ORDER BY name"),
+        {"genre": chapter_genre},
     ).fetchall()
 
     # Get chapter rewards
@@ -2343,6 +2346,274 @@ def reset_all_ai_contexts():
         return jsonify({"success": True, "message": "All contexts reset"})
     except Exception as e:
         db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/generate-chapter-content", methods=["POST"])
+@login_required
+def generate_chapter_content():
+    """Generate chapter name, description, intro and outro using AI."""
+    import openai
+
+    data = request.json
+    genre = data.get("genre", "fantasy")
+
+    # Get existing chapters for context
+    existing_chapters = db.session.execute(
+        text("SELECT name, description FROM campaign_chapters WHERE genre = :genre ORDER BY number"),
+        {"genre": genre},
+    ).fetchall()
+
+    genre_contexts = {
+        "fantasy": "эпическое фэнтези в стиле Властелина Колец, рыцари и магия",
+        "magic": "волшебный мир как в Гарри Поттере, заклинания и магия",
+        "scifi": "научная фантастика, космос и технологии будущего",
+        "cyberpunk": "киберпанк, неоновые города и хакеры",
+        "anime": "аниме стиль, драматичные битвы и яркие персонажи",
+    }
+    genre_context = genre_contexts.get(genre, "фэнтези")
+
+    existing_context = ""
+    if existing_chapters:
+        existing_context = "\n\nУже существующие главы этого жанра:\n"
+        for ch in existing_chapters:
+            existing_context += f"- {ch[0]}: {ch[1] or 'без описания'}\n"
+        existing_context += "\nСоздай новую главу, которая продолжает историю."
+
+    prompt = f"""Ты сценарист для мобильной RPG игры в жанре {genre_context}.
+{existing_context}
+
+Создай новую главу кампании. Верни JSON:
+{{
+    "name": "Название главы (2-4 слова, эпичное)",
+    "description": "Краткое описание главы (1-2 предложения)",
+    "emoji": "Подходящий эмодзи для главы",
+    "story_intro": "Вступительный текст главы (3-5 предложений, погружающий в атмосферу)",
+    "story_outro": "Завершающий текст главы (2-3 предложения, триумф после победы)"
+}}
+
+Отвечай ТОЛЬКО валидным JSON."""
+
+    try:
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if not openai_key:
+            return jsonify({"success": False, "error": "OpenAI API key not configured"})
+
+        openai_proxy = os.environ.get("OPENAI_PROXY")
+        if openai_proxy:
+            import httpx
+            http_client = httpx.Client(proxy=openai_proxy)
+            client = openai.OpenAI(api_key=openai_key, http_client=http_client)
+        else:
+            client = openai.OpenAI(api_key=openai_key)
+
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+        )
+
+        content = response.output_text.strip()
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+
+        result = json.loads(content)
+        return jsonify({"success": True, "content": result})
+
+    except json.JSONDecodeError as e:
+        return jsonify({"success": False, "error": f"Invalid JSON from AI: {str(e)}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/generate-chapter-image", methods=["POST"])
+@login_required
+def generate_chapter_image():
+    """Generate chapter landscape image using Stability AI."""
+    import requests
+    from pathlib import Path
+    import uuid
+
+    data = request.json
+    chapter_name = data.get("name", "")
+    chapter_description = data.get("description", "")
+    genre = data.get("genre", "fantasy")
+
+    genre_styles = {
+        "fantasy": "epic fantasy landscape, medieval castle, mountains, magical atmosphere",
+        "magic": "magical academy, floating islands, aurora borealis, mystical towers",
+        "scifi": "futuristic cityscape, space station, alien planet, neon lights",
+        "cyberpunk": "cyberpunk city, neon signs, rain, dark alley, holographic billboards",
+        "anime": "anime style landscape, cherry blossoms, dramatic sky, vibrant colors",
+    }
+    style = genre_styles.get(genre, genre_styles["fantasy"])
+
+    prompt = f"{chapter_name}, {chapter_description}, {style}, panoramic view, cinematic lighting, highly detailed, game art, 4k"
+
+    stability_key = os.environ.get("STABILITY_API_KEY")
+    if not stability_key:
+        return jsonify({"success": False, "error": "Stability API key not configured"})
+
+    try:
+        response = requests.post(
+            "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+            headers={
+                "authorization": f"Bearer {stability_key}",
+                "accept": "image/*",
+            },
+            files={"none": ""},
+            data={
+                "prompt": prompt,
+                "model": "sd3.5-large-turbo",
+                "output_format": "jpeg",
+                "aspect_ratio": "16:9",
+            },
+            timeout=60,
+        )
+
+        if response.status_code == 200:
+            # Save image
+            images_dir = Path("/app/static/chapter_images")
+            images_dir.mkdir(parents=True, exist_ok=True)
+
+            image_filename = f"chapter_{uuid.uuid4().hex[:8]}.jpg"
+            image_path = images_dir / image_filename
+
+            with open(image_path, "wb") as f:
+                f.write(response.content)
+
+            image_url = f"/static/chapter_images/{image_filename}"
+            return jsonify({"success": True, "image_url": image_url})
+        else:
+            return jsonify({
+                "success": False,
+                "error": f"Stability API error: {response.status_code} - {response.text}"
+            })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/campaign/generate-level", methods=["POST"])
+@login_required
+def generate_level():
+    """Generate level name, monster and dialogue using AI."""
+    import openai
+
+    data = request.json
+    chapter_name = data.get("chapter_name", "")
+    chapter_genre = data.get("chapter_genre", "fantasy")
+    chapter_description = data.get("chapter_description", "")
+    chapter_intro = data.get("chapter_intro", "")
+    is_boss = data.get("is_boss", False)
+    level_number = data.get("level_number", 1)
+    total_levels = data.get("total_levels", 5)
+
+    # Get available monsters for this genre
+    monsters = db.session.execute(
+        text("SELECT id, name, description FROM monsters WHERE genre = :genre"),
+        {"genre": chapter_genre},
+    ).fetchall()
+
+    if not monsters:
+        return jsonify({"success": False, "error": f"No monsters found for genre {chapter_genre}"})
+
+    monster_list = "\n".join([f"- ID {m[0]}: {m[1]} ({m[2] or 'без описания'})" for m in monsters])
+
+    # Get existing levels in this chapter for context
+    existing_levels = db.session.execute(
+        text("""SELECT cl.title, m.name as monster_name
+                FROM campaign_levels cl
+                LEFT JOIN monsters m ON cl.monster_id = m.id
+                WHERE cl.chapter_id = (
+                    SELECT id FROM campaign_chapters WHERE name = :chapter_name LIMIT 1
+                )
+                ORDER BY cl.number"""),
+        {"chapter_name": chapter_name},
+    ).fetchall()
+
+    existing_context = ""
+    if existing_levels:
+        existing_context = "\nУже существующие уровни в этой главе:\n"
+        for i, lvl in enumerate(existing_levels, 1):
+            existing_context += f"- Уровень {i}: {lvl[0] or 'без названия'} (монстр: {lvl[1] or 'не указан'})\n"
+
+    prompt = f"""Ты создаёшь уровень для RPG игры MoodSprint.
+
+Глава: {chapter_name}
+Описание главы: {chapter_description or 'не указано'}
+Жанр: {chapter_genre}
+Номер уровня: {level_number} из {total_levels}
+Это босс: {'Да - финальный босс главы!' if is_boss else 'Нет'}
+{existing_context}
+
+Доступные монстры для этого жанра:
+{monster_list}
+
+Создай название уровня и выбери монстра. Учти:
+- Название уровня должно быть атмосферным (2-4 слова на русском)
+- Для раннего уровня выбирай более слабых монстров
+- Для позднего уровня и босса - самого сильного
+
+Верни JSON:
+{{"level_name": "Название уровня", "monster_id": <число>}}
+
+Отвечай ТОЛЬКО валидным JSON."""
+
+    try:
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        if not openai_key:
+            return jsonify({"success": False, "error": "OpenAI API key not configured"})
+
+        openai_proxy = os.environ.get("OPENAI_PROXY")
+        if openai_proxy:
+            import httpx
+            http_client = httpx.Client(proxy=openai_proxy)
+            client = openai.OpenAI(api_key=openai_key, http_client=http_client)
+        else:
+            client = openai.OpenAI(api_key=openai_key)
+
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+        )
+
+        content = response.output_text.strip()
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+
+        result = json.loads(content)
+
+        # Verify monster exists
+        monster_id = result.get("monster_id")
+        monster = db.session.execute(
+            text("SELECT id, name, emoji FROM monsters WHERE id = :id AND genre = :genre"),
+            {"id": monster_id, "genre": chapter_genre},
+        ).fetchone()
+
+        if not monster:
+            # Fallback to first monster if AI suggested invalid one
+            monster = db.session.execute(
+                text("SELECT id, name, emoji FROM monsters WHERE genre = :genre LIMIT 1"),
+                {"genre": chapter_genre},
+            ).fetchone()
+
+        return jsonify({
+            "success": True,
+            "level_name": result.get("level_name", ""),
+            "monster_id": monster[0] if monster else None,
+            "monster_name": monster[1] if monster else "",
+            "monster_emoji": monster[2] if monster else "",
+        })
+
+    except json.JSONDecodeError as e:
+        return jsonify({"success": False, "error": f"Invalid JSON from AI: {str(e)}"})
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 
