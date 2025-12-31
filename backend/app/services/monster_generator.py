@@ -8,7 +8,6 @@ from pathlib import Path
 
 import requests
 from flask import current_app
-from openai import OpenAI
 
 from app import db
 from app.models import DailyMonster, Monster
@@ -54,12 +53,8 @@ class MonsterGeneratorService:
     """Service for generating monsters using AI."""
 
     def __init__(self):
-        self.openai_client = None
+        self._openai_client = None
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
-
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if openai_key:
-            self.openai_client = OpenAI(api_key=openai_key)
 
         # Get static folder from Flask app context
         try:
@@ -70,6 +65,15 @@ class MonsterGeneratorService:
         # Ensure monster images directory exists
         self.images_dir = Path(static_folder) / "monster_images"
         self.images_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def openai_client(self):
+        """Lazy-initialize OpenAI client with proxy support."""
+        if self._openai_client is None:
+            from app.services.openai_client import get_openai_client
+
+            self._openai_client = get_openai_client()
+        return self._openai_client
 
     def generate_monsters_for_genre(self, genre: str, count: int = 6) -> list[dict]:
         """
