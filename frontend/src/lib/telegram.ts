@@ -204,6 +204,15 @@ export function hideBackButton() {
   webApp.BackButton.hide();
 }
 
+/**
+ * Setup back button with cleanup function for useEffect.
+ * Shows the button and returns cleanup function to hide it.
+ */
+export function setupBackButton(onClick: () => void): () => void {
+  showBackButton(onClick);
+  return () => hideBackButton();
+}
+
 export function getStartParam(): string | null {
   // First try to get from Telegram WebApp initData
   const webApp = getTelegramWebApp();
