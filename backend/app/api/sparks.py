@@ -2,6 +2,7 @@
 
 import os
 
+import requests
 from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -9,6 +10,38 @@ from app import db
 from app.api import api_bp
 from app.models import SPARKS_PACKS, SparksTransaction, TonDeposit, User
 from app.utils.response import error_response, success_response
+
+
+def create_invoice_link(
+    title: str,
+    description: str,
+    payload: str,
+    price_stars: int,
+) -> str | None:
+    """Create a Telegram Stars invoice link using Bot API."""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        return None
+
+    url = f"https://api.telegram.org/bot{bot_token}/createInvoiceLink"
+    response = requests.post(
+        url,
+        json={
+            "title": title,
+            "description": description,
+            "payload": payload,
+            "currency": "XTR",  # Telegram Stars
+            "prices": [{"label": title, "amount": price_stars}],
+        },
+        timeout=10,
+    )
+
+    if response.ok:
+        data = response.json()
+        if data.get("ok"):
+            return data.get("result")
+
+    return None
 
 
 @api_bp.route("/sparks/balance", methods=["GET"])
@@ -55,6 +88,39 @@ def get_sparks_packs():
     packs.sort(key=lambda x: x["sparks"])
 
     return success_response({"packs": packs})
+
+
+@api_bp.route("/sparks/buy", methods=["POST"])
+@jwt_required()
+def buy_sparks_pack():
+    """Create invoice link for buying sparks pack with Telegram Stars."""
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return error_response("User not found", 404)
+
+    data = request.get_json() or {}
+    pack_id = data.get("pack_id")
+
+    if not pack_id or pack_id not in SPARKS_PACKS:
+        return error_response("Invalid pack_id", 400)
+
+    pack = SPARKS_PACKS[pack_id]
+    sparks_amount = pack["sparks"]
+    price_stars = pack["price_stars"]
+
+    # Create invoice link
+    invoice_url = create_invoice_link(
+        title=f"{sparks_amount} Sparks",
+        description=f"Покупка {sparks_amount} Sparks за {price_stars} Stars",
+        payload=f"sparks_purchase_{pack_id}_{user_id}",
+        price_stars=price_stars,
+    )
+
+    if not invoice_url:
+        return error_response("Failed to create invoice", 500)
+
+    return success_response({"invoice_url": invoice_url})
 
 
 @api_bp.route("/sparks/wallet", methods=["POST"])

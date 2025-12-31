@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, Star, Loader2, AlertCircle } from 'lucide-react';
+import { DollarSign, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { marketplaceService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
@@ -45,7 +45,7 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
   const createListingMutation = useMutation({
     mutationFn: () => marketplaceService.createListing({
       card_id: card!.id,
-      price_stars: parseInt(price, 10),
+      price: parseInt(price, 10),
     }),
     onSuccess: (result) => {
       if (result.success) {
@@ -89,12 +89,12 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
     }
 
     if (priceNum < config.min) {
-      setError(`Минимальная цена для ${config.label.toLowerCase()} карты: ${config.min} ⭐`);
+      setError(`Минимальная цена для ${config.label.toLowerCase()} карты: ${config.min} ✨`);
       return;
     }
 
     if (priceNum > 10000) {
-      setError('Максимальная цена: 10,000 ⭐');
+      setError('Максимальная цена: 10,000 ✨');
       return;
     }
 
@@ -139,10 +139,10 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
         {/* Price Input */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Цена в Telegram Stars
+            Цена в Sparks
           </label>
           <div className="relative">
-            <Star className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-400" />
             <input
               type="number"
               value={price}
@@ -174,7 +174,7 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
                     : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700 border border-transparent'
                 )}
               >
-                {value} ⭐
+                {value} ✨
               </button>
             ))}
           </div>
@@ -189,7 +189,7 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
               {price && !isNaN(parseInt(price, 10)) && (
                 <p className="mt-1">
                   Вы получите: <span className="text-amber-400 font-medium">
-                    {Math.floor(parseInt(price, 10) * 0.9)} ⭐
+                    {Math.floor(parseInt(price, 10) * 0.9)} ✨
                   </span>
                 </p>
               )}

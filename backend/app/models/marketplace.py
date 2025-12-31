@@ -1,10 +1,10 @@
-"""Marketplace models for Telegram Stars trading."""
+"""Marketplace models for Sparks trading."""
 
 from datetime import datetime
 
 from app import db
 
-# Minimum prices by rarity (in Telegram Stars)
+# Minimum prices by rarity (in Sparks)
 MIN_PRICES = {
     "common": 1,
     "uncommon": 5,
@@ -37,7 +37,7 @@ class MarketListing(db.Model):
         unique=True,  # Card can only be listed once
     )
 
-    # Price in Telegram Stars
+    # Price in Sparks (legacy name: price_stars)
     price_stars = db.Column(db.Integer, nullable=False)
 
     # Status: active, sold, cancelled, expired
@@ -76,7 +76,8 @@ class MarketListing(db.Model):
             ),
             "card_id": self.card_id,
             "card": self.card.to_dict() if self.card else None,
-            "price_stars": self.price_stars,
+            "price": self.price_stars,  # Sparks price
+            "price_stars": self.price_stars,  # Legacy field
             "status": self.status,
             "buyer_id": self.buyer_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,

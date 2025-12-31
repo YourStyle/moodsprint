@@ -78,6 +78,7 @@ def create_guild():
 @jwt_required()
 def get_guild(guild_id: int):
     """Get guild details."""
+    user_id = int(get_jwt_identity())
     service = GuildService()
     guild = service.get_guild(guild_id)
 
@@ -86,10 +87,19 @@ def get_guild(guild_id: int):
 
     members = service.get_members(guild_id)
 
+    # Check if current user is a member
+    from app.models.guild import GuildMember
+
+    membership = GuildMember.query.filter_by(guild_id=guild_id, user_id=user_id).first()
+    is_member = membership is not None
+    user_role = membership.role if membership else None
+
     return success_response(
         {
             "guild": guild.to_dict(),
             "members": members,
+            "is_member": is_member,
+            "user_role": user_role,
         }
     )
 

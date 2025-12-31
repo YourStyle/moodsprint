@@ -82,6 +82,23 @@ async def process_pre_checkout(pre_checkout: PreCheckoutQuery):
 
             await pre_checkout.answer(ok=True)
 
+        elif payload.startswith("sparks_purchase_"):
+            # Sparks pack purchase
+            parts = payload.split("_")
+            _pack_id = parts[2]  # noqa: F841 - used in successful_payment
+            user_id = int(parts[3])
+
+            # Verify user matches
+            user = await get_user_by_telegram_id(pre_checkout.from_user.id)
+            if not user or user.get("id") != user_id:
+                await pre_checkout.answer(
+                    ok=False,
+                    error_message="Ошибка авторизации. Попробуйте ещё раз.",
+                )
+                return
+
+            await pre_checkout.answer(ok=True)
+
         else:
             # Unknown payload type
             logger.warning(f"Unknown payment payload: {payload}")
@@ -172,6 +189,31 @@ async def process_successful_payment(message: Message):
                 )
             else:
                 logger.error(f"Cooldown skip failed after payment: {result}")
+                await message.answer("⚠️ Произошла ошибка. Свяжитесь с поддержкой.")
+
+        elif payload.startswith("sparks_purchase_"):
+            # Complete sparks purchase
+            parts = payload.split("_")
+            pack_id = parts[2]
+            user_id = int(parts[3])
+
+            from database import complete_sparks_purchase
+
+            result = await complete_sparks_purchase(
+                pack_id=pack_id,
+                user_id=user_id,
+                telegram_payment_id=telegram_payment_id,
+            )
+
+            if result.get("success"):
+                sparks_amount = result.get("sparks", 0)
+                await message.answer(
+                    f"✅ Покупка завершена!\n\n"
+                    f"✨ +{sparks_amount} Sparks добавлено на ваш счёт.\n\n"
+                    f"Откройте приложение, чтобы использовать их!"
+                )
+            else:
+                logger.error(f"Sparks purchase failed after payment: {result}")
                 await message.answer("⚠️ Произошла ошибка. Свяжитесь с поддержкой.")
 
         else:

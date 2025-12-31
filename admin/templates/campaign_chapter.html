@@ -212,6 +212,52 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
             {% endif %}
         </div>
     </div>
+
+    <!-- Rewards -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-4 border-b flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Chapter Rewards ({{ rewards|length }})</h3>
+            <button onclick="showAddRewardModal()"
+                    class="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700">
+                + Add Reward
+            </button>
+        </div>
+
+        <div class="divide-y">
+            {% for reward in rewards %}
+            <div class="p-4 hover:bg-gray-50 flex items-center gap-4" id="reward-{{ reward.id }}">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-amber-100 text-amber-600">
+                    {{ reward.emoji or '🎁' }}
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ reward.name or 'Unnamed Reward' }}</span>
+                        <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded capitalize">{{ reward.reward_type }}</span>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        {% if reward.reward_type == 'sparks' %}
+                            {{ reward.reward_data.amount if reward.reward_data else 100 }} ✨ Sparks
+                        {% elif reward.reward_type == 'xp' %}
+                            {{ reward.reward_data.amount if reward.reward_data else 500 }} XP
+                        {% elif reward.reward_type == 'card' %}
+                            {{ reward.reward_data.rarity if reward.reward_data else 'rare' }} card
+                        {% else %}
+                            {{ reward.description or '' }}
+                        {% endif %}
+                    </div>
+                </div>
+                <button onclick="deleteReward({{ reward.id }})"
+                        class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            </div>
+            {% endfor %}
+
+            {% if not rewards %}
+            <div class="p-8 text-center text-gray-500">
+                No rewards yet. Add your first reward!
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <!-- Add/Edit Level Modal -->
@@ -444,6 +490,73 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
         </button>
     </div>
 </template>
+
+<!-- Add Reward Modal -->
+<div id="rewardModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="p-4 border-b">
+            <h3 class="text-lg font-semibold">Add Reward</h3>
+        </div>
+        <form id="rewardForm" class="p-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reward Type</label>
+                <select name="reward_type" onchange="updateRewardFields(this)" class="w-full border rounded-lg px-3 py-2">
+                    <option value="sparks">✨ Sparks</option>
+                    <option value="xp">⭐ XP</option>
+                    <option value="card">🎴 Card</option>
+                </select>
+            </div>
+
+            <div id="sparksFields">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                <input type="number" name="sparks_amount" value="100" min="1"
+                       class="w-full border rounded-lg px-3 py-2">
+            </div>
+
+            <div id="xpFields" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">XP Amount</label>
+                <input type="number" name="xp_amount" value="500" min="1"
+                       class="w-full border rounded-lg px-3 py-2">
+            </div>
+
+            <div id="cardFields" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Card Rarity</label>
+                <select name="card_rarity" class="w-full border rounded-lg px-3 py-2">
+                    <option value="common">Common</option>
+                    <option value="uncommon">Uncommon</option>
+                    <option value="rare" selected>Rare</option>
+                    <option value="epic">Epic</option>
+                    <option value="legendary">Legendary</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="name" placeholder="Reward name"
+                           class="w-full border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+                    <input type="text" name="emoji" value="✨" maxlength="4"
+                           class="w-full border rounded-lg px-3 py-2 text-center">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <input type="text" name="description" placeholder="Reward description"
+                       class="w-full border rounded-lg px-3 py-2">
+            </div>
+        </form>
+        <div class="p-4 border-t flex justify-end gap-2">
+            <button onclick="hideRewardModal()"
+                    class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onclick="saveReward()"
+                    class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Save</button>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
@@ -971,5 +1084,94 @@ async function generateDialogueWithAI() {
         btn.innerHTML = originalText;
     }
 }
+
+// ============ Reward Functions ============
+function showAddRewardModal() {
+    document.getElementById('rewardForm').reset();
+    document.getElementById('sparksFields').classList.remove('hidden');
+    document.getElementById('xpFields').classList.add('hidden');
+    document.getElementById('cardFields').classList.add('hidden');
+    document.getElementById('rewardModal').classList.remove('hidden');
+}
+
+function hideRewardModal() {
+    document.getElementById('rewardModal').classList.add('hidden');
+}
+
+function updateRewardFields(select) {
+    const type = select.value;
+    document.getElementById('sparksFields').classList.toggle('hidden', type !== 'sparks');
+    document.getElementById('xpFields').classList.toggle('hidden', type !== 'xp');
+    document.getElementById('cardFields').classList.toggle('hidden', type !== 'card');
+
+    // Update default emoji
+    const emojiInput = document.querySelector('[name="emoji"]');
+    if (type === 'sparks') emojiInput.value = '✨';
+    else if (type === 'xp') emojiInput.value = '⭐';
+    else if (type === 'card') emojiInput.value = '🎴';
+}
+
+async function saveReward() {
+    const form = document.getElementById('rewardForm');
+    const formData = new FormData(form);
+
+    const rewardType = formData.get('reward_type');
+    let rewardData = {};
+
+    if (rewardType === 'sparks') {
+        rewardData = { amount: parseInt(formData.get('sparks_amount')) || 100 };
+    } else if (rewardType === 'xp') {
+        rewardData = { amount: parseInt(formData.get('xp_amount')) || 500 };
+    } else if (rewardType === 'card') {
+        rewardData = { rarity: formData.get('card_rarity') || 'rare' };
+    }
+
+    const data = {
+        reward_type: rewardType,
+        reward_data: rewardData,
+        name: formData.get('name') || `${rewardData.amount || ''} ${rewardType}`,
+        description: formData.get('description') || '',
+        emoji: formData.get('emoji') || '✨'
+    };
+
+    try {
+        const response = await fetch(`/campaign/chapters/${chapterId}/rewards/new`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function deleteReward(rewardId) {
+    if (!confirm('Are you sure you want to delete this reward?')) return;
+
+    try {
+        const response = await fetch(`/campaign/rewards/${rewardId}/delete`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('reward-' + rewardId).remove();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Close reward modal on backdrop click
+document.getElementById('rewardModal').addEventListener('click', function(e) {
+    if (e.target === this) hideRewardModal();
+});
 </script>
 {% endblock %}

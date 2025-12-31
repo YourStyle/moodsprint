@@ -22,8 +22,8 @@ def browse_marketplace():
     - per_page: items per page (default 20)
     - rarity: filter by card rarity
     - genre: filter by card genre
-    - min_price: minimum price in Stars
-    - max_price: maximum price in Stars
+    - min_price: minimum price in Sparks
+    - max_price: maximum price in Sparks
     - sort_by: "newest" (default), "price_low", "price_high"
     """
     user_id = int(get_jwt_identity())

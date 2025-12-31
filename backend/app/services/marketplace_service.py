@@ -67,8 +67,7 @@ class MarketplaceService:
         listing = MarketListing(
             seller_id=user_id,
             card_id=card_id,
-            price_stars=price,  # Keep for backwards compatibility
-            price_sparks=price,
+            price_stars=price,  # Sparks price
         )
         db.session.add(listing)
         db.session.commit()
@@ -163,8 +162,8 @@ class MarketplaceService:
         if not seller:
             return {"error": "seller_not_found"}
 
-        # Use price_sparks if available, fall back to price_stars
-        price = listing.price_sparks or listing.price_stars
+        # Price in Sparks
+        price = listing.price_stars
         if not price:
             return {"error": "invalid_price"}
 

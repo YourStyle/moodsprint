@@ -71,8 +71,12 @@ export interface CampaignProgress {
 export interface CampaignReward {
   id: number;
   chapter_id: number;
-  reward_type: 'card' | 'xp' | 'title';
-  reward_data: Record<string, unknown>;
+  reward_type: 'card' | 'xp' | 'title' | 'sparks';
+  reward_data: {
+    amount?: number;
+    rarity?: string;
+    title?: string;
+  };
   name?: string;
   description?: string;
   emoji: string;
@@ -101,6 +105,7 @@ export interface LevelCompletionResult {
   won: boolean;
   stars_earned?: number;
   xp_earned?: number;
+  sparks_earned?: number;
   is_new_completion?: boolean;
   chapter_completed?: boolean;
   rewards?: Array<{

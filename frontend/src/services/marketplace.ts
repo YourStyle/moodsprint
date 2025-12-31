@@ -1,5 +1,5 @@
 /**
- * Marketplace API service for Telegram Stars trading.
+ * Marketplace API service for Sparks trading.
  */
 
 import type { ApiResponse } from '@/domain/types';
@@ -21,41 +21,25 @@ export interface MarketListing {
     hp: number;
     attack: number;
   };
-  price_stars: number;
+  price: number;  // Price in Sparks
+  price_stars?: number;  // Legacy, for backward compatibility
   status: 'active' | 'sold' | 'cancelled';
   created_at: string;
   sold_at?: string;
 }
 
-export interface StarsBalance {
-  balance: number;
-  pending_balance: number;
-  total_earned: number;
-  total_spent: number;
+export interface SparksBalance {
+  sparks: number;
 }
 
-export interface StarsTransaction {
+export interface SparksTransaction {
   id: number;
   amount: number;
-  type: 'card_purchase' | 'card_sale' | 'skip_cooldown' | 'withdrawal';
+  type: string;
   reference_type?: string;
   reference_id?: number;
   description?: string;
   created_at: string;
-}
-
-export interface InvoiceData {
-  title: string;
-  description: string;
-  payload: string;
-  price: number;
-  listing_id?: number;
-  card_id?: number;
-  card?: {
-    id: number;
-    name: string;
-    rarity: string;
-  };
 }
 
 class MarketplaceService {
@@ -90,7 +74,7 @@ class MarketplaceService {
 
   async createListing(data: {
     card_id: number;
-    price_stars: number;
+    price: number;
   }): Promise<ApiResponse<{ listing: MarketListing }>> {
     return api.post('/marketplace', data);
   }
@@ -106,48 +90,36 @@ class MarketplaceService {
     return api.get('/marketplace/my-listings');
   }
 
-  async createPurchaseInvoice(listingId: number): Promise<ApiResponse<{
-    invoice_url: string;
-    listing_id: number;
-    price: number;
+  /**
+   * Purchase a card with Sparks.
+   * Directly deducts Sparks from balance.
+   */
+  async purchaseWithSparks(listingId: number): Promise<ApiResponse<{
     card: {
       id: number;
       name: string;
       rarity: string;
     };
+    price_paid: number;
+    seller_revenue: number;
   }>> {
     return api.post(`/marketplace/${listingId}/buy`);
   }
 
-  async completePurchase(data: {
-    listing_id: number;
-    telegram_payment_id: string;
-  }): Promise<ApiResponse<{
-    card: unknown;
-    price_paid: number;
-    seller_revenue: number;
-    commission: number;
-  }>> {
-    return api.post('/marketplace/complete-purchase', data);
-  }
-
+  /**
+   * Skip card cooldown by paying Sparks.
+   */
   async skipCardCooldown(cardId: number): Promise<ApiResponse<{
-    invoice_url: string;
-    card_id: number;
-    price: number;
+    card: {
+      id: number;
+      name: string;
+    };
+    price_paid: number;
   }>> {
     return api.post(`/cards/${cardId}/skip-cooldown`);
   }
 
-  async completeCooldownSkip(data: {
-    card_id: number;
-    telegram_payment_id: string;
-    price: number;
-  }): Promise<ApiResponse<{ card: unknown }>> {
-    return api.post('/cards/complete-cooldown-skip', data);
-  }
-
-  async getBalance(): Promise<ApiResponse<StarsBalance>> {
+  async getBalance(): Promise<ApiResponse<SparksBalance>> {
     return api.get('/marketplace/balance');
   }
 
@@ -155,7 +127,7 @@ class MarketplaceService {
     page?: number;
     per_page?: number;
   }): Promise<ApiResponse<{
-    transactions: StarsTransaction[];
+    transactions: SparksTransaction[];
     total: number;
     page: number;
     pages: number;

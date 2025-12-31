@@ -110,4 +110,12 @@ export const sparksService = {
   > {
     return api.get(`/sparks/transactions?page=${page}&per_page=${perPage}`);
   },
+
+  /**
+   * Buy sparks pack with Telegram Stars.
+   * Returns invoice URL to open with webApp.openInvoice().
+   */
+  async buyPack(packId: string): Promise<ApiResponse<{ invoice_url: string }>> {
+    return api.post('/sparks/buy', { pack_id: packId });
+  },
 };

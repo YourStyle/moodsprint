@@ -166,7 +166,24 @@ class GuildService:
             .order_by(GuildMember.contribution_xp.desc())
             .all()
         )
-        return [m.to_dict() for m in members]
+        result = []
+        for m in members:
+            user = m.user
+            result.append(
+                {
+                    "id": m.id,
+                    "user_id": m.user_id,
+                    "username": user.username if user else None,
+                    "first_name": user.first_name if user else None,
+                    "photo_url": user.photo_url if user else None,
+                    "role": m.role,
+                    "contribution_xp": m.contribution_xp,
+                    "raids_participated": m.raids_participated,
+                    "total_damage_dealt": m.total_damage_dealt,
+                    "joined_at": m.joined_at.isoformat() if m.joined_at else None,
+                }
+            )
+        return result
 
     def transfer_leadership(self, user_id: int, new_leader_id: int) -> dict[str, Any]:
         """Transfer guild leadership to another member."""
@@ -629,7 +646,7 @@ class GuildService:
         recent_raids = (
             GuildRaid.query.filter_by(guild_id=guild_id)
             .filter(GuildRaid.status != "active")
-            .order_by(GuildRaid.created_at.desc())
+            .order_by(GuildRaid.started_at.desc())
             .limit(10)
             .all()
         )

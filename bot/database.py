@@ -1000,3 +1000,84 @@ async def complete_cooldown_skip(
             "success": True,
             "card": {"id": card_id, "name": card["name"]},
         }
+
+
+# Sparks packs (mirrored from backend)
+SPARKS_PACKS = {
+    "starter": {"sparks": 100, "price_stars": 10},
+    "basic": {"sparks": 500, "price_stars": 45},
+    "standard": {"sparks": 1000, "price_stars": 80},
+    "premium": {"sparks": 2500, "price_stars": 175},
+    "elite": {"sparks": 5000, "price_stars": 300},
+    "ultimate": {"sparks": 10000, "price_stars": 500},
+}
+
+
+async def complete_sparks_purchase(
+    pack_id: str,
+    user_id: int,
+    telegram_payment_id: str,
+) -> dict:
+    """Complete sparks pack purchase after successful Stars payment."""
+    pack = SPARKS_PACKS.get(pack_id)
+    if not pack:
+        return {"success": False, "error": "Invalid pack"}
+
+    sparks_amount = pack["sparks"]
+
+    async with get_session() as session:
+        # Credit sparks to user
+        await session.execute(
+            text(
+                """
+                UPDATE users
+                SET sparks = sparks + :amount
+                WHERE id = :user_id
+            """
+            ),
+            {"user_id": user_id, "amount": sparks_amount},
+        )
+
+        # Record sparks transaction
+        await session.execute(
+            text(
+                """
+                INSERT INTO sparks_transactions
+                    (user_id, amount, type, description, created_at)
+                VALUES
+                    (:user_id, :amount, 'stars_purchase', :description, NOW())
+            """
+            ),
+            {
+                "user_id": user_id,
+                "amount": sparks_amount,
+                "description": f"Покупка пакета {pack_id} за Stars",
+            },
+        )
+
+        # Record stars transaction
+        await session.execute(
+            text(
+                """
+                INSERT INTO stars_transactions
+                    (user_id, amount, type, reference_type,
+                     telegram_payment_id, description, created_at)
+                VALUES
+                    (:user_id, :amount, 'sparks_purchase', 'sparks',
+                     :payment_id, :description, NOW())
+            """
+            ),
+            {
+                "user_id": user_id,
+                "amount": -pack["price_stars"],
+                "payment_id": telegram_payment_id,
+                "description": f"Покупка {sparks_amount} Sparks",
+            },
+        )
+
+        await session.commit()
+
+        return {
+            "success": True,
+            "sparks": sparks_amount,
+        }

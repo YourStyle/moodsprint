@@ -355,7 +355,7 @@ class CampaignService:
                     type="campaign_reward",
                     reference_type="level",
                     reference_id=level_id,
-                    description=f"Награда за уровень: {level.name}",
+                    description=f"Награда за уровень {level.number}",
                 )
                 db.session.add(tx)
 
@@ -448,6 +448,29 @@ class CampaignService:
                         "type": "xp",
                         "amount": amount,
                         "name": reward.name or f"{amount} XP",
+                    }
+                )
+
+            elif reward.reward_type == "sparks":
+                amount = reward_data.get("amount", 100)
+                user = User.query.get(user_id)
+                if user:
+                    user.add_sparks(amount)
+                    # Record transaction
+                    tx = SparksTransaction(
+                        user_id=user_id,
+                        amount=amount,
+                        type="campaign_chapter_reward",
+                        reference_type="chapter",
+                        reference_id=chapter.id,
+                        description=f"Награда за главу: {chapter.name}",
+                    )
+                    db.session.add(tx)
+                given_rewards.append(
+                    {
+                        "type": "sparks",
+                        "amount": amount,
+                        "name": reward.name or f"{amount} Sparks",
                     }
                 )
 

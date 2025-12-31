@@ -1789,11 +1789,20 @@ def chapter_detail(chapter_id: int):
         text("SELECT id, name, emoji, genre FROM monsters ORDER BY genre, name")
     ).fetchall()
 
+    # Get chapter rewards
+    rewards = db.session.execute(
+        text("""SELECT id, reward_type, reward_data, name, description, emoji
+                FROM campaign_rewards
+                WHERE chapter_id = :chapter_id"""),
+        {"chapter_id": chapter_id},
+    ).fetchall()
+
     return render_template(
         "campaign_chapter.html",
         chapter=dict(chapter._mapping),
         levels=[dict(row._mapping) for row in levels] if levels else [],
         all_monsters=all_monsters,
+        rewards=[dict(row._mapping) for row in rewards] if rewards else [],
     )
 
 
@@ -2016,6 +2025,73 @@ def delete_level(level_id: int):
         db.session.execute(
             text("DELETE FROM campaign_levels WHERE id = :level_id"),
             {"level_id": level_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# ============ Campaign Rewards ============
+
+
+@app.route("/campaign/chapters/<int:chapter_id>/rewards", methods=["GET"])
+@login_required
+def get_chapter_rewards(chapter_id: int):
+    """Get rewards for a chapter."""
+    result = db.session.execute(
+        text("""SELECT id, reward_type, reward_data, name, description, emoji
+                FROM campaign_rewards
+                WHERE chapter_id = :chapter_id"""),
+        {"chapter_id": chapter_id},
+    )
+    rewards = [dict(row._mapping) for row in result]
+    return jsonify({"success": True, "rewards": rewards})
+
+
+@app.route("/campaign/chapters/<int:chapter_id>/rewards/new", methods=["POST"])
+@login_required
+def create_chapter_reward(chapter_id: int):
+    """Create a new reward for a chapter."""
+    import json
+
+    data = request.json
+    reward_type = data.get("reward_type", "sparks")
+    reward_data = data.get("reward_data", {})
+
+    try:
+        db.session.execute(
+            text("""
+                INSERT INTO campaign_rewards
+                    (chapter_id, reward_type, reward_data, name, description, emoji)
+                VALUES
+                    (:chapter_id, :reward_type, :reward_data, :name, :description, :emoji)
+            """),
+            {
+                "chapter_id": chapter_id,
+                "reward_type": reward_type,
+                "reward_data": json.dumps(reward_data),
+                "name": data.get("name", ""),
+                "description": data.get("description", ""),
+                "emoji": data.get("emoji", "✨"),
+            },
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/campaign/rewards/<int:reward_id>/delete", methods=["POST"])
+@login_required
+def delete_chapter_reward(reward_id: int):
+    """Delete a chapter reward."""
+    try:
+        db.session.execute(
+            text("DELETE FROM campaign_rewards WHERE id = :reward_id"),
+            {"reward_id": reward_id},
         )
         db.session.commit()
         return jsonify({"success": True})

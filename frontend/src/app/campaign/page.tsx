@@ -211,6 +211,10 @@ export default function CampaignPage() {
                     <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-gray-400">
                       <Gift className="w-3.5 h-3.5" />
                       <span>Награда: {chapter.guaranteed_card_rarity} карта + {chapter.xp_reward} XP</span>
+                      <span className="flex items-center gap-0.5 text-amber-400">
+                        <Sparkles className="w-3 h-3" />
+                        до 90✨
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -312,6 +316,10 @@ export default function CampaignPage() {
                     </div>
                     <div className="flex items-center gap-3 text-sm text-gray-400 mt-1">
                       <span>+{level.xp_reward} XP</span>
+                      <span className="flex items-center gap-0.5 text-amber-400">
+                        <Sparkles className="w-3 h-3" />
+                        {level.is_boss ? '+65' : '+15'}
+                      </span>
                       {level.is_completed && level.best_rounds && (
                         <span className="text-gray-500">Лучший: {level.best_rounds} ходов</span>
                       )}
@@ -343,7 +351,7 @@ export default function CampaignPage() {
           <Card className="bg-gradient-to-br from-amber-900/20 to-yellow-900/20 border-amber-500/30">
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-5 h-5 text-amber-400" />
+                <Gift className="w-5 h-5 text-amber-400" />
                 <h3 className="font-bold text-white">Награды за прохождение главы</h3>
               </div>
               <div className="space-y-2">
@@ -354,7 +362,11 @@ export default function CampaignPage() {
                   >
                     <span className="text-xl">{reward.emoji}</span>
                     <div>
-                      <div className="text-sm font-medium text-white">{reward.name}</div>
+                      <div className="text-sm font-medium text-white">
+                        {reward.reward_type === 'sparks' && reward.reward_data?.amount
+                          ? `${reward.reward_data.amount} Sparks`
+                          : reward.name}
+                      </div>
                       {reward.description && (
                         <div className="text-xs text-gray-400">{reward.description}</div>
                       )}

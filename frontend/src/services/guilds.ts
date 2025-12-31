@@ -24,6 +24,7 @@ export interface GuildMember {
   user_id: number;
   username?: string;
   first_name?: string;
+  photo_url?: string;
   role: 'leader' | 'officer' | 'member';
   contribution_xp: number;
   raids_participated: number;
@@ -184,6 +185,22 @@ class GuildsService {
     if (params?.page) query.set('page', params.page.toString());
     if (params?.per_page) query.set('per_page', params.per_page.toString());
     return api.get(`/guilds/leaderboard?${query}`);
+  }
+
+  async getInviteLink(): Promise<ApiResponse<{
+    invite_link: string;
+    guild_id: number;
+    guild_name: string;
+  }>> {
+    return api.get('/guilds/my/invite-link');
+  }
+
+  async kickMember(guildId: number, memberId: number): Promise<ApiResponse<void>> {
+    return api.post(`/guilds/${guildId}/kick/${memberId}`);
+  }
+
+  async promoteMember(guildId: number, memberId: number, role: string): Promise<ApiResponse<void>> {
+    return api.post(`/guilds/${guildId}/promote/${memberId}`, { role });
   }
 }
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Store,
-  Star,
+  Sparkles,
   Heart,
   Swords,
   TrendingUp,
@@ -99,11 +99,11 @@ export function MarketplaceContent() {
           <Store className="w-7 h-7 text-amber-400" />
         </div>
         <h2 className="text-xl font-bold text-white">Маркетплейс</h2>
-        <p className="text-sm text-gray-400">Торгуйте картами за Telegram Stars</p>
+        <p className="text-sm text-gray-400">Торгуйте картами за Sparks</p>
         {balance && (
           <div className="inline-flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-2">
-            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-            <span className="text-amber-400 font-medium">{balance.balance + balance.pending_balance}</span>
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="text-amber-400 font-medium">{balance.sparks}</span>
           </div>
         )}
       </div>
@@ -230,8 +230,8 @@ export function MarketplaceContent() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-amber-400 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-current" />
-                        {listing.price_stars}
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {listing.price}
                       </div>
                     </div>
                   </div>
@@ -274,8 +274,8 @@ export function MarketplaceContent() {
                     <h3 className="text-sm font-medium text-white truncate">{listing.card.name}</h3>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-amber-400 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-current" />
-                        {listing.price_stars}
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {listing.price}
                       </div>
                       <Button
                         variant="ghost"
@@ -311,26 +311,10 @@ export function MarketplaceContent() {
           <Card className="bg-gradient-to-br from-amber-900/30 to-yellow-900/30 border-amber-500/30">
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Баланс</span>
+                <span className="text-gray-400">Баланс Sparks</span>
                 <div className="flex items-center gap-2 text-2xl font-bold text-amber-400">
-                  <Star className="w-6 h-6 fill-current" />
-                  {balance.balance}
-                </div>
-              </div>
-              {balance.pending_balance > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Ожидает вывода</span>
-                  <span className="text-amber-400/70">+{balance.pending_balance}</span>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-amber-500/20">
-                <div>
-                  <div className="text-xs text-gray-500">Всего заработано</div>
-                  <div className="text-green-400 font-medium">+{balance.total_earned}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Всего потрачено</div>
-                  <div className="text-red-400 font-medium">-{balance.total_spent}</div>
+                  <Sparkles className="w-6 h-6" />
+                  {balance.sparks}
                 </div>
               </div>
             </div>
@@ -414,8 +398,8 @@ export function MarketplaceContent() {
               <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl">
                 <span className="text-gray-400">Цена</span>
                 <div className="flex items-center gap-2 text-xl font-bold text-amber-400">
-                  <Star className="w-5 h-5 fill-current" />
-                  {selectedListing.price_stars}
+                  <Sparkles className="w-5 h-5" />
+                  {selectedListing.price}
                 </div>
               </div>
 
@@ -423,11 +407,12 @@ export function MarketplaceContent() {
                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500"
                 onClick={() => {
                   hapticFeedback('medium');
-                  alert('Открываем Telegram Stars платёж...');
+                  // Purchase will be handled via marketplace page
+                  setSelectedListing(null);
                 }}
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Купить
+                Купить за {selectedListing.price} ✨
               </Button>
             </div>
           </Card>
