@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
 
 interface DialogueLine {
-  speaker: string; // 'monster', 'hero', 'narrator', or custom name
+  speaker: string;
   text: string;
   emoji?: string;
 }
@@ -40,6 +40,8 @@ export function DialogueSheet({
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
+  const [monsterText, setMonsterText] = useState('');
+  const [heroText, setHeroText] = useState('');
 
   const currentLine = dialogue[currentLineIndex];
   const isLastLine = currentLineIndex === dialogue.length - 1;
@@ -62,6 +64,12 @@ export function DialogueSheet({
   useEffect(() => {
     if (!isOpen || !currentLine) return;
 
+    // Clear the current speaker's text
+    if (speakerType === 'monster') {
+      setMonsterText('');
+    } else if (speakerType === 'hero') {
+      setHeroText('');
+    }
     setDisplayedText('');
     setIsTyping(true);
 
@@ -70,7 +78,13 @@ export function DialogueSheet({
 
     const timer = setInterval(() => {
       if (index < text.length) {
-        setDisplayedText(text.slice(0, index + 1));
+        const newText = text.slice(0, index + 1);
+        setDisplayedText(newText);
+        if (speakerType === 'monster') {
+          setMonsterText(newText);
+        } else if (speakerType === 'hero') {
+          setHeroText(newText);
+        }
         index++;
       } else {
         setIsTyping(false);
@@ -79,13 +93,15 @@ export function DialogueSheet({
     }, 25);
 
     return () => clearInterval(timer);
-  }, [currentLineIndex, currentLine, isOpen]);
+  }, [currentLineIndex, currentLine, isOpen, speakerType]);
 
   // Reset on open/close
   useEffect(() => {
     if (isOpen) {
       setCurrentLineIndex(0);
       setDisplayedText('');
+      setMonsterText('');
+      setHeroText('');
       setIsTyping(true);
     }
   }, [isOpen]);
@@ -93,20 +109,26 @@ export function DialogueSheet({
   const handleNextLine = useCallback(() => {
     if (isTyping) {
       // Skip to end of current line
-      setDisplayedText(currentLine?.text || '');
+      const text = currentLine?.text || '';
+      setDisplayedText(text);
+      if (speakerType === 'monster') {
+        setMonsterText(text);
+      } else if (speakerType === 'hero') {
+        setHeroText(text);
+      }
       setIsTyping(false);
     } else if (isLastLine) {
-      // Continue to battle
       hapticFeedback('medium');
       onContinue();
     } else {
-      // Next line
       hapticFeedback('light');
       setCurrentLineIndex((prev) => prev + 1);
     }
-  }, [isTyping, isLastLine, currentLine, onContinue]);
+  }, [isTyping, isLastLine, currentLine, onContinue, speakerType]);
 
   if (!currentLine) return null;
+
+  const isNarrator = speakerType === 'narrator';
 
   return (
     <AnimatePresence>
@@ -138,110 +160,137 @@ export function DialogueSheet({
           </button>
 
           {/* Content area */}
-          <div className="relative flex-1 flex flex-col justify-between p-4 pt-16 pb-8">
+          <div className="relative flex-1 flex flex-col p-4 pt-16 pb-8">
 
-            {/* Monster block (top) */}
-            <AnimatePresence mode="wait">
-              {speakerType === 'monster' && (
-                <motion.div
-                  key="monster"
-                  className="flex flex-col items-center"
-                  initial={{ y: -30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -30, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* Monster avatar */}
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-900/80 to-orange-900/80 border-2 border-red-500/50 flex items-center justify-center overflow-hidden shadow-lg shadow-red-500/30 mb-3">
-                    {monsterImageUrl ? (
-                      <img src={monsterImageUrl} alt={monsterName} className="w-full h-full object-cover" />
+            {/* Monster block (top) - always visible */}
+            {!isNarrator && (
+              <motion.div
+                className="flex flex-col items-center mb-4"
+                initial={{ y: -30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Monster avatar */}
+                <div className={cn(
+                  "w-20 h-20 rounded-2xl border-2 flex items-center justify-center overflow-hidden shadow-lg mb-3 transition-all duration-300",
+                  speakerType === 'monster'
+                    ? "bg-gradient-to-br from-red-900/80 to-orange-900/80 border-red-500/70 shadow-red-500/40 scale-105"
+                    : "bg-gradient-to-br from-red-900/40 to-orange-900/40 border-red-500/30 shadow-red-500/20 opacity-60"
+                )}>
+                  {monsterImageUrl ? (
+                    <img src={monsterImageUrl} alt={monsterName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">{monsterEmoji}</span>
+                  )}
+                </div>
+                <p className={cn(
+                  "text-sm font-medium mb-2 transition-colors",
+                  speakerType === 'monster' ? "text-red-400" : "text-red-400/50"
+                )}>{monsterName}</p>
+
+                {/* Monster dialogue bubble */}
+                <div className={cn(
+                  "w-full bg-red-900/40 border rounded-2xl p-4 min-h-[80px] transition-all duration-300",
+                  speakerType === 'monster'
+                    ? "border-red-500/50 bg-red-900/50"
+                    : "border-red-500/20 bg-red-900/20 opacity-60"
+                )}>
+                  <p className="text-white text-base leading-relaxed">
+                    {speakerType === 'monster' ? (
+                      <>
+                        {displayedText}
+                        {isTyping && (
+                          <motion.span
+                            className="inline-block w-0.5 h-4 bg-red-400/50 ml-1"
+                            animate={{ opacity: [1, 0] }}
+                            transition={{ duration: 0.5, repeat: Infinity }}
+                          />
+                        )}
+                      </>
                     ) : (
-                      <span className="text-4xl">{monsterEmoji}</span>
+                      <span className="text-white/50">{monsterText || '...'}</span>
                     )}
-                  </div>
-                  <p className="text-sm font-medium text-red-400 mb-2">{monsterName}</p>
-
-                  {/* Monster dialogue bubble */}
-                  <div className="w-full max-w-sm bg-red-900/40 border border-red-500/30 rounded-2xl p-4">
-                    <p className="text-white text-base leading-relaxed">
-                      {displayedText}
-                      {isTyping && (
-                        <motion.span
-                          className="inline-block w-0.5 h-4 bg-red-400/50 ml-1"
-                          animate={{ opacity: [1, 0] }}
-                          transition={{ duration: 0.5, repeat: Infinity }}
-                        />
-                      )}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Narrator block (center) */}
-            <AnimatePresence mode="wait">
-              {speakerType === 'narrator' && (
-                <motion.div
-                  key="narrator"
-                  className="flex-1 flex flex-col items-center justify-center"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <BookOpen className="w-10 h-10 text-purple-400 mb-4" />
-                  <div className="w-full max-w-md bg-purple-900/30 border border-purple-500/30 rounded-2xl p-5">
-                    <p className="text-white text-center text-lg leading-relaxed italic">
-                      {displayedText}
-                      {isTyping && (
-                        <motion.span
-                          className="inline-block w-0.5 h-5 bg-purple-400/50 ml-1"
-                          animate={{ opacity: [1, 0] }}
-                          transition={{ duration: 0.5, repeat: Infinity }}
-                        />
-                      )}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {isNarrator && (
+              <motion.div
+                className="flex-1 flex flex-col items-center justify-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
+                <BookOpen className="w-10 h-10 text-purple-400 mb-4" />
+                <div className="w-full bg-purple-900/30 border border-purple-500/30 rounded-2xl p-5">
+                  <p className="text-white text-center text-lg leading-relaxed italic">
+                    {displayedText}
+                    {isTyping && (
+                      <motion.span
+                        className="inline-block w-0.5 h-5 bg-purple-400/50 ml-1"
+                        animate={{ opacity: [1, 0] }}
+                        transition={{ duration: 0.5, repeat: Infinity }}
+                      />
+                    )}
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
-            {/* Spacer for non-narrator */}
-            {speakerType !== 'narrator' && <div className="flex-1" />}
+            {/* Spacer */}
+            {!isNarrator && <div className="flex-1" />}
 
-            {/* Hero block (bottom) */}
-            <AnimatePresence mode="wait">
-              {speakerType === 'hero' && (
-                <motion.div
-                  key="hero"
-                  className="flex flex-col items-center"
-                  initial={{ y: 30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 30, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* Hero dialogue bubble */}
-                  <div className="w-full max-w-sm bg-blue-900/40 border border-blue-500/30 rounded-2xl p-4 mb-3">
-                    <p className="text-white text-base leading-relaxed">
-                      {displayedText}
-                      {isTyping && (
-                        <motion.span
-                          className="inline-block w-0.5 h-4 bg-blue-400/50 ml-1"
-                          animate={{ opacity: [1, 0] }}
-                          transition={{ duration: 0.5, repeat: Infinity }}
-                        />
-                      )}
-                    </p>
-                  </div>
+            {/* Hero block (bottom) - always visible */}
+            {!isNarrator && (
+              <motion.div
+                className="flex flex-col items-center mt-4"
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Hero dialogue bubble */}
+                <div className={cn(
+                  "w-full border rounded-2xl p-4 mb-3 min-h-[80px] transition-all duration-300",
+                  speakerType === 'hero'
+                    ? "bg-blue-900/50 border-blue-500/50"
+                    : "bg-blue-900/20 border-blue-500/20 opacity-60"
+                )}>
+                  <p className="text-white text-base leading-relaxed">
+                    {speakerType === 'hero' ? (
+                      <>
+                        {displayedText}
+                        {isTyping && (
+                          <motion.span
+                            className="inline-block w-0.5 h-4 bg-blue-400/50 ml-1"
+                            animate={{ opacity: [1, 0] }}
+                            transition={{ duration: 0.5, repeat: Infinity }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-white/50">{heroText || '...'}</span>
+                    )}
+                  </p>
+                </div>
 
-                  {/* Hero avatar */}
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-900/80 to-cyan-900/80 border-2 border-blue-500/50 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <User className="w-8 h-8 text-blue-300" />
-                  </div>
-                  <p className="text-sm font-medium text-blue-400 mt-2">{heroName}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                {/* Hero avatar */}
+                <div className={cn(
+                  "w-16 h-16 rounded-2xl border-2 flex items-center justify-center shadow-lg transition-all duration-300",
+                  speakerType === 'hero'
+                    ? "bg-gradient-to-br from-blue-900/80 to-cyan-900/80 border-blue-500/70 shadow-blue-500/40 scale-105"
+                    : "bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border-blue-500/30 shadow-blue-500/20 opacity-60"
+                )}>
+                  <User className="w-8 h-8 text-blue-300" />
+                </div>
+                <p className={cn(
+                  "text-sm font-medium mt-2 transition-colors",
+                  speakerType === 'hero' ? "text-blue-400" : "text-blue-400/50"
+                )}>{heroName}</p>
+              </motion.div>
+            )}
 
             {/* Progress and controls */}
             <div className="mt-6 space-y-4">
@@ -264,7 +313,7 @@ export function DialogueSheet({
                 {isTyping ? 'Нажмите, чтобы пропустить' : isLastLine ? 'Нажмите, чтобы начать бой' : 'Нажмите для продолжения'}
               </p>
 
-              {/* Battle button (shows when dialogue is complete) */}
+              {/* Battle button */}
               {!isTyping && isLastLine && (
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, X } from 'lucide-react';
 import { Button } from '@/components/ui';
@@ -27,43 +27,6 @@ interface LoreSheetProps {
   starsEarned?: number;
 }
 
-// Typewriter effect hook
-function useTypewriter(text: string, isOpen: boolean, delay: number = 30) {
-  const [displayedText, setDisplayedText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setDisplayedText('');
-      setIsComplete(false);
-      return;
-    }
-
-    let index = 0;
-    setDisplayedText('');
-    setIsComplete(false);
-
-    const timer = setInterval(() => {
-      if (index < text.length) {
-        setDisplayedText(text.slice(0, index + 1));
-        index++;
-      } else {
-        setIsComplete(true);
-        clearInterval(timer);
-      }
-    }, delay);
-
-    return () => clearInterval(timer);
-  }, [text, isOpen, delay]);
-
-  const skipToEnd = useCallback(() => {
-    setDisplayedText(text);
-    setIsComplete(true);
-  }, [text]);
-
-  return { displayedText, isComplete, skipToEnd };
-}
-
 export function LoreSheet({
   isOpen,
   onClose,
@@ -76,20 +39,19 @@ export function LoreSheet({
   rewards = [],
   starsEarned = 0,
 }: LoreSheetProps) {
-  const { displayedText, isComplete, skipToEnd } = useTypewriter(text, isOpen);
   const [showRewards, setShowRewards] = useState(false);
 
-  // Show rewards after text animation completes
+  // Show rewards after a short delay
   useEffect(() => {
-    if (isComplete && rewards.length > 0) {
+    if (isOpen && rewards.length > 0) {
       const timer = setTimeout(() => {
         setShowRewards(true);
         hapticFeedback('success');
-      }, 300);
+      }, 500);
       return () => clearTimeout(timer);
     }
     setShowRewards(false);
-  }, [isComplete, rewards.length]);
+  }, [isOpen, rewards.length]);
 
   // Get theme colors based on type
   const getTheme = () => {
@@ -123,20 +85,6 @@ export function LoreSheet({
 
   const theme = getTheme();
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      if (!isComplete) {
-        skipToEnd();
-      }
-    }
-  };
-
-  const handleContentClick = () => {
-    if (!isComplete) {
-      skipToEnd();
-    }
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -145,7 +93,6 @@ export function LoreSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={handleBackdropClick}
         >
           {/* Backdrop with blur */}
           <motion.div
@@ -158,7 +105,7 @@ export function LoreSheet({
           {/* Main content sheet */}
           <motion.div
             className={cn(
-              'relative w-full max-w-lg mx-4 mb-4 rounded-t-3xl rounded-b-2xl overflow-hidden',
+              'relative w-full mx-4 mb-4 rounded-t-3xl rounded-b-2xl overflow-hidden',
               `bg-gradient-to-b ${theme.gradient}`,
               'border border-white/10'
             )}
@@ -173,7 +120,6 @@ export function LoreSheet({
               scale: 0.95,
               transition: { duration: 0.3 },
             }}
-            onClick={handleContentClick}
           >
             {/* Close button */}
             <button
@@ -273,31 +219,19 @@ export function LoreSheet({
                 </motion.div>
               )}
 
-              {/* Lore text with typewriter effect */}
+              {/* Lore text */}
               <motion.div
                 className="bg-black/30 rounded-xl p-4 border border-white/10"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{
                   y: 0,
                   opacity: 1,
-                  transition: { delay: 0.5 },
+                  transition: { delay: 0.3 },
                 }}
               >
-                <p className="text-gray-200 leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                  {displayedText}
-                  {!isComplete && (
-                    <motion.span
-                      className="inline-block w-0.5 h-4 bg-white/50 ml-0.5"
-                      animate={{ opacity: [1, 0] }}
-                      transition={{ duration: 0.5, repeat: Infinity }}
-                    />
-                  )}
+                <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">
+                  {text}
                 </p>
-                {!isComplete && (
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Нажмите, чтобы пропустить
-                  </p>
-                )}
               </motion.div>
 
               {/* Rewards */}
@@ -345,8 +279,8 @@ export function LoreSheet({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{
                   y: 0,
-                  opacity: isComplete ? 1 : 0.5,
-                  transition: { delay: 0.6 },
+                  opacity: 1,
+                  transition: { delay: 0.4 },
                 }}
               >
                 <Button
