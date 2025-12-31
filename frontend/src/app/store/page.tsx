@@ -34,8 +34,9 @@ export default function StorePage() {
         const status = await openInvoice(result.data.invoice_url);
         if (status === 'paid') {
           hapticFeedback('success');
-          // Refresh balance after purchase
-          queryClient.invalidateQueries({ queryKey: ['sparks'] });
+          // Wait for backend to process payment, then refresh balance
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await queryClient.refetchQueries({ queryKey: ['sparks', 'balance'] });
           queryClient.invalidateQueries({ queryKey: ['user'] });
         }
       }
