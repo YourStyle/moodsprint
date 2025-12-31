@@ -295,6 +295,25 @@ class CardService:
 
         return should_generate
 
+    # Urgency keywords that force high priority
+    URGENCY_KEYWORDS = [
+        "срочно",
+        "срочное",
+        "срочная",
+        "срочный",
+        "asap",
+        "urgent",
+        "немедленно",
+        "сейчас",
+        "важно",
+        "важная",
+        "важное",
+        "критично",
+        "дедлайн",
+        "deadline",
+        "горит",
+    ]
+
     def determine_task_difficulty(
         self, task_title: str, task_description: str = ""
     ) -> str:
@@ -303,12 +322,21 @@ class CardService:
 
         Returns: 'easy', 'medium', 'hard', or 'very_hard'
         """
+        text_lower = f"{task_title} {task_description or ''}".lower()
+
+        # Check for urgency keywords - force high priority
+        for keyword in self.URGENCY_KEYWORDS:
+            if keyword in text_lower:
+                logger.info(
+                    f"Urgency keyword '{keyword}' found, setting hard difficulty"
+                )
+                return "hard"
+
         if not self.openai_client:
             # Fallback: simple heuristic based on text length
-            text = f"{task_title} {task_description or ''}"
-            if len(text) < 20:
+            if len(text_lower) < 20:
                 return "easy"
-            elif len(text) < 50:
+            elif len(text_lower) < 50:
                 return "medium"
             else:
                 return "hard"
@@ -322,8 +350,10 @@ class CardService:
 Оцени сложность по следующим критериям:
 - easy: быстрые простые задачи (5-15 минут), рутина
 - medium: задачи средней сложности (30-60 минут), требующие концентрации
-- hard: сложные задачи (1-3 часа), требующие глубокой работы
+- hard: сложные задачи (1-3 часа), требующие глубокой работы ИЛИ задачи с указанием срочности
 - very_hard: очень сложные задачи (3+ часов), комплексные проекты
+
+ВАЖНО: если в задаче есть слова "срочно", "важно", "asap", "urgent" - это ВСЕГДА hard или very_hard!
 
 Ответь ТОЛЬКО одним словом: easy, medium, hard или very_hard"""
 
