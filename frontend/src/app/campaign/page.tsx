@@ -75,8 +75,8 @@ export default function CampaignPage() {
     setSelectedChapter(chapter);
     setShowLevelSelect(true);
 
-    // Show intro if chapter has one and not completed
-    if (chapter.story_intro && !chapter.is_completed) {
+    // Show intro only if chapter has one, not completed, and never visited (0 levels completed)
+    if (chapter.story_intro && !chapter.is_completed && chapter.levels_completed === 0) {
       setShowIntro(true);
     }
   };
@@ -272,7 +272,7 @@ export default function CampaignPage() {
 
   // Level selection view
   return (
-    <div className="p-4 pb-4">
+    <div className="p-4 pt-6 pb-4">
       {/* Chapter Header */}
       {selectedChapter && (
           <Card
@@ -283,15 +283,15 @@ export default function CampaignPage() {
             )}
           >
             <div className="p-4">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-2">
                 <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
                   style={{ backgroundColor: selectedChapter.background_color + '40' }}
                 >
                   {selectedChapter.emoji}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-white truncate">
                     Глава {selectedChapter.number}: {selectedChapter.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -299,16 +299,16 @@ export default function CampaignPage() {
                       <Star className="w-3.5 h-3.5 fill-current" />
                       {selectedChapter.stars_earned}/{selectedChapter.max_stars}
                     </div>
-                    <span>|</span>
+                    <span className="text-gray-600">•</span>
                     <span>{selectedChapter.levels_completed}/{selectedChapter.total_levels} уровней</span>
                   </div>
                 </div>
               </div>
 
               {chapterData?.data?.story_intro && (
-                <div className="text-sm text-gray-300 italic border-l-2 border-white/20 pl-3">
+                <p className="text-sm text-gray-400 mt-2 line-clamp-2">
                   {chapterData.data.story_intro}
-                </div>
+                </p>
               )}
             </div>
           </Card>
@@ -318,66 +318,63 @@ export default function CampaignPage() {
         {chapterLoading ? (
           <div className="text-center text-gray-400 py-8">Загрузка...</div>
         ) : (
-          <div className="space-y-2">
-            {chapterData?.data?.levels?.map((level) => (
-              <Card
+          <div className="space-y-2 mt-4">
+            {chapterData?.data?.levels?.map((level, index) => (
+              <div
                 key={level.id}
                 className={cn(
-                  'overflow-hidden transition-all cursor-pointer',
+                  'rounded-xl overflow-hidden transition-all cursor-pointer border',
                   level.is_boss
-                    ? 'bg-gradient-to-r from-red-900/30 to-orange-900/30 border-red-500/30'
-                    : 'bg-gray-800/50 border-gray-700/50',
+                    ? 'bg-gradient-to-r from-red-900/40 to-orange-900/40 border-red-500/40'
+                    : 'bg-gray-800/60 border-gray-700/40',
                   !level.is_unlocked && 'opacity-50 grayscale',
                   level.is_completed && 'ring-1 ring-green-500/30'
                 )}
                 onClick={() => handleLevelStart(level)}
               >
-                <div className="p-4 flex items-center gap-4">
+                <div className="px-3 py-2.5 flex items-center gap-3">
                   {/* Level number */}
                   <div className={cn(
-                    'w-12 h-12 rounded-xl flex items-center justify-center',
+                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
                     level.is_boss
-                      ? 'bg-red-600/30'
-                      : 'bg-gray-700/50'
+                      ? 'bg-red-600/40'
+                      : 'bg-gray-700/60'
                   )}>
                     {level.is_boss ? (
-                      <Crown className="w-6 h-6 text-red-400" />
+                      <Crown className="w-5 h-5 text-red-400" />
                     ) : level.is_unlocked ? (
-                      <span className="text-lg font-bold text-white">{level.number}</span>
+                      <span className="text-base font-bold text-white">{level.number}</span>
                     ) : (
-                      <Lock className="w-5 h-5 text-gray-500" />
+                      <Lock className="w-4 h-4 text-gray-500" />
                     )}
                   </div>
 
                   {/* Level info */}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-white">
+                      <h3 className="font-medium text-white text-sm truncate">
                         {level.title || (level.is_boss ? 'БОСС' : `Уровень ${level.number}`)}
                       </h3>
                       {level.is_completed && (
-                        <Check className="w-4 h-4 text-green-400" />
+                        <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-400 mt-1">
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                       <span>+{level.xp_reward} XP</span>
-                      <span className="flex items-center gap-0.5 text-amber-400">
+                      <span className="flex items-center gap-0.5 text-purple-400">
                         <Sparkles className="w-3 h-3" />
-                        {level.is_boss ? '+65' : '+15'}
+                        {level.is_boss ? '65' : '15'}
                       </span>
-                      {level.is_completed && level.best_rounds && (
-                        <span className="text-gray-500">Лучший: {level.best_rounds} ходов</span>
-                      )}
                     </div>
                   </div>
 
                   {/* Stars */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5 shrink-0">
                     {[1, 2, 3].map((star) => (
                       <Star
                         key={star}
                         className={cn(
-                          'w-5 h-5',
+                          'w-4 h-4',
                           level.stars_earned >= star
                             ? 'text-amber-400 fill-amber-400'
                             : 'text-gray-600'
@@ -386,14 +383,14 @@ export default function CampaignPage() {
                     ))}
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
 
         {/* Chapter Rewards */}
         {chapterData?.data?.rewards && chapterData.data.rewards.length > 0 && (
-          <Card className="bg-gradient-to-br from-amber-900/20 to-yellow-900/20 border-amber-500/30">
+          <Card className="bg-gradient-to-br from-amber-900/20 to-yellow-900/20 border-amber-500/30 mt-4">
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Gift className="w-5 h-5 text-amber-400" />
