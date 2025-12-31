@@ -1,5 +1,6 @@
 """Admin panel application."""
 
+import json
 import os
 from datetime import datetime
 from functools import wraps
@@ -1960,8 +1961,12 @@ def create_level(chapter_id: int):
                 "monster_id": data.get("monster_id"),
                 "is_boss": data.get("is_boss", False),
                 "title": data.get("title"),
-                "dialogue_before": data.get("dialogue_before"),
-                "dialogue_after": data.get("dialogue_after"),
+                "dialogue_before": json.dumps(data.get("dialogue_before"))
+                if data.get("dialogue_before")
+                else None,
+                "dialogue_after": json.dumps(data.get("dialogue_after"))
+                if data.get("dialogue_after")
+                else None,
                 "difficulty_multiplier": data.get("difficulty_multiplier", 1.0),
                 "required_power": data.get("required_power", 0),
                 "xp_reward": data.get("xp_reward", 50),
@@ -1986,6 +1991,7 @@ def update_level(level_id: int):
         updates = []
         params = {"level_id": level_id}
 
+        json_fields = ["dialogue_before", "dialogue_after"]
         for field in [
             "monster_id",
             "is_boss",
@@ -2000,7 +2006,11 @@ def update_level(level_id: int):
         ]:
             if field in data:
                 updates.append(f"{field} = :{field}")
-                params[field] = data[field]
+                value = data[field]
+                # Serialize JSON fields
+                if field in json_fields and value is not None:
+                    value = json.dumps(value)
+                params[field] = value
 
         if updates:
             db.session.execute(
