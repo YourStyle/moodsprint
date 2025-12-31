@@ -445,8 +445,9 @@ export default function CampaignPage() {
             monsterName={getMonsterForLevel().name}
             monsterEmoji={getMonsterForLevel().emoji}
             dialogue={selectedLevel.dialogue_before.map(d => ({
-              speaker: d.speaker === 'monster' ? 'monster' : 'hero',
+              speaker: d.speaker,
               text: d.text,
+              emoji: d.emoji,
             }))}
             title={selectedLevel.title || `Уровень ${selectedLevel.number}`}
           />

@@ -386,37 +386,62 @@ export default function ArenaPage() {
         // Get battle config for this campaign level
         const configResponse = await campaignService.getLevelBattleConfig(Number(campaignLevelId));
         if (!configResponse.success || !configResponse.data) {
-          console.error('Failed to get campaign battle config');
+          console.error('Failed to get campaign battle config:', configResponse);
+          setCampaignLoading(false);
+          setCampaignMode(false);
           router.push('/campaign');
           return;
         }
 
-        setCampaignBattleConfig(configResponse.data);
+        const config = configResponse.data;
+        setCampaignBattleConfig(config);
         setCampaignMode(true);
 
         // Find the monster in the list or create a virtual monster
-        const monster = monsters.find(m => m.id === configResponse.data!.monster_id);
-        if (monster) {
-          // Override monster stats with scaled stats from campaign
-          const scaledMonster = {
-            ...monster,
-            hp: configResponse.data.scaled_stats.hp,
-            attack: configResponse.data.scaled_stats.attack,
-            xp_reward: configResponse.data.scaled_stats.xp_reward,
-            is_boss: configResponse.data.is_boss,
-          };
-          setSelectedMonster(scaledMonster);
-        }
+        const existingMonster = monsters.find(m => m.id === config.monster_id);
+
+        // Create monster object with campaign stats
+        const scaledMonster: Monster = existingMonster ? {
+          ...existingMonster,
+          hp: config.scaled_stats.hp,
+          attack: config.scaled_stats.attack,
+          xp_reward: config.scaled_stats.xp_reward,
+          is_boss: config.is_boss,
+        } : {
+          // Fallback: create virtual monster from config
+          id: config.monster_id,
+          name: config.monster_name,
+          emoji: '👹',
+          genre: 'campaign',
+          level: 1,
+          hp: config.scaled_stats.hp,
+          attack: config.scaled_stats.attack,
+          defense: config.scaled_stats.defense,
+          speed: 10,
+          xp_reward: config.scaled_stats.xp_reward,
+          stat_points_reward: 0,
+          sprite_url: null,
+          is_boss: config.is_boss,
+          is_event_monster: false,
+        };
+
+        setSelectedMonster(scaledMonster);
         setCampaignLoading(false);
       } catch (error) {
         console.error('Campaign battle init error:', error);
         setCampaignLoading(false);
+        setCampaignMode(false);
         router.push('/campaign');
       }
     };
 
-    if (monstersData?.data?.monsters && monstersData.data.deck) {
+    if (monstersData?.data?.monsters && monstersData.data.deck && monstersData.data.deck.length > 0) {
       initCampaignBattle();
+    } else if (monstersData?.data && (!monstersData.data.deck || monstersData.data.deck.length === 0)) {
+      // No deck available - redirect to campaign
+      console.error('No deck available for campaign battle');
+      setCampaignLoading(false);
+      router.push('/campaign');
     }
   }, [campaignLevelId, user, monstersData, router, monsters]);
 
