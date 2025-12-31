@@ -354,8 +354,13 @@ class AIDecomposer:
                 "reason": parsed.get("reason", "Задача уже достаточно разбита"),
             }
 
-        # It's a list of steps
-        steps = parsed if isinstance(parsed, list) else []
+        # It's a list of steps (AI sometimes wraps in {"steps": [...]})
+        if isinstance(parsed, list):
+            steps = parsed
+        elif isinstance(parsed, dict) and "steps" in parsed:
+            steps = parsed["steps"]
+        else:
+            steps = []
 
         # Validate and format (allow up to 10 steps for complex tasks)
         result = []
