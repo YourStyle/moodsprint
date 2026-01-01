@@ -2506,7 +2506,6 @@ def generate_level():
     chapter_name = data.get("chapter_name", "")
     chapter_genre = data.get("chapter_genre", "fantasy")
     chapter_description = data.get("chapter_description", "")
-    chapter_intro = data.get("chapter_intro", "")
     is_boss = data.get("is_boss", False)
     level_number = data.get("level_number", 1)
     total_levels = data.get("total_levels", 5)
