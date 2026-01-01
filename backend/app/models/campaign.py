@@ -9,9 +9,12 @@ class CampaignChapter(db.Model):
     """Story chapter (tied to a genre)."""
 
     __tablename__ = "campaign_chapters"
+    __table_args__ = (
+        db.UniqueConstraint("number", "genre", name="uq_chapter_number_genre"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    number = db.Column(db.Integer, unique=True, nullable=False)  # 1, 2, 3, 4, 5
+    number = db.Column(db.Integer, nullable=False)  # Chapter number per genre
     name = db.Column(db.String(100), nullable=False)
     genre = db.Column(db.String(50), nullable=False)  # fantasy, magic, scifi, etc
 
