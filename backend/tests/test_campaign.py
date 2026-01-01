@@ -5,6 +5,8 @@ import pytest
 from app import db
 from app.models.campaign import CampaignChapter, CampaignLevel
 from app.models.character import Monster
+from app.models.user_profile import UserProfile
+from app.services.campaign_service import CampaignService
 
 
 @pytest.fixture
@@ -27,6 +29,30 @@ def test_chapter(app):
         db.session.commit()
         db.session.refresh(chapter)
         return {"id": chapter.id, "number": chapter.number}
+
+
+@pytest.fixture
+def multi_genre_chapters(app):
+    """Create campaign chapters in multiple genres."""
+    with app.app_context():
+        chapters = []
+        for genre in ["fantasy", "anime", "scifi", "magic", "cyberpunk"]:
+            chapter = CampaignChapter(
+                number=1,
+                name=f"Test Chapter {genre}",
+                genre=genre,
+                description=f"A {genre} chapter",
+                emoji="📖",
+                background_color="#1a1a2e",
+                required_power=0,
+                xp_reward=100,
+                guaranteed_card_rarity="rare",
+                is_active=True,
+            )
+            db.session.add(chapter)
+            chapters.append({"genre": genre})
+        db.session.commit()
+        return chapters
 
 
 @pytest.fixture
@@ -243,3 +269,126 @@ class TestBattleConfig:
         assert "monster_id" in data["data"]
         assert "monster_name" in data["data"]
         assert "scaled_stats" in data["data"]
+
+
+class TestCampaignGenreFiltering:
+    """Tests for genre-based campaign filtering."""
+
+    def test_user_with_anime_genre_gets_anime_chapters(
+        self, app, test_user, multi_genre_chapters
+    ):
+        """User with anime genre should see anime chapters."""
+        with app.app_context():
+            # Set user profile to anime genre
+            profile = UserProfile.query.filter_by(user_id=test_user["id"]).first()
+            if not profile:
+                profile = UserProfile(user_id=test_user["id"])
+                db.session.add(profile)
+            profile.favorite_genre = "anime"
+            db.session.commit()
+
+            # Get campaign overview
+            service = CampaignService()
+            result = service.get_campaign_overview(test_user["id"])
+
+            # Should only return anime chapters
+            assert "chapters" in result
+            chapters = result["chapters"]
+            assert len(chapters) == 1
+            assert chapters[0]["genre"] == "anime"
+
+    def test_user_with_scifi_genre_gets_scifi_chapters(
+        self, app, test_user, multi_genre_chapters
+    ):
+        """User with scifi genre should see scifi chapters."""
+        with app.app_context():
+            # Set user profile to scifi genre
+            profile = UserProfile.query.filter_by(user_id=test_user["id"]).first()
+            if not profile:
+                profile = UserProfile(user_id=test_user["id"])
+                db.session.add(profile)
+            profile.favorite_genre = "scifi"
+            db.session.commit()
+
+            # Get campaign overview
+            service = CampaignService()
+            result = service.get_campaign_overview(test_user["id"])
+
+            # Should only return scifi chapters
+            assert "chapters" in result
+            chapters = result["chapters"]
+            assert len(chapters) == 1
+            assert chapters[0]["genre"] == "scifi"
+
+    def test_user_without_genre_gets_fantasy_default(
+        self, app, test_user, multi_genre_chapters
+    ):
+        """User without genre preference should default to fantasy."""
+        with app.app_context():
+            # Ensure user has no profile or genre
+            profile = UserProfile.query.filter_by(user_id=test_user["id"]).first()
+            if profile:
+                profile.favorite_genre = None
+                db.session.commit()
+
+            # Get campaign overview
+            service = CampaignService()
+            result = service.get_campaign_overview(test_user["id"])
+
+            # Should return fantasy chapters (default)
+            assert "chapters" in result
+            chapters = result["chapters"]
+            assert len(chapters) == 1
+            assert chapters[0]["genre"] == "fantasy"
+
+    def test_genre_change_returns_new_genre_chapters(
+        self, app, test_user, multi_genre_chapters
+    ):
+        """Changing genre should return chapters of the new genre."""
+        with app.app_context():
+            service = CampaignService()
+
+            # Set to anime first
+            profile = UserProfile.query.filter_by(user_id=test_user["id"]).first()
+            if not profile:
+                profile = UserProfile(user_id=test_user["id"])
+                db.session.add(profile)
+            profile.favorite_genre = "anime"
+            db.session.commit()
+
+            result1 = service.get_campaign_overview(test_user["id"])
+            assert result1["chapters"][0]["genre"] == "anime"
+
+            # Change to cyberpunk
+            profile.favorite_genre = "cyberpunk"
+            db.session.commit()
+
+            result2 = service.get_campaign_overview(test_user["id"])
+            assert result2["chapters"][0]["genre"] == "cyberpunk"
+
+            # Change to magic
+            profile.favorite_genre = "magic"
+            db.session.commit()
+
+            result3 = service.get_campaign_overview(test_user["id"])
+            assert result3["chapters"][0]["genre"] == "magic"
+
+    def test_no_chapters_for_genre_returns_all(self, app, test_user, test_chapter):
+        """If no chapters exist for user's genre, return all chapters."""
+        with app.app_context():
+            # Set user to a genre that has no chapters
+            profile = UserProfile.query.filter_by(user_id=test_user["id"]).first()
+            if not profile:
+                profile = UserProfile(user_id=test_user["id"])
+                db.session.add(profile)
+            profile.favorite_genre = "anime"  # Only fantasy chapter exists
+            db.session.commit()
+
+            # Get campaign overview
+            service = CampaignService()
+            result = service.get_campaign_overview(test_user["id"])
+
+            # Should fallback to showing all chapters
+            assert "chapters" in result
+            chapters = result["chapters"]
+            assert len(chapters) >= 1

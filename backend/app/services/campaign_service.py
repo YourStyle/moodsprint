@@ -55,7 +55,7 @@ class CampaignService:
             .all()
         )
 
-        # If no chapters for user's genre, show all chapters
+        # Still no chapters? Show all (admin likely hasn't created any)
         if not chapters:
             chapters = (
                 CampaignChapter.query.filter_by(is_active=True)

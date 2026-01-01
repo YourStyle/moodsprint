@@ -128,6 +128,18 @@ export default function ArenaPage() {
     queryClient.invalidateQueries({ queryKey: ['cards'] });
   }, [queryClient]);
 
+  // Preload monster images when data is fetched
+  useEffect(() => {
+    if (monstersData?.data?.monsters) {
+      monstersData.data.monsters.forEach((monster) => {
+        if (monster.sprite_url) {
+          const img = new Image();
+          img.src = monster.sprite_url;
+        }
+      });
+    }
+  }, [monstersData]);
+
   // Start battle mutation
   const startBattleMutation = useMutation({
     mutationFn: ({ monsterId, cardIds, campaignLevelId }: { monsterId: number; cardIds: number[]; campaignLevelId?: number }) =>
