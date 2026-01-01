@@ -245,8 +245,8 @@ export function openTelegramLink(url: string) {
 export function shareInviteLink(userId: number, text?: string) {
   const webApp = getTelegramWebApp();
   const inviteParam = `invite_${userId}`;
-  // Bot link format with startapp parameter
-  const shareUrl = `https://t.me/moodsprint_bot?startapp=${inviteParam}`;
+  // Mini App link format with startapp parameter
+  const shareUrl = `https://t.me/moodsprint_bot/moodsprint?startapp=${inviteParam}`;
   const shareText = text || 'Присоединяйся ко мне в MoodSprint! 🚀';
 
   const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
