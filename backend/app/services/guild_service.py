@@ -679,12 +679,9 @@ class GuildService:
 
         guild = membership.guild
         bot_username = os.environ.get("BOT_USERNAME", "moodsprint_bot")
-        app_name = os.environ.get("TELEGRAM_APP_NAME", "moodsprint")
 
-        # Create Telegram Mini App deep link with startapp parameter
-        invite_link = (
-            f"https://t.me/{bot_username}/{app_name}?startapp=guild_{guild.id}"
-        )
+        # Create Telegram bot deep link with startapp parameter
+        invite_link = f"https://t.me/{bot_username}?startapp=guild_{guild.id}"
 
         return {
             "success": True,
