@@ -36,6 +36,8 @@ interface AppState {
   // UI
   showMoodModal: boolean;
   setShowMoodModal: (show: boolean) => void;
+  hideNavigation: boolean;
+  setHideNavigation: (hide: boolean) => void;
 
   // XP animation
   xpAnimation: { amount: number; show: boolean };
@@ -109,6 +111,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   // UI
   showMoodModal: false,
   setShowMoodModal: (showMoodModal) => set({ showMoodModal }),
+  hideNavigation: false,
+  setHideNavigation: (hideNavigation) => set({ hideNavigation }),
 
   // XP animation
   xpAnimation: { amount: 0, show: false },

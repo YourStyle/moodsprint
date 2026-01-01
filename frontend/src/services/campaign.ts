@@ -39,6 +39,16 @@ export interface DialogueLine {
   choices?: DialogueChoice[];
 }
 
+export interface CampaignMonster {
+  id: number;
+  name: string;
+  description?: string;
+  genre: string;
+  emoji: string;
+  sprite_url?: string;
+  is_boss?: boolean;
+}
+
 export interface CampaignLevel {
   id: number;
   chapter_id: number;
@@ -56,6 +66,8 @@ export interface CampaignLevel {
   stars_earned: number;
   best_rounds?: number;
   attempts: number;
+  monster_id?: number;
+  monster?: CampaignMonster;
 }
 
 export interface CampaignProgress {

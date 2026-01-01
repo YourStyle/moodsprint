@@ -20,7 +20,7 @@ const navItems: { href: string; icon: typeof ListTodo; labelKey: TranslationKey 
 
 export function Navigation() {
   const pathname = usePathname();
-  const { activeSession, user } = useAppStore();
+  const { activeSession, user, hideNavigation } = useAppStore();
   const { t } = useLanguage();
 
   // Fetch pending friend requests count
@@ -46,8 +46,8 @@ export function Navigation() {
   // Show badge if either friend requests OR pending referral rewards
   const friendsBadgeCount = pendingRequestsCount + pendingRewardsCount;
 
-  // Hide navigation on onboarding page
-  if (pathname === '/onboarding') {
+  // Hide navigation on onboarding page or when explicitly hidden (battle mode)
+  if (pathname === '/onboarding' || hideNavigation) {
     return null;
   }
 

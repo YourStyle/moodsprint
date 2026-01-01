@@ -116,12 +116,29 @@ export default function CampaignPage() {
 
   // Get monster info for the selected level
   const getMonsterForLevel = () => {
-    // This would need monster data from the level
-    // For now return placeholder - we'll get real data from chapterData
+    if (selectedLevel?.monster) {
+      return {
+        name: selectedLevel.monster.name,
+        emoji: selectedLevel.monster.emoji,
+        imageUrl: selectedLevel.monster.sprite_url,
+      };
+    }
     return {
       name: selectedLevel?.is_boss ? 'Босс' : 'Монстр',
       emoji: selectedLevel?.is_boss ? '👹' : '👾',
+      imageUrl: undefined,
     };
+  };
+
+  // Prefetch chapter data on hover
+  const handleChapterHover = (chapter: CampaignChapter) => {
+    if (chapter.is_unlocked) {
+      queryClient.prefetchQuery({
+        queryKey: ['campaign', 'chapter', chapter.number],
+        queryFn: () => campaignService.getChapterDetails(chapter.number),
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      });
+    }
   };
 
   const getGenreGradient = (genre: string) => {
@@ -203,6 +220,8 @@ export default function CampaignPage() {
                     !chapter.is_unlocked && 'opacity-60 grayscale'
                   )}
                   onClick={() => handleChapterClick(chapter)}
+                  onMouseEnter={() => handleChapterHover(chapter)}
+                  onTouchStart={() => handleChapterHover(chapter)}
                 >
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -441,6 +460,7 @@ export default function CampaignPage() {
             onContinue={handleDialogueContinue}
             monsterName={getMonsterForLevel().name}
             monsterEmoji={getMonsterForLevel().emoji}
+            monsterImageUrl={getMonsterForLevel().imageUrl}
             dialogue={selectedLevel.dialogue_before.map(d => ({
               speaker: d.speaker,
               text: d.text,

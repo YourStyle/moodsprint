@@ -46,7 +46,7 @@ export default function ArenaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { user } = useAppStore();
+  const { user, setHideNavigation } = useAppStore();
   const { t } = useLanguage();
 
   // Campaign mode
@@ -474,6 +474,13 @@ export default function ArenaPage() {
     }
   }, [gameState, handleBackToMonsters]);
 
+  // Hide navigation during battle and result screens
+  useEffect(() => {
+    const shouldHide = gameState === 'battle' || gameState === 'result';
+    setHideNavigation(shouldHide);
+    return () => setHideNavigation(false);
+  }, [gameState, setHideNavigation]);
+
   if (!user) {
     return (
       <div className="p-4 text-center">
@@ -507,12 +514,14 @@ export default function ArenaPage() {
 
   return (
     <div className="p-4 pb-4">
-      {/* Header */}
-      <div className="text-center mb-4">
-        <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">{t('arena')}</h1>
-        <p className="text-sm text-gray-400">{t('arenaSubtitle')}</p>
-      </div>
+      {/* Header - hidden during battle and result */}
+      {gameState !== 'battle' && gameState !== 'result' && (
+        <div className="text-center mb-4">
+          <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+          <h1 className="text-2xl font-bold text-white">{t('arena')}</h1>
+          <p className="text-sm text-gray-400">{t('arenaSubtitle')}</p>
+        </div>
+      )}
 
       {/* Active Event Banner */}
       {activeEvent && gameState === 'select' && (

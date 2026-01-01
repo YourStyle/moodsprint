@@ -1338,10 +1338,17 @@ class CardBattleService:
         }
 
     def forfeit_battle(self, user_id: int) -> dict[str, Any]:
-        """Forfeit the current battle."""
+        """Forfeit the current battle. All cards go to knockout and need healing."""
         battle = self.get_active_battle(user_id)
         if not battle:
             return {"error": "no_active_battle"}
+
+        # Mark all player cards as dead (knockout) - they will need healing
+        state = battle.state
+        for card in state["player_cards"]:
+            card["hp"] = 0
+            card["alive"] = False
+        battle.state = state
 
         return self._end_battle(battle, won=False, turn_log=[])
 

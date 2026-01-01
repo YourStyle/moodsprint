@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, User, X, BookOpen } from 'lucide-react';
+import { Swords, User, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
@@ -150,35 +150,22 @@ export function DialogueSheet({
             exit={{ opacity: 0 }}
           />
 
-          {/* Top buttons */}
-          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-            {/* Skip button - shown for repeat battles */}
-            {showSkipButton && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  hapticFeedback('medium');
-                  onContinue();
-                }}
-                className="px-3 py-1.5 rounded-full bg-orange-600/80 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
-              >
-                Пропустить
-              </button>
-            )}
-            {/* Close button */}
+          {/* Skip button - shown for repeat battles, bottom right corner */}
+          {showSkipButton && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onClose();
+                hapticFeedback('medium');
+                onContinue();
               }}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute bottom-28 right-4 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 text-xs font-medium transition-colors z-10"
             >
-              <X className="w-5 h-5 text-white/70" />
+              Пропустить »
             </button>
-          </div>
+          )}
 
           {/* Content area */}
-          <div className="relative flex-1 flex flex-col p-4 pt-16 pb-8">
+          <div className="relative flex-1 flex flex-col p-4 pt-8 pb-8">
 
             {/* Monster block (top) - always visible */}
             {!isNarrator && (
