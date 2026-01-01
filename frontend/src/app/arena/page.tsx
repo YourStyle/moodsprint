@@ -302,8 +302,9 @@ export default function ArenaPage() {
 
   const handleBackToSelect = () => {
     // In campaign mode, go back to campaign page
+    // Use replace to avoid keeping arena in history (prevents back button returning to battle)
     if (campaignMode) {
-      router.push('/campaign');
+      router.replace('/campaign');
       return;
     }
 
@@ -391,7 +392,7 @@ export default function ArenaPage() {
           console.error('Failed to get campaign battle config:', configResponse);
           setCampaignLoading(false);
           setCampaignMode(false);
-          router.push('/campaign');
+          router.replace('/campaign');
           return;
         }
 
@@ -433,7 +434,7 @@ export default function ArenaPage() {
         console.error('Campaign battle init error:', error);
         setCampaignLoading(false);
         setCampaignMode(false);
-        router.push('/campaign');
+        router.replace('/campaign');
       }
     };
 
@@ -443,7 +444,7 @@ export default function ArenaPage() {
       // No deck available - redirect to campaign
       console.error('No deck available for campaign battle');
       setCampaignLoading(false);
-      router.push('/campaign');
+      router.replace('/campaign');
     }
   }, [campaignLevelId, user, monstersData, router, monsters]);
 

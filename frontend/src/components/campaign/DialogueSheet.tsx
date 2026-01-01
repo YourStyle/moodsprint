@@ -24,6 +24,7 @@ interface DialogueSheetProps {
   dialogue: DialogueLine[];
   title?: string;
   continueButtonText?: string;
+  showSkipButton?: boolean;
 }
 
 export function DialogueSheet({
@@ -36,6 +37,7 @@ export function DialogueSheet({
   heroName = 'Герой',
   dialogue,
   continueButtonText = 'В бой!',
+  showSkipButton = false,
 }: DialogueSheetProps) {
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
@@ -148,16 +150,32 @@ export function DialogueSheet({
             exit={{ opacity: 0 }}
           />
 
-          {/* Close button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors z-10"
-          >
-            <X className="w-5 h-5 text-white/70" />
-          </button>
+          {/* Top buttons */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+            {/* Skip button - shown for repeat battles */}
+            {showSkipButton && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hapticFeedback('medium');
+                  onContinue();
+                }}
+                className="px-3 py-1.5 rounded-full bg-orange-600/80 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
+              >
+                Пропустить
+              </button>
+            )}
+            {/* Close button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5 text-white/70" />
+            </button>
+          </div>
 
           {/* Content area */}
           <div className="relative flex-1 flex flex-col p-4 pt-16 pb-8">

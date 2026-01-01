@@ -447,6 +447,7 @@ export default function CampaignPage() {
               emoji: d.emoji,
             }))}
             title={selectedLevel.title || `Уровень ${selectedLevel.number}`}
+            showSkipButton={selectedLevel.is_completed || selectedLevel.attempts > 0}
           />
         )}
     </div>
