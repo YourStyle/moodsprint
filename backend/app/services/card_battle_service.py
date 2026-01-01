@@ -556,9 +556,20 @@ class CardBattleService:
         return ActiveBattle.query.filter_by(user_id=user_id, status="active").first()
 
     def start_battle(
-        self, user_id: int, monster_id: int, card_ids: list[int]
+        self,
+        user_id: int,
+        monster_id: int,
+        card_ids: list[int],
+        campaign_level_id: int | None = None,
     ) -> dict[str, Any]:
-        """Start a new turn-based battle."""
+        """Start a new turn-based battle.
+
+        Args:
+            user_id: User ID
+            monster_id: Monster ID
+            card_ids: List of user card IDs to use in battle
+            campaign_level_id: Optional campaign level ID (skips defeated check)
+        """
         # Check for existing active battle
         existing = self.get_active_battle(user_id)
         if existing:
@@ -569,12 +580,14 @@ class CardBattleService:
             return {"error": "monster_not_found"}
 
         # Check if monster was already defeated in this period
-        period_start = DailyMonster.get_current_period_start()
-        already_defeated = DefeatedMonster.query.filter_by(
-            user_id=user_id, monster_id=monster_id, period_start=period_start
-        ).first()
-        if already_defeated:
-            return {"error": "monster_already_defeated"}
+        # Skip this check for campaign battles (levels can be replayed)
+        if not campaign_level_id:
+            period_start = DailyMonster.get_current_period_start()
+            already_defeated = DefeatedMonster.query.filter_by(
+                user_id=user_id, monster_id=monster_id, period_start=period_start
+            ).first()
+            if already_defeated:
+                return {"error": "monster_already_defeated"}
 
         # Validate player cards
         cards = UserCard.query.filter(
@@ -646,6 +659,7 @@ class CardBattleService:
             "damage_dealt": 0,
             "damage_taken": 0,
             "scaled_stats": scaled,
+            "campaign_level_id": campaign_level_id,  # Track if this is campaign battle
         }
 
         battle = ActiveBattle(
@@ -1250,14 +1264,23 @@ class CardBattleService:
                 xp_info = user.add_xp(xp_earned)
                 level_up = xp_info.get("level_up", False)
 
-            # Mark monster as defeated for this period
-            period_start = DailyMonster.get_current_period_start()
-            defeated = DefeatedMonster(
-                user_id=battle.user_id,
-                monster_id=battle.monster_id,
-                period_start=period_start,
-            )
-            db.session.add(defeated)
+            # Mark monster as defeated for this period (skip for campaign battles)
+            campaign_level_id = state.get("campaign_level_id")
+            if not campaign_level_id:
+                period_start = DailyMonster.get_current_period_start()
+                # Check if already defeated to avoid unique constraint violation
+                existing = DefeatedMonster.query.filter_by(
+                    user_id=battle.user_id,
+                    monster_id=battle.monster_id,
+                    period_start=period_start,
+                ).first()
+                if not existing:
+                    defeated = DefeatedMonster(
+                        user_id=battle.user_id,
+                        monster_id=battle.monster_id,
+                        period_start=period_start,
+                    )
+                    db.session.add(defeated)
 
             # Generate reward card based on monster type
             monster = battle.monster
@@ -1300,6 +1323,7 @@ class CardBattleService:
             "status": "won" if won else "lost",
             "battle": battle.to_dict(),
             "turn_log": turn_log,
+            "campaign_level_id": state.get("campaign_level_id"),
             "result": {
                 "won": won,
                 "rounds": battle.current_round,

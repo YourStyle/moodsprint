@@ -255,6 +255,23 @@ function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           }
+
+          // Handle guild invite deep link
+          if (startParam && startParam.startsWith('guild_')) {
+            const guildId = parseInt(startParam.replace('guild_', ''), 10);
+            if (!isNaN(guildId) && guildId > 0) {
+              const guildHandledKey = `guild_invite_handled_${guildId}`;
+              const alreadyHandled = sessionStorage.getItem(guildHandledKey);
+
+              if (!alreadyHandled) {
+                console.log('[Deeplink] Guild invite:', guildId);
+                sessionStorage.setItem(guildHandledKey, 'true');
+
+                // Redirect to guilds page with invite guild parameter
+                router.push(`/guilds?invite_guild=${guildId}`);
+              }
+            }
+          }
         }
 
         // Load initial data

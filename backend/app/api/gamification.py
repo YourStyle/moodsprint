@@ -798,7 +798,8 @@ def start_battle():
     Request body:
     {
         "monster_id": 1,
-        "card_ids": [1, 2, 3]  // IDs of cards to use in battle
+        "card_ids": [1, 2, 3],  // IDs of cards to use in battle
+        "campaign_level_id": null  // Optional: for campaign battles
     }
 
     Returns battle state with player and monster decks.
@@ -808,6 +809,7 @@ def start_battle():
 
     monster_id = data.get("monster_id")
     card_ids = data.get("card_ids", [])
+    campaign_level_id = data.get("campaign_level_id")
 
     if not monster_id:
         return validation_error({"monster_id": "Monster ID is required"})
@@ -818,7 +820,7 @@ def start_battle():
     from app.services.card_battle_service import CardBattleService
 
     service = CardBattleService()
-    result = service.start_battle(user_id, monster_id, card_ids)
+    result = service.start_battle(user_id, monster_id, card_ids, campaign_level_id)
 
     if "error" in result:
         return validation_error(result)

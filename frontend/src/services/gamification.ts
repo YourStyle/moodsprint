@@ -395,8 +395,12 @@ export const gamificationService = {
   },
 
   // Start a new turn-based battle
-  async startBattle(monsterId: number, cardIds: number[]): Promise<ApiResponse<StartBattleResponse>> {
-    return api.post<StartBattleResponse>('/arena/battle', { monster_id: monsterId, card_ids: cardIds });
+  async startBattle(monsterId: number, cardIds: number[], campaignLevelId?: number): Promise<ApiResponse<StartBattleResponse>> {
+    return api.post<StartBattleResponse>('/arena/battle', {
+      monster_id: monsterId,
+      card_ids: cardIds,
+      campaign_level_id: campaignLevelId || null,
+    });
   },
 
   // Get active battle if any

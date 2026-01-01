@@ -105,7 +105,7 @@ export function LoreSheet({
           {/* Main content sheet */}
           <motion.div
             className={cn(
-              'relative w-full mx-4 mb-4 rounded-t-3xl rounded-b-2xl overflow-hidden',
+              'relative w-full rounded-t-3xl overflow-hidden',
               `bg-gradient-to-b ${theme.gradient}`,
               'border border-white/10'
             )}

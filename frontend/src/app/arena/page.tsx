@@ -130,8 +130,8 @@ export default function ArenaPage() {
 
   // Start battle mutation
   const startBattleMutation = useMutation({
-    mutationFn: ({ monsterId, cardIds }: { monsterId: number; cardIds: number[] }) =>
-      gamificationService.startBattle(monsterId, cardIds),
+    mutationFn: ({ monsterId, cardIds, campaignLevelId }: { monsterId: number; cardIds: number[]; campaignLevelId?: number }) =>
+      gamificationService.startBattle(monsterId, cardIds, campaignLevelId),
     onSuccess: (response) => {
       if (response.success && response.data?.battle) {
         hapticFeedback('medium');
@@ -259,6 +259,7 @@ export default function ArenaPage() {
       startBattleMutation.mutate({
         monsterId: monster.id,
         cardIds: deckCardIds,
+        campaignLevelId: campaignLevelId ? Number(campaignLevelId) : undefined,
       });
     } else {
       // No deck - show card selection
@@ -285,6 +286,7 @@ export default function ArenaPage() {
       startBattleMutation.mutate({
         monsterId: selectedMonster.id,
         cardIds: selectedCards,
+        campaignLevelId: campaignLevelId ? Number(campaignLevelId) : undefined,
       });
     }
   };
@@ -456,9 +458,10 @@ export default function ArenaPage() {
       startBattleMutation.mutate({
         monsterId: selectedMonster.id,
         cardIds: deckCardIds,
+        campaignLevelId: campaignLevelId ? Number(campaignLevelId) : undefined,
       });
     }
-  }, [campaignMode, selectedMonster, campaignBattleConfig, gameState, deck, startBattleMutation, activeBattle]);
+  }, [campaignMode, selectedMonster, campaignBattleConfig, gameState, deck, startBattleMutation, activeBattle, campaignLevelId]);
 
   // Show/hide Telegram back button based on game state
   useEffect(() => {

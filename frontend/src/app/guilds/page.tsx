@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Shield,
   Users,
@@ -26,17 +26,22 @@ type Tab = 'my-guild' | 'browse' | 'leaderboard';
 
 export default function GuildsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
 
   const [activeTab, setActiveTab] = useState<Tab>('my-guild');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const inviteGuildHandled = useRef(false);
 
   // Setup native back button
   useEffect(() => {
     return setupBackButton(() => router.back());
   }, [router]);
+
+  // Get invite_guild from URL params
+  const inviteGuildId = searchParams.get('invite_guild');
 
   // Get user's guild
   const { data: myGuildData, isLoading: myGuildLoading } = useQuery({
@@ -82,6 +87,23 @@ export default function GuildsPage() {
       setActiveTab('my-guild');
     },
   });
+
+  // Handle invite_guild URL parameter - auto-join guild
+  useEffect(() => {
+    if (inviteGuildId && user && !inviteGuildHandled.current && !myGuildLoading) {
+      const guildId = parseInt(inviteGuildId, 10);
+      if (!isNaN(guildId) && guildId > 0) {
+        // Only join if user is not already in a guild
+        if (!myGuildData?.data?.guild) {
+          inviteGuildHandled.current = true;
+          console.log('[Guild] Auto-joining guild from invite:', guildId);
+          joinGuildMutation.mutate(guildId);
+        } else {
+          console.log('[Guild] User already in a guild, cannot join via invite');
+        }
+      }
+    }
+  }, [inviteGuildId, user, myGuildLoading, myGuildData, joinGuildMutation]);
 
   // Leave guild mutation
   const leaveGuildMutation = useMutation({
