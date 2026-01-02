@@ -916,8 +916,8 @@ export default function ArenaPage() {
               </div>
 
               {/* Attack Button with background overlay */}
-              <div className="fixed bottom-0 left-0 right-0 z-30">
-                <div className="bg-gray-900/95 backdrop-blur-md border-t border-gray-700/50 pt-3 pb-24 px-4">
+              <div className="fixed bottom-0 left-0 right-0 z-30 safe-area-bottom">
+                <div className="bg-gray-900/95 backdrop-blur-md border-t border-gray-700/50 pt-3 pb-4 px-4">
                   <div className="max-w-md mx-auto">
                     <Button
                       className={cn(

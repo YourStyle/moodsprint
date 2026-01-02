@@ -661,10 +661,20 @@ def get_postpone_status():
             }
         )
 
-    # Mark as notified
-    if not log.notified:
-        log.notified = True
-        db.session.commit()
+    # If already notified, don't show again
+    if log.notified:
+        return success_response(
+            {
+                "has_postponed": False,
+                "tasks_postponed": 0,
+                "priority_changes": [],
+                "message": None,
+            }
+        )
+
+    # Mark as notified (will only show once)
+    log.notified = True
+    db.session.commit()
 
     # Build message
     if log.tasks_postponed == 1:

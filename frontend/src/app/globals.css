@@ -30,7 +30,8 @@
 
   /* Safe area - hardcoded for TMA mobile UI */
   --safe-area-top: 70px;
-  --safe-area-bottom: 0px;
+  /* Use env() for system safe area (notch, home indicator, Android nav buttons) */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html {
