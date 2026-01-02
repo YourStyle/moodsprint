@@ -1,5 +1,6 @@
 """Tasks API endpoints."""
 
+import logging
 from datetime import date, datetime
 
 from flask import request
@@ -14,6 +15,8 @@ from app.models.task import TaskPriority, TaskStatus
 from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCalculator
 from app.services.card_service import CardService
 from app.utils import not_found, success_response, validation_error
+
+logger = logging.getLogger(__name__)
 
 # Minimum time (in minutes) after task creation before a card can be earned
 MIN_TASK_TIME_FOR_CARD = 10
@@ -46,6 +49,74 @@ def get_current_time_slot() -> str:
         return "evening"
     else:
         return "night"
+
+
+def auto_postpone_overdue_tasks(user_id: int) -> int:
+    """
+    Auto-postpone overdue tasks to today (fallback if bot cron didn't run).
+
+    Returns count of postponed tasks.
+    """
+    today = date.today()
+
+    # Find overdue incomplete tasks for this user
+    overdue_tasks = Task.query.filter(
+        Task.user_id == user_id,
+        Task.due_date < today,
+        Task.status != TaskStatus.COMPLETED.value,
+    ).all()
+
+    if not overdue_tasks:
+        return 0
+
+    postponed_count = 0
+    priority_changes = []
+
+    for task in overdue_tasks:
+        # Save original due_date if not already saved
+        if not task.original_due_date:
+            task.original_due_date = task.due_date
+
+        task.due_date = today
+        task.postponed_count = (task.postponed_count or 0) + 1
+        postponed_count += 1
+
+        # Check if priority should be increased (after 2+ postponements)
+        if task.postponed_count >= 3 and task.priority != TaskPriority.HIGH.value:
+            old_priority = task.priority
+            if task.priority == TaskPriority.MEDIUM.value:
+                task.priority = TaskPriority.HIGH.value
+            elif task.priority == TaskPriority.LOW.value:
+                task.priority = TaskPriority.MEDIUM.value
+
+            if old_priority != task.priority:
+                priority_changes.append(
+                    {
+                        "task_id": task.id,
+                        "task_title": task.title[:50],
+                        "old_priority": old_priority,
+                        "new_priority": task.priority,
+                        "postponed_count": task.postponed_count,
+                    }
+                )
+
+    if postponed_count > 0:
+        # Create or update postpone log for today
+        existing_log = PostponeLog.query.filter_by(user_id=user_id, date=today).first()
+        if not existing_log:
+            log = PostponeLog(
+                user_id=user_id,
+                date=today,
+                tasks_postponed=postponed_count,
+                priority_changes=priority_changes if priority_changes else None,
+                notified=False,
+            )
+            db.session.add(log)
+
+        db.session.commit()
+        logger.info(f"Auto-postponed {postponed_count} tasks for user {user_id}")
+
+    return postponed_count
 
 
 def calculate_task_score(
@@ -99,6 +170,9 @@ def get_tasks():
     - smart_sort: enable smart sorting (default true)
     """
     user_id = int(get_jwt_identity())
+
+    # Auto-postpone any overdue tasks (fallback if bot cron didn't run)
+    auto_postpone_overdue_tasks(user_id)
 
     # Build query
     query = Task.query.filter_by(user_id=user_id)

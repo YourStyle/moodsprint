@@ -103,7 +103,16 @@ class CampaignService:
     def get_chapter_details(self, user_id: int, chapter_number: int) -> dict[str, Any]:
         """Get detailed info about a chapter."""
         progress = self.get_user_progress(user_id)
-        chapter = CampaignChapter.query.filter_by(number=chapter_number).first()
+        user_genre = self.get_user_genre(user_id)
+
+        # Filter by user's genre (since chapters are unique per number+genre)
+        chapter = CampaignChapter.query.filter_by(
+            number=chapter_number, genre=user_genre
+        ).first()
+
+        # Fallback: try to find any chapter with this number
+        if not chapter:
+            chapter = CampaignChapter.query.filter_by(number=chapter_number).first()
 
         if not chapter:
             return {"error": "chapter_not_found"}
