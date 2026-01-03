@@ -27,6 +27,7 @@ import { SelectCardToSellModal, SellCardModal } from '@/components/marketplace';
 import { marketplaceService } from '@/services';
 import type { Card as CardType } from '@/services/cards';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, showBackButton, hideBackButton, showTelegramAlert } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { MarketListing } from '@/services/marketplace';
@@ -42,14 +43,6 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
 };
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Обычная',
-  uncommon: 'Необычная',
-  rare: 'Редкая',
-  epic: 'Эпическая',
-  legendary: 'Легендарная',
-};
-
 // Helper to get price from listing (supports both price and price_stars)
 const getListingPrice = (listing: MarketListing): number => {
   return listing.price || listing.price_stars || 0;
@@ -59,6 +52,15 @@ export default function MarketplacePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
+
+  const RARITY_LABELS: Record<string, string> = {
+    common: t('rarityCommon'),
+    uncommon: t('rarityUncommon'),
+    rare: t('rarityRare'),
+    epic: t('rarityEpic'),
+    legendary: t('rarityLegendary'),
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -150,8 +152,8 @@ export default function MarketplacePage() {
       {/* Header */}
       <div className="text-center mb-4">
         <Store className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">Маркетплейс</h1>
-        <p className="text-sm text-gray-400">Покупай и продавай карты за Sparks</p>
+        <h1 className="text-2xl font-bold text-white">{t('marketplace')}</h1>
+        <p className="text-sm text-gray-400">{t('marketplaceSubtitle')}</p>
         <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
           <Sparkles className="w-4 h-4 text-amber-400" />
           <span className="text-amber-400 font-medium">{sparks.toLocaleString()}</span>
@@ -161,9 +163,9 @@ export default function MarketplacePage() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
         {[
-          { id: 'browse', label: 'Карты', icon: ShoppingCart },
-          { id: 'my-listings', label: 'Мои', icon: Tag },
-          { id: 'balance', label: 'История', icon: Wallet },
+          { id: 'browse', label: t('buy'), icon: ShoppingCart },
+          { id: 'my-listings', label: t('myListings'), icon: Tag },
+          { id: 'balance', label: t('sparks'), icon: Wallet },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -196,7 +198,7 @@ export default function MarketplacePage() {
                     : 'bg-gray-800 text-gray-400'
                 )}
               >
-                Все
+                {t('all')}
               </button>
               {Object.entries(RARITY_LABELS).map(([key, label]) => (
                 <button
@@ -240,7 +242,7 @@ export default function MarketplacePage() {
 
           {/* Listings Grid */}
           {isLoading ? (
-            <div className="text-center text-gray-400 py-8">Загрузка...</div>
+            <div className="text-center text-gray-400 py-8">{t('loading')}</div>
           ) : listingsData?.data?.listings?.length ? (
             <div className="grid grid-cols-2 gap-3">
               {listingsData.data.listings.map((listing) => (
@@ -292,7 +294,7 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">
-              Нет карт на продаже
+              {t('noListings')}
             </div>
           )}
         </div>
@@ -307,7 +309,7 @@ export default function MarketplacePage() {
             className="w-full bg-gradient-to-r from-amber-500 to-orange-500"
           >
             <Tag className="w-4 h-4 mr-2" />
-            Продать карту
+            {t('listForSale')}
           </Button>
 
           {myListingsData?.data?.listings?.length ? (
@@ -344,7 +346,7 @@ export default function MarketplacePage() {
                         disabled={cancelListingMutation.isPending}
                         className="text-red-400 text-xs"
                       >
-                        Снять
+                        {t('removeFromSale')}
                       </Button>
                     </div>
                   </div>
@@ -355,9 +357,9 @@ export default function MarketplacePage() {
             <Card className="bg-gray-800/50 border-gray-700/50">
               <div className="p-8 text-center space-y-3">
                 <Tag className="w-12 h-12 text-gray-600 mx-auto" />
-                <p className="text-gray-400">У вас нет карт на продаже</p>
+                <p className="text-gray-400">{t('noYourListings')}</p>
                 <p className="text-gray-500 text-sm">
-                  Выставьте карту на продажу в разделе Колода
+                  {t('selectCardToSell')}
                 </p>
               </div>
             </Card>
@@ -492,7 +494,7 @@ export default function MarketplacePage() {
               </div>
 
               <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl">
-                <span className="text-gray-400">Цена</span>
+                <span className="text-gray-400">{t('price')}</span>
                 <div className="flex items-center gap-2 text-xl font-bold text-amber-400">
                   <Sparkles className="w-5 h-5" />
                   {getListingPrice(selectedListing)}
@@ -501,7 +503,7 @@ export default function MarketplacePage() {
 
               {sparks < getListingPrice(selectedListing) && (
                 <div className="text-center text-red-400 text-sm">
-                  Недостаточно Sparks (у вас: {sparks})
+                  {t('insufficientSparks')} ({sparks})
                 </div>
               )}
 
@@ -515,7 +517,7 @@ export default function MarketplacePage() {
                 ) : (
                   <ShoppingCart className="w-4 h-4 mr-2" />
                 )}
-                {purchaseMutation.isPending ? 'Покупка...' : 'Купить'}
+                {purchaseMutation.isPending ? t('loading') : t('buyNow')}
               </Button>
             </div>
           </Card>

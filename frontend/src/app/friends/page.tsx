@@ -25,6 +25,7 @@ import { ReferralRewardModal } from '@/components/cards';
 import { FeatureBanner } from '@/components/features';
 import { cardsService } from '@/services';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward } from '@/services/cards';
@@ -39,18 +40,19 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: '#F59E0B',
 };
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Обычная',
-  uncommon: 'Необычная',
-  rare: 'Редкая',
-  epic: 'Эпическая',
-  legendary: 'Легендарная',
-};
-
 export default function FriendsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
+
+  const RARITY_LABELS: Record<string, string> = {
+    common: t('rarityCommon'),
+    uncommon: t('rarityUncommon'),
+    rare: t('rarityRare'),
+    epic: t('rarityEpic'),
+    legendary: t('rarityLegendary'),
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>('friends');
   const [searchUsername, setSearchUsername] = useState('');
@@ -273,7 +275,7 @@ export default function FriendsPage() {
   if (!user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-gray-500">Войдите чтобы увидеть друзей</p>
+        <p className="text-gray-500">{t('loginToSeeFriends')}</p>
       </div>
     );
   }
@@ -335,7 +337,7 @@ export default function FriendsPage() {
           )}
         >
           <span className="text-2xl text-gray-600 mb-1">+</span>
-          <span className="text-xs text-gray-500">Выбрать карту</span>
+          <span className="text-xs text-gray-500">{t('selectCard')}</span>
         </div>
       );
     }
@@ -394,7 +396,7 @@ export default function FriendsPage() {
             <ArrowLeftRight className="w-10 h-10 text-purple-500 mx-auto mb-2" />
           )}
           <h1 className="text-xl font-bold text-white">
-            {isGiftMode ? 'Подарить карты' : 'Предложить обмен'}
+            {isGiftMode ? t('giftCards') : t('proposeTradeBtnLabel')}
           </h1>
           <p className="text-sm text-gray-400">
             {selectedFriend.first_name || selectedFriend.username}
@@ -404,17 +406,17 @@ export default function FriendsPage() {
         {/* My cards selection */}
         <Card className="mb-4 overflow-visible">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white">Ваши карты</h3>
+            <h3 className="text-sm font-medium text-white">{t('yourCardsLabel')}</h3>
             {selectedMyCards.length > 0 && (
               <span className="text-xs text-purple-400 font-medium">
-                Выбрано: {selectedMyCards.length}
+                {t('selectedCount')}: {selectedMyCards.length}
               </span>
             )}
           </div>
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto overflow-x-visible px-1 pt-2 pb-2">
             {myCards.length === 0 ? (
               <p className="text-center text-gray-500 py-4">
-                Нет карт для обмена
+                {t('noCardsToTrade')}
               </p>
             ) : (
               myCards.map((card) => {
@@ -433,7 +435,7 @@ export default function FriendsPage() {
         <Card className="mb-4 overflow-visible">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium text-white">Карты друга</h3>
+              <h3 className="text-sm font-medium text-white">{t('friendCards')}</h3>
               {selectedFriendCards.length > 0 && (
                 <span className="text-xs text-purple-400 font-medium">
                   ({selectedFriendCards.length})
@@ -442,7 +444,7 @@ export default function FriendsPage() {
             </div>
             <span className="text-xs text-gray-500 flex items-center gap-1">
               <Gift className="w-3 h-3" />
-              не выбирай для подарка
+              {t('noCardsForGift')}
             </span>
           </div>
           {friendCardsLoading ? (
@@ -451,7 +453,7 @@ export default function FriendsPage() {
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto overflow-x-visible px-1 pt-2 pb-2">
               {friendCards.length === 0 ? (
                 <p className="text-center text-gray-500 py-4">
-                  У друга нет карт для обмена
+                  {t('noFriendCards')}
                 </p>
               ) : (
                 friendCards.map((card) => {
@@ -469,11 +471,11 @@ export default function FriendsPage() {
 
         {/* Message */}
         <Card className="mb-4">
-          <h3 className="text-sm font-medium text-white mb-2">Сообщение</h3>
+          <h3 className="text-sm font-medium text-white mb-2">{t('message')}</h3>
           <textarea
             value={tradeMessage}
             onChange={(e) => setTradeMessage(e.target.value)}
-            placeholder="Добавьте сообщение к обмену..."
+            placeholder={t('addMessageToTrade')}
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm resize-none"
             rows={2}
           />
@@ -507,8 +509,8 @@ export default function FriendsPage() {
       {/* Header */}
       <div className="text-center mb-4">
         <Users className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">Друзья</h1>
-        <p className="text-sm text-gray-400">Добавляй друзей и обменивайся картами</p>
+        <h1 className="text-2xl font-bold text-white">{t('friendsTitle')}</h1>
+        <p className="text-sm text-gray-400">{t('friendsSubtitle')}</p>
         <Button
           size="sm"
           variant="secondary"
@@ -516,7 +518,7 @@ export default function FriendsPage() {
           onClick={handleShareInvite}
         >
           <Share2 className="w-4 h-4 mr-2" />
-          Пригласить друга
+          {t('inviteFriend')}
         </Button>
       </div>
 
@@ -532,7 +534,7 @@ export default function FriendsPage() {
           )}
         >
           <Users className="w-4 h-4" />
-          <span className="hidden sm:inline">Друзья</span>
+          <span className="hidden sm:inline">{t('friends')}</span>
         </button>
         <button
           onClick={() => setActiveTab('requests')}
@@ -544,7 +546,7 @@ export default function FriendsPage() {
           )}
         >
           <UserPlus className="w-4 h-4" />
-          <span className="hidden sm:inline">Запросы</span>
+          <span className="hidden sm:inline">{t('requests')}</span>
           {pendingRequestsCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
               {pendingRequestsCount}
@@ -561,7 +563,7 @@ export default function FriendsPage() {
           )}
         >
           <ArrowLeftRight className="w-4 h-4" />
-          <span className="hidden sm:inline">Обмены</span>
+          <span className="hidden sm:inline">{t('trades')}</span>
           {pendingTradesCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
               {pendingTradesCount}
@@ -580,13 +582,13 @@ export default function FriendsPage() {
         <>
           {/* Search to add friend */}
           <Card className="mb-4">
-            <h3 className="text-sm font-medium text-white mb-2">Добавить друга</h3>
+            <h3 className="text-sm font-medium text-white mb-2">{t('addFriend')}</h3>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={searchUsername}
                 onChange={(e) => setSearchUsername(e.target.value)}
-                placeholder="Username друга..."
+                placeholder={t('friendUsername')}
                 className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm"
               />
               <Button
@@ -600,11 +602,11 @@ export default function FriendsPage() {
             </div>
             {sendRequestMutation.isError && (
               <p className="text-xs text-red-400 mt-2">
-                Пользователь не найден или уже в друзьях
+                {t('userNotFoundOrFriend')}
               </p>
             )}
             {sendRequestMutation.isSuccess && (
-              <p className="text-xs text-green-400 mt-2">Запрос отправлен!</p>
+              <p className="text-xs text-green-400 mt-2">{t('requestSent')}</p>
             )}
           </Card>
 
@@ -618,9 +620,9 @@ export default function FriendsPage() {
           ) : friends.length === 0 ? (
             <Card className="text-center py-8">
               <Users className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">Пока нет друзей</p>
+              <p className="text-gray-400">{t('noFriendsYet')}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Добавь друга по username чтобы обмениваться картами
+                {t('addFriendByUsername')}
               </p>
             </Card>
           ) : (
@@ -663,7 +665,7 @@ export default function FriendsPage() {
           ) : requests.length === 0 ? (
             <Card className="text-center py-8">
               <Inbox className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">Нет входящих запросов</p>
+              <p className="text-gray-400">{t('noIncomingRequests')}</p>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -716,33 +718,33 @@ export default function FriendsPage() {
           ) : receivedTrades.length === 0 && sentTrades.length === 0 ? (
             <Card className="text-center py-8">
               <ArrowLeftRight className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400">Нет активных обменов</p>
+              <p className="text-gray-400">{t('noActiveTrades')}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Предложи обмен другу из списка друзей
+                {t('proposeTrade')}
               </p>
             </Card>
           ) : (
             <div className="space-y-4">
               {/* Received trades */}
-              {receivedTrades.filter((t) => t.status === 'pending').length > 0 && (
+              {receivedTrades.filter((tr) => tr.status === 'pending').length > 0 && (
                 <>
                   <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
                     <Inbox className="w-4 h-4" />
-                    Входящие предложения
+                    {t('incomingOffers')}
                   </h3>
                   <div className="space-y-3">
                     {receivedTrades
-                      .filter((t) => t.status === 'pending')
+                      .filter((tr) => tr.status === 'pending')
                       .map((trade) => (
                         <Card key={trade.id}>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm text-gray-400">От:</span>
+                            <span className="text-sm text-gray-400">{t('from')}:</span>
                             <span className="text-white font-medium">{trade.sender_name}</span>
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
                               <p className="text-xs text-gray-500 mb-2">
-                                Предлагает {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
+                                {t('offers')} {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
                               </p>
                               <div className="space-y-2">
                                 {trade.sender_cards.map((card) => (
@@ -755,7 +757,7 @@ export default function FriendsPage() {
                             </div>
                             <div>
                               <p className="text-xs text-gray-500 mb-2">
-                                Хочет {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
+                                {t('wants')} {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
                               </p>
                               {trade.receiver_cards.length > 0 ? (
                                 <div className="space-y-2">
@@ -766,7 +768,7 @@ export default function FriendsPage() {
                               ) : (
                                 <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
                                   <Gift className="w-4 h-4 text-pink-400" />
-                                  <span className="text-xs text-pink-400">Подарок</span>
+                                  <span className="text-xs text-pink-400">{t('gift')}</span>
                                 </div>
                               )}
                             </div>
@@ -784,7 +786,7 @@ export default function FriendsPage() {
                               isLoading={acceptTradeMutation.isPending}
                             >
                               <Check className="w-4 h-4 mr-1" />
-                              Принять
+                              {t('accept')}
                             </Button>
                             <Button
                               size="sm"
@@ -794,7 +796,7 @@ export default function FriendsPage() {
                               isLoading={rejectTradeMutation.isPending}
                             >
                               <X className="w-4 h-4 mr-1" />
-                              Отклонить
+                              {t('reject')}
                             </Button>
                           </div>
                         </Card>
@@ -804,27 +806,27 @@ export default function FriendsPage() {
               )}
 
               {/* Sent trades */}
-              {sentTrades.filter((t) => t.status === 'pending').length > 0 && (
+              {sentTrades.filter((tr) => tr.status === 'pending').length > 0 && (
                 <>
                   <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2 mt-4">
                     <SendHorizonal className="w-4 h-4" />
-                    Исходящие предложения
+                    {t('outgoingOffers')}
                   </h3>
                   <div className="space-y-3">
                     {sentTrades
-                      .filter((t) => t.status === 'pending')
+                      .filter((tr) => tr.status === 'pending')
                       .map((trade) => (
                         <Card key={trade.id}>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm text-gray-400">Кому:</span>
+                            <span className="text-sm text-gray-400">{t('to')}:</span>
                             <span className="text-white font-medium">{trade.receiver_name}</span>
                             <Clock className="w-4 h-4 text-yellow-500 ml-auto" />
-                            <span className="text-xs text-yellow-500">Ожидает</span>
+                            <span className="text-xs text-yellow-500">{t('waiting')}</span>
                           </div>
                           <div className="space-y-3 mb-3">
                             <div>
                               <p className="text-xs text-gray-500 mb-2">
-                                Ваши карты {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
+                                {t('yourCardsLabel')} {trade.sender_cards.length > 1 && `(${trade.sender_cards.length})`}
                               </p>
                               <div className="space-y-2">
                                 {trade.sender_cards.map((card) => (
@@ -837,7 +839,7 @@ export default function FriendsPage() {
                             </div>
                             <div>
                               <p className="text-xs text-gray-500 mb-2">
-                                Взамен {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
+                                {t('wants')} {trade.receiver_cards.length > 1 && `(${trade.receiver_cards.length})`}
                               </p>
                               {trade.receiver_cards.length > 0 ? (
                                 <div className="space-y-2">
@@ -848,7 +850,7 @@ export default function FriendsPage() {
                               ) : (
                                 <div className="h-20 rounded-xl border border-dashed border-pink-500/30 bg-pink-500/5 flex items-center justify-center gap-1">
                                   <Gift className="w-4 h-4 text-pink-400" />
-                                  <span className="text-xs text-pink-400">Подарок</span>
+                                  <span className="text-xs text-pink-400">{t('gift')}</span>
                                 </div>
                               )}
                             </div>
@@ -861,7 +863,7 @@ export default function FriendsPage() {
                             isLoading={cancelTradeMutation.isPending}
                           >
                             <X className="w-4 h-4 mr-1" />
-                            Отменить
+                            {t('cancelTrade')}
                           </Button>
                         </Card>
                       ))}
