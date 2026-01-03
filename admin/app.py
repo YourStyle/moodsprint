@@ -2499,18 +2499,15 @@ def generate_chapter_image():
 @app.route("/campaign/levels/<int:level_id>/export", methods=["GET"])
 @login_required
 def export_level_json(level_id: int):
-    """Export level data as JSON for AI prompting."""
+    """Export chapter template for AI prompting (genre, monsters, dialogue format)."""
     level = db.session.execute(
         text("""
-            SELECT l.id, l.number, l.monster_id, l.is_boss, l.title,
-                   l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
-                   l.required_power, l.xp_reward, l.stars_max,
-                   m.name as monster_name, m.description as monster_description,
-                   m.emoji as monster_emoji, m.base_hp, m.base_attack,
+            SELECT l.id, l.number, l.is_boss,
+                   c.id as chapter_id, c.number as chapter_number,
                    c.name as chapter_name, c.genre as chapter_genre,
-                   c.description as chapter_description
+                   c.description as chapter_description,
+                   c.story_intro, c.story_outro
             FROM campaign_levels l
-            LEFT JOIN monsters m ON m.id = l.monster_id
             LEFT JOIN campaign_chapters c ON c.id = l.chapter_id
             WHERE l.id = :level_id
         """),
@@ -2521,52 +2518,63 @@ def export_level_json(level_id: int):
         return jsonify({"success": False, "error": "Level not found"}), 404
 
     level_dict = dict(level._mapping)
+    genre = level_dict.get("chapter_genre") or "fantasy"
 
-    # Parse JSON fields
-    if level_dict.get("dialogue_before"):
-        try:
-            level_dict["dialogue_before"] = json.loads(level_dict["dialogue_before"])
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    if level_dict.get("dialogue_after"):
-        try:
-            level_dict["dialogue_after"] = json.loads(level_dict["dialogue_after"])
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # Get available monsters for this genre
+    # Get all monsters for this genre
     monsters = db.session.execute(
-        text("SELECT id, name, description, emoji, base_hp, base_attack FROM monsters WHERE genre = :genre"),
-        {"genre": level_dict.get("chapter_genre")},
+        text("""
+            SELECT id, name, description, emoji, base_hp, base_attack, sprite_url
+            FROM monsters WHERE genre = :genre ORDER BY base_hp ASC
+        """),
+        {"genre": genre},
     ).fetchall()
 
+    # Get all levels in this chapter to show context
+    chapter_levels = db.session.execute(
+        text("""
+            SELECT l.number, l.title, l.is_boss, m.name as monster_name
+            FROM campaign_levels l
+            LEFT JOIN monsters m ON m.id = l.monster_id
+            WHERE l.chapter_id = :chapter_id
+            ORDER BY l.number
+        """),
+        {"chapter_id": level_dict.get("chapter_id")},
+    ).fetchall()
+
+    # Template for AI to fill
     export_data = {
-        "level": {
+        "_instructions": "Заполни поля ниже для уровня. Выбери monster_id из available_monsters.",
+        "level_to_fill": {
             "id": level_dict["id"],
             "number": level_dict["number"],
-            "title": level_dict["title"],
             "is_boss": level_dict["is_boss"],
-            "difficulty_multiplier": float(level_dict["difficulty_multiplier"] or 1.0),
-            "required_power": level_dict["required_power"],
-            "xp_reward": level_dict["xp_reward"],
-            "stars_max": level_dict["stars_max"],
+            "title": None,  # AI should fill: короткое название уровня
+            "monster_id": None,  # AI should fill: ID из available_monsters
+            "dialogue_before": [
+                # AI should fill array of dialogue lines
+                # {"speaker": "monster" | "narrator", "text": "..."}
+            ],
+            "dialogue_after": [
+                # AI should fill array of dialogue lines
+            ],
         },
-        "chapter": {
+        "chapter_context": {
+            "number": level_dict["chapter_number"],
             "name": level_dict["chapter_name"],
-            "genre": level_dict["chapter_genre"],
+            "genre": genre,
             "description": level_dict["chapter_description"],
+            "story_intro": level_dict.get("story_intro"),
+            "story_outro": level_dict.get("story_outro"),
         },
-        "current_monster": {
-            "id": level_dict["monster_id"],
-            "name": level_dict["monster_name"],
-            "description": level_dict["monster_description"],
-            "emoji": level_dict["monster_emoji"],
-            "base_hp": level_dict["base_hp"],
-            "base_attack": level_dict["base_attack"],
-        } if level_dict["monster_id"] else None,
-        "dialogue_before": level_dict.get("dialogue_before") or [],
-        "dialogue_after": level_dict.get("dialogue_after") or [],
+        "existing_levels": [
+            {
+                "number": lvl[0],
+                "title": lvl[1],
+                "is_boss": lvl[2],
+                "monster": lvl[3],
+            }
+            for lvl in chapter_levels
+        ],
         "available_monsters": [
             {
                 "id": m[0],
@@ -2575,9 +2583,22 @@ def export_level_json(level_id: int):
                 "emoji": m[3],
                 "base_hp": m[4],
                 "base_attack": m[5],
+                "has_image": bool(m[6]),
             }
             for m in monsters
         ],
+        "dialogue_format": {
+            "example": [
+                {"speaker": "monster", "text": "Ты осмелился прийти сюда?"},
+                {"speaker": "narrator", "text": "Монстр готовится к атаке..."},
+            ],
+            "speakers": ["monster", "narrator", "hero"],
+            "tips": [
+                "dialogue_before: 2-4 реплики перед боем",
+                "dialogue_after: 1-3 реплики после победы",
+                "Используй характер монстра из его description",
+            ],
+        },
     }
 
     return jsonify({"success": True, "data": export_data})

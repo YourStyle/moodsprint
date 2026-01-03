@@ -11,6 +11,8 @@ import type {
   LeaderboardEntry,
   ProductivityPatterns,
   ApiResponse,
+  AbilityInfo,
+  StatusEffect,
 } from '@/domain/types';
 
 interface UserStatsResponse extends UserStats {}
@@ -212,6 +214,12 @@ export interface CardBattleState {
   rarity?: string;
   genre?: string;
   alive: boolean;
+  // Ability fields
+  ability?: string;
+  ability_info?: AbilityInfo;
+  ability_cooldown?: number;
+  has_shield?: boolean;
+  status_effects?: StatusEffect[];
 }
 
 // Monster card in battle
@@ -419,6 +427,15 @@ export const gamificationService = {
   // Forfeit the current battle
   async forfeitBattle(): Promise<ApiResponse<TurnResult>> {
     return api.post<TurnResult>('/arena/battle/forfeit');
+  },
+
+  // Use a card's ability (heal, shield, etc.)
+  async useAbility(cardId: number, targetCardId: number): Promise<ApiResponse<TurnResult & { heal_amount?: number }>> {
+    return api.post<TurnResult & { heal_amount?: number }>('/arena/battle/turn', {
+      player_card_id: cardId,
+      target_card_id: String(targetCardId),
+      use_ability: true,
+    });
   },
 
   // Legacy battle method (for backwards compatibility)

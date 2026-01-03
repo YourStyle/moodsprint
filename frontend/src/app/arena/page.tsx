@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
+import { BattleEvent } from '@/components/battle/BattleEvent';
 import { LoreSheet } from '@/components/campaign';
 import { FeatureBanner } from '@/components/features';
 import { gamificationService, eventsService, campaignService } from '@/services';
@@ -77,6 +78,31 @@ export default function ArenaPage() {
   const [attackingCardId, setAttackingCardId] = useState<number | string | null>(null);
   const [attackedCardId, setAttackedCardId] = useState<number | string | null>(null);
   const [damageNumbers, setDamageNumbers] = useState<Record<string, { damage: number; isCritical: boolean }>>({});
+
+  // Heal targeting state
+  const [healTargetMode, setHealTargetMode] = useState(false);
+  const [healingCardId, setHealingCardId] = useState<number | null>(null);
+  const [healNumbers, setHealNumbers] = useState<Record<string, number>>({});
+
+  // Random battle events
+  const [battleEvent, setBattleEvent] = useState<{
+    id: string;
+    type: 'buff' | 'debuff' | 'heal' | 'revive' | 'damage';
+    target: 'player' | 'monster';
+    title: string;
+    description: string;
+    emoji: string;
+  } | null>(null);
+
+  // Battle events pool
+  const battleEvents = [
+    { type: 'buff' as const, target: 'player' as const, title: 'Прилив сил!', description: '+20% к атаке на этот ход', emoji: '💪' },
+    { type: 'buff' as const, target: 'player' as const, title: 'Божественное благословение', description: 'Следующая атака нанесёт критический урон', emoji: '✨' },
+    { type: 'debuff' as const, target: 'monster' as const, title: 'Монстр ослаблен', description: '-20% к защите противника', emoji: '😵' },
+    { type: 'heal' as const, target: 'player' as const, title: 'Исцеляющий ветер', description: 'Все карты восстановили немного HP', emoji: '🍀' },
+    { type: 'damage' as const, target: 'player' as const, title: 'Ловушка!', description: 'Случайная карта получила урон', emoji: '💥' },
+    { type: 'damage' as const, target: 'monster' as const, title: 'Метеорит!', description: 'Монстр получил урон с небес', emoji: '☄️' },
+  ];
 
   // Leaderboard state
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('weekly');
@@ -205,6 +231,11 @@ export default function ArenaPage() {
           setActiveBattle(response.data!.battle);
           setSelectedPlayerCard(null);
           setSelectedTargetCard(null);
+
+          // Trigger random battle event (10% chance)
+          if (response.data!.status === 'continue') {
+            triggerRandomEvent();
+          }
 
           if (response.data!.status === 'won' || response.data!.status === 'lost') {
             const result = response.data!.result;
@@ -344,6 +375,74 @@ export default function ArenaPage() {
     setActiveTab(tab);
     hapticFeedback('light');
   };
+
+  // Handle ability button click
+  const handleAbilityClick = (cardId: number, abilityType: string) => {
+    hapticFeedback('medium');
+
+    if (abilityType === 'heal') {
+      // Enter heal target mode
+      setHealTargetMode(true);
+      setHealingCardId(cardId);
+      setSelectedPlayerCard(null);
+      setSelectedTargetCard(null);
+    } else {
+      // For other abilities (shield, poison, double_strike) - auto-use
+      // TODO: Implement other abilities execution
+    }
+  };
+
+  // Handle heal target selection
+  const handleHealTarget = async (targetCardId: number) => {
+    if (!healingCardId) return;
+
+    hapticFeedback('success');
+
+    // Execute heal ability via API
+    try {
+      const response = await gamificationService.useAbility(healingCardId, targetCardId);
+      if (response.success && response.data) {
+        // Show heal number on target
+        setHealNumbers(prev => ({
+          ...prev,
+          [String(targetCardId)]: response.data!.heal_amount || 0
+        }));
+
+        // Update battle state
+        if (response.data.battle) {
+          setActiveBattle(response.data.battle);
+        }
+
+        // Clear heal numbers after animation
+        setTimeout(() => {
+          setHealNumbers({});
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Failed to use heal ability:', error);
+    }
+
+    // Exit heal mode
+    setHealTargetMode(false);
+    setHealingCardId(null);
+  };
+
+  // Cancel heal target mode
+  const cancelHealMode = () => {
+    setHealTargetMode(false);
+    setHealingCardId(null);
+  };
+
+  // Trigger random battle event (10% chance per turn)
+  const triggerRandomEvent = useCallback(() => {
+    if (Math.random() < 0.1) { // 10% chance
+      const randomEvent = battleEvents[Math.floor(Math.random() * battleEvents.length)];
+      setBattleEvent({
+        ...randomEvent,
+        id: `event-${Date.now()}`
+      });
+    }
+  }, [battleEvents]);
 
   // Leaderboard helpers
   const getRankIcon = (rank: number) => {
@@ -888,30 +987,59 @@ export default function ArenaPage() {
               <div className="pb-28">
                 <h3 className="text-sm font-medium text-gray-400 mb-3">
                   {t('yourCards')} ({alivePlayerCards.length} {t('alive')})
+                  {healTargetMode && (
+                    <span className="ml-2 text-green-400 animate-pulse">
+                      — Выберите карту для лечения
+                    </span>
+                  )}
                 </h3>
                 <div className="flex flex-wrap justify-center gap-3">
-                  {activeBattle.state.player_cards.map((card) => (
-                    <BattleCard
-                      key={card.id}
-                      id={card.id}
-                      name={card.name}
-                      emoji={card.emoji}
-                      imageUrl={card.image_url}
-                      hp={card.hp}
-                      maxHp={card.max_hp}
-                      attack={card.attack}
-                      rarity={card.rarity}
-                      alive={card.alive}
-                      selected={selectedPlayerCard === card.id}
-                      selectable={card.alive}
-                      size="md"
-                      isAttacking={attackingCardId === card.id}
-                      isBeingAttacked={attackedCardId === card.id}
-                      damageReceived={damageNumbers[String(card.id)]?.damage || null}
-                      isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
-                      onClick={() => card.alive && setSelectedPlayerCard(card.id as number)}
-                    />
-                  ))}
+                  {activeBattle.state.player_cards.map((card) => {
+                    const isHealingCard = healingCardId === card.id;
+                    const canBeHealed = healTargetMode && card.alive && !isHealingCard && card.hp < card.max_hp;
+
+                    return (
+                      <BattleCard
+                        key={card.id}
+                        id={card.id}
+                        name={card.name}
+                        emoji={card.emoji}
+                        imageUrl={card.image_url}
+                        hp={card.hp}
+                        maxHp={card.max_hp}
+                        attack={card.attack}
+                        rarity={card.rarity}
+                        alive={card.alive}
+                        selected={selectedPlayerCard === card.id}
+                        selectable={card.alive && !healTargetMode}
+                        size="md"
+                        isAttacking={attackingCardId === card.id}
+                        isBeingAttacked={attackedCardId === card.id}
+                        damageReceived={damageNumbers[String(card.id)]?.damage || null}
+                        isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
+                        onClick={() => {
+                          if (healTargetMode) return;
+                          card.alive && setSelectedPlayerCard(card.id as number);
+                        }}
+                        // Ability props
+                        ability={card.ability || null}
+                        abilityInfo={card.ability_info || null}
+                        abilityCooldown={card.ability_cooldown || 0}
+                        hasShield={card.has_shield || false}
+                        statusEffects={card.status_effects || []}
+                        canUseAbility={card.alive && !healTargetMode && (card.ability_cooldown || 0) === 0}
+                        onAbilityClick={() => {
+                          if (card.ability && card.ability_info) {
+                            handleAbilityClick(card.id as number, card.ability);
+                          }
+                        }}
+                        // Heal targeting
+                        isHealTarget={canBeHealed}
+                        healReceived={healNumbers[String(card.id)] || null}
+                        onHealClick={() => canBeHealed && handleHealTarget(card.id as number)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
 
@@ -919,25 +1047,43 @@ export default function ArenaPage() {
               <div className="fixed bottom-0 left-0 right-0 z-30 safe-area-bottom">
                 <div className="bg-gray-900/95 backdrop-blur-md border-t border-gray-700/50 pt-3 pb-4 px-4">
                   <div className="max-w-md mx-auto">
-                    <Button
-                      className={cn(
-                        'w-full',
-                        !canAttack
-                          ? 'bg-gray-700 hover:bg-gray-700 text-gray-400 shadow-none'
-                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25'
-                      )}
-                      onClick={handleExecuteTurn}
-                      disabled={!canAttack}
-                      isLoading={executeTurnMutation.isPending}
-                    >
-                      <Target className="w-5 h-5 mr-2" />
-                      {selectedPlayerCard && selectedTargetCard
-                        ? t('attackButton')
-                        : t('selectCardAndTarget')}
-                    </Button>
+                    {healTargetMode ? (
+                      <Button
+                        className="w-full bg-gray-700 hover:bg-gray-600"
+                        onClick={cancelHealMode}
+                      >
+                        <X className="w-5 h-5 mr-2" />
+                        Отменить лечение
+                      </Button>
+                    ) : (
+                      <Button
+                        className={cn(
+                          'w-full',
+                          !canAttack
+                            ? 'bg-gray-700 hover:bg-gray-700 text-gray-400 shadow-none'
+                            : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/25'
+                        )}
+                        onClick={handleExecuteTurn}
+                        disabled={!canAttack}
+                        isLoading={executeTurnMutation.isPending}
+                      >
+                        <Target className="w-5 h-5 mr-2" />
+                        {selectedPlayerCard && selectedTargetCard
+                          ? t('attackButton')
+                          : t('selectCardAndTarget')}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Random Battle Event */}
+              {battleEvent && (
+                <BattleEvent
+                  event={battleEvent}
+                  onComplete={() => setBattleEvent(null)}
+                />
+              )}
             </div>
           )}
 
