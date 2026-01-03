@@ -689,8 +689,7 @@ export default function ArenaPage() {
             )}
           >
             <Swords className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('battle')}</span>
-            <span className="sm:hidden">Бой</span>
+            <span>{t('battle')}</span>
           </button>
           <button
             onClick={() => handleTabChange('leaderboard')}
@@ -702,8 +701,7 @@ export default function ArenaPage() {
             )}
           >
             <Trophy className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('rating')}</span>
-            <span className="sm:hidden">Топ</span>
+            <span>{t('rating')}</span>
           </button>
         </div>
       )}

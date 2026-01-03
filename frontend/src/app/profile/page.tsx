@@ -125,7 +125,7 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wallet className="w-5 h-5 text-cyan-500" />
-            <span className="font-medium text-white">TON Кошелёк</span>
+            <span className="font-medium text-white">{t('tonWallet')}</span>
           </div>
           <TonConnectButton />
         </div>

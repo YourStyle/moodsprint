@@ -8,12 +8,14 @@ import { Card, Button } from '@/components/ui';
 import { SparksBalance } from '@/components/sparks';
 import { sparksService, SparksPack } from '@/services/sparks';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import { openInvoice, hapticFeedback, setupBackButton } from '@/lib/telegram';
 
 export default function StorePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
 
   // Setup native back button
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function StorePage() {
       {/* Header */}
       <div className="flex flex-col items-center mb-4">
         <Sparkles className="w-8 h-8 text-amber-400 mb-1" />
-        <h1 className="text-xl font-bold text-white">Магазин</h1>
+        <h1 className="text-xl font-bold text-white">{t('store')}</h1>
       </div>
 
       {/* Current Balance */}
@@ -68,7 +70,7 @@ export default function StorePage() {
       <div>
         <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-400" />
-          Наборы Sparks
+          {t('sparksPacks')}
         </h2>
 
         {packsLoading ? (
@@ -93,7 +95,7 @@ export default function StorePage() {
               >
                 {pack.id === 'premium' && (
                   <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs px-2 py-0.5 rounded-bl-lg">
-                    Популярный
+                    {t('popular')}
                   </div>
                 )}
 
@@ -123,13 +125,13 @@ export default function StorePage() {
       <Card className="bg-gray-800/50">
         <h3 className="font-medium text-white mb-2 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-amber-400" />
-          Что такое Sparks?
+          {t('whatAreSparks')}
         </h3>
         <ul className="text-sm text-gray-400 space-y-1">
-          <li>• Внутренняя валюта MoodSprint</li>
-          <li>• Покупайте карточки на маркетплейсе</li>
-          <li>• Получайте за продажу карточек</li>
-          <li>• Зарабатывайте за прохождение кампании</li>
+          <li>• {t('sparksDesc1')}</li>
+          <li>• {t('sparksDesc2')}</li>
+          <li>• {t('sparksDesc3')}</li>
+          <li>• {t('sparksDesc4')}</li>
         </ul>
       </Card>
     </div>

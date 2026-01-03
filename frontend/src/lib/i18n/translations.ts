@@ -400,12 +400,51 @@ export const translations = {
     skip: 'Пропустить',
 
     // Campaign (unique keys to avoid conflicts)
-    campaignSubtitle: 'Сюжетный режим',
+    campaign: 'Кампания',
+    campaignSubtitle: 'Проходи главы и получай награды',
     bossLevel: 'Босс',
     startLevel: 'Начать уровень',
     continueStory: 'Продолжить',
     chapterComplete: 'Глава пройдена!',
     nextChapterUnlocked: 'Следующая глава открыта',
+    chapter: 'Глава',
+    progressLabel: 'Прогресс',
+    bossesDefeated: 'Боссов',
+    starsLabel: 'Звёзд',
+    stars: 'звёзд',
+    levelsCount: 'Уровней',
+    levelsShort: 'уровней',
+    rewardLabel: 'Награда',
+    cardLabel: 'карта',
+    chapterRewards: 'Награды за прохождение главы',
+    levelNumber: 'Уровень',
+
+    // Store
+    store: 'Магазин',
+    sparksPacks: 'Наборы Sparks',
+    popular: 'Популярный',
+    whatAreSparks: 'Что такое Sparks?',
+    sparksDesc1: 'Внутренняя валюта MoodSprint',
+    sparksDesc2: 'Покупайте карточки на маркетплейсе',
+    sparksDesc3: 'Получайте за продажу карточек',
+    sparksDesc4: 'Зарабатывайте за прохождение кампании',
+    buySparks: 'Купить Sparks',
+    sparksBalance: 'Баланс Sparks',
+    howToGetSparks: 'Как получить Sparks?',
+    sparksHint1: 'Продавайте карты другим игрокам на маркетплейсе',
+    sparksHint2: 'Покупайте Sparks за Telegram Stars в магазине',
+    sparksHint3: 'Проходите кампанию и побеждайте монстров',
+    transactionHistory: 'История операций',
+    noTransactions: 'Нет операций',
+
+    // Marketplace sort
+    sortNewest: 'Новые',
+    sortCheapest: 'Дешевле',
+    sortExpensive: 'Дороже',
+    listings: 'Лоты',
+
+    // Profile extra
+    tonWallet: 'TON Кошелёк',
   },
 
   en: {
@@ -809,12 +848,51 @@ export const translations = {
     skip: 'Skip',
 
     // Campaign (unique keys to avoid conflicts)
-    campaignSubtitle: 'Story mode adventure',
+    campaign: 'Campaign',
+    campaignSubtitle: 'Complete chapters and earn rewards',
     bossLevel: 'Boss Level',
     startLevel: 'Start Level',
     continueStory: 'Continue',
     chapterComplete: 'Chapter Complete!',
     nextChapterUnlocked: 'Next chapter unlocked',
+    chapter: 'Chapter',
+    progressLabel: 'Progress',
+    bossesDefeated: 'Bosses',
+    starsLabel: 'Stars',
+    stars: 'stars',
+    levelsCount: 'Levels',
+    levelsShort: 'levels',
+    rewardLabel: 'Reward',
+    cardLabel: 'card',
+    chapterRewards: 'Chapter completion rewards',
+    levelNumber: 'Level',
+
+    // Store
+    store: 'Store',
+    sparksPacks: 'Sparks Packs',
+    popular: 'Popular',
+    whatAreSparks: 'What are Sparks?',
+    sparksDesc1: 'MoodSprint internal currency',
+    sparksDesc2: 'Buy cards on marketplace',
+    sparksDesc3: 'Earn from selling cards',
+    sparksDesc4: 'Earn from campaign progress',
+    buySparks: 'Buy Sparks',
+    sparksBalance: 'Sparks Balance',
+    howToGetSparks: 'How to get Sparks?',
+    sparksHint1: 'Sell cards to other players on marketplace',
+    sparksHint2: 'Buy Sparks with Telegram Stars in store',
+    sparksHint3: 'Complete campaign and defeat monsters',
+    transactionHistory: 'Transaction history',
+    noTransactions: 'No transactions',
+
+    // Marketplace sort
+    sortNewest: 'Newest',
+    sortCheapest: 'Cheapest',
+    sortExpensive: 'Expensive',
+    listings: 'Listings',
+
+    // Profile extra
+    tonWallet: 'TON Wallet',
   },
 } as const;
 

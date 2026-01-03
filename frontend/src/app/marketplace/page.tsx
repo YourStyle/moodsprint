@@ -164,7 +164,7 @@ export default function MarketplacePage() {
       <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
         {[
           { id: 'browse', label: t('buy'), icon: ShoppingCart },
-          { id: 'my-listings', label: t('myListings'), icon: Tag },
+          { id: 'my-listings', label: t('listings'), icon: Tag },
           { id: 'balance', label: t('sparks'), icon: Wallet },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -220,9 +220,9 @@ export default function MarketplacePage() {
           {/* Sort */}
           <div className="flex gap-2">
             {[
-              { id: 'newest', label: 'Новые', icon: Clock },
-              { id: 'price_low', label: 'Дешевле', icon: TrendingDown },
-              { id: 'price_high', label: 'Дороже', icon: TrendingUp },
+              { id: 'newest', label: t('sortNewest'), icon: Clock },
+              { id: 'price_low', label: t('sortCheapest'), icon: TrendingDown },
+              { id: 'price_high', label: t('sortExpensive'), icon: TrendingUp },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -374,7 +374,7 @@ export default function MarketplacePage() {
           <Card className="bg-gradient-to-br from-amber-900/30 to-yellow-900/30 border-amber-500/30">
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Баланс Sparks</span>
+                <span className="text-gray-400">{t('sparksBalance')}</span>
                 <div className="flex items-center gap-2 text-2xl font-bold text-amber-400">
                   <Sparkles className="w-6 h-6" />
                   {sparks.toLocaleString()}
@@ -387,7 +387,7 @@ export default function MarketplacePage() {
                 onClick={() => router.push('/store')}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Купить Sparks
+                {t('buySparks')}
               </Button>
             </div>
           </Card>
@@ -397,20 +397,20 @@ export default function MarketplacePage() {
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-amber-400" />
-                <h3 className="font-medium text-white">Как получить Sparks?</h3>
+                <h3 className="font-medium text-white">{t('howToGetSparks')}</h3>
               </div>
               <ul className="space-y-2 text-sm text-gray-400">
                 <li className="flex items-start gap-2">
                   <span className="text-amber-400">1.</span>
-                  <span>Продавайте карты другим игрокам на маркетплейсе</span>
+                  <span>{t('sparksHint1')}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-amber-400">2.</span>
-                  <span>Покупайте Sparks за Telegram Stars в магазине</span>
+                  <span>{t('sparksHint2')}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-amber-400">3.</span>
-                  <span>Проходите кампанию и побеждайте монстров</span>
+                  <span>{t('sparksHint3')}</span>
                 </li>
               </ul>
             </div>
@@ -418,7 +418,7 @@ export default function MarketplacePage() {
 
           {/* Transactions */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-gray-400">История операций</h3>
+            <h3 className="text-sm font-medium text-gray-400">{t('transactionHistory')}</h3>
             {transactionsData?.data?.transactions?.length ? (
               <div className="space-y-2">
                 {transactionsData.data.transactions.map((tx) => (
@@ -445,7 +445,7 @@ export default function MarketplacePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500 py-4">Нет операций</p>
+              <p className="text-center text-gray-500 py-4">{t('noTransactions')}</p>
             )}
           </div>
         </div>

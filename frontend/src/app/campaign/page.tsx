@@ -19,6 +19,7 @@ import { Card, Button, Progress } from '@/components/ui';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
 import { campaignService } from '@/services';
 import { useAppStore } from '@/lib/store';
+import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { CampaignChapter, CampaignLevel } from '@/services/campaign';
@@ -27,6 +28,7 @@ export default function CampaignPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
+  const { t } = useLanguage();
 
   const [selectedChapter, setSelectedChapter] = useState<CampaignChapter | null>(null);
   const [showLevelSelect, setShowLevelSelect] = useState(false);
@@ -124,7 +126,7 @@ export default function CampaignPage() {
       };
     }
     return {
-      name: selectedLevel?.is_boss ? 'Босс' : 'Монстр',
+      name: selectedLevel?.is_boss ? t('bossLevel') : t('selectMonster'),
       emoji: selectedLevel?.is_boss ? '👹' : '👾',
       imageUrl: undefined,
     };
@@ -169,12 +171,12 @@ export default function CampaignPage() {
         {/* Header */}
         <div className="text-center mb-4">
           <Map className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-white">Кампания</h1>
-          <p className="text-sm text-gray-400">Проходи главы и получай награды</p>
+          <h1 className="text-2xl font-bold text-white">{t('campaign')}</h1>
+          <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
           {progress && (
             <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
               <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span className="text-amber-400 font-medium">{progress.total_stars_earned} звёзд</span>
+              <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
             </div>
           )}
         </div>
@@ -185,18 +187,18 @@ export default function CampaignPage() {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <div className="text-sm text-gray-400">Прогресс</div>
+                    <div className="text-sm text-gray-400">{t('progressLabel')}</div>
                     <div className="text-lg font-bold text-white">
-                      Глава {progress.current_chapter}
+                      {t('chapter')} {progress.current_chapter}
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-center">
-                      <div className="text-gray-400">Боссов</div>
+                      <div className="text-gray-400">{t('bossesDefeated')}</div>
                       <div className="text-purple-400 font-bold">{progress.bosses_defeated}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-gray-400">Звёзд</div>
+                      <div className="text-gray-400">{t('starsLabel')}</div>
                       <div className="text-amber-400 font-bold">{progress.total_stars_earned}</div>
                     </div>
                   </div>
@@ -207,7 +209,7 @@ export default function CampaignPage() {
 
         {/* Chapters List */}
         {isLoading ? (
-            <div className="text-center text-gray-400 py-8">Загрузка...</div>
+            <div className="text-center text-gray-400 py-8">{t('loading')}</div>
           ) : (
             <div className="space-y-3">
               {chapters.map((chapter) => (
@@ -234,7 +236,7 @@ export default function CampaignPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-white">Глава {chapter.number}</h3>
+                            <h3 className="font-bold text-white">{t('chapter')} {chapter.number}</h3>
                             {chapter.is_completed && (
                               <Check className="w-4 h-4 text-green-400" />
                             )}
@@ -258,7 +260,7 @@ export default function CampaignPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">
-                          Уровней: {chapter.levels_completed}/{chapter.total_levels}
+                          {t('levelsCount')}: {chapter.levels_completed}/{chapter.total_levels}
                         </span>
                         <div className="flex items-center gap-1 text-amber-400">
                           <Star className="w-3.5 h-3.5 fill-current" />
@@ -274,10 +276,10 @@ export default function CampaignPage() {
                     {/* Rewards hint */}
                     <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-gray-400">
                       <Gift className="w-3.5 h-3.5" />
-                      <span>Награда: {chapter.guaranteed_card_rarity} карта + {chapter.xp_reward} XP</span>
+                      <span>{t('rewardLabel')}: {chapter.guaranteed_card_rarity} {t('cardLabel')} + {chapter.xp_reward} XP</span>
                       <span className="flex items-center gap-0.5 text-amber-400">
                         <Sparkles className="w-3 h-3" />
-                        до 90✨
+                        90✨
                       </span>
                     </div>
                   </div>
@@ -311,7 +313,7 @@ export default function CampaignPage() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-base font-bold text-white truncate">
-                    Глава {selectedChapter.number}: {selectedChapter.name}
+                    {t('chapter')} {selectedChapter.number}: {selectedChapter.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <div className="flex items-center gap-1 text-amber-400">
@@ -319,7 +321,7 @@ export default function CampaignPage() {
                       {selectedChapter.stars_earned}/{selectedChapter.max_stars}
                     </div>
                     <span className="text-gray-600">•</span>
-                    <span>{selectedChapter.levels_completed}/{selectedChapter.total_levels} уровней</span>
+                    <span>{selectedChapter.levels_completed}/{selectedChapter.total_levels} {t('levelsShort')}</span>
                   </div>
                 </div>
               </div>
@@ -335,7 +337,7 @@ export default function CampaignPage() {
 
         {/* Levels List */}
         {chapterLoading ? (
-          <div className="text-center text-gray-400 py-8">Загрузка...</div>
+          <div className="text-center text-gray-400 py-8">{t('loading')}</div>
         ) : (
           <div className="space-y-2 mt-4">
             {chapterData?.data?.levels?.map((level, index) => (
@@ -372,7 +374,7 @@ export default function CampaignPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-white text-sm truncate">
-                        {level.title || (level.is_boss ? 'БОСС' : `Уровень ${level.number}`)}
+                        {level.title || (level.is_boss ? t('bossLevel').toUpperCase() : `${t('levelNumber')} ${level.number}`)}
                       </h3>
                       {level.is_completed && (
                         <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
@@ -413,7 +415,7 @@ export default function CampaignPage() {
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Gift className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-white">Награды за прохождение главы</h3>
+                <h3 className="font-bold text-white">{t('chapterRewards')}</h3>
               </div>
               <div className="space-y-2">
                 {chapterData.data.rewards.map((reward) => (
@@ -445,7 +447,7 @@ export default function CampaignPage() {
             isOpen={showIntro}
             onClose={handleIntroClose}
             type="chapter_complete"
-            title={`Глава ${selectedChapter.number}`}
+            title={`${t('chapter')} ${selectedChapter.number}`}
             subtitle={selectedChapter.name}
             emoji={selectedChapter.emoji}
             text={chapterData?.data?.story_intro || selectedChapter.story_intro || ''}
@@ -466,7 +468,7 @@ export default function CampaignPage() {
               text: d.text,
               emoji: d.emoji,
             }))}
-            title={selectedLevel.title || `Уровень ${selectedLevel.number}`}
+            title={selectedLevel.title || `${t('levelNumber')} ${selectedLevel.number}`}
             showSkipButton={selectedLevel.is_completed || selectedLevel.attempts > 0}
           />
         )}
