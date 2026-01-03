@@ -445,6 +445,20 @@ export const translations = {
 
     // Profile extra
     tonWallet: 'TON Кошелёк',
+
+    // Feature banners
+    guildsTitle: 'Гильдии',
+    guildsDesc: 'Объединяйся с друзьями, побеждай боссов в рейдах',
+    raids: 'Рейды',
+    rewards: 'Награды',
+    marketplaceDesc: 'Торгуй картами за Telegram Stars',
+    cardsLabel: 'Карты',
+    selling: 'Продажа',
+    campaignDesc: 'Проходи главы, побеждай боссов, собирай награды',
+    story: 'История',
+    lore: 'Лор',
+    joinNow: 'Присоединяйся!',
+    cardsOnSale: 'карт на продаже',
   },
 
   en: {
@@ -893,6 +907,20 @@ export const translations = {
 
     // Profile extra
     tonWallet: 'TON Wallet',
+
+    // Feature banners
+    guildsTitle: 'Guilds',
+    guildsDesc: 'Team up with friends, defeat raid bosses',
+    raids: 'Raids',
+    rewards: 'Rewards',
+    marketplaceDesc: 'Trade cards for Telegram Stars',
+    cardsLabel: 'Cards',
+    selling: 'Selling',
+    campaignDesc: 'Complete chapters, defeat bosses, collect rewards',
+    story: 'Story',
+    lore: 'Lore',
+    joinNow: 'Join now!',
+    cardsOnSale: 'cards on sale',
   },
 } as const;
 

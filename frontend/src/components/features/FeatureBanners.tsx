@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Shield, Store, Map, ChevronRight, Sparkles, Swords, Trophy, Gift } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
+import { useLanguage } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface FeatureBannerProps {
@@ -14,56 +15,58 @@ interface FeatureBannerProps {
   };
 }
 
-const FEATURE_CONFIG = {
-  guilds: {
-    icon: Shield,
-    title: 'Гильдии',
-    description: 'Объединяйся с друзьями, побеждай боссов в рейдах',
-    href: '/guilds',
-    gradient: 'from-blue-600/30 via-indigo-600/30 to-purple-600/30',
-    borderColor: 'border-blue-500/40',
-    iconBg: 'bg-blue-500/30',
-    iconColor: 'text-blue-400',
-    buttonGradient: 'from-blue-600 to-indigo-600',
-    highlights: [
-      { icon: Swords, text: 'Рейды' },
-      { icon: Trophy, text: 'Награды' },
-    ],
-  },
-  marketplace: {
-    icon: Store,
-    title: 'Маркетплейс',
-    description: 'Торгуй картами за Telegram Stars',
-    href: '/marketplace',
-    gradient: 'from-amber-600/30 via-orange-600/30 to-yellow-600/30',
-    borderColor: 'border-amber-500/40',
-    iconBg: 'bg-amber-500/30',
-    iconColor: 'text-amber-400',
-    buttonGradient: 'from-amber-600 to-orange-600',
-    highlights: [
-      { icon: Store, text: 'Карты' },
-      { icon: Gift, text: 'Продажа' },
-    ],
-  },
-  campaign: {
-    icon: Map,
-    title: 'Кампания',
-    description: 'Проходи главы, побеждай боссов, собирай награды',
-    href: '/campaign',
-    gradient: 'from-purple-600/30 via-fuchsia-600/30 to-pink-600/30',
-    borderColor: 'border-purple-500/40',
-    iconBg: 'bg-purple-500/30',
-    iconColor: 'text-purple-400',
-    buttonGradient: 'from-purple-600 to-fuchsia-600',
-    highlights: [
-      { icon: Map, text: 'История' },
-      { icon: Sparkles, text: 'Лор' },
-    ],
-  },
-};
-
 export function FeatureBanner({ type, stats }: FeatureBannerProps) {
   const router = useRouter();
+  const { t } = useLanguage();
+
+  const FEATURE_CONFIG = {
+    guilds: {
+      icon: Shield,
+      title: t('guildsTitle'),
+      description: t('guildsDesc'),
+      href: '/guilds',
+      gradient: 'from-blue-600/30 via-indigo-600/30 to-purple-600/30',
+      borderColor: 'border-blue-500/40',
+      iconBg: 'bg-blue-500/30',
+      iconColor: 'text-blue-400',
+      buttonGradient: 'from-blue-600 to-indigo-600',
+      highlights: [
+        { icon: Swords, text: t('raids') },
+        { icon: Trophy, text: t('rewards') },
+      ],
+    },
+    marketplace: {
+      icon: Store,
+      title: t('marketplace'),
+      description: t('marketplaceDesc'),
+      href: '/marketplace',
+      gradient: 'from-amber-600/30 via-orange-600/30 to-yellow-600/30',
+      borderColor: 'border-amber-500/40',
+      iconBg: 'bg-amber-500/30',
+      iconColor: 'text-amber-400',
+      buttonGradient: 'from-amber-600 to-orange-600',
+      highlights: [
+        { icon: Store, text: t('cardsLabel') },
+        { icon: Gift, text: t('selling') },
+      ],
+    },
+    campaign: {
+      icon: Map,
+      title: t('campaign'),
+      description: t('campaignDesc'),
+      href: '/campaign',
+      gradient: 'from-purple-600/30 via-fuchsia-600/30 to-pink-600/30',
+      borderColor: 'border-purple-500/40',
+      iconBg: 'bg-purple-500/30',
+      iconColor: 'text-purple-400',
+      buttonGradient: 'from-purple-600 to-fuchsia-600',
+      highlights: [
+        { icon: Map, text: t('story') },
+        { icon: Sparkles, text: t('lore') },
+      ],
+    },
+  };
+
   const config = FEATURE_CONFIG[type];
   const Icon = config.icon;
 
@@ -75,15 +78,15 @@ export function FeatureBanner({ type, stats }: FeatureBannerProps) {
   const getStatText = () => {
     if (type === 'guilds' && stats?.guilds) {
       if (stats.guilds.hasGuild) {
-        return `${stats.guilds.memberCount || 0} участников`;
+        return `${stats.guilds.memberCount || 0} ${t('membersCount')}`;
       }
-      return 'Присоединяйся!';
+      return t('joinNow');
     }
     if (type === 'marketplace' && stats?.marketplace) {
-      return `${stats.marketplace.listingsCount || 0} карт на продаже`;
+      return `${stats.marketplace.listingsCount || 0} ${t('cardsOnSale')}`;
     }
     if (type === 'campaign' && stats?.campaign) {
-      return `Глава ${stats.campaign.currentChapter || 1} • ${stats.campaign.starsEarned || 0} ⭐`;
+      return `${t('chapter')} ${stats.campaign.currentChapter || 1} • ${stats.campaign.starsEarned || 0} ⭐`;
     }
     return null;
   };
