@@ -6,3 +6,5 @@ export { DeckCard } from './DeckCard';
 export type { DeckCardProps } from './DeckCard';
 export { CardInfoSheet } from './CardInfoSheet';
 export { ReferralRewardModal } from './ReferralRewardModal';
+export { DamageNumber } from './DamageNumber';
+export { HealNumber } from './HealNumber';

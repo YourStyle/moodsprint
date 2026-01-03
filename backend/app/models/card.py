@@ -63,12 +63,13 @@ ABILITY_CONFIG = {
 }
 
 # Chance of getting an ability by rarity
+# Only rare+ cards get abilities (guaranteed)
 ABILITY_CHANCE_BY_RARITY = {
-    CardRarity.COMMON: 0,  # Common cards don't get abilities
-    CardRarity.UNCOMMON: 0.3,  # 30% chance
-    CardRarity.RARE: 0.5,  # 50% chance
-    CardRarity.EPIC: 0.75,  # 75% chance
-    CardRarity.LEGENDARY: 1.0,  # 100% chance
+    CardRarity.COMMON: 0,  # No abilities
+    CardRarity.UNCOMMON: 0,  # No abilities
+    CardRarity.RARE: 1.0,  # 100% chance - guaranteed
+    CardRarity.EPIC: 1.0,  # 100% chance - guaranteed
+    CardRarity.LEGENDARY: 1.0,  # 100% chance - guaranteed
 }
 
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Skull, Shield, Sparkles } from 'lucide-react';
+import { Heart, Swords, Skull, Shield, Sparkles, Plus } from 'lucide-react';
 import { DamageNumber } from './DamageNumber';
+import { HealNumber } from './HealNumber';
 import type { AbilityInfo, StatusEffect } from '@/domain/types';
 
 export interface BattleCardProps {
@@ -33,6 +34,10 @@ export interface BattleCardProps {
   statusEffects?: StatusEffect[];
   onAbilityClick?: () => void;
   canUseAbility?: boolean;
+  // Heal targeting
+  isHealTarget?: boolean;
+  healReceived?: number | null;
+  onHealClick?: () => void;
 }
 
 const rarityConfig = {
@@ -107,6 +112,9 @@ export function BattleCard({
   statusEffects = [],
   onAbilityClick,
   canUseAbility = false,
+  isHealTarget = false,
+  healReceived = null,
+  onHealClick,
 }: BattleCardProps) {
   const hasPoisonEffect = statusEffects.some(e => e.type === 'poison');
   const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
@@ -326,6 +334,38 @@ export function BattleCard({
       {/* Floating damage number */}
       {damageReceived !== null && damageReceived > 0 && (
         <DamageNumber damage={damageReceived} isCritical={isCriticalHit} />
+      )}
+
+      {/* Floating heal number */}
+      {healReceived !== null && healReceived > 0 && (
+        <HealNumber heal={healReceived} />
+      )}
+
+      {/* Heal target indicator */}
+      {isHealTarget && alive && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onHealClick?.();
+          }}
+          className={cn(
+            'absolute inset-0 rounded-xl z-30 cursor-pointer',
+            'bg-green-500/20 border-2 border-green-400',
+            'flex items-center justify-center',
+            'transition-all duration-200 hover:bg-green-500/30'
+          )}
+        >
+          <div className={cn(
+            'w-12 h-12 rounded-full',
+            'bg-gradient-to-br from-green-400 to-green-600',
+            'border-2 border-green-300',
+            'flex items-center justify-center',
+            'shadow-[0_0_20px_rgba(34,197,94,0.8)]',
+            'animate-pulse'
+          )}>
+            <Plus className="w-8 h-8 text-white" />
+          </div>
+        </div>
       )}
 
       {/* Shield indicator */}
