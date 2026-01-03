@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users, Wallet } from 'lucide-react';
 import { Card, Progress, Button } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
-import { XPBar, StreakBadge, AchievementCard, DailyQuests } from '@/components/gamification';
+import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
 import { SparksBalance } from '@/components/sparks';
 import { GenreSelector } from '@/components/GenreSelector';
 import { useAppStore } from '@/lib/store';
@@ -36,11 +36,6 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  const { data: questsData } = useQuery({
-    queryKey: ['quests'],
-    queryFn: () => gamificationService.getQuests(),
-    enabled: !!user,
-  });
 
   const { data: profileData } = useQuery({
     queryKey: ['onboarding', 'profile'],
@@ -65,7 +60,6 @@ export default function ProfilePage() {
   const stats = statsData?.data;
   const achievements = achievementsData?.data;
   const patterns = patternsData?.data;
-  const quests = questsData?.data?.quests || [];
   const profile = profileData?.data?.profile;
 
   const getProductivityIcon = (time: string) => {
@@ -177,9 +171,6 @@ export default function ProfilePage() {
           </Card>
         </div>
       )}
-
-      {/* Daily Quests */}
-      {quests.length > 0 && <DailyQuests quests={quests} />}
 
       {/* Deck, Arena & Friends buttons */}
       <div className="grid grid-cols-2 gap-3">

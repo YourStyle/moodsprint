@@ -41,10 +41,20 @@ export function Navigation() {
     refetchInterval: 1000 * 60, // Refetch every minute
   });
 
+  // Fetch pending trades count
+  const { data: tradesData } = useQuery({
+    queryKey: ['trades'],
+    queryFn: () => cardsService.getTrades(),
+    enabled: !!user,
+    staleTime: 1000 * 60, // 1 minute
+    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
+  });
+
   const pendingRequestsCount = friendRequestsData?.data?.total || 0;
   const pendingRewardsCount = pendingRewardsData?.data?.count || 0;
-  // Show badge if either friend requests OR pending referral rewards
-  const friendsBadgeCount = pendingRequestsCount + pendingRewardsCount;
+  const pendingTradesCount = tradesData?.data?.received?.filter((t: { status: string }) => t.status === 'pending').length || 0;
+  // Show badge if friend requests OR pending referral rewards OR pending trades
+  const friendsBadgeCount = pendingRequestsCount + pendingRewardsCount + pendingTradesCount;
 
   // Hide navigation on onboarding page or when explicitly hidden (battle mode)
   if (pathname === '/onboarding' || hideNavigation) {

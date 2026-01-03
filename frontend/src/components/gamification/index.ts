@@ -4,5 +4,4 @@ export { DailyGoals } from './DailyGoals';
 export { XPPopup } from './XPPopup';
 export { AchievementCard } from './AchievementCard';
 export { DailyBonus } from './DailyBonus';
-export { DailyQuests } from './DailyQuests';
 export { CharacterStats } from './CharacterStats';

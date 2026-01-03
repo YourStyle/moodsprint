@@ -2496,6 +2496,151 @@ def generate_chapter_image():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/campaign/levels/<int:level_id>/export", methods=["GET"])
+@login_required
+def export_level_json(level_id: int):
+    """Export level data as JSON for AI prompting."""
+    level = db.session.execute(
+        text("""
+            SELECT l.id, l.number, l.monster_id, l.is_boss, l.title,
+                   l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
+                   l.required_power, l.xp_reward, l.stars_max,
+                   m.name as monster_name, m.description as monster_description,
+                   m.emoji as monster_emoji, m.base_hp, m.base_attack,
+                   c.name as chapter_name, c.genre as chapter_genre,
+                   c.description as chapter_description
+            FROM campaign_levels l
+            LEFT JOIN monsters m ON m.id = l.monster_id
+            LEFT JOIN campaign_chapters c ON c.id = l.chapter_id
+            WHERE l.id = :level_id
+        """),
+        {"level_id": level_id},
+    ).fetchone()
+
+    if not level:
+        return jsonify({"success": False, "error": "Level not found"}), 404
+
+    level_dict = dict(level._mapping)
+
+    # Parse JSON fields
+    if level_dict.get("dialogue_before"):
+        try:
+            level_dict["dialogue_before"] = json.loads(level_dict["dialogue_before"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if level_dict.get("dialogue_after"):
+        try:
+            level_dict["dialogue_after"] = json.loads(level_dict["dialogue_after"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Get available monsters for this genre
+    monsters = db.session.execute(
+        text("SELECT id, name, description, emoji, base_hp, base_attack FROM monsters WHERE genre = :genre"),
+        {"genre": level_dict.get("chapter_genre")},
+    ).fetchall()
+
+    export_data = {
+        "level": {
+            "id": level_dict["id"],
+            "number": level_dict["number"],
+            "title": level_dict["title"],
+            "is_boss": level_dict["is_boss"],
+            "difficulty_multiplier": float(level_dict["difficulty_multiplier"] or 1.0),
+            "required_power": level_dict["required_power"],
+            "xp_reward": level_dict["xp_reward"],
+            "stars_max": level_dict["stars_max"],
+        },
+        "chapter": {
+            "name": level_dict["chapter_name"],
+            "genre": level_dict["chapter_genre"],
+            "description": level_dict["chapter_description"],
+        },
+        "current_monster": {
+            "id": level_dict["monster_id"],
+            "name": level_dict["monster_name"],
+            "description": level_dict["monster_description"],
+            "emoji": level_dict["monster_emoji"],
+            "base_hp": level_dict["base_hp"],
+            "base_attack": level_dict["base_attack"],
+        } if level_dict["monster_id"] else None,
+        "dialogue_before": level_dict.get("dialogue_before") or [],
+        "dialogue_after": level_dict.get("dialogue_after") or [],
+        "available_monsters": [
+            {
+                "id": m[0],
+                "name": m[1],
+                "description": m[2],
+                "emoji": m[3],
+                "base_hp": m[4],
+                "base_attack": m[5],
+            }
+            for m in monsters
+        ],
+    }
+
+    return jsonify({"success": True, "data": export_data})
+
+
+@app.route("/campaign/levels/<int:level_id>/import", methods=["POST"])
+@login_required
+def import_level_json(level_id: int):
+    """Import level data from JSON (monster, dialogues, title)."""
+    data = request.json
+
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    try:
+        updates = []
+        params = {"level_id": level_id}
+
+        # Update title if provided
+        if "title" in data:
+            updates.append("title = :title")
+            params["title"] = data["title"]
+
+        # Update monster_id if provided
+        if "monster_id" in data:
+            updates.append("monster_id = :monster_id")
+            params["monster_id"] = data["monster_id"]
+
+        # Update dialogue_before if provided
+        if "dialogue_before" in data:
+            updates.append("dialogue_before = :dialogue_before")
+            params["dialogue_before"] = json.dumps(data["dialogue_before"]) if data["dialogue_before"] else None
+
+        # Update dialogue_after if provided
+        if "dialogue_after" in data:
+            updates.append("dialogue_after = :dialogue_after")
+            params["dialogue_after"] = json.dumps(data["dialogue_after"]) if data["dialogue_after"] else None
+
+        # Update difficulty_multiplier if provided
+        if "difficulty_multiplier" in data:
+            updates.append("difficulty_multiplier = :difficulty_multiplier")
+            params["difficulty_multiplier"] = data["difficulty_multiplier"]
+
+        # Update is_boss if provided
+        if "is_boss" in data:
+            updates.append("is_boss = :is_boss")
+            params["is_boss"] = data["is_boss"]
+
+        if updates:
+            db.session.execute(
+                text(f"UPDATE campaign_levels SET {', '.join(updates)} WHERE id = :level_id"),
+                params,
+            )
+            db.session.commit()
+            return jsonify({"success": True, "message": "Level updated successfully"})
+        else:
+            return jsonify({"success": False, "error": "No valid fields to update"}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @app.route("/campaign/generate-level", methods=["POST"])
 @login_required
 def generate_level():
