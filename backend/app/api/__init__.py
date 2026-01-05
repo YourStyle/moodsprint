@@ -5,6 +5,7 @@ from flask import Blueprint
 api_bp = Blueprint("api", __name__)
 
 # Import modules to register routes - noqa: F401, E402
+from app.api import admin  # noqa: F401, E402
 from app.api import auth  # noqa: F401, E402
 from app.api import campaign  # noqa: F401, E402
 from app.api import cards  # noqa: F401, E402
