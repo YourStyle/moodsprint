@@ -14,7 +14,7 @@ marshmallow==3.20.1
 email-validator==2.1.0
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.2.1
 gunicorn==23.0.0
 requests>=2.31.0
 
