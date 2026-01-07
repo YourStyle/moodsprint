@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Calendar, Bell, Timer, Globe, Shield } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, Bell, Timer, Globe } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -26,9 +26,6 @@ const LANGUAGES: { id: Language; label: string; flag: string }[] = [
   { id: 'ru', label: 'Русский', flag: '🇷🇺' },
   { id: 'en', label: 'English', flag: '🇬🇧' },
 ];
-
-// Admin user IDs (must match backend ADMIN_IDS)
-const ADMIN_IDS = [1, 140633872];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -274,24 +271,6 @@ export default function SettingsPage() {
           ))}
         </div>
       </Card>
-
-      {/* Admin Panel - only for admin users */}
-      {user && ADMIN_IDS.includes(user.telegram_id) && (
-        <Card>
-          <button
-            onClick={() => router.push('/admin')}
-            className="w-full flex items-center gap-3 text-left"
-          >
-            <div className="p-2 rounded-lg bg-purple-500/20">
-              <Shield className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-white">{t('adminPanel')}</h2>
-              <p className="text-sm text-gray-400">{t('adminPanelDesc')}</p>
-            </div>
-          </button>
-        </Card>
-      )}
     </div>
   );
 }
