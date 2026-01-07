@@ -2892,10 +2892,10 @@ def card_pool_templates(genre: str):
     templates = db.session.execute(
         text("""
             SELECT id, name, description, genre, base_hp, base_attack,
-                   image_url, emoji, ai_generated, is_active, created_at
+                   image_url, emoji, ai_generated, is_active, created_at, rarity
             FROM card_templates
             WHERE genre = :genre
-            ORDER BY is_active DESC, created_at DESC
+            ORDER BY is_active DESC, rarity NULLS LAST, created_at DESC
         """),
         {"genre": genre},
     ).fetchall()
@@ -2915,6 +2915,7 @@ def card_pool_templates(genre: str):
                 "ai_generated": t[8],
                 "is_active": t[9],
                 "created_at": t[10].isoformat() if t[10] else None,
+                "rarity": t[11],
             }
             for t in templates
         ],
@@ -3033,7 +3034,7 @@ def get_card_template(template_id: int):
     template = db.session.execute(
         text("""
             SELECT id, name, description, genre, base_hp, base_attack,
-                   image_url, emoji, ai_generated, is_active, created_at
+                   image_url, emoji, ai_generated, is_active, created_at, rarity
             FROM card_templates
             WHERE id = :id
         """),
@@ -3057,6 +3058,7 @@ def get_card_template(template_id: int):
             "ai_generated": template[8],
             "is_active": template[9],
             "created_at": template[10].isoformat() if template[10] else None,
+            "rarity": template[11],
         },
     })
 
@@ -3103,6 +3105,14 @@ def update_card_template(template_id: int):
         update_fields.append("is_active = :is_active")
         params["is_active"] = bool(data["is_active"])
 
+    if "rarity" in data:
+        # Allow NULL for universal templates, or valid rarity value
+        rarity_value = data["rarity"]
+        if rarity_value and rarity_value not in RARITIES:
+            return jsonify({"success": False, "error": f"Invalid rarity. Must be one of: {RARITIES}"}), 400
+        update_fields.append("rarity = :rarity")
+        params["rarity"] = rarity_value if rarity_value else None
+
     if not update_fields:
         return jsonify({"success": False, "error": "No fields to update"}), 400
 
@@ -3114,7 +3124,7 @@ def update_card_template(template_id: int):
     updated = db.session.execute(
         text("""
             SELECT id, name, description, genre, base_hp, base_attack,
-                   image_url, emoji, ai_generated, is_active
+                   image_url, emoji, ai_generated, is_active, rarity
             FROM card_templates
             WHERE id = :id
         """),
@@ -3134,6 +3144,7 @@ def update_card_template(template_id: int):
             "emoji": updated[7],
             "ai_generated": updated[8],
             "is_active": updated[9],
+            "rarity": updated[10],
         },
     })
 

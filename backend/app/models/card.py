@@ -117,6 +117,10 @@ class CardTemplate(db.Model):
     ai_generated = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
 
+    # Optional rarity lock - if set, template only used for this rarity
+    # NULL = universal template (can be any rarity)
+    rarity = db.Column(db.String(20), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self) -> dict:
@@ -130,6 +134,7 @@ class CardTemplate(db.Model):
             "base_attack": self.base_attack,
             "image_url": self.image_url,
             "emoji": self.emoji,
+            "rarity": self.rarity,
         }
 
 

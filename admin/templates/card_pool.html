@@ -53,11 +53,18 @@
 
     <!-- How it works -->
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 class="font-medium text-blue-900 mb-2">Как работает автогенерация шаблонов</h4>
-        <div class="text-sm text-blue-800 space-y-1">
-            <p><strong>Формула:</strong> Требуемое кол-во = 10 + (кол-во игроков × коэффициент редкости)</p>
-            <p><strong>Коэффициенты:</strong> Обычная ×0.1, Необычная ×0.15, Редкая ×0.2, Эпическая ×0.3, Легендарная — всегда уникальная</p>
-            <p><strong>Пример:</strong> При 100 игроках для Редких карт нужно 10 + 100×0.2 = 30 шаблонов. Если их меньше — при дропе генерируется новый шаблон.</p>
+        <h4 class="font-medium text-blue-900 mb-2">Как работает система шаблонов</h4>
+        <div class="text-sm text-blue-800 space-y-2">
+            <p><strong>Шаблоны универсальны</strong> — редкость определяется случайно при дропе карты игроку. Один шаблон может стать обычной или легендарной картой.</p>
+            <p><strong>Когда генерируется новый шаблон?</strong> Система смотрит, хватает ли разнообразия для текущего количества игроков:</p>
+            <ul class="list-disc list-inside ml-2 space-y-1">
+                <li><span class="text-gray-600">Обычные:</span> нужно минимум 10 + (игроков × 0.1) шаблонов</li>
+                <li><span class="text-gray-600">Необычные:</span> нужно минимум 10 + (игроков × 0.15) шаблонов</li>
+                <li><span class="text-gray-600">Редкие:</span> нужно минимум 10 + (игроков × 0.2) шаблонов</li>
+                <li><span class="text-gray-600">Эпические:</span> нужно минимум 10 + (игроков × 0.3) шаблонов</li>
+                <li><span class="text-amber-700">Легендарные:</span> всегда генерируется уникальный шаблон</li>
+            </ul>
+            <p><strong>Пример:</strong> В жанре 11 шаблонов и 10 игроков. Для эпических нужно 10 + 10×0.3 = 13. Так как 11 < 13, при эпическом дропе создастся новый шаблон.</p>
         </div>
     </div>
 
@@ -101,24 +108,27 @@
                 </div>
 
                 <!-- Rarity Status -->
-                <div class="mt-3 flex flex-wrap gap-2">
-                    {% for rarity in rarities %}
-                    {% set status = data.rarity_status[rarity] %}
-                    <div class="text-xs px-2 py-1 rounded-full flex items-center gap-1
-                        {% if status.status == 'always_new' %}bg-amber-100 text-amber-800
-                        {% elif status.status == 'needs_generation' %}bg-red-100 text-red-700
-                        {% else %}bg-green-100 text-green-700
-                        {% endif %}">
-                        {% if rarity == 'common' %}⚪{% elif rarity == 'uncommon' %}🟢{% elif rarity == 'rare' %}🔵{% elif rarity == 'epic' %}🟣{% elif rarity == 'legendary' %}🟡{% endif %}
-                        {% if status.status == 'always_new' %}
-                            Легенд.: всегда новые
-                        {% elif status.status == 'needs_generation' %}
-                            {{ rarity|capitalize }}: {{ data.active_templates }}/{{ status.required }} (нужны ещё!)
-                        {% else %}
-                            {{ rarity|capitalize }}: {{ data.active_templates }}/{{ status.required }} ✓
-                        {% endif %}
+                <div class="mt-3">
+                    <div class="text-xs text-gray-500 mb-1">При дропе карт этой редкости:</div>
+                    <div class="flex flex-wrap gap-2">
+                        {% for rarity in rarities %}
+                        {% set status = data.rarity_status[rarity] %}
+                        {% set rarity_names = {'common': 'Обычн.', 'uncommon': 'Необычн.', 'rare': 'Редкие', 'epic': 'Эпич.', 'legendary': 'Легенд.'} %}
+                        <div class="text-xs px-2 py-1 rounded-full flex items-center gap-1
+                            {% if status.status == 'always_new' %}bg-amber-100 text-amber-800
+                            {% elif status.status == 'needs_generation' %}bg-orange-100 text-orange-700
+                            {% else %}bg-green-100 text-green-700
+                            {% endif %}" title="{% if status.status == 'always_new' %}Легендарные всегда уникальные{% elif status.status == 'needs_generation' %}Есть {{ data.active_templates }} шаблонов, нужно {{ status.required }} — будет создан новый{% else %}Есть {{ data.active_templates }} шаблонов, нужно {{ status.required }} — используется случайный{% endif %}">
+                            {% if status.status == 'always_new' %}
+                                🟡 {{ rarity_names[rarity] }}: новый
+                            {% elif status.status == 'needs_generation' %}
+                                🟠 {{ rarity_names[rarity] }}: новый ({{ data.active_templates }}&lt;{{ status.required }})
+                            {% else %}
+                                🟢 {{ rarity_names[rarity] }}: из пула
+                            {% endif %}
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
             </div>
 
@@ -175,6 +185,19 @@
                 </div>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Редкость (опционально)</label>
+                <select id="editRarity" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <option value="">Универсальный (любая редкость)</option>
+                    <option value="common">⚪ Обычный</option>
+                    <option value="uncommon">🟢 Необычный</option>
+                    <option value="rare">🔵 Редкий</option>
+                    <option value="epic">🟣 Эпический</option>
+                    <option value="legendary">🟡 Легендарный</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Если указано — шаблон выпадает только для этой редкости</p>
+            </div>
+
             <div class="flex items-center gap-2">
                 <input type="checkbox" id="editIsActive" class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                 <label for="editIsActive" class="text-sm text-gray-700">Активен (участвует в выдаче)</label>
@@ -195,6 +218,29 @@
 <script>
 const API_BASE = 'https://moodsprint.app/api/v1';
 const loadedGenres = {};
+
+// Rarity helpers
+function getRarityClass(rarity) {
+    const classes = {
+        'common': 'bg-gray-200 text-gray-700',
+        'uncommon': 'bg-green-100 text-green-700',
+        'rare': 'bg-blue-100 text-blue-700',
+        'epic': 'bg-purple-100 text-purple-700',
+        'legendary': 'bg-amber-100 text-amber-700',
+    };
+    return classes[rarity] || 'bg-gray-100 text-gray-500';
+}
+
+function getRarityLabel(rarity) {
+    const labels = {
+        'common': '⚪ Обычн.',
+        'uncommon': '🟢 Необычн.',
+        'rare': '🔵 Редкий',
+        'epic': '🟣 Эпич.',
+        'legendary': '🟡 Легенд.',
+    };
+    return labels[rarity] || rarity;
+}
 
 function toggleGenre(genre) {
     const container = document.getElementById(`templates-${genre}`);
@@ -247,6 +293,7 @@ async function loadTemplates(genre) {
                                 <div class="text-gray-500">HP: ${t.base_hp} / ATK: ${t.base_attack}</div>
                                 ${t.ai_generated ? '<div class="text-purple-500 text-xs">AI</div>' : ''}
                             </div>
+                            ${t.rarity ? `<span class="px-2 py-0.5 text-xs rounded ${getRarityClass(t.rarity)}">${getRarityLabel(t.rarity)}</span>` : '<span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">Универс.</span>'}
                             ${statusBadge}
                             <button onclick="editTemplate(${t.id}, '${genre}')"
                                     class="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-700" title="Редактировать">
@@ -358,6 +405,7 @@ async function editTemplate(templateId, genre) {
         document.getElementById('editEmoji').value = t.emoji || '';
         document.getElementById('editBaseHp').value = t.base_hp || 50;
         document.getElementById('editBaseAttack').value = t.base_attack || 15;
+        document.getElementById('editRarity').value = t.rarity || '';
         document.getElementById('editIsActive').checked = t.is_active;
 
         document.getElementById('editModal').classList.remove('hidden');
@@ -382,6 +430,7 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
         emoji: document.getElementById('editEmoji').value,
         base_hp: parseInt(document.getElementById('editBaseHp').value),
         base_attack: parseInt(document.getElementById('editBaseAttack').value),
+        rarity: document.getElementById('editRarity').value || null,
         is_active: document.getElementById('editIsActive').checked,
     };
 

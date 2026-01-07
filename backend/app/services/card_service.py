@@ -497,8 +497,8 @@ class CardService:
                 if rarity != CardRarity.LEGENDARY:
                     self._save_as_template(card, genre)
         else:
-            # Use existing template from pool
-            template = self._get_random_template(genre)
+            # Use existing template from pool (prioritize rarity-specific templates)
+            template = self._get_random_template(genre, rarity)
             if template:
                 card = self._create_card_from_template(
                     user_id, task_id, template, rarity
@@ -557,11 +557,30 @@ class CardService:
             logger.error(f"Failed to save template: {e}")
             return None
 
-    def _get_random_template(self, genre: str) -> CardTemplate | None:
-        """Get a random active template for the genre."""
-        templates = CardTemplate.query.filter_by(genre=genre, is_active=True).all()
-        if templates:
-            return random.choice(templates)
+    def _get_random_template(
+        self, genre: str, rarity: CardRarity | None = None
+    ) -> CardTemplate | None:
+        """Get a random active template for the genre.
+
+        Priority:
+        1. Templates with matching rarity (if any exist)
+        2. Universal templates (rarity=NULL)
+        """
+        # First, try to find templates specifically for this rarity
+        if rarity:
+            rarity_templates = CardTemplate.query.filter_by(
+                genre=genre, is_active=True, rarity=rarity.value
+            ).all()
+            if rarity_templates:
+                return random.choice(rarity_templates)
+
+        # Fall back to universal templates (no rarity set)
+        universal_templates = CardTemplate.query.filter_by(
+            genre=genre, is_active=True, rarity=None
+        ).all()
+        if universal_templates:
+            return random.choice(universal_templates)
+
         return None
 
     def _create_card_from_template(
