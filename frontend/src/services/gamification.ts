@@ -191,8 +191,9 @@ interface MonstersResponse {
 export interface BattleLogEntry {
   round?: number;
   actor: 'player' | 'monster' | 'system';
-  action?: 'attack' | 'critical' | 'card_destroyed';
+  action?: 'attack' | 'critical' | 'card_destroyed' | 'ability' | 'shield_blocked' | 'poison_damage';
   damage?: number;
+  heal_amount?: number;
   is_critical?: boolean;
   message?: string;
   card_id?: number | string;
@@ -201,6 +202,9 @@ export interface BattleLogEntry {
   target_id?: number | string;
   target_name?: string;
   target_emoji?: string;
+  ability?: string;
+  ability_name?: string;
+  ability_emoji?: string;
 }
 
 export interface CardBattleState {
@@ -231,6 +235,8 @@ export interface MonsterCardState {
   max_hp: number;
   attack: number;
   alive: boolean;
+  has_shield?: boolean;
+  status_effects?: StatusEffect[];
 }
 
 // Active battle state
@@ -429,8 +435,8 @@ export const gamificationService = {
     return api.post<TurnResult>('/arena/battle/forfeit');
   },
 
-  // Use a card's ability (heal, shield, etc.)
-  async useAbility(cardId: number, targetCardId: number): Promise<ApiResponse<TurnResult & { heal_amount?: number }>> {
+  // Use a card's ability (heal, shield, poison, double_strike, etc.)
+  async useAbility(cardId: number, targetCardId: number | string): Promise<ApiResponse<TurnResult & { heal_amount?: number }>> {
     return api.post<TurnResult & { heal_amount?: number }>('/arena/battle/turn', {
       player_card_id: cardId,
       target_card_id: String(targetCardId),

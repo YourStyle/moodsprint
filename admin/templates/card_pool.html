@@ -6,141 +6,103 @@
 {% block content %}
 <div class="space-y-6">
     <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500">Total Templates</div>
-            <div class="text-2xl font-bold text-gray-900">{{ active_templates }}/{{ total_templates }}</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-purple-100 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ active_templates }}<span class="text-gray-400 text-lg">/{{ total_templates }}</span></div>
+                    <div class="text-sm text-gray-500">Шаблонов (активных/всего)</div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-sm text-gray-500">User Cards</div>
-            <div class="text-2xl font-bold text-gray-900">{{ total_user_cards }}</div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ total_user_cards }}</div>
+                    <div class="text-sm text-gray-500">Карт у игроков</div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4 col-span-2">
-            <div class="text-sm text-gray-500 mb-2">Cards by Rarity</div>
-            <div class="flex gap-3 text-sm">
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="text-sm text-gray-500 mb-2">Карты по редкости</div>
+            <div class="flex flex-wrap gap-2">
                 {% for rarity, count in cards_by_rarity.items() %}
-                <div class="flex items-center gap-1">
-                    <span class="
-                        {% if rarity == 'common' %}text-gray-500
-                        {% elif rarity == 'uncommon' %}text-green-500
-                        {% elif rarity == 'rare' %}text-blue-500
-                        {% elif rarity == 'epic' %}text-purple-500
-                        {% elif rarity == 'legendary' %}text-amber-500
-                        {% endif %}
-                        font-medium">{{ rarity|capitalize }}:</span>
-                    <span class="text-gray-700">{{ count }}</span>
+                <div class="px-2 py-1 rounded text-sm
+                    {% if rarity == 'common' %}bg-gray-100 text-gray-700
+                    {% elif rarity == 'uncommon' %}bg-green-100 text-green-700
+                    {% elif rarity == 'rare' %}bg-blue-100 text-blue-700
+                    {% elif rarity == 'epic' %}bg-purple-100 text-purple-700
+                    {% elif rarity == 'legendary' %}bg-amber-100 text-amber-700
+                    {% endif %}">
+                    {{ count }}
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
+    <!-- How it works -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 class="font-medium text-blue-900 mb-2">Как работает пул карт</h4>
+        <div class="text-sm text-blue-800 space-y-1">
+            <p><strong>Шаблон</strong> — это прототип карты (имя, картинка, базовые HP/ATK). Когда игрок получает карту, система выбирает случайный активный шаблон из его жанра.</p>
+            <p><strong>Активные шаблоны</strong> участвуют в выдаче карт. Отключённые — нет (но уже выданные карты остаются у игроков).</p>
+            <p><strong>Редкость</strong> определяется при выдаче и влияет на множители HP/ATK карты игрока.</p>
+        </div>
+    </div>
+
     <!-- Genres -->
     <div class="space-y-4">
+        <h3 class="text-lg font-semibold text-gray-900">Шаблоны по жанрам</h3>
+
         {% for genre in genres %}
         {% set data = genres_data[genre] %}
-        <div class="bg-white rounded-lg shadow overflow-hidden" x-data="{ open: false, templates: [], loading: false }">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
             <!-- Genre Header -->
-            <button @click="open = !open; if(open && templates.length === 0) loadTemplates('{{ genre }}')"
-                    class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="text-2xl">
                         {% if genre == 'magic' %}🔮{% elif genre == 'fantasy' %}🐉{% elif genre == 'scifi' %}🚀{% elif genre == 'cyberpunk' %}🤖{% elif genre == 'anime' %}⚔️{% endif %}
                     </span>
-                    <div class="text-left">
-                        <div class="font-medium text-gray-900">{{ genre|capitalize }}</div>
+                    <div>
+                        <div class="font-semibold text-gray-900">{{ genre|capitalize }}</div>
                         <div class="text-sm text-gray-500">
-                            {{ data.users_count }} users •
-                            <span class="text-green-600">{{ data.active_templates }}</span>/{{ data.total_templates }} templates
+                            {{ data.users_count }} игроков •
+                            <span class="text-green-600 font-medium">{{ data.active_templates }}</span> активных шаблонов
                         </div>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-400 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="generateTemplate('{{ genre }}')"
+                            class="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Создать
+                    </button>
+                    <button onclick="toggleGenre('{{ genre }}')" id="toggle-{{ genre }}"
+                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
 
-            <!-- Expanded Content -->
-            <div x-show="open" x-collapse class="border-t border-gray-200">
-                <div class="p-4 space-y-4">
-                    <!-- Rarity Status -->
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Generation Status</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
-                            {% for rarity in rarities %}
-                            {% set status = data.rarity_status[rarity] %}
-                            <div class="flex items-center justify-between p-2 rounded text-sm
-                                {% if status.needs_more %}bg-red-50 border border-red-200{% else %}bg-gray-50{% endif %}">
-                                <span class="
-                                    {% if rarity == 'common' %}text-gray-600
-                                    {% elif rarity == 'uncommon' %}text-green-600
-                                    {% elif rarity == 'rare' %}text-blue-600
-                                    {% elif rarity == 'epic' %}text-purple-600
-                                    {% elif rarity == 'legendary' %}text-amber-600
-                                    {% endif %}
-                                    font-medium">{{ rarity|capitalize }}</span>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-gray-500 text-xs">req: {{ status.required }}</span>
-                                    <button @click="generateTemplate('{{ genre }}')"
-                                            class="p-1 text-gray-400 hover:text-gray-600">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Templates List -->
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Templates</h4>
-                        <div x-show="loading" class="text-center py-4">
-                            <svg class="animate-spin h-6 w-6 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </div>
-                        <div x-show="!loading" class="max-h-80 overflow-y-auto space-y-1">
-                            <template x-for="t in templates" :key="t.id">
-                                <div class="flex items-center gap-3 p-2 rounded hover:bg-gray-50"
-                                     :class="{ 'opacity-50': !t.is_active }">
-                                    <!-- Image/Emoji -->
-                                    <div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                                        <template x-if="t.image_url">
-                                            <img :src="t.image_url" class="w-full h-full object-cover">
-                                        </template>
-                                        <template x-if="!t.image_url">
-                                            <span x-text="t.emoji" class="text-xl"></span>
-                                        </template>
-                                    </div>
-                                    <!-- Info -->
-                                    <div class="flex-1 min-w-0">
-                                        <div class="font-medium text-gray-900 truncate" x-text="t.name"></div>
-                                        <div class="text-sm text-gray-500 truncate" x-text="t.description"></div>
-                                    </div>
-                                    <!-- Actions -->
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <span x-show="t.ai_generated" class="text-xs text-purple-500">AI</span>
-                                        <button @click="toggleTemplate(t.id)"
-                                                class="p-1.5 rounded hover:bg-gray-100"
-                                                :class="t.is_active ? 'text-green-500' : 'text-red-500'">
-                                            <svg x-show="t.is_active" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            <svg x-show="!t.is_active" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            </template>
-                            <div x-show="templates.length === 0 && !loading" class="text-center py-4 text-gray-500">
-                                No templates yet
-                            </div>
-                        </div>
-                    </div>
+            <!-- Templates List (hidden by default) -->
+            <div id="templates-{{ genre }}" class="hidden">
+                <div class="p-4 bg-gray-50 border-b border-gray-100">
+                    <div class="text-sm text-gray-500">Загрузка...</div>
                 </div>
             </div>
         </div>
@@ -148,63 +110,145 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script>
-    async function loadTemplates(genre) {
-        const component = document.querySelector(`[x-data]`);
-        // Find the right component for this genre
-        const genreComponents = document.querySelectorAll('[x-data]');
-        for (const comp of genreComponents) {
-            if (comp.querySelector(`button[onclick*="${genre}"]`) || comp.innerHTML.includes(`loadTemplates('${genre}')`)) {
-                comp.__x.$data.loading = true;
-                try {
-                    const response = await fetch(`/card-pool/${genre}/templates`);
-                    const data = await response.json();
-                    if (data.success) {
-                        comp.__x.$data.templates = data.templates;
-                    }
-                } catch (e) {
-                    console.error('Error loading templates:', e);
-                } finally {
-                    comp.__x.$data.loading = false;
-                }
-                break;
-            }
-        }
-    }
+const API_BASE = 'https://moodsprint.app/api/v1';
+const loadedGenres = {};
 
-    async function toggleTemplate(templateId) {
-        try {
-            const response = await fetch(`/card-pool/template/${templateId}/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await response.json();
-            if (data.success) {
-                // Refresh the page to update counts
-                location.reload();
-            }
-        } catch (e) {
-            console.error('Error toggling template:', e);
-        }
-    }
+function toggleGenre(genre) {
+    const container = document.getElementById(`templates-${genre}`);
+    const toggleBtn = document.getElementById(`toggle-${genre}`);
 
-    async function generateTemplate(genre) {
-        try {
-            const response = await fetch(`/card-pool/${genre}/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert(`Created: ${data.template.name}`);
-                location.reload();
-            } else {
-                alert(`Error: ${data.error}`);
-            }
-        } catch (e) {
-            console.error('Error generating template:', e);
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        toggleBtn.querySelector('svg').style.transform = 'rotate(180deg)';
+
+        if (!loadedGenres[genre]) {
+            loadTemplates(genre);
         }
+    } else {
+        container.classList.add('hidden');
+        toggleBtn.querySelector('svg').style.transform = '';
     }
+}
+
+async function loadTemplates(genre) {
+    const container = document.getElementById(`templates-${genre}`);
+
+    try {
+        const response = await fetch(`/card-pool/${genre}/templates`);
+        const data = await response.json();
+
+        if (data.success && data.templates.length > 0) {
+            let html = '<div class="divide-y divide-gray-100">';
+
+            for (const t of data.templates) {
+                const imageUrl = t.image_url ? `${API_BASE}${t.image_url}` : null;
+                const statusClass = t.is_active ? '' : 'opacity-50';
+                const statusBadge = t.is_active
+                    ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">Активен</span>'
+                    : '<span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">Отключён</span>';
+
+                html += `
+                    <div class="flex items-center gap-4 p-4 hover:bg-gray-50 ${statusClass}">
+                        <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
+                            ${imageUrl
+                                ? `<img src="${imageUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${t.emoji || '🎴'}'">`
+                                : `<span class="text-2xl">${t.emoji || '🎴'}</span>`
+                            }
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-gray-900">${t.name}</div>
+                            <div class="text-sm text-gray-500 truncate">${t.description || 'Без описания'}</div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="text-right text-sm">
+                                <div class="text-gray-500">HP: ${t.base_hp} / ATK: ${t.base_attack}</div>
+                                ${t.ai_generated ? '<div class="text-purple-500 text-xs">AI</div>' : ''}
+                            </div>
+                            ${statusBadge}
+                            <button onclick="toggleTemplate(${t.id}, '${genre}')"
+                                    class="p-2 hover:bg-gray-200 rounded-lg" title="${t.is_active ? 'Отключить' : 'Включить'}">
+                                <svg class="w-5 h-5 ${t.is_active ? 'text-green-500' : 'text-red-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+            loadedGenres[genre] = true;
+        } else {
+            container.innerHTML = `
+                <div class="p-8 text-center">
+                    <div class="text-gray-400 text-4xl mb-2">📭</div>
+                    <div class="text-gray-500">Нет шаблонов для этого жанра</div>
+                    <button onclick="generateTemplate('${genre}')" class="mt-3 text-purple-600 hover:underline">
+                        Создать первый шаблон
+                    </button>
+                </div>
+            `;
+            loadedGenres[genre] = true;
+        }
+    } catch (e) {
+        console.error('Error loading templates:', e);
+        container.innerHTML = `
+            <div class="p-4 text-center text-red-500">
+                Ошибка загрузки: ${e.message}
+            </div>
+        `;
+    }
+}
+
+async function toggleTemplate(templateId, genre) {
+    try {
+        const response = await fetch(`/card-pool/template/${templateId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            // Reload templates for this genre
+            loadedGenres[genre] = false;
+            loadTemplates(genre);
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+}
+
+async function generateTemplate(genre) {
+    const name = prompt('Имя шаблона (оставьте пустым для автогенерации):');
+
+    try {
+        const response = await fetch(`/card-pool/${genre}/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name || undefined })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`Создан шаблон: ${data.template.name}`);
+            // Reload templates
+            loadedGenres[genre] = false;
+            const container = document.getElementById(`templates-${genre}`);
+            if (!container.classList.contains('hidden')) {
+                loadTemplates(genre);
+            }
+            // Reload page to update counts
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+}
 </script>
 {% endblock %}

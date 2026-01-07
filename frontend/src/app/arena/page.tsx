@@ -84,6 +84,11 @@ export default function ArenaPage() {
   const [healingCardId, setHealingCardId] = useState<number | null>(null);
   const [healNumbers, setHealNumbers] = useState<Record<string, number>>({});
 
+  // Ability targeting state (for poison, double_strike)
+  const [abilityTargetMode, setAbilityTargetMode] = useState(false);
+  const [abilityCardId, setAbilityCardId] = useState<number | null>(null);
+  const [currentAbilityType, setCurrentAbilityType] = useState<string | null>(null);
+
   // Random battle events
   const [battleEvent, setBattleEvent] = useState<{
     id: string;
@@ -377,18 +382,40 @@ export default function ArenaPage() {
   };
 
   // Handle ability button click
-  const handleAbilityClick = (cardId: number, abilityType: string) => {
+  const handleAbilityClick = async (cardId: number, abilityType: string) => {
     hapticFeedback('medium');
 
     if (abilityType === 'heal') {
-      // Enter heal target mode
+      // Enter heal target mode (select ally)
       setHealTargetMode(true);
       setHealingCardId(cardId);
       setSelectedPlayerCard(null);
       setSelectedTargetCard(null);
-    } else {
-      // For other abilities (shield, poison, double_strike) - auto-use
-      // TODO: Implement other abilities execution
+    } else if (abilityType === 'shield') {
+      // Shield applies to self - no target needed
+      try {
+        const response = await gamificationService.useAbility(cardId, cardId);
+        if (response.success && response.data) {
+          hapticFeedback('success');
+          // Update battle state
+          if (response.data.battle) {
+            setActiveBattle(response.data.battle);
+          }
+          // Process turn log for animations if needed
+          if (response.data.turn_log) {
+            setLastTurnLog(response.data.turn_log);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to use shield ability:', error);
+      }
+    } else if (abilityType === 'poison' || abilityType === 'double_strike') {
+      // Enter ability target mode (select enemy)
+      setAbilityTargetMode(true);
+      setAbilityCardId(cardId);
+      setCurrentAbilityType(abilityType);
+      setSelectedPlayerCard(null);
+      setSelectedTargetCard(null);
     }
   };
 
@@ -431,6 +458,69 @@ export default function ArenaPage() {
   const cancelHealMode = () => {
     setHealTargetMode(false);
     setHealingCardId(null);
+  };
+
+  // Handle ability target selection (poison, double_strike - targets enemy)
+  const handleAbilityTarget = async (targetCardId: string) => {
+    if (!abilityCardId || !currentAbilityType) return;
+
+    hapticFeedback('success');
+
+    try {
+      // Use the ability - note: target is monster card ID (string like "m_1_0")
+      const response = await gamificationService.useAbility(abilityCardId, targetCardId);
+      if (response.success && response.data) {
+        // Show damage animation for poison/double_strike
+        if (response.data.turn_log) {
+          setLastTurnLog(response.data.turn_log);
+          setShowTurnAnimation(true);
+
+          // Find damage from ability
+          const abilityAction = response.data.turn_log.find(log => log.action === 'ability');
+          if (abilityAction && abilityAction.damage) {
+            setDamageNumbers(prev => ({
+              ...prev,
+              [String(targetCardId)]: {
+                damage: abilityAction.damage!,
+                isCritical: false
+              }
+            }));
+          }
+
+          // Clear animations after delay
+          setTimeout(() => {
+            setShowTurnAnimation(false);
+            setDamageNumbers({});
+          }, 1500);
+        }
+
+        // Update battle state
+        if (response.data.battle) {
+          setActiveBattle(response.data.battle);
+        }
+
+        // Check if battle ended
+        if (response.data.status === 'won' || response.data.status === 'lost') {
+          setBattleResult(response.data.result || null);
+          setGameState('result');
+          hapticFeedback(response.data.status === 'won' ? 'success' : 'error');
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to use ${currentAbilityType} ability:`, error);
+    }
+
+    // Exit ability mode
+    setAbilityTargetMode(false);
+    setAbilityCardId(null);
+    setCurrentAbilityType(null);
+  };
+
+  // Cancel ability target mode
+  const cancelAbilityMode = () => {
+    setAbilityTargetMode(false);
+    setAbilityCardId(null);
+    setCurrentAbilityType(null);
   };
 
   // Trigger random battle event (10% chance per turn)
@@ -949,28 +1039,56 @@ export default function ArenaPage() {
                 <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                   <span className="text-xl">{activeBattle.monster?.emoji}</span>
                   {t('monsterDeck')} ({aliveMonsterCards.length} {t('cards')})
+                  {abilityTargetMode && currentAbilityType && (
+                    <span className="ml-2 text-purple-400 animate-pulse">
+                      — Выберите цель для {currentAbilityType === 'poison' ? 'яда' : 'атаки'}
+                    </span>
+                  )}
                 </h3>
                 <div className="flex flex-wrap justify-center gap-3">
-                  {activeBattle.state.monster_cards.map((card) => (
-                    <BattleCard
-                      key={card.id}
-                      id={card.id}
-                      name={card.name}
-                      emoji={card.emoji}
-                      hp={card.hp}
-                      maxHp={card.max_hp}
-                      attack={card.attack}
-                      alive={card.alive}
-                      selected={selectedTargetCard === card.id}
-                      selectable={card.alive}
-                      size="md"
-                      isAttacking={attackingCardId === card.id}
-                      isBeingAttacked={attackedCardId === card.id}
-                      damageReceived={damageNumbers[String(card.id)]?.damage || null}
-                      isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
-                      onClick={() => card.alive && setSelectedTargetCard(card.id)}
-                    />
-                  ))}
+                  {activeBattle.state.monster_cards.map((card) => {
+                    const isAbilityTarget = abilityTargetMode && card.alive;
+
+                    return (
+                      <div key={card.id} className="relative">
+                        <BattleCard
+                          id={card.id}
+                          name={card.name}
+                          emoji={card.emoji}
+                          hp={card.hp}
+                          maxHp={card.max_hp}
+                          attack={card.attack}
+                          alive={card.alive}
+                          selected={selectedTargetCard === card.id}
+                          selectable={card.alive && !healTargetMode}
+                          size="md"
+                          isAttacking={attackingCardId === card.id}
+                          isBeingAttacked={attackedCardId === card.id}
+                          damageReceived={damageNumbers[String(card.id)]?.damage || null}
+                          isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
+                          hasShield={card.has_shield || false}
+                          statusEffects={card.status_effects || []}
+                          onClick={() => {
+                            if (abilityTargetMode && card.alive) {
+                              handleAbilityTarget(card.id);
+                            } else if (card.alive && !healTargetMode) {
+                              setSelectedTargetCard(card.id);
+                            }
+                          }}
+                        />
+                        {/* Ability target highlight */}
+                        {isAbilityTarget && (
+                          <div className={cn(
+                            'absolute inset-0 rounded-xl pointer-events-none z-10',
+                            'border-2 animate-pulse',
+                            currentAbilityType === 'poison'
+                              ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]'
+                              : 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]'
+                          )} />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -990,11 +1108,18 @@ export default function ArenaPage() {
                       — Выберите карту для лечения
                     </span>
                   )}
+                  {abilityTargetMode && (
+                    <span className="ml-2 text-purple-400 animate-pulse">
+                      — Выберите врага сверху
+                    </span>
+                  )}
                 </h3>
                 <div className="flex flex-wrap justify-center gap-3">
                   {activeBattle.state.player_cards.map((card) => {
                     const isHealingCard = healingCardId === card.id;
                     const canBeHealed = healTargetMode && card.alive && !isHealingCard && card.hp < card.max_hp;
+
+                    const isUsingAbility = abilityCardId === card.id;
 
                     return (
                       <BattleCard
@@ -1008,15 +1133,15 @@ export default function ArenaPage() {
                         attack={card.attack}
                         rarity={card.rarity}
                         alive={card.alive}
-                        selected={selectedPlayerCard === card.id}
-                        selectable={card.alive && !healTargetMode}
+                        selected={selectedPlayerCard === card.id || isUsingAbility}
+                        selectable={card.alive && !healTargetMode && !abilityTargetMode}
                         size="md"
                         isAttacking={attackingCardId === card.id}
                         isBeingAttacked={attackedCardId === card.id}
                         damageReceived={damageNumbers[String(card.id)]?.damage || null}
                         isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
                         onClick={() => {
-                          if (healTargetMode) return;
+                          if (healTargetMode || abilityTargetMode) return;
                           card.alive && setSelectedPlayerCard(card.id as number);
                         }}
                         // Ability props
@@ -1025,7 +1150,7 @@ export default function ArenaPage() {
                         abilityCooldown={card.ability_cooldown || 0}
                         hasShield={card.has_shield || false}
                         statusEffects={card.status_effects || []}
-                        canUseAbility={card.alive && !healTargetMode && (card.ability_cooldown || 0) === 0}
+                        canUseAbility={card.alive && !healTargetMode && !abilityTargetMode && (card.ability_cooldown || 0) === 0}
                         onAbilityClick={() => {
                           if (card.ability && card.ability_info) {
                             handleAbilityClick(card.id as number, card.ability);
@@ -1052,6 +1177,14 @@ export default function ArenaPage() {
                       >
                         <X className="w-5 h-5 mr-2" />
                         Отменить лечение
+                      </Button>
+                    ) : abilityTargetMode ? (
+                      <Button
+                        className="w-full bg-gray-700 hover:bg-gray-600"
+                        onClick={cancelAbilityMode}
+                      >
+                        <X className="w-5 h-5 mr-2" />
+                        Отменить {currentAbilityType === 'poison' ? 'яд' : 'двойной удар'}
                       </Button>
                     ) : (
                       <Button
