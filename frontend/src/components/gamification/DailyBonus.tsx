@@ -7,12 +7,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
+import { useLanguage } from '@/lib/i18n';
 
 export function DailyBonus() {
   const [isOpen, setIsOpen] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const queryClient = useQueryClient();
   const { showXPAnimation } = useAppStore();
+  const { t } = useLanguage();
 
   // Check if this is user's first visit - skip daily bonus on first login
   const isFirstVisit = typeof window !== 'undefined' && !localStorage.getItem('first_visit_completed');
@@ -54,6 +56,13 @@ export function DailyBonus() {
   }, [bonusStatus?.data?.can_claim, isLoading]);
 
   const status = bonusStatus?.data;
+
+  // Helper for day pluralization
+  const getDaysWord = (days: number) => {
+    if (days === 1) return t('day');
+    if (days >= 2 && days <= 4) return t('days2to4');
+    return t('days5plus');
+  };
 
   // Skip on first visit or if no bonus available
   if (isFirstVisit || !status?.can_claim || isLoading) return null;
@@ -137,11 +146,11 @@ export function DailyBonus() {
                   </motion.div>
 
                   <h2 className="text-2xl font-bold text-white mb-2">
-                    Ежедневный бонус!
+                    {t('dailyBonus')}
                   </h2>
 
                   <p className="text-gray-300 mb-4">
-                    Заходи каждый день и получай награды
+                    {t('dailyBonusHint')}
                   </p>
 
                   {/* Streak info */}
@@ -149,7 +158,7 @@ export function DailyBonus() {
                     <div className="flex items-center justify-center gap-2 mb-4 text-orange-400">
                       <Flame className="w-5 h-5" />
                       <span className="font-medium">
-                        Серия {status.streak_days} {status.streak_days === 1 ? 'день' : status.streak_days < 5 ? 'дня' : 'дней'}
+                        {t('streakDays')} {status.streak_days} {getDaysWord(status.streak_days)}
                       </span>
                     </div>
                   )}
@@ -164,7 +173,7 @@ export function DailyBonus() {
                     </div>
                     {status.streak_multiplier > 0 && (
                       <p className="text-sm text-purple-300 mt-1">
-                        Включая бонус за серию +{status.streak_multiplier * 5} XP
+                        {t('includingStreakBonus')} +{status.streak_multiplier * 5} XP
                       </p>
                     )}
                   </div>
@@ -177,7 +186,7 @@ export function DailyBonus() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {claimMutation.isPending ? 'Получаем...' : 'Забрать награду'}
+                    {claimMutation.isPending ? t('claiming') : t('claimReward')}
                   </motion.button>
                 </>
               ) : (
@@ -205,7 +214,7 @@ export function DailyBonus() {
                     </motion.div>
 
                     <h2 className="text-2xl font-bold text-white mb-2">
-                      Получено!
+                      {t('claimed')}
                     </h2>
 
                     <motion.p

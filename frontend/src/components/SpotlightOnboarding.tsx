@@ -5,6 +5,7 @@ import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
+import { useLanguage } from '@/lib/i18n';
 
 export interface OnboardingStep {
   id: string;
@@ -37,6 +38,7 @@ export function SpotlightOnboarding({
   const [currentStep, setCurrentStep] = useState(-1);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(true);
+  const { t } = useLanguage();
 
   // Check if onboarding was already completed
   useEffect(() => {
@@ -254,11 +256,11 @@ export function SpotlightOnboarding({
             <Button size="sm" onClick={handleNext}>
               {currentStep < steps.length - 1 ? (
                 <>
-                  Далее
+                  {t('spotlightNext')}
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </>
               ) : (
-                'Готово'
+                t('spotlightDone')
               )}
             </Button>
           </div>

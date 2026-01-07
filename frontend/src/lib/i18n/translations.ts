@@ -459,6 +459,27 @@ export const translations = {
     lore: 'Лор',
     joinNow: 'Присоединяйся!',
     cardsOnSale: 'карт на продаже',
+
+    // Admin panel
+    adminPanel: 'Админ-панель',
+    adminPanelDesc: 'Управление пулом карт и статистика',
+
+    // Daily bonus
+    dailyBonus: 'Ежедневный бонус!',
+    dailyBonusHint: 'Заходи каждый день и получай награды',
+    streakDays: 'Серия',
+    day: 'день',
+    days2to4: 'дня',
+    days5plus: 'дней',
+    includingStreakBonus: 'Включая бонус за серию',
+    claiming: 'Получаем...',
+    claimReward: 'Забрать награду',
+    claimed: 'Получено!',
+
+    // Spotlight onboarding
+    spotlightNext: 'Далее',
+    spotlightDone: 'Готово',
+    spotlightSkip: 'Пропустить',
   },
 
   en: {
@@ -921,6 +942,27 @@ export const translations = {
     lore: 'Lore',
     joinNow: 'Join now!',
     cardsOnSale: 'cards on sale',
+
+    // Admin panel
+    adminPanel: 'Admin Panel',
+    adminPanelDesc: 'Card pool management and statistics',
+
+    // Daily bonus
+    dailyBonus: 'Daily Bonus!',
+    dailyBonusHint: 'Log in every day to earn rewards',
+    streakDays: 'Streak',
+    day: 'day',
+    days2to4: 'days',
+    days5plus: 'days',
+    includingStreakBonus: 'Including streak bonus',
+    claiming: 'Claiming...',
+    claimReward: 'Claim Reward',
+    claimed: 'Claimed!',
+
+    // Spotlight onboarding
+    spotlightNext: 'Next',
+    spotlightDone: 'Done',
+    spotlightSkip: 'Skip',
   },
 } as const;
 
