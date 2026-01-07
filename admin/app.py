@@ -2782,5 +2782,249 @@ def generate_level():
         return jsonify({"success": False, "error": str(e)})
 
 
+# Card Pool Management
+GENRES = ["magic", "fantasy", "scifi", "cyberpunk", "anime"]
+RARITIES = ["common", "uncommon", "rare", "epic", "legendary"]
+BASE_TEMPLATES_COUNT = 5
+RARITY_POOL_FACTORS = {
+    "common": 0.5,
+    "uncommon": 0.3,
+    "rare": 0.2,
+    "epic": 0.1,
+    "legendary": None,  # Always unique
+}
+
+
+@app.route("/card-pool")
+@login_required
+def card_pool():
+    """Card pool management page."""
+    # Get general stats
+    total_templates = db.session.execute(
+        text("SELECT COUNT(*) FROM card_templates")
+    ).scalar() or 0
+
+    active_templates = db.session.execute(
+        text("SELECT COUNT(*) FROM card_templates WHERE is_active = true")
+    ).scalar() or 0
+
+    total_user_cards = db.session.execute(
+        text("SELECT COUNT(*) FROM user_cards WHERE is_destroyed = false")
+    ).scalar() or 0
+
+    # Cards by rarity
+    cards_by_rarity = {}
+    for rarity in RARITIES:
+        count = db.session.execute(
+            text("SELECT COUNT(*) FROM user_cards WHERE rarity = :rarity AND is_destroyed = false"),
+            {"rarity": rarity},
+        ).scalar() or 0
+        cards_by_rarity[rarity] = count
+
+    # Genre data
+    genres_data = {}
+    for genre in GENRES:
+        # Count users in genre
+        users_count = db.session.execute(
+            text("SELECT COUNT(*) FROM user_profiles WHERE favorite_genre = :genre"),
+            {"genre": genre},
+        ).scalar() or 0
+
+        # Count templates
+        active_count = db.session.execute(
+            text("SELECT COUNT(*) FROM card_templates WHERE genre = :genre AND is_active = true"),
+            {"genre": genre},
+        ).scalar() or 0
+
+        inactive_count = db.session.execute(
+            text("SELECT COUNT(*) FROM card_templates WHERE genre = :genre AND is_active = false"),
+            {"genre": genre},
+        ).scalar() or 0
+
+        # Rarity requirements
+        rarity_status = {}
+        for rarity in RARITIES:
+            factor = RARITY_POOL_FACTORS.get(rarity)
+            if factor is None:
+                rarity_status[rarity] = {
+                    "factor": None,
+                    "required": "∞",
+                    "needs_more": False,
+                    "status": "always_new",
+                }
+            else:
+                required = BASE_TEMPLATES_COUNT + int(users_count * factor)
+                needs_more = active_count < required
+                rarity_status[rarity] = {
+                    "factor": factor,
+                    "required": required,
+                    "needs_more": needs_more,
+                    "status": "needs_generation" if needs_more else "sufficient",
+                }
+
+        genres_data[genre] = {
+            "users_count": users_count,
+            "active_templates": active_count,
+            "inactive_templates": inactive_count,
+            "total_templates": active_count + inactive_count,
+            "rarity_status": rarity_status,
+        }
+
+    return render_template(
+        "card_pool.html",
+        total_templates=total_templates,
+        active_templates=active_templates,
+        total_user_cards=total_user_cards,
+        cards_by_rarity=cards_by_rarity,
+        genres=GENRES,
+        rarities=RARITIES,
+        genres_data=genres_data,
+    )
+
+
+@app.route("/card-pool/<genre>/templates")
+@login_required
+def card_pool_templates(genre: str):
+    """Get templates for a genre."""
+    if genre not in GENRES:
+        return jsonify({"success": False, "error": "Invalid genre"}), 400
+
+    templates = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_hp, base_attack,
+                   image_url, emoji, ai_generated, is_active, created_at
+            FROM card_templates
+            WHERE genre = :genre
+            ORDER BY is_active DESC, created_at DESC
+        """),
+        {"genre": genre},
+    ).fetchall()
+
+    return jsonify({
+        "success": True,
+        "templates": [
+            {
+                "id": t[0],
+                "name": t[1],
+                "description": t[2],
+                "genre": t[3],
+                "base_hp": t[4],
+                "base_attack": t[5],
+                "image_url": t[6],
+                "emoji": t[7],
+                "ai_generated": t[8],
+                "is_active": t[9],
+                "created_at": t[10].isoformat() if t[10] else None,
+            }
+            for t in templates
+        ],
+    })
+
+
+@app.route("/card-pool/template/<int:template_id>/toggle", methods=["POST"])
+@login_required
+def toggle_card_template(template_id: int):
+    """Toggle template active status."""
+    template = db.session.execute(
+        text("SELECT id, name, is_active FROM card_templates WHERE id = :id"),
+        {"id": template_id},
+    ).fetchone()
+
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    new_status = not template[2]
+    db.session.execute(
+        text("UPDATE card_templates SET is_active = :status WHERE id = :id"),
+        {"status": new_status, "id": template_id},
+    )
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "template_id": template_id,
+        "name": template[1],
+        "is_active": new_status,
+    })
+
+
+@app.route("/card-pool/<genre>/generate", methods=["POST"])
+@login_required
+def generate_card_template(genre: str):
+    """Generate a new card template."""
+    import random
+
+    if genre not in GENRES:
+        return jsonify({"success": False, "error": "Invalid genre"}), 400
+
+    data = request.json or {}
+    custom_name = data.get("name")
+    custom_description = data.get("description")
+
+    genre_emojis = {
+        "fantasy": ["🐉", "🧙", "⚔️", "🏰", "🦄", "🧝", "🗡️", "👑"],
+        "magic": ["🔮", "✨", "🌟", "💫", "🎭", "🌙", "⭐", "🪄"],
+        "scifi": ["🚀", "🤖", "👾", "🛸", "🌌", "⚡", "🔬", "💎"],
+        "cyberpunk": ["🤖", "💀", "⚡", "🔥", "💻", "🎮", "🌃", "🔫"],
+        "anime": ["⚔️", "🌸", "🎌", "👤", "💥", "🔥", "⭐", "🗡️"],
+    }
+    emojis = genre_emojis.get(genre, genre_emojis["fantasy"])
+
+    if custom_name:
+        # Create with custom name
+        template_name = custom_name
+        template_description = custom_description or f"Character from {genre} genre"
+        ai_generated = False
+    else:
+        # Generate simple name (no AI for now)
+        prefixes = {
+            "fantasy": ["Dark", "Ancient", "Shadow", "Crystal", "Storm"],
+            "magic": ["Mystic", "Arcane", "Ethereal", "Celestial", "Void"],
+            "scifi": ["Cyber", "Quantum", "Plasma", "Nova", "Zero"],
+            "cyberpunk": ["Neon", "Chrome", "Digital", "Synth", "Ghost"],
+            "anime": ["Thunder", "Blade", "Spirit", "Dragon", "Star"],
+        }
+        suffixes = {
+            "fantasy": ["Knight", "Mage", "Dragon", "Guardian", "Warrior"],
+            "magic": ["Sorcerer", "Enchanter", "Wizard", "Summoner", "Sage"],
+            "scifi": ["Bot", "Droid", "Unit", "Agent", "Core"],
+            "cyberpunk": ["Runner", "Hacker", "Phantom", "Striker", "Rogue"],
+            "anime": ["Slayer", "Master", "Hero", "Fighter", "Champion"],
+        }
+        prefix = random.choice(prefixes.get(genre, prefixes["fantasy"]))
+        suffix = random.choice(suffixes.get(genre, suffixes["fantasy"]))
+        template_name = f"{prefix} {suffix}"
+        template_description = f"A powerful {genre} character"
+        ai_generated = False
+
+    # Insert template
+    result = db.session.execute(
+        text("""
+            INSERT INTO card_templates (name, description, genre, base_hp, base_attack, emoji, ai_generated, is_active, created_at)
+            VALUES (:name, :description, :genre, 50, 15, :emoji, :ai_generated, true, NOW())
+            RETURNING id
+        """),
+        {
+            "name": template_name,
+            "description": template_description,
+            "genre": genre,
+            "emoji": random.choice(emojis),
+            "ai_generated": ai_generated,
+        },
+    )
+    template_id = result.fetchone()[0]
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "template": {
+            "id": template_id,
+            "name": template_name,
+            "description": template_description,
+            "genre": genre,
+        },
+    })
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
