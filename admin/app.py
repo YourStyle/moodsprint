@@ -3026,5 +3026,142 @@ def generate_card_template(genre: str):
     })
 
 
+@app.route("/card-pool/template/<int:template_id>", methods=["GET"])
+@login_required
+def get_card_template(template_id: int):
+    """Get a single template by ID."""
+    template = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_hp, base_attack,
+                   image_url, emoji, ai_generated, is_active, created_at
+            FROM card_templates
+            WHERE id = :id
+        """),
+        {"id": template_id},
+    ).fetchone()
+
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    return jsonify({
+        "success": True,
+        "template": {
+            "id": template[0],
+            "name": template[1],
+            "description": template[2],
+            "genre": template[3],
+            "base_hp": template[4],
+            "base_attack": template[5],
+            "image_url": template[6],
+            "emoji": template[7],
+            "ai_generated": template[8],
+            "is_active": template[9],
+            "created_at": template[10].isoformat() if template[10] else None,
+        },
+    })
+
+
+@app.route("/card-pool/template/<int:template_id>", methods=["PUT"])
+@login_required
+def update_card_template(template_id: int):
+    """Update a card template."""
+    template = db.session.execute(
+        text("SELECT id FROM card_templates WHERE id = :id"),
+        {"id": template_id},
+    ).fetchone()
+
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    data = request.json or {}
+
+    # Build update query dynamically based on provided fields
+    update_fields = []
+    params = {"id": template_id}
+
+    if "name" in data and data["name"]:
+        update_fields.append("name = :name")
+        params["name"] = data["name"]
+
+    if "description" in data:
+        update_fields.append("description = :description")
+        params["description"] = data["description"]
+
+    if "base_hp" in data:
+        update_fields.append("base_hp = :base_hp")
+        params["base_hp"] = int(data["base_hp"])
+
+    if "base_attack" in data:
+        update_fields.append("base_attack = :base_attack")
+        params["base_attack"] = int(data["base_attack"])
+
+    if "emoji" in data and data["emoji"]:
+        update_fields.append("emoji = :emoji")
+        params["emoji"] = data["emoji"]
+
+    if "is_active" in data:
+        update_fields.append("is_active = :is_active")
+        params["is_active"] = bool(data["is_active"])
+
+    if not update_fields:
+        return jsonify({"success": False, "error": "No fields to update"}), 400
+
+    query = f"UPDATE card_templates SET {', '.join(update_fields)} WHERE id = :id"
+    db.session.execute(text(query), params)
+    db.session.commit()
+
+    # Fetch updated template
+    updated = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_hp, base_attack,
+                   image_url, emoji, ai_generated, is_active
+            FROM card_templates
+            WHERE id = :id
+        """),
+        {"id": template_id},
+    ).fetchone()
+
+    return jsonify({
+        "success": True,
+        "template": {
+            "id": updated[0],
+            "name": updated[1],
+            "description": updated[2],
+            "genre": updated[3],
+            "base_hp": updated[4],
+            "base_attack": updated[5],
+            "image_url": updated[6],
+            "emoji": updated[7],
+            "ai_generated": updated[8],
+            "is_active": updated[9],
+        },
+    })
+
+
+@app.route("/card-pool/template/<int:template_id>", methods=["DELETE"])
+@login_required
+def delete_card_template(template_id: int):
+    """Delete a card template (if not used by any user cards)."""
+    # Check if template is used
+    used_count = db.session.execute(
+        text("SELECT COUNT(*) FROM user_cards WHERE template_id = :id"),
+        {"id": template_id},
+    ).scalar() or 0
+
+    if used_count > 0:
+        return jsonify({
+            "success": False,
+            "error": f"Template is used by {used_count} user cards. Deactivate instead of deleting.",
+        }), 400
+
+    db.session.execute(
+        text("DELETE FROM card_templates WHERE id = :id"),
+        {"id": template_id},
+    )
+    db.session.commit()
+
+    return jsonify({"success": True})
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

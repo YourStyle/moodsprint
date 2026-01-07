@@ -53,11 +53,11 @@
 
     <!-- How it works -->
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 class="font-medium text-blue-900 mb-2">Как работает пул карт</h4>
+        <h4 class="font-medium text-blue-900 mb-2">Как работает автогенерация шаблонов</h4>
         <div class="text-sm text-blue-800 space-y-1">
-            <p><strong>Шаблон</strong> — это прототип карты (имя, картинка, базовые HP/ATK). Когда игрок получает карту, система выбирает случайный активный шаблон из его жанра.</p>
-            <p><strong>Активные шаблоны</strong> участвуют в выдаче карт. Отключённые — нет (но уже выданные карты остаются у игроков).</p>
-            <p><strong>Редкость</strong> определяется при выдаче и влияет на множители HP/ATK карты игрока.</p>
+            <p><strong>Формула:</strong> Требуемое кол-во = 10 + (кол-во игроков × коэффициент редкости)</p>
+            <p><strong>Коэффициенты:</strong> Обычная ×0.1, Необычная ×0.15, Редкая ×0.2, Эпическая ×0.3, Легендарная — всегда уникальная</p>
+            <p><strong>Пример:</strong> При 100 игроках для Редких карт нужно 10 + 100×0.2 = 30 шаблонов. Если их меньше — при дропе генерируется новый шаблон.</p>
         </div>
     </div>
 
@@ -69,33 +69,56 @@
         {% set data = genres_data[genre] %}
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <!-- Genre Header -->
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="text-2xl">
-                        {% if genre == 'magic' %}🔮{% elif genre == 'fantasy' %}🐉{% elif genre == 'scifi' %}🚀{% elif genre == 'cyberpunk' %}🤖{% elif genre == 'anime' %}⚔️{% endif %}
-                    </span>
-                    <div>
-                        <div class="font-semibold text-gray-900">{{ genre|capitalize }}</div>
-                        <div class="text-sm text-gray-500">
-                            {{ data.users_count }} игроков •
-                            <span class="text-green-600 font-medium">{{ data.active_templates }}</span> активных шаблонов
+            <div class="px-5 py-4 border-b border-gray-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">
+                            {% if genre == 'magic' %}🔮{% elif genre == 'fantasy' %}🐉{% elif genre == 'scifi' %}🚀{% elif genre == 'cyberpunk' %}🤖{% elif genre == 'anime' %}⚔️{% endif %}
+                        </span>
+                        <div>
+                            <div class="font-semibold text-gray-900">{{ genre|capitalize }}</div>
+                            <div class="text-sm text-gray-500">
+                                {{ data.users_count }} игроков •
+                                <span class="text-green-600 font-medium">{{ data.active_templates }}</span> активных шаблонов
+                            </div>
                         </div>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="generateTemplate('{{ genre }}')"
+                                class="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Создать
+                        </button>
+                        <button onclick="toggleGenre('{{ genre }}')" id="toggle-{{ genre }}"
+                                class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="generateTemplate('{{ genre }}')"
-                            class="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Создать
-                    </button>
-                    <button onclick="toggleGenre('{{ genre }}')" id="toggle-{{ genre }}"
-                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                        <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
+
+                <!-- Rarity Status -->
+                <div class="mt-3 flex flex-wrap gap-2">
+                    {% for rarity in rarities %}
+                    {% set status = data.rarity_status[rarity] %}
+                    <div class="text-xs px-2 py-1 rounded-full flex items-center gap-1
+                        {% if status.status == 'always_new' %}bg-amber-100 text-amber-800
+                        {% elif status.status == 'needs_generation' %}bg-red-100 text-red-700
+                        {% else %}bg-green-100 text-green-700
+                        {% endif %}">
+                        {% if rarity == 'common' %}⚪{% elif rarity == 'uncommon' %}🟢{% elif rarity == 'rare' %}🔵{% elif rarity == 'epic' %}🟣{% elif rarity == 'legendary' %}🟡{% endif %}
+                        {% if status.status == 'always_new' %}
+                            Легенд.: всегда новые
+                        {% elif status.status == 'needs_generation' %}
+                            {{ rarity|capitalize }}: {{ data.active_templates }}/{{ status.required }} (нужны ещё!)
+                        {% else %}
+                            {{ rarity|capitalize }}: {{ data.active_templates }}/{{ status.required }} ✓
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
 
@@ -107,6 +130,65 @@
             </div>
         </div>
         {% endfor %}
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Редактировать шаблон</h3>
+                <button onclick="closeEditModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <form id="editForm" class="p-5 space-y-4">
+            <input type="hidden" id="editTemplateId">
+            <input type="hidden" id="editGenre">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                <input type="text" id="editName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                <textarea id="editDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Эмодзи</label>
+                    <input type="text" id="editEmoji" maxlength="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center text-xl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Базовое HP</label>
+                    <input type="number" id="editBaseHp" min="10" max="500" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Базовая ATK</label>
+                    <input type="number" id="editBaseAttack" min="5" max="200" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="editIsActive" class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                <label for="editIsActive" class="text-sm text-gray-700">Активен (участвует в выдаче)</label>
+            </div>
+
+            <div class="flex gap-3 pt-3">
+                <button type="submit" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Сохранить
+                </button>
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Отмена
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -166,10 +248,19 @@ async function loadTemplates(genre) {
                                 ${t.ai_generated ? '<div class="text-purple-500 text-xs">AI</div>' : ''}
                             </div>
                             ${statusBadge}
+                            <button onclick="editTemplate(${t.id}, '${genre}')"
+                                    class="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-700" title="Редактировать">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
                             <button onclick="toggleTemplate(${t.id}, '${genre}')"
                                     class="p-2 hover:bg-gray-200 rounded-lg" title="${t.is_active ? 'Отключить' : 'Включить'}">
                                 <svg class="w-5 h-5 ${t.is_active ? 'text-green-500' : 'text-red-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    ${t.is_active
+                                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                                    }
                                 </svg>
                             </button>
                         </div>
@@ -211,7 +302,6 @@ async function toggleTemplate(templateId, genre) {
         const data = await response.json();
 
         if (data.success) {
-            // Reload templates for this genre
             loadedGenres[genre] = false;
             loadTemplates(genre);
         } else {
@@ -235,13 +325,11 @@ async function generateTemplate(genre) {
 
         if (data.success) {
             alert(`Создан шаблон: ${data.template.name}`);
-            // Reload templates
             loadedGenres[genre] = false;
             const container = document.getElementById(`templates-${genre}`);
             if (!container.classList.contains('hidden')) {
                 loadTemplates(genre);
             }
-            // Reload page to update counts
             location.reload();
         } else {
             alert('Ошибка: ' + data.error);
@@ -250,5 +338,78 @@ async function generateTemplate(genre) {
         alert('Ошибка: ' + e.message);
     }
 }
+
+// Edit Modal
+async function editTemplate(templateId, genre) {
+    try {
+        const response = await fetch(`/card-pool/template/${templateId}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            alert('Ошибка: ' + data.error);
+            return;
+        }
+
+        const t = data.template;
+        document.getElementById('editTemplateId').value = t.id;
+        document.getElementById('editGenre').value = genre;
+        document.getElementById('editName').value = t.name || '';
+        document.getElementById('editDescription').value = t.description || '';
+        document.getElementById('editEmoji').value = t.emoji || '';
+        document.getElementById('editBaseHp').value = t.base_hp || 50;
+        document.getElementById('editBaseAttack').value = t.base_attack || 15;
+        document.getElementById('editIsActive').checked = t.is_active;
+
+        document.getElementById('editModal').classList.remove('hidden');
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+}
+
+document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const templateId = document.getElementById('editTemplateId').value;
+    const genre = document.getElementById('editGenre').value;
+
+    const payload = {
+        name: document.getElementById('editName').value,
+        description: document.getElementById('editDescription').value,
+        emoji: document.getElementById('editEmoji').value,
+        base_hp: parseInt(document.getElementById('editBaseHp').value),
+        base_attack: parseInt(document.getElementById('editBaseAttack').value),
+        is_active: document.getElementById('editIsActive').checked,
+    };
+
+    try {
+        const response = await fetch(`/card-pool/template/${templateId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            closeEditModal();
+            loadedGenres[genre] = false;
+            loadTemplates(genre);
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+});
+
+// Close modal on ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeEditModal();
+    }
+});
 </script>
 {% endblock %}
