@@ -468,11 +468,13 @@ def update_task(task_id: int):
     if "scheduled_at" in data:
         if data["scheduled_at"] is None:
             task.scheduled_at = None
+            task.reminder_sent = False
         else:
             try:
                 task.scheduled_at = datetime.fromisoformat(
                     data["scheduled_at"].replace("Z", "+00:00")
                 )
+                task.reminder_sent = False  # Reset so new reminder will be sent
             except (ValueError, AttributeError):
                 pass
 

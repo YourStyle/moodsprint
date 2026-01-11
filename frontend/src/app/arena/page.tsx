@@ -77,7 +77,7 @@ export default function ArenaPage() {
   const [showTurnAnimation, setShowTurnAnimation] = useState(false);
   const [attackingCardId, setAttackingCardId] = useState<number | string | null>(null);
   const [attackedCardId, setAttackedCardId] = useState<number | string | null>(null);
-  const [damageNumbers, setDamageNumbers] = useState<Record<string, { damage: number; isCritical: boolean }>>({});
+  const [damageNumbers, setDamageNumbers] = useState<Record<string, { damage: number; isCritical: boolean; key: number }>>({});
 
   // Heal targeting state
   const [healTargetMode, setHealTargetMode] = useState(false);
@@ -205,7 +205,8 @@ export default function ArenaPage() {
               ...prev,
               [String(playerAction.target_id)]: {
                 damage: playerAction.damage!,
-                isCritical: playerAction.is_critical || false
+                isCritical: playerAction.is_critical || false,
+                key: Date.now()
               }
             }));
           }
@@ -220,7 +221,8 @@ export default function ArenaPage() {
                 ...prev,
                 [String(monsterAction.target_id)]: {
                   damage: monsterAction.damage!,
-                  isCritical: monsterAction.is_critical || false
+                  isCritical: monsterAction.is_critical || false,
+                  key: Date.now()
                 }
               }));
             }
@@ -436,18 +438,43 @@ export default function ArenaPage() {
         if (abilityAction) {
           setAttackingCardId(cardId);
           setAttackedCardId(targetId);
-          if (abilityAction.damage) {
+
+          // Special handling for double_strike - show two damage numbers
+          if (abilityAction.ability === 'double_strike' && abilityAction.damage1 !== undefined) {
+            // First hit
+            setDamageNumbers(prev => ({
+              ...prev,
+              [String(targetId)]: {
+                damage: abilityAction.damage1!,
+                isCritical: false,
+                key: Date.now()
+              }
+            }));
+            // Second hit after delay
+            setTimeout(() => {
+              setDamageNumbers(prev => ({
+                ...prev,
+                [String(targetId)]: {
+                  damage: abilityAction.damage2!,
+                  isCritical: false,
+                  key: Date.now()
+                }
+              }));
+            }, 400);
+          } else if (abilityAction.damage) {
             setDamageNumbers(prev => ({
               ...prev,
               [String(targetId)]: {
                 damage: abilityAction.damage!,
-                isCritical: false
+                isCritical: false,
+                key: Date.now()
               }
             }));
           }
         }
 
-        // Monster counter-attack after delay
+        // Monster counter-attack after delay (longer for double_strike)
+        const monsterDelay = abilityAction?.ability === 'double_strike' ? 1000 : 600;
         setTimeout(() => {
           const monsterAction = turnLog.find(log => log.actor === 'monster' && log.action !== 'card_destroyed');
           if (monsterAction && monsterAction.target_id && monsterAction.damage) {
@@ -457,27 +484,30 @@ export default function ArenaPage() {
               ...prev,
               [String(monsterAction.target_id)]: {
                 damage: monsterAction.damage!,
-                isCritical: monsterAction.is_critical || false
+                isCritical: monsterAction.is_critical || false,
+                key: Date.now()
               }
             }));
           }
-        }, 600);
+        }, monsterDelay);
 
-        // Clear animations
+        // Clear animations (longer for double_strike)
+        const clearDelay = abilityAction?.ability === 'double_strike' ? 1800 : 1500;
         setTimeout(() => {
           setShowTurnAnimation(false);
           setAttackingCardId(null);
           setAttackedCardId(null);
           setDamageNumbers({});
-        }, 1500);
+        }, clearDelay);
 
-        // Check if battle ended
+        // Check if battle ended (longer delay for double_strike)
         if (response.data.status === 'won' || response.data.status === 'lost') {
+          const resultDelay = abilityAction?.ability === 'double_strike' ? 1900 : 1600;
           setTimeout(() => {
             setBattleResult(response.data!.result || null);
             setGameState('result');
             hapticFeedback(response.data!.status === 'won' ? 'success' : 'error');
-          }, 1600);
+          }, resultDelay);
         }
       }
     } catch (error) {
@@ -530,7 +560,8 @@ export default function ArenaPage() {
               ...prev,
               [String(monsterAction.target_id)]: {
                 damage: monsterAction.damage!,
-                isCritical: monsterAction.is_critical || false
+                isCritical: monsterAction.is_critical || false,
+                key: Date.now()
               }
             }));
           }
@@ -1121,6 +1152,7 @@ export default function ArenaPage() {
                           isAttacking={attackingCardId === card.id}
                           isBeingAttacked={attackedCardId === card.id}
                           damageReceived={damageNumbers[String(card.id)]?.damage || null}
+                          damageKey={damageNumbers[String(card.id)]?.key}
                           isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
                           hasShield={card.has_shield || false}
                           statusEffects={card.status_effects || []}
@@ -1199,6 +1231,7 @@ export default function ArenaPage() {
                         isAttacking={attackingCardId === card.id}
                         isBeingAttacked={attackedCardId === card.id}
                         damageReceived={damageNumbers[String(card.id)]?.damage || null}
+                        damageKey={damageNumbers[String(card.id)]?.key}
                         isCriticalHit={damageNumbers[String(card.id)]?.isCritical || false}
                         onClick={() => {
                           if (healTargetMode || abilityTargetMode) return;

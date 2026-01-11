@@ -193,6 +193,8 @@ export interface BattleLogEntry {
   actor: 'player' | 'monster' | 'system';
   action?: 'attack' | 'critical' | 'card_destroyed' | 'ability' | 'shield_blocked' | 'poison_damage';
   damage?: number;
+  damage1?: number;  // For double_strike first hit
+  damage2?: number;  // For double_strike second hit
   heal_amount?: number;
   is_critical?: boolean;
   message?: string;

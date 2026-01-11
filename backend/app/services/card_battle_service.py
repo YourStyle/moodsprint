@@ -1028,18 +1028,20 @@ class CardBattleService:
 
             # Two attacks at 60% damage each
             effect_value = config.get("effect_value", 0.6)
-            total_damage = 0
-            for strike in range(2):
-                damage = int(
-                    self._calculate_damage(player_card["attack"]) * effect_value
-                )
-                if target_card.get("has_shield") and strike == 0:
-                    target_card["has_shield"] = False
-                    damage = 0
-                else:
-                    target_card["hp"] -= damage
-                    total_damage += damage
+            damage1 = int(self._calculate_damage(player_card["attack"]) * effect_value)
+            damage2 = int(self._calculate_damage(player_card["attack"]) * effect_value)
 
+            # First strike
+            if target_card.get("has_shield"):
+                target_card["has_shield"] = False
+                damage1 = 0
+            else:
+                target_card["hp"] -= damage1
+
+            # Second strike (can't be blocked)
+            target_card["hp"] -= damage2
+
+            total_damage = damage1 + damage2
             state["damage_dealt"] = state.get("damage_dealt", 0) + total_damage
 
             turn_log.append(
@@ -1052,9 +1054,12 @@ class CardBattleService:
                     "ability_name": ability_name,
                     "ability_emoji": ability_emoji,
                     "damage": total_damage,
+                    "damage1": damage1,
+                    "damage2": damage2,
                     "target_id": target_card["id"],
                     "target_name": target_card["name"],
-                    "message": f"{player_card['name']} наносит двойной удар: {total_damage} урона!",
+                    "message": f"{player_card['name']} наносит двойной удар: "
+                    f"{damage1} + {damage2} урона!",
                 }
             )
 

@@ -139,33 +139,24 @@ function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }:
   }, [todayIndex, updateArrowVisibility]);
 
   return (
-    <div className="relative pt-2">
+    <div className="flex items-center gap-1 pt-4">
       {/* Left arrow */}
-      {showLeftArrow && (
-        <button
-          onClick={() => scrollBy('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-gradient-to-r from-dark-800 via-dark-800/95 to-transparent"
-        >
-          <ChevronLeft className="w-5 h-5 text-gray-400" />
-        </button>
-      )}
+      <button
+        onClick={() => scrollBy('left')}
+        disabled={!showLeftArrow}
+        className={`flex-shrink-0 w-8 h-16 flex items-center justify-center transition-opacity ${showLeftArrow ? 'opacity-100' : 'opacity-30'}`}
+      >
+        <ChevronLeft className="w-5 h-5 text-gray-400" />
+      </button>
 
-      {/* Right arrow */}
-      {showRightArrow && (
-        <button
-          onClick={() => scrollBy('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-gradient-to-l from-dark-800 via-dark-800/95 to-transparent"
-        >
-          <ChevronRight className="w-5 h-5 text-gray-400" />
-        </button>
-      )}
-
+      {/* Scrollable dates */}
       <div
         ref={scrollRef}
         onScroll={updateArrowVisibility}
-        className="flex gap-1 overflow-x-auto pb-1 px-8"
+        className="flex-1 overflow-x-auto pb-1 overflow-y-visible"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
+        <div className="flex gap-1">
         {allDays.map((date, index) => {
           const dateStr = formatDateForAPI(date);
           const isSelected = dateStr === selectedDateStr;
@@ -207,7 +198,18 @@ function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }:
             </button>
           );
         })}
+        </div>
       </div>
+
+      {/* Right arrow */}
+      <button
+        onClick={() => scrollBy('right')}
+        disabled={!showRightArrow}
+        className={`flex-shrink-0 w-8 h-16 flex items-center justify-center transition-opacity ${showRightArrow ? 'opacity-100' : 'opacity-30'}`}
+      >
+        <ChevronRight className="w-5 h-5 text-gray-400" />
+      </button>
+
       <style jsx>{`
         div::-webkit-scrollbar {
           display: none;
@@ -415,6 +417,7 @@ export default function HomePage() {
     return true;
   });
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [isScrolled, setIsScrolled] = useState(false);
   // Track if this is user's first visit (to skip daily bonus & mood on first login)
   const [isFirstVisit, setIsFirstVisit] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -465,6 +468,15 @@ export default function HomePage() {
       return () => clearTimeout(timer);
     }
   }, [isFirstVisit, user]);
+
+  // Track scroll for header overlay
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Query tasks for selected date with status filter
   const { data: tasksData, isLoading: tasksLoading, isFetching } = useQuery({
@@ -765,6 +777,11 @@ export default function HomePage() {
 
   return (
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
+    <div className="relative">
+      {/* Scroll overlay */}
+      <div
+        className={`fixed top-0 left-0 right-0 h-16 bg-gradient-to-b from-dark-900/90 to-transparent z-40 pointer-events-none transition-opacity duration-200 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}
+      />
     <div className="p-4 space-y-6">
       {/* Daily Bonus Modal */}
       <DailyBonus />
@@ -1084,6 +1101,7 @@ export default function HomePage() {
         }}
         t={t}
       />
+    </div>
     </div>
     </SpotlightOnboarding>
   );

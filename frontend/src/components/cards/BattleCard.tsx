@@ -24,6 +24,7 @@ export interface BattleCardProps {
   isAttacking?: boolean;
   isBeingAttacked?: boolean;
   damageReceived?: number | null;
+  damageKey?: number;  // Key to force DamageNumber remount
   isCriticalHit?: boolean;
   onClick?: () => void;
   // Ability props
@@ -102,6 +103,7 @@ export function BattleCard({
   isAttacking = false,
   isBeingAttacked = false,
   damageReceived = null,
+  damageKey,
   isCriticalHit = false,
   onClick,
   ability,
@@ -331,7 +333,7 @@ export function BattleCard({
 
       {/* Floating damage number */}
       {damageReceived !== null && damageReceived > 0 && (
-        <DamageNumber damage={damageReceived} isCritical={isCriticalHit} />
+        <DamageNumber key={damageKey} damage={damageReceived} isCritical={isCriticalHit} />
       )}
 
       {/* Floating heal number */}
