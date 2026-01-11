@@ -1522,7 +1522,7 @@ export default function ArenaPage() {
               }}
               monsterName={selectedMonster?.name || 'Монстр'}
               monsterEmoji={selectedMonster?.emoji || '👾'}
-              monsterImageUrl={selectedMonster?.sprite_url}
+              monsterImageUrl={selectedMonster?.sprite_url || undefined}
               dialogue={campaignResult.dialogue_after.map(d => ({
                 speaker: d.speaker,
                 text: d.text,
