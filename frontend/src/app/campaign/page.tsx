@@ -15,7 +15,7 @@ import {
   Gift,
   Play,
 } from 'lucide-react';
-import { Card, Button, Progress } from '@/components/ui';
+import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
 import { campaignService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -297,6 +297,7 @@ export default function CampaignPage() {
   // Level selection view
   return (
     <div className="p-4 pt-6 pb-4">
+      <ScrollBackdrop />
       {/* Chapter Header */}
       {selectedChapter && (
           <Card

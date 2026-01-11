@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Clock, Calendar, Bell, Timer, Globe } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, ScrollBackdrop } from '@/components/ui';
 import { onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -122,6 +122,7 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 space-y-4">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

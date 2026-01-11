@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Trophy, Medal, Flame, Star, Crown, Skull } from 'lucide-react';
-import { Card } from '@/components/ui';
+import { Card, ScrollBackdrop } from '@/components/ui';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
@@ -60,6 +60,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="p-4 space-y-4">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="text-center mb-6">
         <Trophy className="w-12 h-12 text-yellow-500 mx-auto mb-2" />

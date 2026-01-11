@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users, Wallet } from 'lucide-react';
-import { Card, Progress, Button } from '@/components/ui';
+import { Card, Progress, Button, ScrollBackdrop } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
 import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
 import { SparksBalance } from '@/components/sparks';
@@ -84,6 +84,7 @@ export default function ProfilePage() {
 
   return (
     <div className="p-4 space-y-4">
+      <ScrollBackdrop />
       {/* User Info */}
       <Card className="text-center relative z-10">
         {user.photo_url ? (

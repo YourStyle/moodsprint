@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell } from 'lucide-react';
-import { Button, Card, Modal, Progress } from '@/components/ui';
+import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, type EarnedCard } from '@/components/cards';
@@ -510,6 +510,7 @@ export default function TaskDetailPage() {
 
   return (
     <div className="p-4 space-y-4 pt-safe">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-1">

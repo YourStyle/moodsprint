@@ -16,7 +16,7 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
-import { Card, Button, Modal } from '@/components/ui';
+import { Card, Button, Modal, ScrollBackdrop } from '@/components/ui';
 import { DeckCard, CardInfoSheet } from '@/components/cards';
 import { FeatureBanner } from '@/components/features';
 import { cardsService, mergeService } from '@/services';
@@ -288,6 +288,7 @@ export default function DeckPage() {
 
   return (
     <div className="min-h-screen p-4 pb-4">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="text-center mb-4">
         <Layers className="w-10 h-10 text-purple-500 mx-auto mb-2" />

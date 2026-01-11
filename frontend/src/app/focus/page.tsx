@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Play, Clock, Target } from 'lucide-react';
-import { Button, Card, Modal } from '@/components/ui';
+import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { FocusTimer } from '@/components/focus';
 import { useAppStore } from '@/lib/store';
 import { focusService, tasksService } from '@/services';
@@ -134,6 +134,7 @@ export default function FocusPage() {
 
   return (
     <div className="p-4 space-y-6">
+      <ScrollBackdrop />
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white">Режим фокуса</h1>

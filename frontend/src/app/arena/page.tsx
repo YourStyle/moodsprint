@@ -21,7 +21,7 @@ import {
   Plus,
   Map,
 } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, ScrollBackdrop } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
 import { BattleEvent } from '@/components/battle/BattleEvent';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
@@ -805,6 +805,7 @@ export default function ArenaPage() {
 
   return (
     <div className="p-4 pb-4">
+      <ScrollBackdrop />
       {/* Header - hidden during battle and result */}
       {gameState !== 'battle' && gameState !== 'result' && (
         <div className="text-center mb-4">

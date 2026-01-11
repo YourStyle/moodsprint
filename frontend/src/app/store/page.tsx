@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, ScrollBackdrop } from '@/components/ui';
 import { SparksBalance } from '@/components/sparks';
 import { sparksService, SparksPack } from '@/services/sparks';
 import { useAppStore } from '@/lib/store';
@@ -57,6 +57,7 @@ export default function StorePage() {
 
   return (
     <div className="p-4 space-y-4 pb-24">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="flex flex-col items-center mb-4">
         <Sparkles className="w-8 h-8 text-amber-400 mb-1" />

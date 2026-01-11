@@ -14,7 +14,7 @@ import {
   UserMinus,
   Star,
 } from 'lucide-react';
-import { Card, Button, Progress } from '@/components/ui';
+import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
 import { CreateGuildModal } from '@/components/guilds';
 import { guildsService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -166,6 +166,7 @@ export default function GuildsPage() {
 
   return (
     <div className="p-4 pb-24">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="text-center mb-4">
         <Shield className="w-10 h-10 text-purple-500 mx-auto mb-2" />

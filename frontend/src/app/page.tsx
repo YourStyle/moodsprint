@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Modal } from '@/components/ui';
+import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
@@ -779,9 +779,7 @@ export default function HomePage() {
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
     <div className="relative">
       {/* Scroll overlay with blur */}
-      <div
-        className={`fixed top-0 left-0 right-0 h-[50px] backdrop-blur-md bg-dark-900/70 z-40 pointer-events-none transition-opacity duration-200 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}
-      />
+      <ScrollBackdrop />
     <div className="p-4 space-y-6">
       {/* Daily Bonus Modal */}
       <DailyBonus />

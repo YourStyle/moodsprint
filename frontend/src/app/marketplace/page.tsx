@@ -21,7 +21,7 @@ import {
   HelpCircle,
   Plus,
 } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, ScrollBackdrop } from '@/components/ui';
 import { DeckCard } from '@/components/cards';
 import { SelectCardToSellModal, SellCardModal } from '@/components/marketplace';
 import { marketplaceService } from '@/services';
@@ -149,6 +149,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="p-4 pb-4">
+      <ScrollBackdrop />
       {/* Header */}
       <div className="text-center mb-4">
         <Store className="w-10 h-10 text-amber-500 mx-auto mb-2" />
