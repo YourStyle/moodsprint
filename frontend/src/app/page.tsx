@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, List, LayoutGrid } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
@@ -78,46 +78,141 @@ const WEEK_DAYS = {
   en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
 };
 
+const MONTH_NAMES = {
+  ru: ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
+
 function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }: WeekCalendarProps) {
   const days = WEEK_DAYS[language];
+  const months = MONTH_NAMES[language];
   const today = new Date();
-  const currentDay = today.getDay();
   const selectedDateStr = formatDateForAPI(selectedDate);
+  const todayStr = formatDateForAPI(today);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  // Generate 38 days: 7 days back + today + 30 days forward
+  const allDays = useMemo(() => {
+    const result: Date[] = [];
+    for (let i = -7; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      result.push(date);
+    }
+    return result;
+  }, []);
+
+  // Find today's index for initial scroll position
+  const todayIndex = 7; // Today is at index 7 (after 7 days back)
+
+  // Update arrow visibility based on scroll position
+  const updateArrowVisibility = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setShowLeftArrow(scrollLeft > 10);
+    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
+  }, []);
+
+  // Scroll by amount
+  const scrollBy = useCallback((direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const scrollAmount = 200;
+    scrollRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  }, []);
+
+  // Initial scroll to today
+  useEffect(() => {
+    if (scrollRef.current && !scrollRef.current.dataset.scrolled) {
+      const todayElement = scrollRef.current.children[todayIndex] as HTMLElement;
+      if (todayElement) {
+        const scrollLeft = todayElement.offsetLeft - scrollRef.current.clientWidth / 2 + todayElement.clientWidth / 2;
+        scrollRef.current.scrollLeft = Math.max(0, scrollLeft);
+        scrollRef.current.dataset.scrolled = 'true';
+        updateArrowVisibility();
+      }
+    }
+  }, [todayIndex, updateArrowVisibility]);
 
   return (
-    <div className="flex justify-between gap-1">
-      {days.map((day, index) => {
-        const date = new Date(today);
-        date.setDate(today.getDate() - currentDay + index);
-        const dateStr = formatDateForAPI(date);
-        const isSelected = dateStr === selectedDateStr;
-        const isToday = dateStr === formatDateForAPI(today);
-        const taskCount = taskCounts[dateStr] || 0;
+    <div className="relative pt-2">
+      {/* Left arrow */}
+      {showLeftArrow && (
+        <button
+          onClick={() => scrollBy('left')}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-gradient-to-r from-dark-800 via-dark-800/95 to-transparent"
+        >
+          <ChevronLeft className="w-5 h-5 text-gray-400" />
+        </button>
+      )}
 
-        return (
-          <button
-            key={day}
-            onClick={() => onDateSelect(date)}
-            className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all ${
-              isSelected
-                ? 'bg-primary-500/20 border border-primary-500/50'
-                : isToday
-                ? 'bg-dark-600 border border-gray-700'
-                : 'opacity-60 hover:opacity-100'
-            }`}
-          >
-            <span className="text-xs text-gray-400 mb-1">{day}</span>
-            <span className={`text-lg font-semibold ${isSelected ? 'text-primary-400' : isToday ? 'text-white' : 'text-gray-400'}`}>
-              {date.getDate()}
-            </span>
-            {taskCount > 0 && !isSelected && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-purple-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
-                {taskCount > 9 ? '9+' : taskCount}
+      {/* Right arrow */}
+      {showRightArrow && (
+        <button
+          onClick={() => scrollBy('right')}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-gradient-to-l from-dark-800 via-dark-800/95 to-transparent"
+        >
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
+      )}
+
+      <div
+        ref={scrollRef}
+        onScroll={updateArrowVisibility}
+        className="flex gap-1 overflow-x-auto pb-1 px-8"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {allDays.map((date, index) => {
+          const dateStr = formatDateForAPI(date);
+          const isSelected = dateStr === selectedDateStr;
+          const isToday = dateStr === todayStr;
+          const taskCount = taskCounts[dateStr] || 0;
+          const dayOfWeek = days[date.getDay()];
+          const isPast = date < today && !isToday;
+          const isNewMonth = date.getDate() === 1 || index === 0;
+
+          return (
+            <button
+              key={dateStr}
+              onClick={() => {
+                hapticFeedback('light');
+                onDateSelect(date);
+              }}
+              className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all flex-shrink-0 min-w-[52px] mt-2 ${
+                isSelected
+                  ? 'bg-primary-500/20 border border-primary-500/50'
+                  : isToday
+                  ? 'bg-dark-600 border border-gray-700'
+                  : isPast
+                  ? 'opacity-40 hover:opacity-60'
+                  : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              <span className="text-[10px] text-gray-400 mb-0.5">{dayOfWeek}</span>
+              <span className={`text-lg font-semibold ${isSelected ? 'text-primary-400' : isToday ? 'text-white' : 'text-gray-400'}`}>
+                {date.getDate()}
               </span>
-            )}
-          </button>
-        );
-      })}
+              {isNewMonth && (
+                <span className="text-[9px] text-gray-500">{months[date.getMonth()]}</span>
+              )}
+              {taskCount > 0 && !isSelected && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-purple-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  {taskCount > 9 ? '9+' : taskCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

@@ -45,10 +45,10 @@ ABILITY_CONFIG = {
     },
     CardAbility.SHIELD: {
         "name": "Щит",
-        "description": "Блокирует следующую атаку",
+        "description": "Накладывает щит на союзника, блокируя следующую атаку",
         "emoji": "🛡️",
         "cooldown": 4,
-        "target": "self",
+        "target": "ally",  # Can now target allies
         "effect_value": 1,  # Full block
     },
     CardAbility.POISON: {

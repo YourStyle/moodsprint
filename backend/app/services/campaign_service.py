@@ -315,12 +315,14 @@ class CampaignService:
         # Update progress
         progress.total_stars_earned += stars if is_new_completion else 0
 
-        # Check if this was a boss level
-        chapter_completed = False
-        rewards = []
+        # Check if this was a boss level (for bonus sparks)
         if level.is_boss:
             progress.bosses_defeated += 1
 
+        # Check if this is the final level (ends chapter, shows outro)
+        chapter_completed = False
+        rewards = []
+        if level.is_final:
             # Mark chapter as completed
             if level.chapter.id not in (progress.chapters_completed or []):
                 if not progress.chapters_completed:
@@ -384,7 +386,8 @@ class CampaignService:
         if level.dialogue_after:
             result["dialogue_after"] = level.dialogue_after
 
-        if chapter_completed and level.chapter.story_outro:
+        # Show outro if this is the final level of the chapter
+        if level.is_final and level.chapter.story_outro:
             result["story_outro"] = level.chapter.story_outro
 
         return result
@@ -409,7 +412,7 @@ class CampaignService:
         elif cards_lost == 1:
             stars += 0.5
 
-        return min(3, int(stars))
+        return min(3, round(stars))
 
     def _give_chapter_rewards(
         self, user_id: int, chapter: CampaignChapter
@@ -627,10 +630,12 @@ def seed_campaign_data():
         # Create 5 normal levels + 1 boss per chapter
         for i in range(6):
             is_boss = i == 5
+            is_final = i == 5  # Last level is final (ends chapter)
             level = CampaignLevel(
                 chapter_id=chapter.id,
                 number=i + 1,
                 is_boss=is_boss,
+                is_final=is_final,
                 title=f"Уровень {i + 1}" if not is_boss else "БОСС",
                 difficulty_multiplier=1.0 + (i * 0.15) + (chapter.number * 0.2),
                 required_power=chapter.required_power + (i * 20),

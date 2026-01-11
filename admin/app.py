@@ -1773,7 +1773,7 @@ def chapter_detail(chapter_id: int):
     levels = db.session.execute(
         text(
             """
-            SELECT l.id, l.number, l.monster_id, l.is_boss, l.title,
+            SELECT l.id, l.number, l.monster_id, l.is_boss, l.is_final, l.title,
                    l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
                    l.required_power, l.xp_reward, l.stars_max, l.is_active,
                    m.name as monster_name, m.emoji as monster_emoji
@@ -1949,10 +1949,10 @@ def create_level(chapter_id: int):
         result = db.session.execute(
             text(
                 """
-                INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, title,
+                INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
                     dialogue_before, dialogue_after, difficulty_multiplier,
                     required_power, xp_reward, stars_max, is_active)
-                VALUES (:chapter_id, :number, :monster_id, :is_boss, :title,
+                VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
                     :dialogue_before, :dialogue_after, :difficulty_multiplier,
                     :required_power, :xp_reward, :stars_max, true)
                 RETURNING id
@@ -1963,6 +1963,7 @@ def create_level(chapter_id: int):
                 "number": max_number + 1,
                 "monster_id": data.get("monster_id"),
                 "is_boss": data.get("is_boss", False),
+                "is_final": data.get("is_final", False),
                 "title": data.get("title"),
                 "dialogue_before": json.dumps(data.get("dialogue_before"))
                 if data.get("dialogue_before")
@@ -1998,6 +1999,7 @@ def update_level(level_id: int):
         for field in [
             "monster_id",
             "is_boss",
+            "is_final",
             "title",
             "dialogue_before",
             "dialogue_after",
@@ -2630,12 +2632,14 @@ def import_level_json(level_id: int):
         # Update dialogue_before if provided
         if "dialogue_before" in data:
             updates.append("dialogue_before = :dialogue_before")
-            params["dialogue_before"] = json.dumps(data["dialogue_before"]) if data["dialogue_before"] else None
+            # Use 'is not None' to preserve empty arrays []
+            params["dialogue_before"] = json.dumps(data["dialogue_before"]) if data["dialogue_before"] is not None else None
 
         # Update dialogue_after if provided
         if "dialogue_after" in data:
             updates.append("dialogue_after = :dialogue_after")
-            params["dialogue_after"] = json.dumps(data["dialogue_after"]) if data["dialogue_after"] else None
+            # Use 'is not None' to preserve empty arrays []
+            params["dialogue_after"] = json.dumps(data["dialogue_after"]) if data["dialogue_after"] is not None else None
 
         # Update difficulty_multiplier if provided
         if "difficulty_multiplier" in data:

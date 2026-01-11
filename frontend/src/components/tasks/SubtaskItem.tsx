@@ -44,10 +44,8 @@ export function SubtaskItem({ subtask, onToggle, onFocus, onEdit, disabled }: Su
       <div
         className="flex-1 min-w-0 cursor-pointer"
         onClick={(e) => {
-          if (onEdit && !isCompleted) {
-            e.stopPropagation();
-            onEdit();
-          }
+          e.stopPropagation();
+          onToggle();
         }}
       >
         <p

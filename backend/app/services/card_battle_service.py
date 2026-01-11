@@ -1045,12 +1045,14 @@ class CardBattleService:
             turn_log.append(
                 {
                     "actor": "player",
+                    "card_id": player_card["id"],
                     "card_name": player_card["name"],
                     "action": "ability",
                     "ability": ability,
                     "ability_name": ability_name,
                     "ability_emoji": ability_emoji,
                     "damage": total_damage,
+                    "target_id": target_card["id"],
                     "target_name": target_card["name"],
                     "message": f"{player_card['name']} наносит двойной удар: {total_damage} урона!",
                 }
@@ -1070,18 +1072,37 @@ class CardBattleService:
                 )
 
         elif ability == "shield":
-            # Apply shield to self
-            player_card["has_shield"] = True
+            # Find target ally card (can be self or another ally)
+            target_card = None
+            for c in state["player_cards"]:
+                if c["id"] == int(target_id) and c["alive"]:
+                    target_card = c
+                    break
+            if not target_card:
+                return {"error": "invalid_target"}
+
+            # Apply shield to target ally
+            target_card["has_shield"] = True
+
+            if target_card["id"] == player_card["id"]:
+                message = f"{player_card['name']} активирует щит!"
+            else:
+                message = (
+                    f"{player_card['name']} накладывает щит на {target_card['name']}!"
+                )
 
             turn_log.append(
                 {
                     "actor": "player",
+                    "card_id": player_card["id"],
                     "card_name": player_card["name"],
                     "action": "ability",
                     "ability": ability,
                     "ability_name": ability_name,
                     "ability_emoji": ability_emoji,
-                    "message": f"{player_card['name']} активирует щит!",
+                    "target_id": target_card["id"],
+                    "target_name": target_card["name"],
+                    "message": message,
                 }
             )
 

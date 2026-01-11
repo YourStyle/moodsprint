@@ -497,7 +497,7 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
+                <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-40">
                   <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
                     <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}
@@ -606,7 +606,7 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
+                <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-40">
                   <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
                     <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}

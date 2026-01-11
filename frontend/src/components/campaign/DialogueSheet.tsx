@@ -164,8 +164,8 @@ export function DialogueSheet({
             </button>
           )}
 
-          {/* Content area */}
-          <div className="relative flex-1 flex flex-col p-4 pt-8 pb-8">
+          {/* Content area - pt-safe accounts for iPhone notch/Dynamic Island */}
+          <div className="relative flex-1 flex flex-col p-4 pb-8" style={{ paddingTop: 'max(32px, env(safe-area-inset-top, 32px))' }}>
 
             {/* Monster block (top) - always visible */}
             {!isNarrator && (

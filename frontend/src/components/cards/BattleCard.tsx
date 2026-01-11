@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Skull, Shield, Sparkles, Plus } from 'lucide-react';
+import { Heart, Swords, Skull, Shield, Sparkles, Plus, Droplets, Zap } from 'lucide-react';
 import { DamageNumber } from './DamageNumber';
 import { HealNumber } from './HealNumber';
 import type { AbilityInfo, StatusEffect } from '@/domain/types';
@@ -26,16 +26,15 @@ export interface BattleCardProps {
   damageReceived?: number | null;
   isCriticalHit?: boolean;
   onClick?: () => void;
-  // New ability props
+  // Ability props
   ability?: string | null;
   abilityInfo?: AbilityInfo | null;
   abilityCooldown?: number;
   hasShield?: boolean;
   statusEffects?: StatusEffect[];
-  onAbilityClick?: () => void;
-  canUseAbility?: boolean;
-  // Heal targeting
+  // Heal/Shield targeting
   isHealTarget?: boolean;
+  isShieldTarget?: boolean;
   healReceived?: number | null;
   onHealClick?: () => void;
 }
@@ -110,9 +109,8 @@ export function BattleCard({
   abilityCooldown = 0,
   hasShield = false,
   statusEffects = [],
-  onAbilityClick,
-  canUseAbility = false,
   isHealTarget = false,
+  isShieldTarget = false,
   healReceived = null,
   onHealClick,
 }: BattleCardProps) {
@@ -341,7 +339,7 @@ export function BattleCard({
         <HealNumber heal={healReceived} />
       )}
 
-      {/* Heal target indicator */}
+      {/* Heal/Shield target indicator */}
       {isHealTarget && alive && (
         <div
           onClick={(e) => {
@@ -350,20 +348,27 @@ export function BattleCard({
           }}
           className={cn(
             'absolute inset-0 rounded-xl z-30 cursor-pointer',
-            'bg-green-500/20 border-2 border-green-400',
             'flex items-center justify-center',
-            'transition-all duration-200 hover:bg-green-500/30'
+            'transition-all duration-200',
+            isShieldTarget
+              ? 'bg-blue-500/20 border-2 border-blue-400 hover:bg-blue-500/30'
+              : 'bg-green-500/20 border-2 border-green-400 hover:bg-green-500/30'
           )}
         >
           <div className={cn(
             'w-12 h-12 rounded-full',
-            'bg-gradient-to-br from-green-400 to-green-600',
-            'border-2 border-green-300',
+            'border-2',
             'flex items-center justify-center',
-            'shadow-[0_0_20px_rgba(34,197,94,0.8)]',
-            'animate-pulse'
+            'animate-pulse',
+            isShieldTarget
+              ? 'bg-gradient-to-br from-blue-400 to-blue-600 border-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.8)]'
+              : 'bg-gradient-to-br from-green-400 to-green-600 border-green-300 shadow-[0_0_20px_rgba(34,197,94,0.8)]'
           )}>
-            <Plus className="w-8 h-8 text-white" />
+            {isShieldTarget ? (
+              <Shield className="w-6 h-6 text-white" />
+            ) : (
+              <Plus className="w-8 h-8 text-white" />
+            )}
           </div>
         </div>
       )}
@@ -397,37 +402,73 @@ export function BattleCard({
         </div>
       )}
 
-      {/* Ability button */}
-      {ability && abilityInfo && alive && onAbilityClick && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (canUseAbility && abilityCooldown === 0) {
-              onAbilityClick();
-            }
-          }}
-          disabled={!canUseAbility || abilityCooldown > 0}
-          className={cn(
-            'absolute -bottom-3 left-1/2 -translate-x-1/2 z-20',
-            'px-2 py-0.5 rounded-full max-w-[90%]',
-            'text-[9px] font-medium',
-            'border transition-all duration-200',
-            canUseAbility && abilityCooldown === 0
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-purple-400 text-white hover:scale-110 cursor-pointer shadow-[0_0_12px_rgba(168,85,247,0.6)]'
-              : 'bg-gray-700/80 border-gray-600 text-gray-400 cursor-not-allowed'
-          )}
-          title={`${abilityInfo.name}: ${abilityInfo.description}`}
-        >
-          <span className="flex items-center gap-1 truncate">
-            <Sparkles className="w-2.5 h-2.5 shrink-0" />
-            {abilityCooldown > 0 ? (
-              <span className="shrink-0">{abilityCooldown}</span>
-            ) : (
-              <span className="truncate">{abilityInfo.name}</span>
+      {/* Ability indicator with icon */}
+      {ability && abilityInfo && alive && (() => {
+        const isReady = abilityCooldown === 0;
+
+        // Get ability-specific icon and colors
+        const getAbilityConfig = () => {
+          switch (ability) {
+            case 'heal':
+              return {
+                icon: <Plus className="w-3 h-3 text-white" />,
+                bg: isReady ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-700/90',
+                border: isReady ? 'border-green-400' : 'border-gray-600',
+                glow: isReady ? 'shadow-[0_0_10px_rgba(34,197,94,0.6)]' : '',
+              };
+            case 'shield':
+              return {
+                icon: <Shield className="w-3 h-3 text-white" />,
+                bg: isReady ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gray-700/90',
+                border: isReady ? 'border-blue-400' : 'border-gray-600',
+                glow: isReady ? 'shadow-[0_0_10px_rgba(59,130,246,0.6)]' : '',
+              };
+            case 'poison':
+              return {
+                icon: <Droplets className="w-3 h-3 text-white" />,
+                bg: isReady ? 'bg-gradient-to-r from-green-600 to-lime-500' : 'bg-gray-700/90',
+                border: isReady ? 'border-green-500' : 'border-gray-600',
+                glow: isReady ? 'shadow-[0_0_10px_rgba(132,204,22,0.6)]' : '',
+              };
+            case 'double_strike':
+              return {
+                icon: <Zap className="w-3 h-3 text-white" />,
+                bg: isReady ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gray-700/90',
+                border: isReady ? 'border-orange-400' : 'border-gray-600',
+                glow: isReady ? 'shadow-[0_0_10px_rgba(249,115,22,0.6)]' : '',
+              };
+            default:
+              return {
+                icon: <Sparkles className="w-3 h-3 text-white" />,
+                bg: isReady ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-700/90',
+                border: isReady ? 'border-purple-400' : 'border-gray-600',
+                glow: isReady ? 'shadow-[0_0_10px_rgba(168,85,247,0.6)]' : '',
+              };
+          }
+        };
+
+        const config = getAbilityConfig();
+
+        return (
+          <div
+            className={cn(
+              'absolute -bottom-2 left-1/2 -translate-x-1/2 z-20',
+              'w-6 h-6 rounded-full',
+              'flex items-center justify-center',
+              'border',
+              config.bg,
+              config.border,
+              config.glow,
+              isReady && 'animate-pulse'
             )}
-          </span>
-        </button>
-      )}
+            title={`${abilityInfo.name}${!isReady ? `: перезарядка ${abilityCooldown}` : ': готово!'}`}
+          >
+            {isReady ? config.icon : (
+              <span className="text-[10px] font-bold text-gray-400">{abilityCooldown}</span>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

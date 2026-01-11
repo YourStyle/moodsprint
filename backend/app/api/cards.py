@@ -23,7 +23,7 @@ from app.utils.notifications import notify_trade_received
 
 # Healing requirements: tasks needed per heal
 # First heal = 3 tasks, second = 5 tasks (cumulative)
-HEAL_REQUIREMENTS = [3, 5]  # tasks required for 1st, 2nd heal
+HEAL_REQUIREMENTS = [0, 3]  # tasks required for 1st (free), 2nd heal
 
 # ============ Card Collection ============
 

@@ -77,9 +77,12 @@ export default function CampaignPage() {
     setSelectedChapter(chapter);
     setShowLevelSelect(true);
 
-    // Show intro only if chapter has one, not completed, and never visited (0 levels completed)
-    if (chapter.story_intro && !chapter.is_completed && chapter.levels_completed === 0) {
+    // Show intro only if chapter has one, not completed, and never shown before
+    const introShownKey = `chapter_intro_shown_${chapter.id}`;
+    const introAlreadyShown = localStorage.getItem(introShownKey);
+    if (chapter.story_intro && !chapter.is_completed && !introAlreadyShown) {
       setShowIntro(true);
+      localStorage.setItem(introShownKey, 'true');
     }
   };
 

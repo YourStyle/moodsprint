@@ -14,12 +14,6 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
     """Main menu keyboard."""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [
-                KeyboardButton(
-                    text="Открыть MoodSprint",
-                    web_app=WebAppInfo(url=config.WEBAPP_URL),
-                )
-            ],
             [KeyboardButton(text="Статистика"), KeyboardButton(text="Настройки")],
         ],
         resize_keyboard=True,

@@ -195,6 +195,9 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                         {% if level.is_boss %}
                         <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">BOSS</span>
                         {% endif %}
+                        {% if level.is_final %}
+                        <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">FINAL</span>
+                        {% endif %}
                         {% if not level.is_active %}
                         <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Inactive</span>
                         {% endif %}
@@ -204,7 +207,11 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="editLevel({{ level|tojson|e }})"
+                    <button onclick="exportLevelJson({{ level.id }})"
+                            class="text-blue-600 hover:text-blue-800 text-sm" title="Export JSON template">📤</button>
+                    <button onclick="importLevelJson({{ level.id }})"
+                            class="text-green-600 hover:text-green-800 text-sm" title="Import JSON">📥</button>
+                    <button onclick="editLevelById({{ level.id }})"
                             class="text-purple-600 hover:text-purple-800 text-sm">Edit</button>
                     <button onclick="deleteLevel({{ level.id }})"
                             class="text-red-600 hover:text-red-800 text-sm">Delete</button>
@@ -325,6 +332,11 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                 <label class="flex items-center gap-2">
                     <input type="checkbox" name="is_boss" class="rounded text-red-600">
                     <span class="text-sm text-gray-700">Boss Level</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" name="is_final" class="rounded text-green-600">
+                    <span class="text-sm text-gray-700">Final Level</span>
+                    <span class="text-xs text-gray-400" title="Completing this level ends the chapter and shows outro">(ends chapter)</span>
                 </label>
                 <label class="flex items-center gap-2">
                     <input type="checkbox" name="is_active" checked class="rounded text-purple-600">
@@ -571,11 +583,25 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
     </div>
 </div>
 
+<!-- Safely store levels data -->
+<script type="application/json" id="levelsDataJson">{{ levels|tojson }}</script>
 {% endblock %}
 
 {% block scripts %}
 <script>
 const chapterId = {{ chapter.id }};
+
+// Parse levels data from JSON script tag
+const levelsData = JSON.parse(document.getElementById('levelsDataJson').textContent || '[]');
+
+function editLevelById(levelId) {
+    const level = levelsData.find(l => l.id === levelId);
+    if (level) {
+        editLevel(level);
+    } else {
+        alert('Level not found: ' + levelId);
+    }
+}
 
 function toggleEditMode() {
     const form = document.getElementById('chapterForm');
@@ -639,6 +665,7 @@ function editLevel(level) {
     document.querySelector('[name="xp_reward"]').value = level.xp_reward;
     document.querySelector('[name="stars_max"]').value = level.stars_max;
     document.querySelector('[name="is_boss"]').checked = level.is_boss;
+    document.querySelector('[name="is_final"]').checked = level.is_final;
     document.querySelector('[name="is_active"]').checked = level.is_active;
     document.querySelector('[name="dialogue_before"]').value =
         level.dialogue_before ? JSON.stringify(level.dialogue_before, null, 2) : '';
@@ -658,6 +685,7 @@ async function saveLevel() {
     data.xp_reward = parseInt(data.xp_reward) || 50;
     data.stars_max = parseInt(data.stars_max) || 3;
     data.is_boss = formData.has('is_boss');
+    data.is_final = formData.has('is_final');
     data.is_active = formData.has('is_active');
 
     // Parse JSON fields
@@ -713,6 +741,68 @@ async function deleteLevel(levelId) {
     } catch (e) {
         alert('Error: ' + e.message);
     }
+}
+
+// ============ Export/Import JSON ============
+async function exportLevelJson(levelId) {
+    try {
+        const response = await fetch(`/campaign/levels/${levelId}/export`);
+        const result = await response.json();
+
+        if (result.success === false) {
+            alert('Error: ' + result.error);
+            return;
+        }
+
+        // Create and download JSON file
+        const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `level_${levelId}_template.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+function importLevelJson(levelId) {
+    // Create hidden file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            // If the JSON has level_to_fill structure, extract it
+            const levelData = data.level_to_fill || data;
+
+            const response = await fetch(`/campaign/levels/${levelId}/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(levelData)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Level updated successfully!');
+                window.location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (e) {
+            alert('Error parsing JSON: ' + e.message);
+        }
+    };
+    input.click();
 }
 
 // Close modal on backdrop click

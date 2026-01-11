@@ -464,6 +464,18 @@ def update_task(task_id: int):
     if "task_type" in data and data["task_type"] in valid_task_types:
         task.task_type = data["task_type"]
 
+    # Update scheduled_at for reminders
+    if "scheduled_at" in data:
+        if data["scheduled_at"] is None:
+            task.scheduled_at = None
+        else:
+            try:
+                task.scheduled_at = datetime.fromisoformat(
+                    data["scheduled_at"].replace("Z", "+00:00")
+                )
+            except (ValueError, AttributeError):
+                pass
+
     db.session.commit()
 
     # Check achievements if task just completed (transition from non-completed to completed)

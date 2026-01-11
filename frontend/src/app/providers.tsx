@@ -111,13 +111,29 @@ function AuthProvider({ children }: { children: ReactNode }) {
       // Initialize Telegram WebApp
       if (isTelegramWebApp()) {
         readyTelegramWebApp();
+
+        // Expand immediately and retry after delays
+        // This is needed because keyboard buttons may open in compact mode
         expandTelegramWebApp();
+        setTimeout(() => expandTelegramWebApp(), 50);
+        setTimeout(() => expandTelegramWebApp(), 150);
+
         enableClosingConfirmation();
 
         // Full screen and disable swipes only for mobile devices
         if (isMobileDevice()) {
-          requestFullscreen();
           disableVerticalSwipes();
+          // Delay requestFullscreen to ensure WebApp is fully initialized
+          // This helps when opening from keyboard buttons on Android
+          setTimeout(() => {
+            expandTelegramWebApp();
+            requestFullscreen();
+          }, 100);
+          // Extra retry for stubborn cases
+          setTimeout(() => {
+            expandTelegramWebApp();
+            requestFullscreen();
+          }, 300);
         }
 
       }

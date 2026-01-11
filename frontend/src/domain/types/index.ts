@@ -47,6 +47,7 @@ export interface Task {
   due_date: string | null;
   task_type: TaskType | null;
   preferred_time: string | null;
+  scheduled_at: string | null;
   subtasks_count: number;
   subtasks_completed: number;
   progress_percent: number;
@@ -74,6 +75,7 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   due_date?: string;
   task_type?: TaskType;
+  scheduled_at?: string | null;
 }
 
 // ============ Subtasks ============

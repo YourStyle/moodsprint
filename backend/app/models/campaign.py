@@ -95,7 +95,10 @@ class CampaignLevel(db.Model):
     )
 
     # Level type
-    is_boss = db.Column(db.Boolean, default=False)  # Boss level (last in chapter)
+    is_boss = db.Column(db.Boolean, default=False)  # Boss level (extra rewards)
+    is_final = db.Column(
+        db.Boolean, default=False
+    )  # Final level - ends chapter, shows outro
 
     # Story elements
     title = db.Column(db.String(100), nullable=True)
@@ -130,6 +133,7 @@ class CampaignLevel(db.Model):
             "monster_id": self.monster_id,
             "monster": self.monster.to_dict() if self.monster else None,
             "is_boss": self.is_boss,
+            "is_final": self.is_final,
             "title": self.title,
             "dialogue_before": self.dialogue_before,
             "dialogue_after": self.dialogue_after,

@@ -138,12 +138,6 @@ async def cmd_app(message: Message):
     )
 
 
-@router.message(F.text.in_(["Open MoodSprint", "Открыть MoodSprint"]))
-async def open_webapp(message: Message):
-    """Handle webapp button press."""
-    await message.answer("Открываю MoodSprint...", reply_markup=get_webapp_button())
-
-
 @router.message(F.text.in_(["My Stats", "Статистика"]))
 async def show_stats(message: Message):
     """Show user statistics."""

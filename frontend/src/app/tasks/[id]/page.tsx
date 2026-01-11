@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square } from 'lucide-react';
+import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell } from 'lucide-react';
 import { Button, Card, Modal, Progress } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -13,7 +13,7 @@ import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { useLanguage, type TranslationKey } from '@/lib/i18n';
 import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
-import type { MoodLevel, EnergyLevel, TaskType } from '@/domain/types';
+import type { MoodLevel, EnergyLevel, TaskType, UpdateTaskInput } from '@/domain/types';
 
 const TASK_TYPES: TaskType[] = [
   'creative', 'analytical', 'communication', 'physical',
@@ -32,7 +32,7 @@ function FocusTimer({
   session,
   onPause,
   onResume,
-  onComplete,
+  onCompleteSession,
   onCancel,
   t,
 }: {
@@ -45,7 +45,7 @@ function FocusTimer({
   };
   onPause: () => void;
   onResume: () => void;
-  onComplete: () => void;
+  onCompleteSession: () => void;
   onCancel: () => void;
   t: (key: TranslationKey) => string;
 }) {
@@ -119,17 +119,18 @@ function FocusTimer({
           </Button>
         )}
         <Button
-          variant="primary"
-          onClick={onComplete}
-          className="flex-1"
+          variant="secondary"
+          onClick={onCompleteSession}
+          className="flex-1 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400"
         >
           <Check className="w-4 h-4 mr-1" />
-          {t('completeTask')}
+          {t('complete')}
         </Button>
         <Button
           variant="danger"
           onClick={onCancel}
           className="px-3"
+          title={t('cancel')}
         >
           <Square className="w-4 h-4" />
         </Button>
@@ -170,6 +171,9 @@ export default function TaskDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editTaskType, setEditTaskType] = useState<TaskType | null>(null);
+  const [editReminderEnabled, setEditReminderEnabled] = useState(false);
+  const [editReminderDate, setEditReminderDate] = useState('');
+  const [editReminderTime, setEditReminderTime] = useState('');
   const [showEditSubtask, setShowEditSubtask] = useState(false);
   const [editingSubtask, setEditingSubtask] = useState<{ id: number; title: string; estimated_minutes: number } | null>(null);
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
@@ -433,7 +437,7 @@ export default function TaskDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: (data: { title?: string; description?: string; priority?: 'low' | 'medium' | 'high'; task_type?: TaskType }) =>
+    mutationFn: (data: UpdateTaskInput) =>
       tasksService.updateTask(taskId, data),
     onSuccess: () => {
       refetch();
@@ -518,6 +522,19 @@ export default function TaskDetailPage() {
               setEditDescription(task.description || '');
               setEditPriority(task.priority as 'low' | 'medium' | 'high');
               setEditTaskType(task.task_type as TaskType | null);
+              // Initialize reminder state
+              if (task.scheduled_at) {
+                const scheduledDate = new Date(task.scheduled_at);
+                setEditReminderEnabled(true);
+                setEditReminderDate(scheduledDate.toISOString().split('T')[0]);
+                setEditReminderTime(scheduledDate.toTimeString().slice(0, 5));
+              } else {
+                setEditReminderEnabled(false);
+                const now = new Date();
+                now.setHours(now.getHours() + 1);
+                setEditReminderDate(now.toISOString().split('T')[0]);
+                setEditReminderTime(now.toTimeString().slice(0, 5));
+              }
               setShowEditTask(true);
             }}
             className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white flex-shrink-0"
@@ -595,7 +612,7 @@ export default function TaskDetailPage() {
             session={activeSession}
             onPause={() => pauseSessionMutation.mutate()}
             onResume={() => resumeSessionMutation.mutate()}
-            onComplete={() => completeTaskMutation.mutate()}
+            onCompleteSession={() => completeSessionMutation.mutate(activeSession.id)}
             onCancel={() => cancelSessionMutation.mutate(activeSession.id)}
             t={t}
           />
@@ -739,6 +756,18 @@ export default function TaskDetailPage() {
         </Button>
       )}
 
+      {/* Complete Task button (shown when timer is active) */}
+      {task.status !== 'completed' && activeSession && (
+        <Button
+          onClick={() => completeTaskMutation.mutate()}
+          isLoading={completeTaskMutation.isPending}
+          className="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-400"
+        >
+          <Check className="w-5 h-5 mr-2" />
+          {t('completeTask')}
+        </Button>
+      )}
+
       {/* Mood Modal */}
       <Modal
         isOpen={showMoodModal}
@@ -855,6 +884,48 @@ export default function TaskDetailPage() {
               ))}
             </div>
           </div>
+          {/* Reminder */}
+          <div>
+            <label className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-gray-800/50 border border-gray-700">
+              <span className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                <Bell className="w-4 h-4 text-primary-400" />
+                {t('setReminder')}
+              </span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={editReminderEnabled}
+                  onChange={(e) => setEditReminderEnabled(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-10 h-5 rounded-full transition-colors ${editReminderEnabled ? 'bg-primary-500' : 'bg-gray-600'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${editReminderEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </div>
+            </label>
+            {editReminderEnabled && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('date')}</label>
+                  <input
+                    type="date"
+                    value={editReminderDate}
+                    onChange={(e) => setEditReminderDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">{t('time')}</label>
+                  <input
+                    type="time"
+                    value={editReminderTime}
+                    onChange={(e) => setEditReminderTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex gap-3">
             <Button
               variant="secondary"
@@ -864,12 +935,22 @@ export default function TaskDetailPage() {
               {t('cancel')}
             </Button>
             <Button
-              onClick={() => updateTaskMutation.mutate({
-                title: editTitle.trim(),
-                description: editDescription.trim() || undefined,
-                priority: editPriority,
-                task_type: editTaskType || undefined,
-              })}
+              onClick={() => {
+                let scheduledAt: string | null | undefined = undefined;
+                if (editReminderEnabled && editReminderDate && editReminderTime) {
+                  const localDate = new Date(`${editReminderDate}T${editReminderTime}:00`);
+                  scheduledAt = localDate.toISOString();
+                } else if (!editReminderEnabled) {
+                  scheduledAt = null; // Clear reminder if disabled
+                }
+                updateTaskMutation.mutate({
+                  title: editTitle.trim(),
+                  description: editDescription.trim() || undefined,
+                  priority: editPriority,
+                  task_type: editTaskType || undefined,
+                  scheduled_at: scheduledAt,
+                });
+              }}
               isLoading={updateTaskMutation.isPending}
               disabled={!editTitle.trim()}
               className="flex-1"
