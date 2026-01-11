@@ -175,10 +175,17 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
     <div class="bg-white rounded-lg shadow">
         <div class="p-4 border-b flex items-center justify-between">
             <h3 class="text-lg font-semibold">Levels ({{ levels|length }})</h3>
-            <button onclick="showAddLevelModal()"
-                    class="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
-                + Add Level
-            </button>
+            <div class="flex gap-2">
+                <button onclick="bulkImportLevels()"
+                        class="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                        title="Import multiple JSON files at once">
+                    📦 Bulk Import
+                </button>
+                <button onclick="showAddLevelModal()"
+                        class="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
+                    + Add Level
+                </button>
+            </div>
         </div>
 
         <div class="divide-y">
@@ -800,6 +807,73 @@ function importLevelJson(levelId) {
             }
         } catch (e) {
             alert('Error parsing JSON: ' + e.message);
+        }
+    };
+    input.click();
+}
+
+// Bulk import multiple JSON files as new levels
+function bulkImportLevels() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.multiple = true;  // Allow multiple file selection
+    input.onchange = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        // Sort files by name to maintain order
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+        const levelsData = [];
+        const errors = [];
+
+        // Parse all files
+        for (const file of files) {
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                // Extract level_to_fill if present
+                const levelData = data.level_to_fill || data;
+                levelsData.push(levelData);
+            } catch (err) {
+                errors.push(`${file.name}: ${err.message}`);
+            }
+        }
+
+        if (errors.length > 0) {
+            alert('Errors parsing files:\n' + errors.join('\n'));
+            if (levelsData.length === 0) return;
+            if (!confirm(`Continue with ${levelsData.length} valid files?`)) return;
+        }
+
+        if (levelsData.length === 0) {
+            alert('No valid JSON files to import');
+            return;
+        }
+
+        // Show confirmation
+        const fileNames = files.map(f => f.name).join('\n');
+        if (!confirm(`Import ${levelsData.length} levels in this order?\n\n${fileNames}`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/campaign/chapters/${chapterId}/levels/bulk-import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(levelsData)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Successfully created ${result.ids.length} levels!`);
+                window.location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
         }
     };
     input.click();

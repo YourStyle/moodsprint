@@ -2666,6 +2666,82 @@ def import_level_json(level_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+@app.route("/campaign/chapters/<int:chapter_id>/levels/bulk-import", methods=["POST"])
+@login_required
+def bulk_import_levels(chapter_id: int):
+    """Import multiple levels from JSON array. Creates new levels in order."""
+    data = request.json
+
+    if not data or not isinstance(data, list):
+        return jsonify({"success": False, "error": "Expected array of level data"}), 400
+
+    if len(data) == 0:
+        return jsonify({"success": False, "error": "Empty array provided"}), 400
+
+    try:
+        # Get current max level number
+        max_number = db.session.execute(
+            text(
+                """SELECT COALESCE(MAX(number), 0)
+                   FROM campaign_levels WHERE chapter_id = :chapter_id"""
+            ),
+            {"chapter_id": chapter_id},
+        ).scalar()
+
+        created_ids = []
+
+        for idx, level_data in enumerate(data):
+            # Extract level_to_fill if present (export format)
+            if "level_to_fill" in level_data:
+                level_data = level_data["level_to_fill"]
+
+            level_number = max_number + idx + 1
+
+            result = db.session.execute(
+                text(
+                    """
+                    INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
+                        dialogue_before, dialogue_after, difficulty_multiplier,
+                        required_power, xp_reward, stars_max, is_active)
+                    VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
+                        :dialogue_before, :dialogue_after, :difficulty_multiplier,
+                        :required_power, :xp_reward, :stars_max, true)
+                    RETURNING id
+                """
+                ),
+                {
+                    "chapter_id": chapter_id,
+                    "number": level_number,
+                    "monster_id": level_data.get("monster_id"),
+                    "is_boss": level_data.get("is_boss", False),
+                    "is_final": level_data.get("is_final", False),
+                    "title": level_data.get("title"),
+                    "dialogue_before": json.dumps(level_data.get("dialogue_before"))
+                    if level_data.get("dialogue_before")
+                    else None,
+                    "dialogue_after": json.dumps(level_data.get("dialogue_after"))
+                    if level_data.get("dialogue_after")
+                    else None,
+                    "difficulty_multiplier": level_data.get("difficulty_multiplier", 1.0),
+                    "required_power": level_data.get("required_power", 0),
+                    "xp_reward": level_data.get("xp_reward", 50),
+                    "stars_max": level_data.get("stars_max", 3),
+                },
+            )
+            level_id = result.scalar()
+            created_ids.append(level_id)
+
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": f"Created {len(created_ids)} levels",
+            "ids": created_ids
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @app.route("/campaign/generate-level", methods=["POST"])
 @login_required
 def generate_level():
