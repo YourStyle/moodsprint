@@ -778,9 +778,9 @@ export default function HomePage() {
   return (
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
     <div className="relative">
-      {/* Scroll overlay */}
+      {/* Scroll overlay with blur */}
       <div
-        className={`fixed top-0 left-0 right-0 h-16 bg-gradient-to-b from-dark-900/90 to-transparent z-40 pointer-events-none transition-opacity duration-200 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed top-0 left-0 right-0 h-[50px] backdrop-blur-md bg-dark-900/70 z-40 pointer-events-none transition-opacity duration-200 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}
       />
     <div className="p-4 space-y-6">
       {/* Daily Bonus Modal */}

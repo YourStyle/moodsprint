@@ -1775,7 +1775,7 @@ def chapter_detail(chapter_id: int):
             """
             SELECT l.id, l.number, l.monster_id, l.is_boss, l.is_final, l.title,
                    l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
-                   l.required_power, l.xp_reward, l.stars_max, l.is_active,
+                   l.required_power, l.xp_reward, l.stars_max, l.star_conditions, l.is_active,
                    m.name as monster_name, m.emoji as monster_emoji
             FROM campaign_levels l
             LEFT JOIN monsters m ON m.id = l.monster_id
@@ -1951,10 +1951,10 @@ def create_level(chapter_id: int):
                 """
                 INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
                     dialogue_before, dialogue_after, difficulty_multiplier,
-                    required_power, xp_reward, stars_max, is_active)
+                    required_power, xp_reward, stars_max, star_conditions, is_active)
                 VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
                     :dialogue_before, :dialogue_after, :difficulty_multiplier,
-                    :required_power, :xp_reward, :stars_max, true)
+                    :required_power, :xp_reward, :stars_max, :star_conditions, true)
                 RETURNING id
             """
             ),
@@ -1975,6 +1975,9 @@ def create_level(chapter_id: int):
                 "required_power": data.get("required_power", 0),
                 "xp_reward": data.get("xp_reward", 50),
                 "stars_max": data.get("stars_max", 3),
+                "star_conditions": json.dumps(data.get("star_conditions"))
+                if data.get("star_conditions")
+                else None,
             },
         )
         level_id = result.scalar()
@@ -1995,7 +1998,7 @@ def update_level(level_id: int):
         updates = []
         params = {"level_id": level_id}
 
-        json_fields = ["dialogue_before", "dialogue_after"]
+        json_fields = ["dialogue_before", "dialogue_after", "star_conditions"]
         for field in [
             "monster_id",
             "is_boss",
@@ -2007,6 +2010,7 @@ def update_level(level_id: int):
             "required_power",
             "xp_reward",
             "stars_max",
+            "star_conditions",
             "is_active",
         ]:
             if field in data:
@@ -2702,10 +2706,10 @@ def bulk_import_levels(chapter_id: int):
                     """
                     INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
                         dialogue_before, dialogue_after, difficulty_multiplier,
-                        required_power, xp_reward, stars_max, is_active)
+                        required_power, xp_reward, stars_max, star_conditions, is_active)
                     VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
                         :dialogue_before, :dialogue_after, :difficulty_multiplier,
-                        :required_power, :xp_reward, :stars_max, true)
+                        :required_power, :xp_reward, :stars_max, :star_conditions, true)
                     RETURNING id
                 """
                 ),
@@ -2726,6 +2730,9 @@ def bulk_import_levels(chapter_id: int):
                     "required_power": level_data.get("required_power", 0),
                     "xp_reward": level_data.get("xp_reward", 50),
                     "stars_max": level_data.get("stars_max", 3),
+                    "star_conditions": json.dumps(level_data.get("star_conditions"))
+                    if level_data.get("star_conditions")
+                    else None,
                 },
             )
             level_id = result.scalar()

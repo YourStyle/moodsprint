@@ -114,6 +114,11 @@ class CampaignLevel(db.Model):
     xp_reward = db.Column(db.Integer, default=50)
     stars_max = db.Column(db.Integer, default=3)  # 1-3 stars based on performance
 
+    # Custom star conditions (JSONB)
+    # Format: {"base": 1, "conditions": [{"type": "rounds_max", "value": 5, "stars": 1}, ...]}
+    # Types: rounds_max, cards_lost_max, hp_remaining_min
+    star_conditions = db.Column(db.JSON, nullable=True)
+
     is_active = db.Column(db.Boolean, default=True)
 
     # Unique constraint
@@ -141,6 +146,7 @@ class CampaignLevel(db.Model):
             "required_power": self.required_power,
             "xp_reward": self.xp_reward,
             "stars_max": self.stars_max,
+            "star_conditions": self.star_conditions,
         }
 
 

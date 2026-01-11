@@ -386,6 +386,42 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                 </div>
                 <input type="hidden" name="dialogue_after" value="">
             </div>
+
+            <!-- Star Conditions -->
+            <div class="border-t pt-4 mt-4">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="block text-sm font-medium text-gray-700">Star Conditions</label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="useCustomStars" onchange="toggleStarConditions()" class="rounded text-purple-600">
+                        <span class="text-gray-600">Custom conditions</span>
+                    </label>
+                </div>
+                <div id="starConditionsDefault" class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+                    <p class="font-medium mb-2">Default conditions:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>1⭐ base for winning</li>
+                        <li>+1⭐ if rounds ≤ 5, +0.5⭐ if ≤ 10</li>
+                        <li>+1⭐ if no cards lost, +0.5⭐ if 1 card</li>
+                    </ul>
+                </div>
+                <div id="starConditionsCustom" class="hidden space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Base stars (for winning)</label>
+                            <input type="number" name="star_base" value="1" min="0" max="3" step="0.5"
+                                   class="w-full border rounded px-2 py-1 text-sm">
+                        </div>
+                    </div>
+                    <div id="starConditionsList" class="space-y-2">
+                        <!-- Conditions will be rendered here -->
+                    </div>
+                    <button type="button" onclick="addStarCondition()"
+                            class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-purple-400 hover:text-purple-600 text-sm">
+                        + Add Condition
+                    </button>
+                </div>
+                <input type="hidden" name="star_conditions" value="">
+            </div>
         </form>
         <div class="p-4 border-t flex justify-end gap-2">
             <button onclick="hideLevelModal()"
@@ -656,6 +692,8 @@ function showAddLevelModal() {
     document.getElementById('levelModalTitle').textContent = 'Add Level';
     document.getElementById('levelForm').reset();
     document.querySelector('[name="level_id"]').value = '';
+    // Reset star conditions
+    loadStarConditions(null);
     document.getElementById('levelModal').classList.remove('hidden');
 }
 
@@ -678,7 +716,87 @@ function editLevel(level) {
         level.dialogue_before ? JSON.stringify(level.dialogue_before, null, 2) : '';
     document.querySelector('[name="dialogue_after"]').value =
         level.dialogue_after ? JSON.stringify(level.dialogue_after, null, 2) : '';
+
+    // Load star conditions
+    loadStarConditions(level.star_conditions);
+
     document.getElementById('levelModal').classList.remove('hidden');
+}
+
+// Star Conditions Functions
+let starConditions = [];
+
+function toggleStarConditions() {
+    const useCustom = document.getElementById('useCustomStars').checked;
+    document.getElementById('starConditionsDefault').classList.toggle('hidden', useCustom);
+    document.getElementById('starConditionsCustom').classList.toggle('hidden', !useCustom);
+}
+
+function loadStarConditions(conditions) {
+    const useCustom = conditions !== null && conditions !== undefined;
+    document.getElementById('useCustomStars').checked = useCustom;
+    toggleStarConditions();
+
+    if (useCustom && conditions) {
+        document.querySelector('[name="star_base"]').value = conditions.base || 1;
+        starConditions = conditions.conditions || [];
+    } else {
+        document.querySelector('[name="star_base"]').value = 1;
+        starConditions = [];
+    }
+    renderStarConditions();
+}
+
+function renderStarConditions() {
+    const container = document.getElementById('starConditionsList');
+    container.innerHTML = starConditions.map((cond, idx) => `
+        <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg">
+            <select onchange="updateStarCondition(${idx}, 'type', this.value)" class="border rounded px-2 py-1 text-sm flex-1">
+                <option value="rounds_max" ${cond.type === 'rounds_max' ? 'selected' : ''}>Rounds ≤</option>
+                <option value="cards_lost_max" ${cond.type === 'cards_lost_max' ? 'selected' : ''}>Cards lost ≤</option>
+                <option value="hp_remaining_min" ${cond.type === 'hp_remaining_min' ? 'selected' : ''}>HP remaining ≥</option>
+            </select>
+            <input type="number" value="${cond.value}" onchange="updateStarCondition(${idx}, 'value', this.value)"
+                   class="w-16 border rounded px-2 py-1 text-sm" placeholder="Value">
+            <span class="text-gray-500 text-sm">→</span>
+            <input type="number" value="${cond.stars}" onchange="updateStarCondition(${idx}, 'stars', this.value)"
+                   class="w-16 border rounded px-2 py-1 text-sm" placeholder="Stars" step="0.5" min="0" max="3">
+            <span class="text-gray-500 text-sm">⭐</span>
+            <button type="button" onclick="removeStarCondition(${idx})" class="text-red-500 hover:text-red-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `).join('');
+}
+
+function addStarCondition() {
+    starConditions.push({ type: 'rounds_max', value: 5, stars: 1 });
+    renderStarConditions();
+}
+
+function updateStarCondition(idx, field, value) {
+    if (field === 'value' || field === 'stars') {
+        starConditions[idx][field] = parseFloat(value) || 0;
+    } else {
+        starConditions[idx][field] = value;
+    }
+}
+
+function removeStarCondition(idx) {
+    starConditions.splice(idx, 1);
+    renderStarConditions();
+}
+
+function getStarConditionsData() {
+    const useCustom = document.getElementById('useCustomStars').checked;
+    if (!useCustom) return null;
+
+    return {
+        base: parseFloat(document.querySelector('[name="star_base"]').value) || 1,
+        conditions: starConditions
+    };
 }
 
 async function saveLevel() {
@@ -709,7 +827,11 @@ async function saveLevel() {
         return;
     }
 
+    // Get star conditions
+    data.star_conditions = getStarConditionsData();
+
     delete data.level_id;
+    delete data.star_base;
 
     const url = levelId
         ? `/campaign/levels/${levelId}/update`

@@ -24,7 +24,7 @@ import {
 import { Card, Button } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
 import { BattleEvent } from '@/components/battle/BattleEvent';
-import { LoreSheet } from '@/components/campaign';
+import { LoreSheet, DialogueSheet } from '@/components/campaign';
 import { FeatureBanner } from '@/components/features';
 import { gamificationService, eventsService, campaignService } from '@/services';
 import { useAppStore } from '@/lib/store';
@@ -61,6 +61,7 @@ export default function ArenaPage() {
   } | null>(null);
   const [campaignResult, setCampaignResult] = useState<LevelCompletionResult | null>(null);
   const [showCampaignOutro, setShowCampaignOutro] = useState(false);
+  const [showDialogueAfter, setShowDialogueAfter] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<Tab>('battle');
@@ -268,8 +269,10 @@ export default function ArenaPage() {
                 if (completionResponse.success && completionResponse.data) {
                   setCampaignResult(completionResponse.data);
 
-                  // Show outro dialogue if available
-                  if (completionResponse.data.dialogue_after?.length || completionResponse.data.story_outro) {
+                  // Show dialogue_after first, then story_outro
+                  if (completionResponse.data.dialogue_after?.length) {
+                    setShowDialogueAfter(true);
+                  } else if (completionResponse.data.story_outro) {
                     setShowCampaignOutro(true);
                   }
                 }
@@ -1497,6 +1500,37 @@ export default function ArenaPage() {
                 )}
               </Button>
             </div>
+          )}
+
+          {/* Campaign Dialogue After */}
+          {campaignMode && showDialogueAfter && campaignResult?.dialogue_after && (
+            <DialogueSheet
+              isOpen={showDialogueAfter}
+              onClose={() => {
+                setShowDialogueAfter(false);
+                // Show story_outro after dialogue_after if available
+                if (campaignResult?.story_outro) {
+                  setShowCampaignOutro(true);
+                }
+              }}
+              onContinue={() => {
+                setShowDialogueAfter(false);
+                // Show story_outro after dialogue_after if available
+                if (campaignResult?.story_outro) {
+                  setShowCampaignOutro(true);
+                }
+              }}
+              monsterName={selectedMonster?.name || 'Монстр'}
+              monsterEmoji={selectedMonster?.emoji || '👾'}
+              monsterImageUrl={selectedMonster?.sprite_url}
+              dialogue={campaignResult.dialogue_after.map(d => ({
+                speaker: d.speaker,
+                text: d.text,
+                emoji: d.emoji,
+              }))}
+              title="После победы"
+              continueButtonText={campaignResult?.story_outro ? 'Продолжить' : 'Готово'}
+            />
           )}
 
           {/* Campaign Outro LoreSheet */}

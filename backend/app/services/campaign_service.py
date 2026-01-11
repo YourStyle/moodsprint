@@ -279,8 +279,8 @@ class CampaignService:
                 "message": "Попробуй ещё раз!",
             }
 
-        # Calculate stars based on performance
-        stars = self._calculate_stars(rounds, hp_remaining, cards_lost)
+        # Calculate stars based on performance (use custom conditions if set)
+        stars = self._calculate_stars(rounds, hp_remaining, cards_lost, level)
 
         # Get or create completion record
         completion = CampaignLevelCompletion.query.filter_by(
@@ -392,12 +392,40 @@ class CampaignService:
 
         return result
 
-    def _calculate_stars(self, rounds: int, hp_remaining: int, cards_lost: int) -> int:
-        """Calculate stars earned based on performance."""
-        # 3 stars: quick victory, no cards lost
-        # 2 stars: decent victory
-        # 1 star: barely won
+    def _calculate_stars(
+        self,
+        rounds: int,
+        hp_remaining: int,
+        cards_lost: int,
+        level: CampaignLevel = None,
+    ) -> int:
+        """Calculate stars earned based on performance.
 
+        Uses custom star_conditions if set on level, otherwise defaults:
+        - base: 1 star for winning
+        - rounds_max: 5 -> +1, 10 -> +0.5
+        - cards_lost_max: 0 -> +1, 1 -> +0.5
+        """
+        # Check for custom conditions
+        if level and level.star_conditions:
+            conditions = level.star_conditions
+            stars = float(conditions.get("base", 1))
+
+            for cond in conditions.get("conditions", []):
+                cond_type = cond.get("type")
+                value = cond.get("value", 0)
+                bonus = float(cond.get("stars", 0))
+
+                if cond_type == "rounds_max" and rounds <= value:
+                    stars += bonus
+                elif cond_type == "cards_lost_max" and cards_lost <= value:
+                    stars += bonus
+                elif cond_type == "hp_remaining_min" and hp_remaining >= value:
+                    stars += bonus
+
+            return min(level.stars_max or 3, round(stars))
+
+        # Default logic
         stars = 1  # Minimum for winning
 
         # Bonus for quick victory
