@@ -8,6 +8,7 @@ from sqlalchemy import func
 
 from app import db
 from app.api import api_bp
+from app.extensions import cache, limiter
 from app.models import (
     Achievement,
     FocusSession,
@@ -316,13 +317,30 @@ def get_daily_bonus_status():
 
 @api_bp.route("/leaderboard", methods=["GET"])
 @jwt_required()
+@limiter.limit("30 per minute")
+@cache.cached(timeout=60, query_string=True)  # Cache for 1 minute
 def get_leaderboard():
     """
     Get leaderboard based on killed monsters.
-
-    Query params:
-    - type: weekly or all_time (default: weekly)
-    - limit: max results (default 10)
+    ---
+    tags:
+      - Gamification
+    security:
+      - Bearer: []
+    parameters:
+      - in: query
+        name: type
+        type: string
+        enum: [weekly, all_time]
+        default: weekly
+      - in: query
+        name: limit
+        type: integer
+        default: 10
+        maximum: 50
+    responses:
+      200:
+        description: Leaderboard data
     """
     from sqlalchemy import func
 

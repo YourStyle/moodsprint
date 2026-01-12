@@ -18,6 +18,44 @@ services:
     networks:
       - moodsprint-network
 
+  # Redis for caching, rate limiting, and Celery broker
+  redis:
+    image: redis:7-alpine
+    container_name: moodsprint-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moodsprint-network
+
+  # Database backup service
+  db-backup:
+    image: postgres:15-alpine
+    container_name: moodsprint-db-backup
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-moodsprint}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodsprint}
+      POSTGRES_DB: ${POSTGRES_DB:-moodsprint}
+      PGHOST: db
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - db_backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+      - ./scripts/crontab:/etc/crontabs/root:ro
+    entrypoint: ["/bin/sh", "-c", "chmod +x /backup.sh && crond -f -l 2"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - moodsprint-network
+
   # Flask Backend
   backend:
     build:
@@ -29,6 +67,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      SENTRY_DSN: ${SENTRY_DSN:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_PROXY: ${OPENAI_PROXY:-}
@@ -41,6 +83,38 @@ services:
       - monster_images:/app/static/monster_images
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moodsprint-network
+
+  # Celery Worker for async tasks
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: moodsprint-celery-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app:celery worker --loglevel=info --concurrency=2
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-moodsprint}:${POSTGRES_PASSWORD:-moodsprint}@db:5432/${POSTGRES_DB:-moodsprint}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_PROXY: ${OPENAI_PROXY:-}
+      STABILITY_API_KEY: ${STABILITY_API_KEY:-}
+    volumes:
+      - card_images:/app/static/card_images
+      - monster_images:/app/static/monster_images
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - moodsprint-network
@@ -135,5 +209,7 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  db_backups:
   card_images:
   monster_images:

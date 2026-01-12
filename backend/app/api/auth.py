@@ -1,13 +1,14 @@
 """Authentication API endpoints."""
 
-import logging
 from datetime import datetime
 
+import structlog
 from flask import request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
+from app.extensions import limiter
 from app.models import User
 from app.models.card import Friendship, PendingReferralReward
 from app.utils import (
@@ -18,19 +19,53 @@ from app.utils import (
     validation_error,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 @api_bp.route("/auth/telegram", methods=["POST"])
+@limiter.limit("10 per minute")
 def authenticate_telegram():
     """
     Authenticate user via Telegram WebApp initData.
-
-    Request body:
-    {
-        "init_data": "query_id=...&user=...&auth_date=...&hash=...",
-        "referrer_id": 123  // optional, from invite link
-    }
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - init_data
+          properties:
+            init_data:
+              type: string
+              description: Telegram WebApp initData string
+            referrer_id:
+              type: integer
+              description: Optional referrer user ID from invite link
+    responses:
+      200:
+        description: Authentication successful
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            data:
+              type: object
+              properties:
+                user:
+                  type: object
+                token:
+                  type: string
+                is_new_user:
+                  type: boolean
+      400:
+        description: Invalid request data
+      401:
+        description: Invalid Telegram authentication
     """
     data = request.get_json()
 
@@ -194,8 +229,31 @@ def authenticate_telegram():
 
 @api_bp.route("/auth/me", methods=["GET"])
 @jwt_required()
+@limiter.limit("60 per minute")
 def get_current_user():
-    """Get current authenticated user."""
+    """
+    Get current authenticated user.
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Current user data
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            data:
+              type: object
+              properties:
+                user:
+                  type: object
+      401:
+        description: Unauthorized
+    """
     user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
