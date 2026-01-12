@@ -215,10 +215,13 @@ class UserCard(db.Model):
         return datetime.utcnow() < self.cooldown_until
 
     def start_cooldown(self, hours: int = 1):
-        """Put card on cooldown after battle defeat."""
+        """Put card on cooldown after battle defeat.
+
+        Card stays in deck but cannot participate in battles until healed.
+        """
         self.cooldown_until = datetime.utcnow() + timedelta(hours=hours)
         self.current_hp = 0
-        self.is_in_deck = False
+        # Card stays in deck - just can't participate in battles until healed
 
     def clear_cooldown(self):
         """Clear cooldown and restore HP (after cooldown expires or skip)."""
