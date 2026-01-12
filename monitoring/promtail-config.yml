@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Only keep moodsprint containers
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/moodsprint-.*'
+        action: keep
+      # Use container name as label
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.+)'
+        target_label: container
+      # Add compose service name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+    pipeline_stages:
+      # Parse JSON logs from backend
+      - json:
+          expressions:
+            level: level
+            message: event
+            path: path
+            method: method
+            status_code: status_code
+            duration_ms: duration_ms
+      # Add parsed fields as labels
+      - labels:
+          level:
+          path:
+          method:
+          status_code:
