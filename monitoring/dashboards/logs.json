@@ -19,14 +19,14 @@
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "description": "Количество ошибок во всех сервисах за час. Включает ERROR, Exception, Traceback. Желтый >10, красный >50.",
+      "description": "Количество ошибок в приложениях за час (без мониторинга). ERROR, Exception, Traceback. Желтый >10, красный >50.",
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] } } },
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "id": 2,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
       "title": "Errors (1h)",
       "type": "stat",
-      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint.*\"} |~ \"(?i)error|exception|traceback\" [1h]))", "refId": "A" }]
+      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint-(backend|frontend|bot|admin|celery|nginx|db|redis).*\"} |~ \"(?i)error|exception|traceback\" [1h]))", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
@@ -37,7 +37,7 @@
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
       "title": "Warnings (1h)",
       "type": "stat",
-      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint.*\"} |~ \"(?i)warning\" [1h]))", "refId": "A" }]
+      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint-(backend|frontend|bot|admin|celery|nginx|db|redis).*\"} |~ \"(?i)warning\" [1h]))", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
@@ -67,7 +67,7 @@
       "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": false },
       "title": "Error Logs (All Services)",
       "type": "logs",
-      "targets": [{ "expr": "{container=~\"moodsprint.*\"} |~ \"(?i)error|exception|traceback\"", "refId": "A" }]
+      "targets": [{ "expr": "{container=~\"moodsprint-(backend|frontend|bot|admin|celery|nginx|db|redis).*\"} |~ \"(?i)error|exception|traceback\"", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
@@ -78,7 +78,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "title": "Logs per Service",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (container) (count_over_time({container=~\"moodsprint.*\"}[1m]))", "legendFormat": "{{container}}", "refId": "A" }]
+      "targets": [{ "expr": "sum by (container) (count_over_time({container=~\"moodsprint-(backend|frontend|bot|admin|celery|nginx|db|redis).*\"}[1m]))", "legendFormat": "{{container}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
