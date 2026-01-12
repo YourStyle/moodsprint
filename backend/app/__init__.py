@@ -65,8 +65,9 @@ def create_app(config_name: str | None = None) -> Flask:
 
     app.register_blueprint(api_bp, url_prefix="/api/v1")
 
-    # Health check endpoint with detailed status
+    # Health check endpoint with detailed status (exempt from rate limiting)
     @app.route("/health")
+    @limiter.exempt
     def health():
         from app.extensions import get_redis_client
 
@@ -91,8 +92,9 @@ def create_app(config_name: str | None = None) -> Flask:
 
         return health_status
 
-    # Readiness endpoint for Kubernetes/orchestration
+    # Readiness endpoint for Kubernetes/orchestration (exempt from rate limiting)
     @app.route("/ready")
+    @limiter.exempt
     def ready():
         try:
             db.session.execute(db.text("SELECT 1"))
