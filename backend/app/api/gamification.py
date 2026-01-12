@@ -808,6 +808,7 @@ def get_arena_monsters():
 
 
 @api_bp.route("/arena/battle", methods=["POST"])
+@limiter.limit("60 per minute")
 @jwt_required()
 def start_battle():
     """

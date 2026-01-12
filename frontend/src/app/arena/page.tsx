@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -740,11 +740,14 @@ export default function ArenaPage() {
   }, [campaignLevelId, user, monstersData, router, monsters]);
 
   // Auto-start battle in campaign mode when monster and deck are ready
+  const battleStartedRef = useRef(false);
   useEffect(() => {
     if (!campaignMode || !selectedMonster || !campaignBattleConfig) return;
     if (gameState !== 'select') return;
+    if (battleStartedRef.current) return; // Already started
 
-    if (deck.length > 0 && !startBattleMutation.isPending && !activeBattle) {
+    if (deck.length > 0 && !activeBattle) {
+      battleStartedRef.current = true;
       const deckCardIds = deck.map((c: { id: number }) => c.id);
       setSelectedCards(deckCardIds);
       startBattleMutation.mutate({
@@ -753,7 +756,7 @@ export default function ArenaPage() {
         campaignLevelId: campaignLevelId ? Number(campaignLevelId) : undefined,
       });
     }
-  }, [campaignMode, selectedMonster, campaignBattleConfig, gameState, deck, startBattleMutation, activeBattle, campaignLevelId]);
+  }, [campaignMode, selectedMonster, campaignBattleConfig, gameState, deck, activeBattle, campaignLevelId]);
 
   // Show/hide Telegram back button based on game state
   useEffect(() => {

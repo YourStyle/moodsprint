@@ -596,22 +596,11 @@ class CardBattleService:
             UserCard.is_destroyed.is_(False),
         ).all()
 
+        # Filter out cards with no HP or on cooldown (silently skip them)
+        cards = [c for c in cards if c.current_hp > 0 and not c.is_on_cooldown()]
+
         if not cards:
-            return {"error": "no_valid_cards"}
-
-        # Check cards have HP
-        low_hp_cards = [c for c in cards if c.current_hp <= 0]
-        if low_hp_cards:
-            return {"error": "cards_no_hp", "message": "Некоторые карты без здоровья"}
-
-        # Check cards are not on cooldown
-        cooldown_cards = [c for c in cards if c.is_on_cooldown()]
-        if cooldown_cards:
-            return {
-                "error": "cards_on_cooldown",
-                "message": "Некоторые карты на перезарядке",
-                "cooldown_cards": [c.id for c in cooldown_cards],
-            }
+            return {"error": "no_valid_cards", "message": "Нет доступных карт для боя"}
 
         # Get deck power for scaling
         deck = self.get_user_deck(user_id)
