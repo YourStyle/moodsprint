@@ -9,6 +9,7 @@
   "panels": [
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Общее количество HTTP запросов к backend за последний час. Включает все запросы независимо от статуса ответа.",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "id": 1,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
@@ -18,68 +19,76 @@
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Количество ошибок во всех сервисах за час. Включает ERROR, Exception, Traceback. Желтый >10, красный >50.",
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] } } },
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "id": 2,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
       "title": "Errors (1h)",
       "type": "stat",
-      "targets": [{ "expr": "sum(count_over_time({service=\"backend\"} |~ \"error|ERROR|Exception\" [1h]))", "refId": "A" }]
+      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint.*\"} |~ \"(?i)error|exception|traceback\" [1h]))", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Предупреждения за последний час. WARNING сообщения обычно указывают на потенциальные проблемы.",
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "orange", "value": 100 }] } } },
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "id": 3,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
       "title": "Warnings (1h)",
       "type": "stat",
-      "targets": [{ "expr": "sum(count_over_time({service=\"backend\"} |~ \"warning|WARNING\" [1h]))", "refId": "A" }]
+      "targets": [{ "expr": "sum(count_over_time({container=~\"moodsprint.*\"} |~ \"(?i)warning\" [1h]))", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Активность Telegram бота за час. Показывает общее количество лог-сообщений от бота.",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "id": 4,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false } },
       "title": "Bot Messages (1h)",
       "type": "stat",
-      "targets": [{ "expr": "sum(count_over_time({service=\"bot\"} [1h]))", "refId": "A" }]
+      "targets": [{ "expr": "sum(count_over_time({container=\"moodsprint-bot\"} [1h]))", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Логи Flask backend в реальном времени",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
       "id": 5,
       "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": false },
       "title": "Backend Logs",
       "type": "logs",
-      "targets": [{ "expr": "{service=\"backend\"}", "refId": "A" }]
+      "targets": [{ "expr": "{container=\"moodsprint-backend-6\"}", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Ошибки и исключения из всех сервисов",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
       "id": 6,
-      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": false },
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": false },
       "title": "Error Logs (All Services)",
       "type": "logs",
-      "targets": [{ "expr": "{container=~\"moodsprint.*\"} |~ \"error|ERROR|Exception|Traceback\"", "refId": "A" }]
+      "targets": [{ "expr": "{container=~\"moodsprint.*\"} |~ \"(?i)error|exception|traceback\"", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "График количества лог-сообщений по сервисам",
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } } },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "id": 7,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "title": "Requests per Service",
+      "title": "Logs per Service",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (service) (count_over_time({container=~\"moodsprint.*\"}[1m]))", "legendFormat": "{{service}}", "refId": "A" }]
+      "targets": [{ "expr": "sum by (container) (count_over_time({container=~\"moodsprint.*\"}[1m]))", "legendFormat": "{{container}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
+      "description": "Логи Telegram бота в реальном времени",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "id": 8,
       "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": false },
       "title": "Bot Logs",
       "type": "logs",
-      "targets": [{ "expr": "{service=\"bot\"}", "refId": "A" }]
+      "targets": [{ "expr": "{container=\"moodsprint-bot\"}", "refId": "A" }]
     }
   ],
   "refresh": "5s",

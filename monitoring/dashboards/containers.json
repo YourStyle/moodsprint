@@ -15,7 +15,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right" }, "tooltip": { "mode": "multi" } },
       "title": "Container CPU Usage",
       "type": "timeseries",
-      "targets": [{ "expr": "rate(container_cpu_usage_seconds_total{name=~\"moodsprint.*\"}[5m]) * 100", "legendFormat": "{{name}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(container_cpu_usage_seconds_total{name=~\"moodsprint.*\", id!=\"\"}[5m]) * 100 and on(name) container_last_seen{name=~\"moodsprint.*\"} > (time() - 120)", "legendFormat": "{{name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -25,7 +25,7 @@
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right" }, "tooltip": { "mode": "multi" } },
       "title": "Container Memory Usage",
       "type": "timeseries",
-      "targets": [{ "expr": "container_memory_usage_bytes{name=~\"moodsprint.*\"}", "legendFormat": "{{name}}", "refId": "A" }]
+      "targets": [{ "expr": "container_memory_usage_bytes{name=~\"moodsprint.*\", id!=\"\"} and on(name) container_last_seen{name=~\"moodsprint.*\"} > (time() - 120)", "legendFormat": "{{name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -35,7 +35,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "title": "Container Network RX",
       "type": "timeseries",
-      "targets": [{ "expr": "rate(container_network_receive_bytes_total{name=~\"moodsprint.*\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(container_network_receive_bytes_total{name=~\"moodsprint.*\", id!=\"\"}[5m]) and on(name) container_last_seen{name=~\"moodsprint.*\"} > (time() - 120)", "legendFormat": "{{name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -45,7 +45,7 @@
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "title": "Container Network TX",
       "type": "timeseries",
-      "targets": [{ "expr": "rate(container_network_transmit_bytes_total{name=~\"moodsprint.*\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }]
+      "targets": [{ "expr": "rate(container_network_transmit_bytes_total{name=~\"moodsprint.*\", id!=\"\"}[5m]) and on(name) container_last_seen{name=~\"moodsprint.*\"} > (time() - 120)", "legendFormat": "{{name}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -60,7 +60,7 @@
       "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "title": "Container Status",
       "type": "stat",
-      "targets": [{ "expr": "sum by (name) (container_last_seen{name=~\"moodsprint.*\"} > (time() - 60))", "legendFormat": "{{name}}", "refId": "A" }]
+      "targets": [{ "expr": "count by (name) (container_last_seen{name=~\"moodsprint.*\", id!=\"\"} > (time() - 60))", "legendFormat": "{{name}}", "refId": "A" }]
     }
   ],
   "refresh": "10s",

@@ -70,7 +70,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      SENTRY_DSN: ${SENTRY_DSN:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_PROXY: ${OPENAI_PROXY:-}
@@ -104,7 +103,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      SENTRY_DSN: ${SENTRY_DSN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_PROXY: ${OPENAI_PROXY:-}
       STABILITY_API_KEY: ${STABILITY_API_KEY:-}
@@ -250,7 +248,7 @@ services:
 
   # Loki - Log aggregation
   loki:
-    image: grafana/loki:2.9.0
+    image: grafana/loki:latest
     container_name: moodsprint-loki
     restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
@@ -261,7 +259,7 @@ services:
 
   # Promtail - Log collector
   promtail:
-    image: grafana/promtail:2.9.0
+    image: grafana/promtail:latest
     container_name: moodsprint-promtail
     restart: unless-stopped
     volumes:

@@ -47,11 +47,6 @@ def create_app(config_name: str | None = None) -> Flask:
 
     limiter.init_app(app)
 
-    # Initialize Sentry error tracking
-    from app.extensions import init_sentry
-
-    init_sentry(app)
-
     # Initialize Celery
     from app.celery_app import init_celery
 
