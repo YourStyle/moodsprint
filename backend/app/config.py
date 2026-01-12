@@ -53,11 +53,16 @@ class Config:
     RATELIMIT_DEFAULT = "200 per day;50 per hour"
     RATELIMIT_HEADERS_ENABLED = True
 
-    # Sentry
-    SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
-
     # Telegram
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    ADMIN_TELEGRAM_IDS = [
+        int(x) for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip()
+    ]
+
+    # Error alerting
+    ERROR_ALERT_THRESHOLD = 10  # Alert after 10 5xx errors
+    ERROR_ALERT_WINDOW = 300  # Within 5 minutes
+    ERROR_ALERT_COOLDOWN = 600  # Don't alert more than once per 10 minutes
 
     # Bot secret for cron job authentication
     BOT_SECRET = os.environ.get("BOT_SECRET", "")
