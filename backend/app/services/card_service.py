@@ -253,27 +253,27 @@ class CardService:
         ],
     }
 
-    # Genre-specific art style prompts - Art Deco & Steampunk fusion
+    # Genre-specific art style prompts - matching monster styles for consistency
     GENRE_ART_STYLES = {
         "magic": (
-            "art deco style, geometric patterns, gold accents, "
-            "mystical steampunk, brass gears, magical clockwork, ornate frames"
+            "magical character, wizarding world style, mystical atmosphere, "
+            "glowing magical effects, dark fantasy art, dramatic lighting"
         ),
         "fantasy": (
-            "art deco fantasy, steampunk armor, brass and copper details, "
-            "geometric ornaments, vintage poster style, elegant machinery"
+            "epic fantasy hero, medieval fantasy, detailed armor and weapons, "
+            "dramatic lighting, fantasy art, heroic pose"
         ),
         "scifi": (
-            "art deco retro-futurism, steampunk technology, brass machinery, "
-            "geometric shapes, vintage sci-fi poster, ornate metalwork"
+            "sci-fi character, futuristic, neon lights, "
+            "cybernetic implants, space opera style, high tech"
         ),
         "cyberpunk": (
-            "art deco noir, steampunk cybernetics, brass implants, "
-            "neon and gold, geometric patterns, industrial elegance"
+            "cyberpunk character, neon noir, rain-soaked streets, "
+            "holographic effects, dystopian future, gritty"
         ),
         "anime": (
-            "art deco anime fusion, steampunk aesthetic, brass accessories, "
-            "geometric backgrounds, vintage Japanese poster style"
+            "anime character, japanese animation style, vibrant colors, "
+            "dynamic pose, cel shaded, expressive"
         ),
     }
 
@@ -692,10 +692,10 @@ class CardService:
             )
 
             prompt = (
-                f"Art deco steampunk trading card portrait, {character_type}, "
+                f"Art deco steampunk hero portrait, {character_type}, "
                 f"{art_style}, {rarity_modifier}, "
-                f"brass and gold ornaments, geometric art deco frame, "
-                f"vintage poster illustration, highly detailed, elegant composition"
+                f"brass and copper machinery, geometric golden patterns, "
+                f"vintage hero poster style, ornate heroic design, highly detailed"
             )
 
             logger.info(f"Generating card image with prompt: {prompt[:100]}...")

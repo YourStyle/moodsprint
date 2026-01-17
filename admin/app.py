@@ -1322,6 +1322,94 @@ def update_monster(monster_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+@app.route("/monsters/<int:monster_id>/upload-image", methods=["POST"])
+@login_required
+def upload_monster_image(monster_id: int):
+    """Upload image for a monster."""
+    import uuid
+
+    if "image" not in request.files:
+        return jsonify({"success": False, "error": "No image file"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "No selected file"}), 400
+
+    # Check file extension
+    allowed_extensions = {"png", "jpg", "jpeg", "gif", "webp"}
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in allowed_extensions:
+        return jsonify({"success": False, "error": f"Invalid file type. Allowed: {allowed_extensions}"}), 400
+
+    try:
+        # Generate unique filename
+        filename = f"monster_{uuid.uuid4()}.{ext}"
+        filepath = os.path.join("/app/static/monster_images", filename)
+
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+        # Save file
+        file.save(filepath)
+
+        # Update database
+        image_url = f"/static/monster_images/{filename}"
+        db.session.execute(
+            text("UPDATE monsters SET sprite_url = :url WHERE id = :id"),
+            {"url": image_url, "id": monster_id},
+        )
+        db.session.commit()
+
+        return jsonify({"success": True, "sprite_url": image_url})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route("/cards/templates/<int:template_id>/upload-image", methods=["POST"])
+@login_required
+def upload_card_template_image(template_id: int):
+    """Upload image for a card template."""
+    import uuid
+
+    if "image" not in request.files:
+        return jsonify({"success": False, "error": "No image file"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "No selected file"}), 400
+
+    # Check file extension
+    allowed_extensions = {"png", "jpg", "jpeg", "gif", "webp"}
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in allowed_extensions:
+        return jsonify({"success": False, "error": f"Invalid file type. Allowed: {allowed_extensions}"}), 400
+
+    try:
+        # Generate unique filename
+        filename = f"card_{uuid.uuid4()}.{ext}"
+        filepath = os.path.join("/app/static/card_images", filename)
+
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+        # Save file
+        file.save(filepath)
+
+        # Update database
+        image_url = f"/static/card_images/{filename}"
+        db.session.execute(
+            text("UPDATE card_templates SET image_url = :url WHERE id = :id"),
+            {"url": image_url, "id": template_id},
+        )
+        db.session.commit()
+
+        return jsonify({"success": True, "image_url": image_url})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @app.route("/monsters/<int:monster_id>/delete", methods=["POST"])
 @login_required
 def delete_monster(monster_id: int):
@@ -3259,6 +3347,149 @@ def delete_card_template(template_id: int):
     db.session.commit()
 
     return jsonify({"success": True})
+
+
+@app.route("/card-pool/export-template", methods=["GET"])
+@login_required
+def export_card_template_format():
+    """Export JSON template format for bulk import."""
+    template = {
+        "templates": [
+            {
+                "name": "Название персонажа",
+                "description": "Описание персонажа (опционально)",
+                "genre": "fantasy",  # fantasy, magic, scifi, cyberpunk, anime
+                "base_hp": 50,
+                "base_attack": 15,
+                "emoji": "⚔️",
+                "rarity": None,  # null = универсальный, или: common, uncommon, rare, epic, legendary
+                "image_url": None,  # опционально, путь к изображению
+                "is_active": True
+            },
+            {
+                "name": "Легендарный Герой",
+                "description": "Уникальный легендарный персонаж",
+                "genre": "fantasy",
+                "base_hp": 80,
+                "base_attack": 25,
+                "emoji": "👑",
+                "rarity": "legendary",
+                "image_url": None,
+                "is_active": True
+            }
+        ]
+    }
+    return jsonify(template)
+
+
+@app.route("/card-pool/bulk-import", methods=["POST"])
+@login_required
+def bulk_import_card_templates():
+    """Bulk import card templates from JSON."""
+    data = request.json
+
+    if not data or "templates" not in data:
+        return jsonify({"success": False, "error": "Missing 'templates' array"}), 400
+
+    templates = data["templates"]
+    if not isinstance(templates, list):
+        return jsonify({"success": False, "error": "'templates' must be an array"}), 400
+
+    valid_genres = ["fantasy", "magic", "scifi", "cyberpunk", "anime"]
+    valid_rarities = [None, "common", "uncommon", "rare", "epic", "legendary"]
+
+    imported = []
+    errors = []
+
+    for i, t in enumerate(templates):
+        try:
+            name = t.get("name")
+            if not name:
+                errors.append(f"Template {i+1}: missing 'name'")
+                continue
+
+            genre = t.get("genre", "fantasy")
+            if genre not in valid_genres:
+                errors.append(f"Template {i+1}: invalid genre '{genre}'")
+                continue
+
+            rarity = t.get("rarity")
+            if rarity not in valid_rarities:
+                errors.append(f"Template {i+1}: invalid rarity '{rarity}'")
+                continue
+
+            result = db.session.execute(
+                text("""
+                    INSERT INTO card_templates
+                    (name, description, genre, base_hp, base_attack, emoji, rarity, image_url, is_active, ai_generated, created_at)
+                    VALUES (:name, :description, :genre, :base_hp, :base_attack, :emoji, :rarity, :image_url, :is_active, false, NOW())
+                    RETURNING id
+                """),
+                {
+                    "name": name,
+                    "description": t.get("description"),
+                    "genre": genre,
+                    "base_hp": t.get("base_hp", 50),
+                    "base_attack": t.get("base_attack", 15),
+                    "emoji": t.get("emoji", "🎴"),
+                    "rarity": rarity,
+                    "image_url": t.get("image_url"),
+                    "is_active": t.get("is_active", True),
+                },
+            )
+            template_id = result.fetchone()[0]
+            imported.append({"id": template_id, "name": name, "genre": genre})
+        except Exception as e:
+            errors.append(f"Template {i+1} ({t.get('name', 'unknown')}): {str(e)}")
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "imported_count": len(imported),
+        "imported": imported,
+        "errors": errors,
+    })
+
+
+@app.route("/card-pool/legendary", methods=["GET"])
+@login_required
+def get_legendary_templates():
+    """Get all legendary templates grouped by genre."""
+    templates = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_hp, base_attack,
+                   image_url, emoji, is_active, created_at
+            FROM card_templates
+            WHERE rarity = 'legendary'
+            ORDER BY genre, name
+        """)
+    ).fetchall()
+
+    # Group by genre
+    by_genre = {}
+    for t in templates:
+        genre = t[3]
+        if genre not in by_genre:
+            by_genre[genre] = []
+        by_genre[genre].append({
+            "id": t[0],
+            "name": t[1],
+            "description": t[2],
+            "genre": t[3],
+            "base_hp": t[4],
+            "base_attack": t[5],
+            "image_url": t[6],
+            "emoji": t[7],
+            "is_active": t[8],
+            "created_at": t[9].isoformat() if t[9] else None,
+        })
+
+    return jsonify({
+        "success": True,
+        "legendary_by_genre": by_genre,
+        "total_count": len(templates),
+    })
 
 
 if __name__ == "__main__":

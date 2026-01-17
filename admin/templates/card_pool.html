@@ -68,6 +68,53 @@
         </div>
     </div>
 
+    <!-- Bulk Import/Export Toolbar -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h4 class="font-medium text-gray-900">Массовый импорт/экспорт</h4>
+                <p class="text-sm text-gray-500">Загрузите несколько шаблонов одним JSON файлом</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="exportTemplate()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Скачать шаблон JSON
+                </button>
+                <button onclick="openImportModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Импортировать JSON
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legendary Characters Section -->
+    <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-amber-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">👑</span>
+                    <div>
+                        <h3 class="text-lg font-semibold text-amber-900">Легендарные персонажи</h3>
+                        <p class="text-sm text-amber-700">Уникальные шаблоны с фиксированной легендарной редкостью</p>
+                    </div>
+                </div>
+                <button onclick="toggleLegendary()" id="toggle-legendary" class="p-2 text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded-lg">
+                    <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="legendary-content" class="hidden">
+            <div class="p-4 text-center text-amber-600">Загрузка...</div>
+        </div>
+    </div>
+
     <!-- Genres -->
     <div class="space-y-4">
         <h3 class="text-lg font-semibold text-gray-900">Шаблоны по жанрам</h3>
@@ -143,6 +190,57 @@
     </div>
 </div>
 
+<!-- Import Modal -->
+<div id="importModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Импорт шаблонов из JSON</h3>
+                <button onclick="closeImportModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-5 space-y-4">
+            <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+                <p class="font-medium mb-1">Формат JSON:</p>
+                <code class="text-xs block whitespace-pre overflow-x-auto">
+{
+  "templates": [
+    {
+      "name": "Имя персонажа",
+      "genre": "fantasy",
+      "description": "Описание",
+      "emoji": "⚔️",
+      "base_hp": 50,
+      "base_attack": 15,
+      "rarity": "legendary"
+    }
+  ]
+}
+                </code>
+                <p class="mt-2 text-xs text-gray-500">Жанры: magic, fantasy, scifi, cyberpunk, anime</p>
+                <p class="text-xs text-gray-500">Редкость (опционально): common, uncommon, rare, epic, legendary</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">JSON данные</label>
+                <textarea id="importJson" rows="12" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm" placeholder="Вставьте JSON сюда..."></textarea>
+            </div>
+            <div id="importStatus" class="hidden"></div>
+            <div class="flex gap-3">
+                <button onclick="importTemplates()" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Импортировать
+                </button>
+                <button onclick="closeImportModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Modal -->
 <div id="editModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -198,6 +296,22 @@
                 <p class="text-xs text-gray-500 mt-1">Если указано — шаблон выпадает только для этой редкости</p>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
+                <div class="flex items-center gap-3">
+                    <div id="editImagePreview" class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                        <span class="text-2xl text-gray-400">🎴</span>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer text-center text-gray-700 text-sm">
+                            Загрузить изображение
+                            <input type="file" id="editImageUpload" accept="image/*" class="hidden" onchange="uploadTemplateImage(this)">
+                        </label>
+                        <div id="editImageStatus" class="text-xs mt-1 text-center"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2">
                 <input type="checkbox" id="editIsActive" class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                 <label for="editIsActive" class="text-sm text-gray-700">Активен (участвует в выдаче)</label>
@@ -216,7 +330,7 @@
 </div>
 
 <script>
-const API_BASE = 'https://moodsprint.app/api/v1';
+const API_BASE = 'https://moodsprint.ru';
 const loadedGenres = {};
 
 // Rarity helpers
@@ -408,9 +522,55 @@ async function editTemplate(templateId, genre) {
         document.getElementById('editRarity').value = t.rarity || '';
         document.getElementById('editIsActive').checked = t.is_active;
 
+        // Show image preview
+        const preview = document.getElementById('editImagePreview');
+        if (t.image_url) {
+            preview.innerHTML = `<img src="${API_BASE}${t.image_url}" class="w-full h-full object-cover">`;
+        } else {
+            preview.innerHTML = `<span class="text-2xl text-gray-400">${t.emoji || '🎴'}</span>`;
+        }
+        document.getElementById('editImageStatus').textContent = '';
+
         document.getElementById('editModal').classList.remove('hidden');
     } catch (e) {
         alert('Ошибка: ' + e.message);
+    }
+}
+
+async function uploadTemplateImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const templateId = document.getElementById('editTemplateId').value;
+    const status = document.getElementById('editImageStatus');
+    status.textContent = 'Загрузка...';
+    status.className = 'text-xs mt-1 text-center text-blue-600';
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const response = await fetch(`/cards/templates/${templateId}/upload-image`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+            status.textContent = 'Загружено!';
+            status.className = 'text-xs mt-1 text-center text-green-600';
+            // Update preview
+            const preview = document.getElementById('editImagePreview');
+            preview.innerHTML = `<img src="${API_BASE}${result.image_url}" class="w-full h-full object-cover">`;
+            // Reload templates to show new image
+            const genre = document.getElementById('editGenre').value;
+            loadedGenres[genre] = false;
+        } else {
+            status.textContent = 'Ошибка: ' + result.error;
+            status.className = 'text-xs mt-1 text-center text-red-600';
+        }
+    } catch (e) {
+        status.textContent = 'Ошибка: ' + e.message;
+        status.className = 'text-xs mt-1 text-center text-red-600';
     }
 }
 
@@ -458,7 +618,194 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeEditModal();
+        closeImportModal();
     }
 });
+
+// Import/Export functions
+async function exportTemplate() {
+    try {
+        const response = await fetch('/card-pool/export-template');
+        const data = await response.json();
+
+        // Create and download file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'card_templates_format.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert('Ошибка при экспорте: ' + e.message);
+    }
+}
+
+function openImportModal() {
+    document.getElementById('importJson').value = '';
+    document.getElementById('importStatus').classList.add('hidden');
+    document.getElementById('importModal').classList.remove('hidden');
+}
+
+function closeImportModal() {
+    document.getElementById('importModal').classList.add('hidden');
+}
+
+async function importTemplates() {
+    const jsonText = document.getElementById('importJson').value.trim();
+    const status = document.getElementById('importStatus');
+
+    if (!jsonText) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Введите JSON данные';
+        status.classList.remove('hidden');
+        return;
+    }
+
+    let data;
+    try {
+        data = JSON.parse(jsonText);
+    } catch (e) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Некорректный JSON: ' + e.message;
+        status.classList.remove('hidden');
+        return;
+    }
+
+    status.className = 'p-3 bg-blue-50 text-blue-700 rounded-lg text-sm';
+    status.textContent = 'Импортирование...';
+    status.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/card-pool/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            status.className = 'p-3 bg-green-50 text-green-700 rounded-lg text-sm';
+            status.innerHTML = `<strong>Успешно!</strong> Создано ${result.created} шаблонов.`;
+            if (result.errors && result.errors.length > 0) {
+                status.innerHTML += `<br>Ошибки: ${result.errors.join(', ')}`;
+            }
+            // Refresh page after 2 seconds
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+            status.textContent = 'Ошибка: ' + result.error;
+        }
+    } catch (e) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Ошибка: ' + e.message;
+    }
+}
+
+// Legendary characters section
+let legendaryLoaded = false;
+
+function toggleLegendary() {
+    const content = document.getElementById('legendary-content');
+    const toggleBtn = document.getElementById('toggle-legendary');
+
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        toggleBtn.querySelector('svg').style.transform = 'rotate(180deg)';
+
+        if (!legendaryLoaded) {
+            loadLegendaryTemplates();
+        }
+    } else {
+        content.classList.add('hidden');
+        toggleBtn.querySelector('svg').style.transform = '';
+    }
+}
+
+async function loadLegendaryTemplates() {
+    const content = document.getElementById('legendary-content');
+
+    try {
+        const response = await fetch('/card-pool/legendary');
+        const data = await response.json();
+
+        if (!data.success) {
+            content.innerHTML = `<div class="p-4 text-center text-red-500">Ошибка: ${data.error}</div>`;
+            return;
+        }
+
+        const genres = data.legendary_by_genre || {};
+        const genreEmojis = {
+            'magic': '🔮',
+            'fantasy': '🐉',
+            'scifi': '🚀',
+            'cyberpunk': '🤖',
+            'anime': '⚔️'
+        };
+
+        let html = '<div class="divide-y divide-amber-100">';
+
+        for (const [genre, templates] of Object.entries(genres)) {
+            if (templates.length === 0) continue;
+
+            html += `
+                <div class="p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">${genreEmojis[genre] || '📚'}</span>
+                        <h4 class="font-semibold text-amber-900">${genre.charAt(0).toUpperCase() + genre.slice(1)}</h4>
+                        <span class="text-sm text-amber-600">(${templates.length})</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            `;
+
+            for (const t of templates) {
+                const imageUrl = t.image_url ? `${API_BASE}${t.image_url}` : null;
+                html += `
+                    <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-amber-100 hover:border-amber-300 transition-colors">
+                        <div class="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 overflow-hidden">
+                            ${imageUrl
+                                ? `<img src="${imageUrl}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${t.emoji || '👑'}'">`
+                                : `<span class="text-xl">${t.emoji || '👑'}</span>`
+                            }
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-gray-900 truncate">${t.name}</div>
+                            <div class="text-xs text-gray-500">HP: ${t.base_hp} / ATK: ${t.base_attack}</div>
+                        </div>
+                        <button onclick="editTemplate(${t.id}, '${genre}')"
+                                class="p-1.5 hover:bg-amber-100 rounded-lg text-amber-500 hover:text-amber-700" title="Редактировать">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += '</div></div>';
+        }
+
+        // Check if there are any legendary templates
+        const totalLegendary = Object.values(genres).flat().length;
+        if (totalLegendary === 0) {
+            html = `
+                <div class="p-8 text-center">
+                    <div class="text-amber-400 text-4xl mb-2">👑</div>
+                    <div class="text-amber-700">Нет легендарных шаблонов</div>
+                    <p class="text-sm text-amber-600 mt-1">Создайте шаблон с редкостью "Легендарный"</p>
+                </div>
+            `;
+        } else {
+            html += '</div>';
+        }
+
+        content.innerHTML = html;
+        legendaryLoaded = true;
+    } catch (e) {
+        content.innerHTML = `<div class="p-4 text-center text-red-500">Ошибка загрузки: ${e.message}</div>`;
+    }
+}
 </script>
 {% endblock %}
