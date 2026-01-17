@@ -2,6 +2,8 @@
 
 from datetime import date, datetime
 
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from app import db
 
 
@@ -11,11 +13,25 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    telegram_id = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
+    telegram_id = db.Column(db.BigInteger, unique=True, nullable=True, index=True)
     username = db.Column(db.String(255), nullable=True)
     first_name = db.Column(db.String(255), nullable=True)
     last_name = db.Column(db.String(255), nullable=True)
     photo_url = db.Column(db.String(512), nullable=True)
+
+    # Email/password authentication
+    email = db.Column(db.String(255), unique=True, nullable=True, index=True)
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    def set_password(self, password: str) -> None:
+        """Set password hash."""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        """Check password against hash."""
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
 
     # Gamification
     xp = db.Column(db.Integer, default=0, nullable=False)
@@ -142,6 +158,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "telegram_id": self.telegram_id,
+            "email": self.email,
             "username": self.username,
             "first_name": self.first_name,
             "last_name": self.last_name,

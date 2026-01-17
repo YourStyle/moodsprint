@@ -258,6 +258,24 @@ export function shareInviteLink(userId: number, text?: string) {
   }
 }
 
+/**
+ * Check if running inside a mobile app (Flutter WebView)
+ */
+export function isMobileApp(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // Check URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('app') === 'mobile') {
+    // Store in localStorage for future visits
+    localStorage.setItem('moodsprint_mobile_app', 'true');
+    return true;
+  }
+
+  // Check localStorage (set by mobile app)
+  return localStorage.getItem('moodsprint_mobile_app') === 'true';
+}
+
 export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
 
 export function openInvoice(

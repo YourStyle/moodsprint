@@ -263,24 +263,180 @@ def get_current_user():
     return success_response({"user": user.to_dict()})
 
 
+@api_bp.route("/auth/register", methods=["POST"])
+@limiter.limit("5 per minute")
+def register_with_email():
+    """
+    Register a new user with email and password.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+            - first_name
+          properties:
+            email:
+              type: string
+              description: User email address
+            password:
+              type: string
+              description: User password (min 6 characters)
+            first_name:
+              type: string
+              description: User's first name
+    responses:
+      200:
+        description: Registration successful
+      400:
+        description: Invalid request data
+      409:
+        description: Email already exists
+    """
+    data = request.get_json()
+
+    if not data:
+        return validation_error({"request": "Request body is required"})
+
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    first_name = data.get("first_name", "").strip()
+
+    # Validate email
+    if not email or "@" not in email:
+        return validation_error({"email": "Valid email is required"})
+
+    # Validate password
+    if len(password) < 6:
+        return validation_error({"password": "Password must be at least 6 characters"})
+
+    # Validate first_name
+    if not first_name:
+        return validation_error({"first_name": "First name is required"})
+
+    # Check if email already exists
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return validation_error({"email": "Email already registered"})
+
+    # Create new user
+    user = User(
+        email=email,
+        first_name=first_name,
+        username=email.split("@")[0],  # Use email prefix as username
+    )
+    user.set_password(password)
+
+    db.session.add(user)
+    db.session.commit()
+
+    # Create JWT token
+    access_token = create_access_token(identity=str(user.id))
+
+    logger.info(f"New user registered with email: {email}")
+
+    return success_response(
+        {
+            "user": user.to_dict(),
+            "token": access_token,
+            "is_new_user": True,
+        }
+    )
+
+
+@api_bp.route("/auth/login", methods=["POST"])
+@limiter.limit("10 per minute")
+def login_with_email():
+    """
+    Login with email and password.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              description: User email address
+            password:
+              type: string
+              description: User password
+    responses:
+      200:
+        description: Login successful
+      400:
+        description: Invalid request data
+      401:
+        description: Invalid credentials
+    """
+    data = request.get_json()
+
+    if not data:
+        return validation_error({"request": "Request body is required"})
+
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not email or not password:
+        return validation_error({"credentials": "Email and password are required"})
+
+    # Find user by email
+    user = User.query.filter_by(email=email).first()
+
+    if not user or not user.check_password(password):
+        return unauthorized("Invalid email or password")
+
+    # Create JWT token
+    access_token = create_access_token(identity=str(user.id))
+
+    logger.info(f"User logged in with email: {email}")
+
+    return success_response(
+        {
+            "user": user.to_dict(),
+            "token": access_token,
+        }
+    )
+
+
 @api_bp.route("/auth/dev", methods=["POST"])
 def dev_authenticate():
     """
-    Development-only endpoint for testing without Telegram.
+    Development/testing endpoint for authentication without Telegram.
     Creates or gets a test user.
+
+    In production, requires dev_secret to match BOT_SECRET config.
 
     Request body:
     {
         "telegram_id": 12345,
-        "username": "test_user"
+        "username": "test_user",
+        "dev_secret": "optional_secret_for_production"
     }
     """
     from flask import current_app
 
-    if not current_app.debug:
-        return unauthorized("This endpoint is only available in development mode")
-
     data = request.get_json() or {}
+
+    # Allow in debug mode OR with valid dev_secret
+    if not current_app.debug:
+        dev_secret = data.get("dev_secret", "")
+        bot_secret = current_app.config.get("BOT_SECRET", "")
+        if not bot_secret or dev_secret != bot_secret:
+            return unauthorized("This endpoint is only available in development mode")
 
     telegram_id = data.get("telegram_id", 12345)
     username = data.get("username", "test_user")

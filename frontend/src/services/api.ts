@@ -50,11 +50,24 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle rate limit specifically
+        if (response.status === 429) {
+          return {
+            success: false,
+            error: {
+              code: 'RATE_LIMIT',
+              message: 'Слишком много запросов. Подождите немного и попробуйте снова.',
+              status: 429,
+            },
+          };
+        }
+
         return {
           success: false,
           error: data.error || {
             code: 'UNKNOWN_ERROR',
             message: 'An unexpected error occurred',
+            status: response.status,
           },
         };
       }

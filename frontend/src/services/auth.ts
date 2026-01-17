@@ -52,10 +52,44 @@ export const authService = {
     return response;
   },
 
-  async devAuthenticate(telegramId?: number, username?: string): Promise<ApiResponse<AuthResponse>> {
-    const response = await api.post<AuthResponse>('/auth/dev', {
+  async devAuthenticate(telegramId?: number, username?: string, devSecret?: string): Promise<ApiResponse<AuthResponse>> {
+    const payload: Record<string, unknown> = {
       telegram_id: telegramId || 12345,
       username: username || 'dev_user',
+    };
+
+    // Add dev_secret if provided (for production dev mode)
+    if (devSecret) {
+      payload.dev_secret = devSecret;
+    }
+
+    const response = await api.post<AuthResponse>('/auth/dev', payload);
+
+    if (response.success && response.data) {
+      api.setToken(response.data.token);
+    }
+
+    return response;
+  },
+
+  async register(email: string, password: string, firstName: string): Promise<ApiResponse<AuthResponse>> {
+    const response = await api.post<AuthResponse>('/auth/register', {
+      email,
+      password,
+      first_name: firstName,
+    });
+
+    if (response.success && response.data) {
+      api.setToken(response.data.token);
+    }
+
+    return response;
+  },
+
+  async login(email: string, password: string): Promise<ApiResponse<AuthResponse>> {
+    const response = await api.post<AuthResponse>('/auth/login', {
+      email,
+      password,
     });
 
     if (response.success && response.data) {

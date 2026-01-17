@@ -17,6 +17,7 @@ import {
   isMobileDevice,
   isIOSDevice,
   getStartParam,
+  isMobileApp,
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 import { GenreSelectionModal } from '@/components/GenreSelectionModal';
@@ -54,15 +55,31 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const {
+    user,
     setUser,
     setLoading,
     setLatestMood,
     setActiveSessions,
     setOnboardingCompleted,
+    setTelegramEnvironment,
+    isSpotlightActive,
+    onboardingCompleted,
+    isLoading,
   } = useAppStore();
 
   const [referralRewards, setReferralRewards] = useState<ReferralRewardData[]>([]);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [pendingReferralRewards, setPendingReferralRewards] = useState<ReferralRewardData[]>([]);
+
+  // Show pending referral rewards after BOTH main onboarding AND spotlight complete
+  useEffect(() => {
+    // Wait for: main onboarding done + spotlight done + have pending rewards + not already showing
+    if (onboardingCompleted && !isSpotlightActive && pendingReferralRewards.length > 0 && !showReferralModal) {
+      setReferralRewards(prev => [...prev, ...pendingReferralRewards]);
+      setPendingReferralRewards([]);
+      setTimeout(() => setShowReferralModal(true), 500);
+    }
+  }, [onboardingCompleted, isSpotlightActive, pendingReferralRewards, showReferralModal]);
 
   // Check for pending referral rewards in background (non-blocking)
   const checkPendingRewardsInBackground = () => {
@@ -71,9 +88,9 @@ function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const pendingResult = await cardsService.getPendingRewards();
         if (pendingResult.success && pendingResult.data && pendingResult.data.rewards.length > 0) {
-          const pendingRewards = pendingResult.data.rewards;
+          const rewards = pendingResult.data.rewards;
           // Group rewards - each reward is one friend invitation
-          const rewardsToShow: ReferralRewardData[] = pendingRewards
+          const rewardsToShow: ReferralRewardData[] = rewards
             .filter(r => r.card) // Only show if card exists
             .map(r => ({
               isReferrer: r.is_referrer,
@@ -93,9 +110,16 @@ function AuthProvider({ children }: { children: ReactNode }) {
             }));
 
           if (rewardsToShow.length > 0) {
-            setReferralRewards(prev => [...prev, ...rewardsToShow]);
-            // Show modal after a short delay
-            setTimeout(() => setShowReferralModal(true), 800);
+            // Check if spotlight is active (first visit) - if so, queue rewards for later
+            const isFirstVisit = !localStorage.getItem('first_visit_completed');
+            if (isFirstVisit) {
+              // Queue rewards to show after spotlight completes
+              setPendingReferralRewards(prev => [...prev, ...rewardsToShow]);
+            } else {
+              // Show immediately for returning users
+              setReferralRewards(prev => [...prev, ...rewardsToShow]);
+              setTimeout(() => setShowReferralModal(true), 800);
+            }
             // Mark rewards as claimed
             await cardsService.claimPendingRewards();
           }
@@ -108,8 +132,24 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
+      // Check for dev mode via URL parameter (allows non-TG login)
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const isDevMode = urlParams?.get('dev') === 'true';
+
+      // Detect Telegram environment
+      const isTg = isTelegramWebApp();
+      const isTelegramEnv = isTg && !isDevMode;
+      setTelegramEnvironment(isTelegramEnv);
+
+      // Add/remove telegram-env class for safe-area CSS
+      if (isTelegramEnv) {
+        document.body.classList.add('telegram-env');
+      } else {
+        document.body.classList.remove('telegram-env');
+      }
+
       // Initialize Telegram WebApp
-      if (isTelegramWebApp()) {
+      if (isTg) {
         readyTelegramWebApp();
 
         // Expand immediately and retry after delays
@@ -141,10 +181,10 @@ function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Try to authenticate
         const initData = getTelegramInitData();
-        const isTg = isTelegramWebApp();
 
         console.log('[Auth] isTelegramWebApp:', isTg);
         console.log('[Auth] initData exists:', !!initData);
+        console.log('[Auth] isDevMode:', isDevMode);
 
         // Parse referrer from startParam before authentication
         const startParam = getStartParam();
@@ -164,7 +204,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
         let authenticated = false;
         let isNewUser = false;
 
-        if (initData) {
+        if (initData && !isDevMode) {
           // Authenticate with Telegram (pass referrer_id for new users)
           console.log('[Auth] Authenticating with Telegram...');
           const result = await authService.authenticateTelegram(initData, referrerId);
@@ -174,27 +214,29 @@ function AuthProvider({ children }: { children: ReactNode }) {
             authenticated = true;
             isNewUser = result.data.is_new_user || false;
 
-            // Handle referral rewards for invitee (immediately after joining via invite)
+            // Handle referral rewards for invitee (after joining via invite)
             if (result.data.friendship_created && result.data.referral_rewards) {
               const rewards = result.data.referral_rewards;
               const cards = rewards.invitee_starter_deck || [];
               if (cards.length > 0) {
-                setReferralRewards([{
+                const rewardData: ReferralRewardData = {
                   isReferrer: false,
                   friendName: rewards.referrer_name,
                   cards: cards,
-                }]);
-                // Show modal after a short delay for better UX
-                setTimeout(() => setShowReferralModal(true), 500);
+                };
+                // New users will have spotlight - queue rewards for after completion
+                setPendingReferralRewards(prev => [...prev, rewardData]);
               }
             }
 
             // Check for pending referral rewards in background (non-blocking)
             checkPendingRewardsInBackground();
           }
-        } else if (process.env.NODE_ENV === 'development') {
-          // Dev mode: use dev auth
-          const result = await authService.devAuthenticate();
+        } else if (process.env.NODE_ENV === 'development' || isDevMode) {
+          // Dev mode: use dev auth (also available in production via ?dev=true&secret=XXX)
+          console.log('[Auth] Using dev authentication...');
+          const devSecret = urlParams?.get('secret') || undefined;
+          const result = await authService.devAuthenticate(undefined, undefined, devSecret);
           if (result.success && result.data) {
             setUser(result.data.user);
             authenticated = true;
@@ -320,6 +362,32 @@ function AuthProvider({ children }: { children: ReactNode }) {
     router,
     pathname,
   ]);
+
+  // Check onboarding status when user logs in via website (after initAuth completed)
+  // This handles the case where user authenticates via email/password from landing page
+  useEffect(() => {
+    const checkOnboardingAfterWebLogin = async () => {
+      // Only run if: user exists, loading is done, and onboardingCompleted is still null (not checked yet)
+      if (user && !isLoading && onboardingCompleted === null) {
+        try {
+          const onboardingResult = await onboardingService.getStatus();
+          if (onboardingResult.success && onboardingResult.data) {
+            const completed = onboardingResult.data.completed;
+            setOnboardingCompleted(completed);
+
+            // Redirect to onboarding if not completed
+            if (!completed && pathname !== '/onboarding') {
+              router.push('/onboarding');
+            }
+          }
+        } catch (err) {
+          console.error('[WebLogin] Failed to check onboarding status:', err);
+        }
+      }
+    };
+
+    checkOnboardingAfterWebLogin();
+  }, [user, isLoading, onboardingCompleted, setOnboardingCompleted, pathname, router]);
 
   return (
     <>
