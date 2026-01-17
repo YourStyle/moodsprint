@@ -241,6 +241,27 @@
     </div>
 </div>
 
+<!-- Gallery Picker Modal -->
+<div id="galleryPickerModal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-gray-100 shrink-0">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Выбрать из галереи</h3>
+                <button onclick="closeGalleryPicker()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+            <div id="galleryPickerContent" class="grid grid-cols-4 md:grid-cols-6 gap-3">
+                <div class="text-center text-gray-500 col-span-full py-8">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Modal -->
 <div id="editModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -302,12 +323,17 @@
                     <div id="editImagePreview" class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
                         <span class="text-2xl text-gray-400">🎴</span>
                     </div>
-                    <div class="flex-1">
-                        <label class="block w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer text-center text-gray-700 text-sm">
-                            Загрузить изображение
-                            <input type="file" id="editImageUpload" accept="image/*" class="hidden" onchange="uploadTemplateImage(this)">
-                        </label>
-                        <div id="editImageStatus" class="text-xs mt-1 text-center"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="flex gap-2">
+                            <label class="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer text-center text-gray-700 text-sm">
+                                Загрузить
+                                <input type="file" id="editImageUpload" accept="image/*" class="hidden" onchange="uploadTemplateImage(this)">
+                            </label>
+                            <button type="button" onclick="openGalleryPicker()" class="flex-1 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm">
+                                Из галереи
+                            </button>
+                        </div>
+                        <div id="editImageStatus" class="text-xs text-center"></div>
                     </div>
                 </div>
             </div>
@@ -701,6 +727,82 @@ async function importTemplates() {
     } catch (e) {
         status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
         status.textContent = 'Ошибка: ' + e.message;
+    }
+}
+
+// Gallery Picker
+async function openGalleryPicker() {
+    const modal = document.getElementById('galleryPickerModal');
+    const content = document.getElementById('galleryPickerContent');
+    modal.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/gallery/images');
+        const data = await response.json();
+
+        if (!data.success || data.images.length === 0) {
+            content.innerHTML = `
+                <div class="text-center text-gray-500 col-span-full py-8">
+                    <div class="text-4xl mb-2">📭</div>
+                    <p>Галерея пуста</p>
+                    <a href="/gallery" class="text-purple-600 hover:underline text-sm">Перейти в галерею для загрузки</a>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        for (const img of data.images) {
+            html += `
+                <div onclick="selectGalleryImage('${img.url}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-500 transition-colors bg-gray-100">
+                    <img src="${img.url}" alt="${img.filename}" class="w-full h-full object-cover">
+                </div>
+            `;
+        }
+        content.innerHTML = html;
+    } catch (e) {
+        content.innerHTML = `<div class="text-center text-red-500 col-span-full py-8">Ошибка: ${e.message}</div>`;
+    }
+}
+
+function closeGalleryPicker() {
+    document.getElementById('galleryPickerModal').classList.add('hidden');
+}
+
+async function selectGalleryImage(imageUrl) {
+    const templateId = document.getElementById('editTemplateId').value;
+    const status = document.getElementById('editImageStatus');
+
+    status.textContent = 'Применение...';
+    status.className = 'text-xs text-center text-blue-600';
+
+    try {
+        const response = await fetch(`/card-pool/template/${templateId}/set-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: imageUrl })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            status.textContent = 'Изображение установлено!';
+            status.className = 'text-xs text-center text-green-600';
+            // Update preview
+            const preview = document.getElementById('editImagePreview');
+            preview.innerHTML = `<img src="${imageUrl}" class="w-full h-full object-cover">`;
+            // Close picker
+            closeGalleryPicker();
+            // Reload templates
+            const genre = document.getElementById('editGenre').value;
+            loadedGenres[genre] = false;
+        } else {
+            status.textContent = 'Ошибка: ' + result.error;
+            status.className = 'text-xs text-center text-red-600';
+        }
+    } catch (e) {
+        status.textContent = 'Ошибка: ' + e.message;
+        status.className = 'text-xs text-center text-red-600';
     }
 }
 

@@ -3324,6 +3324,30 @@ def update_card_template(template_id: int):
     })
 
 
+@app.route("/card-pool/template/<int:template_id>/set-image", methods=["POST"])
+@login_required
+def set_template_image_from_gallery(template_id: int):
+    """Set template image from gallery URL."""
+    data = request.json or {}
+    image_url = data.get("image_url")
+
+    if not image_url:
+        return jsonify({"success": False, "error": "No image_url provided"}), 400
+
+    # Validate the URL is from our gallery
+    if not image_url.startswith("/static/gallery/"):
+        return jsonify({"success": False, "error": "Invalid image URL"}), 400
+
+    # Update the template
+    db.session.execute(
+        text("UPDATE card_templates SET image_url = :url WHERE id = :id"),
+        {"url": image_url, "id": template_id},
+    )
+    db.session.commit()
+
+    return jsonify({"success": True, "image_url": image_url})
+
+
 @app.route("/card-pool/template/<int:template_id>", methods=["DELETE"])
 @login_required
 def delete_card_template(template_id: int):
@@ -3489,6 +3513,176 @@ def get_legendary_templates():
         "success": True,
         "legendary_by_genre": by_genre,
         "total_count": len(templates),
+    })
+
+
+# ============ Gallery ============
+
+GALLERY_DIR = "/app/static/gallery"
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def get_gallery_images():
+    """Get all images from gallery directory."""
+    import glob
+    from pathlib import Path
+
+    images = []
+    if os.path.exists(GALLERY_DIR):
+        for ext in ALLOWED_IMAGE_EXTENSIONS:
+            for filepath in glob.glob(os.path.join(GALLERY_DIR, f"*.{ext}")):
+                filename = os.path.basename(filepath)
+                stat = os.stat(filepath)
+                images.append({
+                    "filename": filename,
+                    "url": f"/static/gallery/{filename}",
+                    "size": stat.st_size,
+                    "created_at": datetime.fromtimestamp(stat.st_ctime),
+                })
+    # Sort by creation time, newest first
+    images.sort(key=lambda x: x["created_at"], reverse=True)
+    return images
+
+
+@app.route("/gallery")
+@login_required
+def gallery():
+    """Gallery page with all uploaded images."""
+    images = get_gallery_images()
+    return render_template("gallery.html", images=images)
+
+
+@app.route("/gallery/images")
+@login_required
+def gallery_images_api():
+    """API to get all gallery images."""
+    images = get_gallery_images()
+    return jsonify({
+        "success": True,
+        "images": [
+            {
+                "filename": img["filename"],
+                "url": img["url"],
+                "size": img["size"],
+                "created_at": img["created_at"].isoformat(),
+            }
+            for img in images
+        ],
+    })
+
+
+@app.route("/gallery/upload", methods=["POST"])
+@login_required
+def upload_gallery_images():
+    """Upload multiple images to gallery."""
+    import uuid
+
+    if "images" not in request.files:
+        return jsonify({"success": False, "error": "No images provided"}), 400
+
+    files = request.files.getlist("images")
+    if not files or all(f.filename == "" for f in files):
+        return jsonify({"success": False, "error": "No files selected"}), 400
+
+    # Ensure gallery directory exists
+    os.makedirs(GALLERY_DIR, exist_ok=True)
+
+    uploaded = []
+    errors = []
+
+    for file in files:
+        if file.filename == "":
+            continue
+
+        # Check extension
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            errors.append(f"{file.filename}: invalid type (allowed: {ALLOWED_IMAGE_EXTENSIONS})")
+            continue
+
+        try:
+            # Generate unique filename preserving original name base
+            original_name = file.filename.rsplit(".", 1)[0]
+            # Sanitize filename
+            safe_name = "".join(c for c in original_name if c.isalnum() or c in "-_").strip()
+            if not safe_name:
+                safe_name = "image"
+            filename = f"{safe_name}_{uuid.uuid4().hex[:6]}.{ext}"
+            filepath = os.path.join(GALLERY_DIR, filename)
+
+            file.save(filepath)
+            uploaded.append({
+                "filename": filename,
+                "url": f"/static/gallery/{filename}",
+                "original_name": file.filename,
+            })
+        except Exception as e:
+            errors.append(f"{file.filename}: {str(e)}")
+
+    return jsonify({
+        "success": True,
+        "uploaded": uploaded,
+        "uploaded_count": len(uploaded),
+        "errors": errors,
+    })
+
+
+@app.route("/gallery/delete/<filename>", methods=["POST"])
+@login_required
+def delete_gallery_image(filename: str):
+    """Delete an image from gallery."""
+    # Security: prevent path traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"success": False, "error": "Invalid filename"}), 400
+
+    filepath = os.path.join(GALLERY_DIR, filename)
+
+    if not os.path.exists(filepath):
+        return jsonify({"success": False, "error": "File not found"}), 404
+
+    try:
+        os.remove(filepath)
+        return jsonify({"success": True, "message": f"Deleted {filename}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/gallery/delete-multiple", methods=["POST"])
+@login_required
+def delete_multiple_gallery_images():
+    """Delete multiple images from gallery."""
+    data = request.json or {}
+    filenames = data.get("filenames", [])
+
+    if not filenames:
+        return jsonify({"success": False, "error": "No filenames provided"}), 400
+
+    deleted = []
+    errors = []
+
+    for filename in filenames:
+        # Security: prevent path traversal
+        if "/" in filename or "\\" in filename or ".." in filename:
+            errors.append(f"{filename}: invalid filename")
+            continue
+
+        filepath = os.path.join(GALLERY_DIR, filename)
+
+        if not os.path.exists(filepath):
+            errors.append(f"{filename}: not found")
+            continue
+
+        try:
+            os.remove(filepath)
+            deleted.append(filename)
+        except Exception as e:
+            errors.append(f"{filename}: {str(e)}")
+
+    return jsonify({
+        "success": True,
+        "deleted": deleted,
+        "deleted_count": len(deleted),
+        "errors": errors,
     })
 
 

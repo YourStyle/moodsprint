@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - MoodSprint Admin{% endblock %}
+{% block header %}Gallery{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Upload Section -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Upload Images</h3>
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="dropZone">
+            <input type="file" id="fileInput" multiple accept="image/*" class="hidden">
+            <div class="space-y-2">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <p class="text-gray-600">Drag and drop images here, or <button onclick="document.getElementById('fileInput').click()" class="text-blue-600 hover:underline">browse</button></p>
+                <p class="text-sm text-gray-500">PNG, JPG, GIF, WebP up to 10MB each</p>
+            </div>
+        </div>
+        <div id="uploadProgress" class="hidden mt-4">
+            <div class="flex items-center space-x-2">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <span id="uploadStatus">Uploading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery Stats -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-2xl font-bold">{{ images|length }}</span>
+                <span class="text-gray-600 ml-2">images</span>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="toggleSelectMode()" id="selectModeBtn" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                    Select Multiple
+                </button>
+                <button onclick="deleteSelected()" id="deleteSelectedBtn" class="hidden px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm">
+                    Delete Selected (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="imageGrid">
+        {% for image in images %}
+        <div class="relative group bg-white rounded-lg shadow overflow-hidden image-card" data-filename="{{ image.filename }}">
+            <!-- Checkbox (hidden by default) -->
+            <div class="absolute top-2 left-2 z-10 hidden select-checkbox">
+                <input type="checkbox" class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 image-checkbox" data-filename="{{ image.filename }}">
+            </div>
+            <!-- Image -->
+            <div class="aspect-square bg-gray-100">
+                <img src="{{ image.url }}" alt="{{ image.filename }}" class="w-full h-full object-cover cursor-pointer" onclick="showImageModal('{{ image.url }}', '{{ image.filename }}')">
+            </div>
+            <!-- Info -->
+            <div class="p-2">
+                <p class="text-xs text-gray-600 truncate" title="{{ image.filename }}">{{ image.filename }}</p>
+                <p class="text-xs text-gray-400">{{ (image.size / 1024)|round|int }} KB</p>
+            </div>
+            <!-- Actions (hover) -->
+            <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                <button onclick="copyUrl('{{ image.url }}')" class="p-2 bg-white rounded-full hover:bg-gray-100" title="Copy URL">
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                </button>
+                <button onclick="deleteImage('{{ image.filename }}')" class="p-2 bg-white rounded-full hover:bg-gray-100" title="Delete">
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full text-center py-12 text-gray-500">
+            No images yet. Upload some!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center" onclick="closeImageModal(event)">
+    <div class="relative max-w-4xl max-h-[90vh] p-4">
+        <img id="modalImage" src="" alt="" class="max-w-full max-h-[80vh] object-contain rounded-lg">
+        <div class="absolute top-0 right-0 m-2 flex space-x-2">
+            <button onclick="copyUrl(document.getElementById('modalImage').src)" class="p-2 bg-white rounded-full hover:bg-gray-100">
+                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                </svg>
+            </button>
+            <button onclick="closeImageModal()" class="p-2 bg-white rounded-full hover:bg-gray-100">
+                <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <p id="modalFilename" class="text-white text-center mt-2 text-sm"></p>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg hidden z-50"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectMode = false;
+
+    // Drag and drop
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+    });
+
+    dropZone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length) uploadFiles(files);
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) uploadFiles(fileInput.files);
+    });
+
+    async function uploadFiles(files) {
+        const formData = new FormData();
+        for (const file of files) {
+            formData.append('images', file);
+        }
+
+        const progress = document.getElementById('uploadProgress');
+        const status = document.getElementById('uploadStatus');
+        progress.classList.remove('hidden');
+        status.textContent = `Uploading ${files.length} file(s)...`;
+
+        try {
+            const response = await fetch('/gallery/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                status.textContent = `Uploaded ${data.uploaded_count} file(s)`;
+                if (data.errors.length > 0) {
+                    showToast(`Uploaded ${data.uploaded_count}, errors: ${data.errors.length}`, 'warning');
+                } else {
+                    showToast(`Successfully uploaded ${data.uploaded_count} image(s)`);
+                }
+                // Reload page to show new images
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                status.textContent = 'Upload failed';
+                showToast(data.error || 'Upload failed', 'error');
+            }
+        } catch (error) {
+            status.textContent = 'Upload failed';
+            showToast('Upload failed: ' + error.message, 'error');
+        }
+
+        setTimeout(() => progress.classList.add('hidden'), 3000);
+    }
+
+    function showImageModal(url, filename) {
+        if (selectMode) return; // Don't open modal in select mode
+        document.getElementById('modalImage').src = url;
+        document.getElementById('modalFilename').textContent = filename;
+        document.getElementById('imageModal').classList.remove('hidden');
+    }
+
+    function closeImageModal(event) {
+        if (event && event.target !== document.getElementById('imageModal')) return;
+        document.getElementById('imageModal').classList.add('hidden');
+    }
+
+    async function deleteImage(filename) {
+        if (!confirm(`Delete ${filename}?`)) return;
+
+        try {
+            const response = await fetch(`/gallery/delete/${encodeURIComponent(filename)}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Image deleted');
+                document.querySelector(`[data-filename="${filename}"]`).remove();
+            } else {
+                showToast(data.error || 'Delete failed', 'error');
+            }
+        } catch (error) {
+            showToast('Delete failed: ' + error.message, 'error');
+        }
+    }
+
+    function copyUrl(url) {
+        // Make URL absolute
+        const fullUrl = window.location.origin + url;
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            showToast('URL copied to clipboard');
+        }).catch(() => {
+            showToast('Failed to copy URL', 'error');
+        });
+    }
+
+    function toggleSelectMode() {
+        selectMode = !selectMode;
+        const btn = document.getElementById('selectModeBtn');
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        const checkboxes = document.querySelectorAll('.select-checkbox');
+
+        if (selectMode) {
+            btn.textContent = 'Cancel Selection';
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('bg-gray-100');
+            deleteBtn.classList.remove('hidden');
+            checkboxes.forEach(cb => cb.classList.remove('hidden'));
+        } else {
+            btn.textContent = 'Select Multiple';
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-100');
+            deleteBtn.classList.add('hidden');
+            checkboxes.forEach(cb => {
+                cb.classList.add('hidden');
+                cb.querySelector('input').checked = false;
+            });
+            updateSelectedCount();
+        }
+    }
+
+    // Update selected count when checkboxes change
+    document.addEventListener('change', e => {
+        if (e.target.classList.contains('image-checkbox')) {
+            updateSelectedCount();
+        }
+    });
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.image-checkbox:checked').length;
+        document.getElementById('selectedCount').textContent = count;
+    }
+
+    async function deleteSelected() {
+        const checked = document.querySelectorAll('.image-checkbox:checked');
+        if (checked.length === 0) {
+            showToast('No images selected', 'warning');
+            return;
+        }
+
+        if (!confirm(`Delete ${checked.length} image(s)?`)) return;
+
+        const filenames = Array.from(checked).map(cb => cb.dataset.filename);
+
+        try {
+            const response = await fetch('/gallery/delete-multiple', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filenames })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(`Deleted ${data.deleted_count} image(s)`);
+                data.deleted.forEach(filename => {
+                    document.querySelector(`[data-filename="${filename}"]`)?.remove();
+                });
+                toggleSelectMode();
+            } else {
+                showToast(data.error || 'Delete failed', 'error');
+            }
+        } catch (error) {
+            showToast('Delete failed: ' + error.message, 'error');
+        }
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50';
+
+        if (type === 'error') {
+            toast.classList.add('bg-red-600', 'text-white');
+        } else if (type === 'warning') {
+            toast.classList.add('bg-yellow-500', 'text-white');
+        } else {
+            toast.classList.add('bg-green-600', 'text-white');
+        }
+
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    // Close modal on Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeImageModal();
+    });
+</script>
+{% endblock %}
