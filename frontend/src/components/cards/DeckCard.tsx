@@ -238,12 +238,12 @@ export function DeckCard({
               </div>
             )}
 
-            {/* Image - square aspect ratio */}
+            {/* Image - fixed square with flex-shrink-0 to prevent compression */}
             <div className={cn(
-              'aspect-square rounded-lg overflow-hidden border border-white/10 relative',
+              'w-full rounded-lg overflow-hidden border border-white/10 relative flex-shrink-0',
               compact ? 'mt-1 mb-1' : 'mt-4 mb-2',
               isOnCooldown && 'grayscale'
-            )}>
+            )} style={{ aspectRatio: '1/1' }}>
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -285,8 +285,11 @@ export function DeckCard({
               )}
             </div>
 
-            {/* Name - below image, up to 2 lines */}
-            <div className={cn('px-1', compact ? 'py-0.5' : 'py-1')}>
+            {/* Name - below image, fixed height for 2 lines */}
+            <div className={cn(
+              'px-1 flex items-center justify-center',
+              compact ? 'h-6' : 'h-10'
+            )}>
               <h3 className={cn(
                 'font-bold text-center leading-tight line-clamp-2',
                 compact ? 'text-[10px]' : 'text-sm',

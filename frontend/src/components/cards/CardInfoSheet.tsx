@@ -88,9 +88,9 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }:
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} showClose={true}>
-      <div className="flex flex-col items-center">
-        {/* Card Header with Image/Emoji */}
-        <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 border-2 border-white/20">
+      <div className="flex flex-col items-center -mx-4 -mt-4">
+        {/* Full-width Card Image at top */}
+        <div className="w-full aspect-square overflow-hidden mb-4 relative">
           {card.imageUrl ? (
             <img
               src={card.imageUrl}
@@ -99,21 +99,24 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }:
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-              <span className="text-4xl">{card.emoji || '🎴'}</span>
+              <span className="text-6xl">{card.emoji || '🎴'}</span>
             </div>
           )}
+          {/* Rarity badge on image */}
+          <div className={cn(
+            'absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold text-white',
+            `bg-gradient-to-r ${config.gradient}`
+          )}>
+            {config.label}
+          </div>
         </div>
 
-        {/* Name and Rarity */}
-        <h2 className={cn('text-xl font-bold mb-2', config.accent)}>
+        {/* Content with padding */}
+        <div className="px-4 w-full">
+        {/* Name */}
+        <h2 className={cn('text-xl font-bold mb-4 text-center', config.accent)}>
           {card.name}
         </h2>
-        <div className={cn(
-          'px-3 py-1 rounded-full text-xs font-bold text-white mb-4',
-          `bg-gradient-to-r ${config.gradient}`
-        )}>
-          {config.label}
-        </div>
 
         {/* Description */}
         {card.description && (
@@ -189,6 +192,7 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }:
             Продать за Stars
           </Button>
         )}
+        </div>
       </div>
 
       {/* Sell Card Modal */}
