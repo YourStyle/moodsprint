@@ -1,0 +1,53 @@
+name: moodsprint
+description: MoodSprint - Mood-aware task management app
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+
+  # WebView
+  webview_flutter: ^4.4.2
+
+  # Secure storage for tokens
+  flutter_secure_storage: ^9.0.0
+
+  # Biometric authentication
+  local_auth: ^2.1.8
+
+  # Push notifications
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+
+  # HTTP client
+  http: ^1.2.0
+
+  # URL launcher for external links
+  url_launcher: ^6.2.2
+
+  # Device info for platform detection
+  device_info_plus: ^9.1.1
+
+  # Connectivity check
+  connectivity_plus: ^5.0.2
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/

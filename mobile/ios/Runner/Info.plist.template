@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ADD THESE KEYS TO YOUR Info.plist AFTER flutter create -->
+
+	<!-- Face ID / Touch ID permission -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Используйте Face ID для быстрого входа в приложение</string>
+
+	<!-- Camera permission (if needed for profile photos) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна для фото профиля</string>
+
+	<!-- Photo library permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к фото нужен для выбора аватара</string>
+
+	<!-- Push notifications -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
+	<!-- Firebase requires this -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+</dict>
+</plist>
