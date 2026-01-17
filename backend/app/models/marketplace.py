@@ -37,8 +37,9 @@ class MarketListing(db.Model):
         unique=True,  # Card can only be listed once
     )
 
-    # Price in Sparks (legacy name: price_stars)
+    # Price in Sparks (both columns for backward compatibility)
     price_stars = db.Column(db.Integer, nullable=False)
+    price_sparks = db.Column(db.Integer, nullable=False)
 
     # Status: active, sold, cancelled, expired
     status = db.Column(db.String(20), default="active", index=True)

@@ -68,6 +68,7 @@ class MarketplaceService:
             seller_id=user_id,
             card_id=card_id,
             price_stars=price,  # Sparks price
+            price_sparks=price,  # Same value for both columns
         )
         db.session.add(listing)
         db.session.commit()

@@ -172,6 +172,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_PROXY: ${OPENAI_PROXY:-}
       TON_DEPOSIT_ADDRESS: ${TON_DEPOSIT_ADDRESS:-UQDNO2S4MTD9avQJIVx_9W7pQgs6vXH7QIKOR-mj98xyT4ct}
+    volumes:
+      - monster_images:/app/static/monster_images
+      - card_images:/app/static/card_images
     depends_on:
       db:
         condition: service_healthy

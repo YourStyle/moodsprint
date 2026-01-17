@@ -1142,19 +1142,21 @@ def rotate_monsters():
     if not expected_secret or bot_secret != expected_secret:
         return validation_error({"error": "unauthorized"})
 
-    # Check if we need to generate (only on period start days)
+    # Check if we need to generate (only if no monsters exist for current period)
     from app.models.character import DailyMonster
 
     period_start = DailyMonster.get_current_period_start()
-    today = date.today()
 
-    # Only generate on first day of period
-    if period_start != today:
+    # Check if any monsters exist for current period (any genre)
+    existing_count = DailyMonster.query.filter_by(period_start=period_start).count()
+
+    if existing_count > 0:
         return success_response(
             {
                 "success": True,
-                "message": f"Not period start day. Current period: {period_start}",
+                "message": f"Monsters already exist for period {period_start}",
                 "generated": {},
+                "existing_count": existing_count,
             }
         )
 

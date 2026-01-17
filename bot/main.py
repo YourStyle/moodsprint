@@ -164,6 +164,14 @@ async def main():
         id="ton_deposit_monitor",
     )
 
+    # Resource usage monitoring - check every 5 minutes
+    scheduler.add_job(
+        notification_service.check_resource_usage,
+        "interval",
+        minutes=5,
+        id="resource_monitor",
+    )
+
     scheduler.start()
 
     # Set bot commands

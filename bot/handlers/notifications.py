@@ -4,8 +4,10 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
+import psutil
 from aiogram import Bot, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from config import config
 from database import (
     create_postpone_log,
     get_overdue_tasks_by_user,
@@ -628,3 +630,98 @@ class NotificationService:
             await asyncio.sleep(0.05)
 
         logger.info(f"Referral notifications: {sent} sent, {failed} failed")
+
+    async def check_resource_usage(self):
+        """
+        Check server resource usage and alert admins if thresholds exceeded.
+
+        Thresholds:
+        - CPU: > 80% for 3+ checks
+        - Memory: > 85%
+        - Disk: > 90%
+
+        Uses Redis for cooldown (30 minutes between alerts).
+        """
+        import redis.asyncio as redis_async
+
+        # Thresholds
+        CPU_THRESHOLD = 80
+        MEMORY_THRESHOLD = 85
+        DISK_THRESHOLD = 90
+        ALERT_COOLDOWN = 1800  # 30 minutes
+
+        if not config.ADMIN_IDS:
+            return
+
+        try:
+            # Get resource usage
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage("/")
+
+            memory_percent = memory.percent
+            disk_percent = disk.percent
+
+            alerts = []
+
+            # Check thresholds
+            if cpu_percent > CPU_THRESHOLD:
+                alerts.append(f"🔥 CPU: {cpu_percent:.1f}% (порог: {CPU_THRESHOLD}%)")
+
+            if memory_percent > MEMORY_THRESHOLD:
+                used_gb = memory.used / (1024**3)
+                total_gb = memory.total / (1024**3)
+                alerts.append(
+                    f"💾 RAM: {memory_percent:.1f}% ({used_gb:.1f}/{total_gb:.1f} GB) "
+                    f"(порог: {MEMORY_THRESHOLD}%)"
+                )
+
+            if disk_percent > DISK_THRESHOLD:
+                used_gb = disk.used / (1024**3)
+                total_gb = disk.total / (1024**3)
+                alerts.append(
+                    f"💿 Disk: {disk_percent:.1f}% ({used_gb:.1f}/{total_gb:.1f} GB) "
+                    f"(порог: {DISK_THRESHOLD}%)"
+                )
+
+            if not alerts:
+                logger.debug(
+                    f"Resource check: CPU={cpu_percent:.1f}%, "
+                    f"RAM={memory_percent:.1f}%, Disk={disk_percent:.1f}%"
+                )
+                return
+
+            # Check cooldown in Redis
+            redis_client = redis_async.from_url(config.REDIS_URL)
+            cooldown_key = "bot:resource_alert:cooldown"
+
+            try:
+                if await redis_client.get(cooldown_key):
+                    logger.info("Resource alert skipped (cooldown active)")
+                    await redis_client.aclose()
+                    return
+
+                # Set cooldown
+                await redis_client.setex(cooldown_key, ALERT_COOLDOWN, "1")
+                await redis_client.aclose()
+            except Exception as e:
+                logger.warning(f"Redis error in resource check: {e}")
+
+            # Build alert message
+            message = "🚨 <b>Внимание: высокое использование ресурсов!</b>\n\n"
+            message += "\n".join(alerts)
+            message += f"\n\n🕐 {datetime.now().strftime('%H:%M:%S')}"
+
+            # Send to all admins
+            for admin_id in config.ADMIN_IDS:
+                try:
+                    await self.bot.send_message(admin_id, message, parse_mode="HTML")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send resource alert to admin {admin_id}: {e}"
+                    )
+
+            logger.warning(f"Resource alert sent: {alerts}")
+
+        except Exception as e:
+            logger.error(f"Resource check error: {e}")
