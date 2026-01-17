@@ -170,7 +170,7 @@ export function DeckCard({
 
   return (
     <div
-      className="relative w-full aspect-[3/4] perspective-1000"
+      className="relative w-full aspect-[3/5] perspective-1000"
       onClick={handleCardClick}
     >
       {/* Rarity badge - centered, outside of flip container so it doesn't rotate */}
@@ -301,7 +301,7 @@ export function DeckCard({
 
             {/* Stats at bottom - no health bar */}
             <div className={cn(
-              'flex items-center justify-center bg-gray-900/50 rounded-lg mt-auto',
+              'flex items-center justify-center bg-gray-900/50 rounded-lg',
               compact ? 'gap-2 py-1' : 'gap-4 py-1.5'
             )}>
               <div className="flex items-center gap-0.5">
