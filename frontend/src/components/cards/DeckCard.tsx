@@ -238,9 +238,9 @@ export function DeckCard({
               </div>
             )}
 
-            {/* Image - takes most of the space */}
+            {/* Image - square aspect ratio */}
             <div className={cn(
-              'flex-1 rounded-lg overflow-hidden border border-white/10 relative',
+              'aspect-square rounded-lg overflow-hidden border border-white/10 relative',
               compact ? 'mt-1 mb-1' : 'mt-4 mb-2',
               isOnCooldown && 'grayscale'
             )}>

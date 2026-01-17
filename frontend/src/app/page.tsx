@@ -10,9 +10,10 @@ import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
 import { CardEarnedModal, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
+import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
-import { hapticFeedback } from '@/lib/telegram';
+import { hapticFeedback, isMobileApp } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 import type { MoodLevel, EnergyLevel, FocusSession, TaskStatus } from '@/domain/types';
@@ -104,8 +105,14 @@ function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }:
     return result;
   }, []);
 
-  // Find today's index for initial scroll position
-  const todayIndex = 7; // Today is at index 7 (after 7 days back)
+  // Find index of selected date in allDays array
+  const selectedIndex = useMemo(() => {
+    const selectedStr = formatDateForAPI(selectedDate);
+    return allDays.findIndex(d => formatDateForAPI(d) === selectedStr);
+  }, [allDays, selectedDate]);
+
+  // Default to today's index (7) if selected date not found
+  const scrollToIndex = selectedIndex >= 0 ? selectedIndex : 7;
 
   // Update arrow visibility based on scroll position
   const updateArrowVisibility = useCallback(() => {
@@ -125,18 +132,21 @@ function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }:
     });
   }, []);
 
-  // Initial scroll to today
+  // Initial scroll to selected date (or today if not found)
   useEffect(() => {
     if (scrollRef.current && !scrollRef.current.dataset.scrolled) {
-      const todayElement = scrollRef.current.children[todayIndex] as HTMLElement;
-      if (todayElement) {
-        const scrollLeft = todayElement.offsetLeft - scrollRef.current.clientWidth / 2 + todayElement.clientWidth / 2;
-        scrollRef.current.scrollLeft = Math.max(0, scrollLeft);
-        scrollRef.current.dataset.scrolled = 'true';
-        updateArrowVisibility();
+      const container = scrollRef.current.querySelector('.flex.gap-1');
+      if (container) {
+        const targetElement = container.children[scrollToIndex] as HTMLElement;
+        if (targetElement) {
+          const scrollLeft = targetElement.offsetLeft - scrollRef.current.clientWidth / 2 + targetElement.clientWidth / 2;
+          scrollRef.current.scrollLeft = Math.max(0, scrollLeft);
+          scrollRef.current.dataset.scrolled = 'true';
+          updateArrowVisibility();
+        }
       }
     }
-  }, [todayIndex, updateArrowVisibility]);
+  }, [scrollToIndex, updateArrowVisibility]);
 
   return (
     <div className="flex items-center gap-1 pt-4">
@@ -399,9 +409,40 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t, language, setLanguage } = useLanguage();
-  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, activeSessions, removeActiveSession, updateActiveSession } = useAppStore();
+  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Date selection with smart focus:
+  // - If last visit was today: restore last selected date
+  // - If last visit was another day: focus on today
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (typeof window === 'undefined') return new Date();
+
+    const today = formatDateForAPI(new Date());
+    const lastVisitDate = localStorage.getItem('moodsprint_last_visit_date');
+    const lastSelectedDate = localStorage.getItem('moodsprint_last_selected_date');
+
+    if (lastVisitDate === today && lastSelectedDate) {
+      // Same day visit - restore last selected date
+      const parsed = new Date(lastSelectedDate);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    // New day or first visit - use today
+    return new Date();
+  });
+
+  // Save last visit date and selected date to localStorage
+  useEffect(() => {
+    const today = formatDateForAPI(new Date());
+    localStorage.setItem('moodsprint_last_visit_date', today);
+  }, []);
+
+  // Save selected date when it changes
+  useEffect(() => {
+    localStorage.setItem('moodsprint_last_selected_date', formatDateForAPI(selectedDate));
+  }, [selectedDate]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
@@ -426,6 +467,13 @@ export default function HomePage() {
     return false;
   });
 
+  // Check if this is the first day - skip mood check on first day entirely
+  const isFirstDay = typeof window !== 'undefined' && (() => {
+    const firstLoginDate = localStorage.getItem('first_login_date');
+    if (!firstLoginDate) return true; // No date set = first day
+    return firstLoginDate === new Date().toDateString();
+  })();
+
   const selectedDateStr = formatDateForAPI(selectedDate);
 
   // Calculate week date range for task counts
@@ -442,32 +490,33 @@ export default function HomePage() {
   }, []);
 
   // Check if we should show mood modal on first entry
-  // Skip on first visit to reduce overwhelm for new users
+  // Skip on first visit, first day, or during spotlight onboarding to reduce overwhelm for new users
   useEffect(() => {
-    if (user && !latestMood && !isFirstVisit) {
+    if (user && !latestMood && !isFirstVisit && !isFirstDay && !isSpotlightActive) {
       // Check if mood was checked today
       moodService.getLatestMood().then((result) => {
         if (result.success && result.data?.mood_check) {
           setLatestMood(result.data.mood_check);
         } else {
-          // No mood today, show modal (only for returning users)
+          // No mood today, show modal (only for returning users on subsequent days)
           setShowMoodModal(true);
         }
       });
     }
-  }, [user, latestMood, setLatestMood, setShowMoodModal, isFirstVisit]);
+  }, [user, latestMood, setLatestMood, setShowMoodModal, isFirstVisit, isFirstDay, isSpotlightActive]);
 
-  // Mark first visit as completed after spotlight onboarding finishes
+  // Fallback: mark first visit as completed if spotlight isn't showing
+  // (This handles edge case where onboarding_home is set but first_visit_completed isn't)
   useEffect(() => {
-    if (isFirstVisit && user) {
-      // Check after 5 seconds if spotlight was shown
+    if (isFirstVisit && user && !isSpotlightActive) {
+      // If spotlight isn't active after 2 seconds, mark first visit as done
       const timer = setTimeout(() => {
         localStorage.setItem('first_visit_completed', 'true');
         setIsFirstVisit(false);
-      }, 5000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isFirstVisit, user]);
+  }, [isFirstVisit, user, isSpotlightActive]);
 
   // Track scroll for header overlay
   useEffect(() => {
@@ -737,6 +786,21 @@ export default function HomePage() {
   }
 
   if (!user) {
+    // Mobile app handles its own auth - just show loading
+    if (isMobileApp()) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+        </div>
+      );
+    }
+
+    // Show full landing page with login/register for non-Telegram browser users
+    if (!isTelegramEnvironment) {
+      return <LandingPage />;
+    }
+
+    // In Telegram but not authenticated - show simple message
     return (
       <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
         <div className="w-48 h-48 mb-8 relative animate-float">

@@ -15,7 +15,7 @@ import { useLanguage } from '@/lib/i18n';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, setUser } = useAppStore();
+  const { user, setUser, isTelegramEnvironment } = useAppStore();
   const { t } = useLanguage();
 
   const { data: statsData } = useQuery({
@@ -121,16 +121,18 @@ export default function ProfilePage() {
       {/* Sparks Balance */}
       <SparksBalance />
 
-      {/* Wallet */}
-      <Card>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-cyan-500" />
-            <span className="font-medium text-white">{t('tonWallet')}</span>
+      {/* Wallet - only show in Telegram environment */}
+      {isTelegramEnvironment && (
+        <Card>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-cyan-500" />
+              <span className="font-medium text-white">{t('tonWallet')}</span>
+            </div>
+            <TonConnectButton />
           </div>
-          <TonConnectButton />
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* XP Bar */}
       {stats && (

@@ -55,7 +55,7 @@ const RARITY_KEYS = {
 
 export default function DeckPage() {
   const queryClient = useQueryClient();
-  const { user } = useAppStore();
+  const { user, isTelegramEnvironment } = useAppStore();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<Tab>('collection');
@@ -339,10 +339,12 @@ export default function DeckPage() {
         </button>
       </div>
 
-      {/* Marketplace Banner */}
-      <div className="mb-4">
-        <FeatureBanner type="marketplace" />
-      </div>
+      {/* Marketplace Banner - only show in Telegram environment */}
+      {isTelegramEnvironment && (
+        <div className="mb-4">
+          <FeatureBanner type="marketplace" />
+        </div>
+      )}
 
       {/* Collection Tab */}
       {activeTab === 'collection' && (
@@ -919,7 +921,7 @@ export default function DeckPage() {
           abilityInfo: infoCard.ability_info,
           isOwned: true,
         } : null}
-        showSellButton={true}
+        showSellButton={isTelegramEnvironment}
       />
     </div>
   );

@@ -14,8 +14,15 @@ import { openInvoice, hapticFeedback, setupBackButton } from '@/lib/telegram';
 export default function StorePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAppStore();
+  const { user, isTelegramEnvironment } = useAppStore();
   const { t } = useLanguage();
+
+  // Redirect to home if not in Telegram environment (store requires Telegram Stars)
+  useEffect(() => {
+    if (!isTelegramEnvironment) {
+      router.replace('/');
+    }
+  }, [isTelegramEnvironment, router]);
 
   // Setup native back button
   useEffect(() => {

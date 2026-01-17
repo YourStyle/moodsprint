@@ -56,8 +56,11 @@ export function Navigation() {
   // Show badge if friend requests OR pending referral rewards OR pending trades
   const friendsBadgeCount = pendingRequestsCount + pendingRewardsCount + pendingTradesCount;
 
-  // Hide navigation on onboarding page or when explicitly hidden (battle mode)
-  if (pathname === '/onboarding' || hideNavigation) {
+  // Hide navigation when:
+  // - Not authenticated (landing page)
+  // - On onboarding page
+  // - When explicitly hidden (battle mode)
+  if (!user || pathname === '/onboarding' || hideNavigation) {
     return null;
   }
 

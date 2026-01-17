@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
 
 export function ScrollBackdrop() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user } = useAppStore();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,6 +19,11 @@ export function ScrollBackdrop() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Hide on landing page (when not authenticated)
+  if (!user) {
+    return null;
+  }
 
   return (
     <div

@@ -13,6 +13,10 @@ interface AppState {
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
 
+  // Telegram environment detection
+  isTelegramEnvironment: boolean;
+  setTelegramEnvironment: (isTelegram: boolean) => void;
+
   // Onboarding
   onboardingCompleted: boolean | null;
   setOnboardingCompleted: (completed: boolean) => void;
@@ -39,6 +43,10 @@ interface AppState {
   hideNavigation: boolean;
   setHideNavigation: (hide: boolean) => void;
 
+  // Spotlight onboarding state (blocks other modals when active)
+  isSpotlightActive: boolean;
+  setSpotlightActive: (active: boolean) => void;
+
   // XP animation
   xpAnimation: { amount: number; show: boolean };
   showXPAnimation: (amount: number) => void;
@@ -51,6 +59,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: true,
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setLoading: (isLoading) => set({ isLoading }),
+
+  // Telegram environment
+  isTelegramEnvironment: true, // Default to true, will be set on init
+  setTelegramEnvironment: (isTelegramEnvironment) => set({ isTelegramEnvironment }),
 
   // Onboarding
   onboardingCompleted: null,
@@ -113,6 +125,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setShowMoodModal: (showMoodModal) => set({ showMoodModal }),
   hideNavigation: false,
   setHideNavigation: (hideNavigation) => set({ hideNavigation }),
+
+  // Spotlight onboarding state
+  isSpotlightActive: false,
+  setSpotlightActive: (isSpotlightActive) => set({ isSpotlightActive }),
 
   // XP animation
   xpAnimation: { amount: 0, show: false },

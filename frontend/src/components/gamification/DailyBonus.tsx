@@ -13,16 +13,23 @@ export function DailyBonus() {
   const [isOpen, setIsOpen] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const queryClient = useQueryClient();
-  const { showXPAnimation } = useAppStore();
+  const { showXPAnimation, isSpotlightActive } = useAppStore();
   const { t } = useLanguage();
 
   // Check if this is user's first visit - skip daily bonus on first login
   const isFirstVisit = typeof window !== 'undefined' && !localStorage.getItem('first_visit_completed');
 
+  // Check if this is the first day - skip daily bonus on first day entirely
+  const isFirstDay = typeof window !== 'undefined' && (() => {
+    const firstLoginDate = localStorage.getItem('first_login_date');
+    if (!firstLoginDate) return true; // No date set = first day
+    return firstLoginDate === new Date().toDateString();
+  })();
+
   const { data: bonusStatus, isLoading } = useQuery({
     queryKey: ['daily-bonus-status'],
     queryFn: () => gamificationService.getDailyBonusStatus(),
-    enabled: !isFirstVisit, // Don't fetch on first visit
+    enabled: !isFirstVisit && !isFirstDay && !isSpotlightActive, // Don't fetch on first visit/day or during spotlight
   });
 
   const claimMutation = useMutation({
@@ -64,8 +71,8 @@ export function DailyBonus() {
     return t('days5plus');
   };
 
-  // Skip on first visit or if no bonus available
-  if (isFirstVisit || !status?.can_claim || isLoading) return null;
+  // Skip on first visit, first day, during spotlight onboarding, or if no bonus available
+  if (isFirstVisit || isFirstDay || isSpotlightActive || !status?.can_claim || isLoading) return null;
 
   return (
     <AnimatePresence>

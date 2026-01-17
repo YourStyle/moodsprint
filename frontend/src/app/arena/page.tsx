@@ -39,6 +39,9 @@ import type {
 } from '@/services/gamification';
 import type { LevelCompletionResult } from '@/services/campaign';
 
+// localStorage key for hiding 0 HP cards warning
+const HIDE_LOW_HP_WARNING_KEY = 'moodsprint_hide_low_hp_warning';
+
 type Tab = 'battle' | 'leaderboard';
 type GameState = 'select' | 'cards' | 'battle' | 'result';
 type LeaderboardType = 'weekly' | 'all_time';
@@ -116,6 +119,13 @@ export default function ArenaPage() {
   // Campaign loading state
   const [campaignLoading, setCampaignLoading] = useState(!!campaignLevelId);
 
+  // Error state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Low HP cards warning state
+  const [showLowHpWarning, setShowLowHpWarning] = useState(false);
+  const [pendingMonster, setPendingMonster] = useState<Monster | null>(null);
+
   // Battle queries
   const { data: monstersData, isLoading: monstersLoading } = useQuery({
     queryKey: ['arena', 'monsters'],
@@ -145,11 +155,15 @@ export default function ArenaPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Resume active battle if exists
+  // Resume active battle if exists and is still active
   useEffect(() => {
     if (activeBattleData?.data?.battle) {
-      setActiveBattle(activeBattleData.data.battle);
-      setGameState('battle');
+      const battle = activeBattleData.data.battle;
+      // Only resume if battle is truly active (not won or lost)
+      if (battle.status === 'active') {
+        setActiveBattle(battle);
+        setGameState('battle');
+      }
     }
   }, [activeBattleData]);
 
@@ -181,6 +195,12 @@ export default function ArenaPage() {
         hapticFeedback('medium');
         setActiveBattle(response.data.battle);
         setGameState('battle');
+      } else if (!response.success && response.error) {
+        // Handle API error response (including rate limit)
+        hapticFeedback('error');
+        setErrorMessage(response.error.message || 'Не удалось начать бой');
+        // Reset battle started ref so user can try again
+        battleStartedRef.current = false;
       }
     },
   });
@@ -302,11 +322,23 @@ export default function ArenaPage() {
   });
 
   const handleSelectMonster = (monster: Monster) => {
-    setSelectedMonster(monster);
     hapticFeedback('light');
+    setErrorMessage(null); // Clear any previous error
 
-    // If user has a deck, auto-start battle with deck cards
+    // If user has a deck, check for low HP cards first
     if (deck.length > 0) {
+      const lowHpCards = deck.filter((c: { current_hp: number }) => c.current_hp <= 0);
+      const hideWarning = typeof window !== 'undefined' && localStorage.getItem(HIDE_LOW_HP_WARNING_KEY) === 'true';
+
+      if (lowHpCards.length > 0 && !hideWarning) {
+        // Show warning modal
+        setPendingMonster(monster);
+        setShowLowHpWarning(true);
+        return;
+      }
+
+      // Proceed with battle
+      setSelectedMonster(monster);
       const deckCardIds = deck.map((c: { id: number }) => c.id);
       setSelectedCards(deckCardIds);
       startBattleMutation.mutate({
@@ -316,9 +348,39 @@ export default function ArenaPage() {
       });
     } else {
       // No deck - show card selection
+      setSelectedMonster(monster);
       setSelectedCards([]);
       setGameState('cards');
     }
+  };
+
+  // Handle low HP warning actions
+  const handleLowHpWarningContinue = () => {
+    setShowLowHpWarning(false);
+    if (pendingMonster && deck.length > 0) {
+      setSelectedMonster(pendingMonster);
+      const deckCardIds = deck.map((c: { id: number }) => c.id);
+      setSelectedCards(deckCardIds);
+      startBattleMutation.mutate({
+        monsterId: pendingMonster.id,
+        cardIds: deckCardIds,
+        campaignLevelId: campaignLevelId ? Number(campaignLevelId) : undefined,
+      });
+    }
+    setPendingMonster(null);
+  };
+
+  const handleLowHpWarningDontShow = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(HIDE_LOW_HP_WARNING_KEY, 'true');
+    }
+    handleLowHpWarningContinue();
+  };
+
+  const handleLowHpWarningGoHome = () => {
+    setShowLowHpWarning(false);
+    setPendingMonster(null);
+    router.push('/');
   };
 
   const handleToggleCard = (cardId: number) => {
@@ -741,6 +803,16 @@ export default function ArenaPage() {
 
   // Auto-start battle in campaign mode when monster and deck are ready
   const battleStartedRef = useRef(false);
+  const lastCampaignLevelRef = useRef<string | null>(null);
+
+  // Reset battle started ref when campaign level changes
+  useEffect(() => {
+    if (campaignLevelId !== lastCampaignLevelRef.current) {
+      battleStartedRef.current = false;
+      lastCampaignLevelRef.current = campaignLevelId;
+    }
+  }, [campaignLevelId]);
+
   useEffect(() => {
     if (!campaignMode || !selectedMonster || !campaignBattleConfig) return;
     if (gameState !== 'select') return;
@@ -1656,6 +1728,65 @@ export default function ArenaPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Error Toast */}
+      {errorMessage && (
+        <div className="fixed bottom-24 left-4 right-4 z-50 animate-in fade-in slide-in-from-bottom-4">
+          <div className="max-w-md mx-auto bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <X className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm">{errorMessage}</span>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Low HP Cards Warning Modal */}
+      {showLowHpWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-sm w-full border border-gray-700 shadow-xl animate-in zoom-in-95">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Shield className="w-8 h-8 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Некоторые карты ослаблены</h3>
+              <p className="text-sm text-gray-400">
+                У вас есть карты с 0 HP в колоде. Они не смогут участвовать в бою, пока не восстановят здоровье.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                variant="gradient"
+                className="w-full"
+                onClick={handleLowHpWarningGoHome}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Выполнить задачи
+              </Button>
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleLowHpWarningContinue}
+              >
+                Продолжить
+              </Button>
+              <button
+                onClick={handleLowHpWarningDontShow}
+                className="w-full text-sm text-gray-500 hover:text-gray-300 py-2 transition-colors"
+              >
+                Не показывать снова
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

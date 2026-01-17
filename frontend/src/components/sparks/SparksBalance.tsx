@@ -14,7 +14,10 @@ interface SparksBalanceProps {
 
 export function SparksBalance({ showBuyButton = true, compact = false }: SparksBalanceProps) {
   const router = useRouter();
-  const { user } = useAppStore();
+  const { user, isTelegramEnvironment } = useAppStore();
+
+  // Hide buy button when not in Telegram (store uses Telegram Stars)
+  const canShowBuyButton = showBuyButton && isTelegramEnvironment;
 
   const { data } = useQuery({
     queryKey: ['sparks', 'balance'],
@@ -26,6 +29,15 @@ export function SparksBalance({ showBuyButton = true, compact = false }: SparksB
   const sparks = data?.data?.sparks ?? user?.sparks ?? 0;
 
   if (compact) {
+    // When not in Telegram, just show balance without click functionality
+    if (!isTelegramEnvironment) {
+      return (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="font-semibold text-amber-400">{sparks.toLocaleString()}</span>
+        </div>
+      );
+    }
     return (
       <button
         onClick={() => router.push('/store')}
@@ -49,7 +61,7 @@ export function SparksBalance({ showBuyButton = true, compact = false }: SparksB
             <p className="text-2xl font-bold text-amber-400">{sparks.toLocaleString()}</p>
           </div>
         </div>
-        {showBuyButton && (
+        {canShowBuyButton && (
           <button
             onClick={() => router.push('/store')}
             className="flex items-center gap-1 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-medium hover:from-amber-500 hover:to-yellow-500 transition-colors"

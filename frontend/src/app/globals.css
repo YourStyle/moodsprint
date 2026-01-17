@@ -28,10 +28,15 @@
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #1a1433;
 
-  /* Safe area - hardcoded for TMA mobile UI */
-  --safe-area-top: 70px;
+  /* Safe area - 0 by default, set via .telegram-env class for Telegram Mini App */
+  --safe-area-top: 0px;
   /* Use env() for system safe area (notch, home indicator, Android nav buttons) */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Telegram Mini App environment - add top safe area */
+body.telegram-env {
+  --safe-area-top: 70px;
 }
 
 html {

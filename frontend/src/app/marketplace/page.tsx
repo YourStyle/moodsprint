@@ -51,8 +51,15 @@ const getListingPrice = (listing: MarketListing): number => {
 export default function MarketplacePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAppStore();
+  const { user, isTelegramEnvironment } = useAppStore();
   const { t } = useLanguage();
+
+  // Redirect to home if not in Telegram environment (marketplace requires TON wallet)
+  useEffect(() => {
+    if (!isTelegramEnvironment) {
+      router.replace('/');
+    }
+  }, [isTelegramEnvironment, router]);
 
   const RARITY_LABELS: Record<string, string> = {
     common: t('rarityCommon'),

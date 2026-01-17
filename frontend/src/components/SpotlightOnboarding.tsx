@@ -6,6 +6,7 @@ import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
 import { useLanguage } from '@/lib/i18n';
+import { useAppStore } from '@/lib/store';
 
 export interface OnboardingStep {
   id: string;
@@ -39,6 +40,7 @@ export function SpotlightOnboarding({
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [isCompleted, setIsCompleted] = useState(true);
   const { t } = useLanguage();
+  const { setSpotlightActive } = useAppStore();
 
   // Check if onboarding was already completed
   useEffect(() => {
@@ -48,10 +50,11 @@ export function SpotlightOnboarding({
       const timer = setTimeout(() => {
         setIsCompleted(false);
         setCurrentStep(0);
+        setSpotlightActive(true); // Block other modals while spotlight is active
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [storageKey, steps.length]);
+  }, [storageKey, steps.length, setSpotlightActive]);
 
   // Update target element position
   useEffect(() => {
@@ -91,11 +94,17 @@ export function SpotlightOnboarding({
     } else {
       // Complete onboarding
       localStorage.setItem(`onboarding_${storageKey}`, 'true');
+      localStorage.setItem('first_visit_completed', 'true'); // Mark first visit as done
+      // Set first login date (for daily bonus / mood check to skip first day)
+      if (!localStorage.getItem('first_login_date')) {
+        localStorage.setItem('first_login_date', new Date().toDateString());
+      }
       setIsCompleted(true);
       setCurrentStep(-1);
+      setSpotlightActive(false); // Allow other modals to show
       onComplete?.();
     }
-  }, [currentStep, steps.length, storageKey, onComplete]);
+  }, [currentStep, steps.length, storageKey, onComplete, setSpotlightActive]);
 
   const handlePrev = useCallback(() => {
     hapticFeedback('light');
@@ -107,10 +116,16 @@ export function SpotlightOnboarding({
   const handleSkip = useCallback(() => {
     hapticFeedback('light');
     localStorage.setItem(`onboarding_${storageKey}`, 'true');
+    localStorage.setItem('first_visit_completed', 'true'); // Mark first visit as done
+    // Set first login date (for daily bonus / mood check to skip first day)
+    if (!localStorage.getItem('first_login_date')) {
+      localStorage.setItem('first_login_date', new Date().toDateString());
+    }
     setIsCompleted(true);
     setCurrentStep(-1);
+    setSpotlightActive(false); // Allow other modals to show
     onComplete?.();
-  }, [storageKey, onComplete]);
+  }, [storageKey, onComplete, setSpotlightActive]);
 
   if (isCompleted || currentStep < 0 || !targetRect) {
     return <>{children}</>;
