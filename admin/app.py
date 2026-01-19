@@ -15,6 +15,24 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL", "postgresql://moodsprint:moodsprint@db:5432/moodsprint"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["APPLICATION_ROOT"] = "/admin"
+
+
+# Middleware to handle reverse proxy with path prefix
+class PrefixMiddleware:
+    def __init__(self, app, prefix="/admin"):
+        self.app = app
+        self.prefix = prefix
+
+    def __call__(self, environ, start_response):
+        # Check if path starts with prefix
+        if environ.get("PATH_INFO", "").startswith(self.prefix):
+            environ["PATH_INFO"] = environ["PATH_INFO"][len(self.prefix):] or "/"
+            environ["SCRIPT_NAME"] = self.prefix
+        return self.app(environ, start_response)
+
+
+app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix="/admin")
 
 db = SQLAlchemy(app)
 
