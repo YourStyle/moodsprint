@@ -3686,5 +3686,341 @@ def delete_multiple_gallery_images():
     })
 
 
+# ============ Media Browser (Unified Storage) ============
+
+MEDIA_DIR = "/app/media"
+
+
+def get_media_tree(base_path: str = "") -> dict:
+    """Get folder tree structure from media directory."""
+    import os
+    from pathlib import Path
+
+    full_path = os.path.join(MEDIA_DIR, base_path) if base_path else MEDIA_DIR
+
+    if not os.path.exists(full_path):
+        os.makedirs(full_path, exist_ok=True)
+
+    items = []
+
+    try:
+        for entry in os.scandir(full_path):
+            if entry.name.startswith('.'):
+                continue
+
+            item = {
+                "name": entry.name,
+                "path": os.path.join(base_path, entry.name) if base_path else entry.name,
+                "is_dir": entry.is_dir(),
+            }
+
+            if entry.is_file():
+                stat = entry.stat()
+                item["size"] = stat.st_size
+                item["modified"] = datetime.fromtimestamp(stat.st_mtime).isoformat()
+                ext = entry.name.rsplit(".", 1)[-1].lower() if "." in entry.name else ""
+                item["is_image"] = ext in {"png", "jpg", "jpeg", "gif", "webp"}
+                if item["is_image"]:
+                    item["url"] = f"/media/{item['path']}"
+            else:
+                # Count items in folder
+                try:
+                    item["items_count"] = len([f for f in os.listdir(entry.path) if not f.startswith('.')])
+                except:
+                    item["items_count"] = 0
+
+            items.append(item)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+    # Sort: folders first, then files by name
+    items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+
+    return {
+        "current_path": base_path,
+        "items": items,
+    }
+
+
+@app.route("/media")
+@login_required
+def media_browser():
+    """Media browser page with folder support."""
+    path = request.args.get("path", "")
+    # Security: prevent path traversal
+    if ".." in path:
+        path = ""
+
+    data = get_media_tree(path)
+
+    # Build breadcrumbs
+    breadcrumbs = [{"name": "Media", "path": ""}]
+    if path:
+        parts = path.split("/")
+        current = ""
+        for part in parts:
+            current = f"{current}/{part}" if current else part
+            breadcrumbs.append({"name": part, "path": current})
+
+    return render_template(
+        "media.html",
+        current_path=path,
+        breadcrumbs=breadcrumbs,
+        items=data.get("items", []),
+        error=data.get("error"),
+    )
+
+
+@app.route("/media/api/list")
+@login_required
+def media_list_api():
+    """API to list media files and folders."""
+    path = request.args.get("path", "")
+    if ".." in path:
+        return jsonify({"success": False, "error": "Invalid path"}), 400
+
+    data = get_media_tree(path)
+    return jsonify({"success": True, **data})
+
+
+@app.route("/media/api/create-folder", methods=["POST"])
+@login_required
+def media_create_folder():
+    """Create a new folder in media storage."""
+    data = request.json or {}
+    parent_path = data.get("parent_path", "")
+    folder_name = data.get("name", "").strip()
+
+    if not folder_name:
+        return jsonify({"success": False, "error": "Folder name is required"}), 400
+
+    # Security checks
+    if ".." in parent_path or ".." in folder_name:
+        return jsonify({"success": False, "error": "Invalid path"}), 400
+
+    if "/" in folder_name or "\\" in folder_name:
+        return jsonify({"success": False, "error": "Folder name cannot contain slashes"}), 400
+
+    # Sanitize folder name
+    safe_name = "".join(c for c in folder_name if c.isalnum() or c in "-_ ").strip()
+    if not safe_name:
+        return jsonify({"success": False, "error": "Invalid folder name"}), 400
+
+    full_path = os.path.join(MEDIA_DIR, parent_path, safe_name) if parent_path else os.path.join(MEDIA_DIR, safe_name)
+
+    if os.path.exists(full_path):
+        return jsonify({"success": False, "error": "Folder already exists"}), 400
+
+    try:
+        os.makedirs(full_path, exist_ok=True)
+        new_path = os.path.join(parent_path, safe_name) if parent_path else safe_name
+        return jsonify({
+            "success": True,
+            "folder": {
+                "name": safe_name,
+                "path": new_path,
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/media/api/upload", methods=["POST"])
+@login_required
+def media_upload():
+    """Upload files to media storage."""
+    import uuid
+
+    target_path = request.form.get("path", "")
+
+    # Security check
+    if ".." in target_path:
+        return jsonify({"success": False, "error": "Invalid path"}), 400
+
+    if "files" not in request.files:
+        return jsonify({"success": False, "error": "No files provided"}), 400
+
+    files = request.files.getlist("files")
+    if not files or all(f.filename == "" for f in files):
+        return jsonify({"success": False, "error": "No files selected"}), 400
+
+    # Ensure target directory exists
+    full_target = os.path.join(MEDIA_DIR, target_path) if target_path else MEDIA_DIR
+    os.makedirs(full_target, exist_ok=True)
+
+    uploaded = []
+    errors = []
+
+    allowed_extensions = {"png", "jpg", "jpeg", "gif", "webp", "svg", "mp4", "webm", "pdf"}
+
+    for file in files:
+        if file.filename == "":
+            continue
+
+        # Check extension
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in allowed_extensions:
+            errors.append(f"{file.filename}: invalid type")
+            continue
+
+        try:
+            # Sanitize and create unique filename
+            original_name = file.filename.rsplit(".", 1)[0]
+            safe_name = "".join(c for c in original_name if c.isalnum() or c in "-_").strip()
+            if not safe_name:
+                safe_name = "file"
+
+            filename = f"{safe_name}_{uuid.uuid4().hex[:6]}.{ext}"
+            filepath = os.path.join(full_target, filename)
+
+            file.save(filepath)
+
+            file_path = os.path.join(target_path, filename) if target_path else filename
+            is_image = ext in {"png", "jpg", "jpeg", "gif", "webp"}
+
+            uploaded.append({
+                "filename": filename,
+                "path": file_path,
+                "url": f"/media/{file_path}" if is_image else None,
+                "is_image": is_image,
+            })
+        except Exception as e:
+            errors.append(f"{file.filename}: {str(e)}")
+
+    return jsonify({
+        "success": True,
+        "uploaded": uploaded,
+        "uploaded_count": len(uploaded),
+        "errors": errors,
+    })
+
+
+@app.route("/media/api/delete", methods=["POST"])
+@login_required
+def media_delete():
+    """Delete a file or folder from media storage."""
+    import shutil
+
+    data = request.json or {}
+    path = data.get("path", "")
+
+    if not path:
+        return jsonify({"success": False, "error": "Path is required"}), 400
+
+    # Security check
+    if ".." in path:
+        return jsonify({"success": False, "error": "Invalid path"}), 400
+
+    full_path = os.path.join(MEDIA_DIR, path)
+
+    if not os.path.exists(full_path):
+        return jsonify({"success": False, "error": "Path not found"}), 404
+
+    try:
+        if os.path.isdir(full_path):
+            shutil.rmtree(full_path)
+        else:
+            os.remove(full_path)
+
+        return jsonify({"success": True, "message": f"Deleted: {path}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/media/api/delete-multiple", methods=["POST"])
+@login_required
+def media_delete_multiple():
+    """Delete multiple files/folders from media storage."""
+    import shutil
+
+    data = request.json or {}
+    paths = data.get("paths", [])
+
+    if not paths:
+        return jsonify({"success": False, "error": "No paths provided"}), 400
+
+    deleted = []
+    errors = []
+
+    for path in paths:
+        # Security check
+        if ".." in path:
+            errors.append(f"{path}: invalid path")
+            continue
+
+        full_path = os.path.join(MEDIA_DIR, path)
+
+        if not os.path.exists(full_path):
+            errors.append(f"{path}: not found")
+            continue
+
+        try:
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+            else:
+                os.remove(full_path)
+            deleted.append(path)
+        except Exception as e:
+            errors.append(f"{path}: {str(e)}")
+
+    return jsonify({
+        "success": True,
+        "deleted": deleted,
+        "deleted_count": len(deleted),
+        "errors": errors,
+    })
+
+
+@app.route("/media/api/rename", methods=["POST"])
+@login_required
+def media_rename():
+    """Rename a file or folder."""
+    data = request.json or {}
+    old_path = data.get("path", "")
+    new_name = data.get("new_name", "").strip()
+
+    if not old_path or not new_name:
+        return jsonify({"success": False, "error": "Path and new_name are required"}), 400
+
+    # Security checks
+    if ".." in old_path or ".." in new_name or "/" in new_name or "\\" in new_name:
+        return jsonify({"success": False, "error": "Invalid path or name"}), 400
+
+    full_old_path = os.path.join(MEDIA_DIR, old_path)
+
+    if not os.path.exists(full_old_path):
+        return jsonify({"success": False, "error": "Path not found"}), 404
+
+    # Get parent directory and construct new path
+    parent_dir = os.path.dirname(full_old_path)
+
+    # Preserve extension for files
+    if os.path.isfile(full_old_path):
+        old_ext = old_path.rsplit(".", 1)[-1] if "." in old_path else ""
+        if old_ext and not new_name.endswith(f".{old_ext}"):
+            new_name = f"{new_name}.{old_ext}"
+
+    full_new_path = os.path.join(parent_dir, new_name)
+
+    if os.path.exists(full_new_path):
+        return jsonify({"success": False, "error": "A file/folder with this name already exists"}), 400
+
+    try:
+        os.rename(full_old_path, full_new_path)
+
+        # Calculate new relative path
+        old_parent = os.path.dirname(old_path)
+        new_path = os.path.join(old_parent, new_name) if old_parent else new_name
+
+        return jsonify({
+            "success": True,
+            "old_path": old_path,
+            "new_path": new_path,
+            "new_name": new_name,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

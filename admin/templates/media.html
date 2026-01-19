@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block title %}Media Browser - Admin{% endblock %}
+{% block header %}Media Browser{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Breadcrumbs and Actions -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex items-center justify-between">
+            <!-- Breadcrumbs -->
+            <nav class="flex items-center space-x-2 text-sm">
+                {% for crumb in breadcrumbs %}
+                {% if loop.last %}
+                <span class="text-gray-900 font-medium">{{ crumb.name }}</span>
+                {% else %}
+                <a href="{{ url_for('media_browser', path=crumb.path) }}" class="text-purple-600 hover:text-purple-800">{{ crumb.name }}</a>
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                {% endif %}
+                {% endfor %}
+            </nav>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2">
+                <button onclick="openCreateFolderModal()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                    New Folder
+                </button>
+                <button onclick="document.getElementById('fileUpload').click()" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Upload
+                </button>
+                <input type="file" id="fileUpload" multiple accept="image/*,.pdf,.svg" class="hidden" onchange="uploadFiles(this.files)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Selection Actions (hidden by default) -->
+    <div id="selectionBar" class="bg-purple-50 border border-purple-200 rounded-lg p-3 hidden">
+        <div class="flex items-center justify-between">
+            <span class="text-sm text-purple-700"><span id="selectedCount">0</span> selected</span>
+            <div class="flex items-center gap-2">
+                <button onclick="deleteSelected()" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm">
+                    Delete Selected
+                </button>
+                <button onclick="clearSelection()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+        <strong>Unified Media Storage</strong> - Files are stored at <code class="bg-blue-100 px-1 rounded">/media/</code> and served via nginx.
+        URLs format: <code class="bg-blue-100 px-1 rounded">https://moodsprint.ru/media/path/to/file.jpg</code>
+    </div>
+
+    {% if error %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Content Grid -->
+    <div class="bg-white rounded-lg shadow">
+        {% if items %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
+            {% for item in items %}
+            <div class="group relative" data-path="{{ item.path }}" data-is-dir="{{ item.is_dir|lower }}">
+                {% if item.is_dir %}
+                <!-- Folder -->
+                <a href="{{ url_for('media_browser', path=item.path) }}" class="block p-4 rounded-lg border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-colors">
+                    <div class="flex flex-col items-center">
+                        <div class="w-16 h-16 flex items-center justify-center">
+                            <svg class="w-12 h-12 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm text-gray-700 text-center mt-2 truncate max-w-full">{{ item.name }}</span>
+                        <span class="text-xs text-gray-400">{{ item.items_count }} items</span>
+                    </div>
+                </a>
+                <!-- Folder actions -->
+                <div class="absolute top-1 right-1 hidden group-hover:flex items-center gap-1">
+                    <button onclick="event.preventDefault(); renameItem('{{ item.path }}', '{{ item.name }}', true)"
+                            class="p-1.5 bg-white rounded-lg shadow hover:bg-gray-100" title="Rename">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="event.preventDefault(); deleteItem('{{ item.path }}')"
+                            class="p-1.5 bg-white rounded-lg shadow hover:bg-red-100" title="Delete">
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                {% elif item.is_image %}
+                <!-- Image file -->
+                <div class="relative cursor-pointer" onclick="toggleSelect('{{ item.path }}')">
+                    <div class="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-300 bg-gray-100 transition-colors"
+                         id="item-{{ item.path|replace('/', '-')|replace('.', '-') }}">
+                        <img src="{{ item.url }}" alt="{{ item.name }}" class="w-full h-full object-cover"
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23ccc%22><path d=%22M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z%22/></svg>'">
+                    </div>
+                    <div class="text-xs text-gray-600 text-center mt-1 truncate">{{ item.name }}</div>
+                    <!-- Selection checkbox -->
+                    <div class="absolute top-1 left-1 hidden group-hover:block">
+                        <input type="checkbox" class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 selection-checkbox"
+                               data-path="{{ item.path }}" onclick="event.stopPropagation(); updateSelectionCheckbox(this)">
+                    </div>
+                    <!-- File actions -->
+                    <div class="absolute top-1 right-1 hidden group-hover:flex items-center gap-1">
+                        <button onclick="event.stopPropagation(); copyUrl('{{ item.url }}')"
+                                class="p-1.5 bg-white rounded-lg shadow hover:bg-gray-100" title="Copy URL">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                            </svg>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteItem('{{ item.path }}')"
+                                class="p-1.5 bg-white rounded-lg shadow hover:bg-red-100" title="Delete">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Other file -->
+                <div class="p-4 rounded-lg border-2 border-transparent hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer group"
+                     onclick="toggleSelect('{{ item.path }}')">
+                    <div class="flex flex-col items-center">
+                        <div class="w-16 h-16 flex items-center justify-center">
+                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-sm text-gray-700 text-center mt-2 truncate max-w-full">{{ item.name }}</span>
+                        <span class="text-xs text-gray-400">{{ (item.size / 1024)|round(1) }} KB</span>
+                    </div>
+                    <!-- File actions -->
+                    <div class="absolute top-1 right-1 hidden group-hover:flex items-center gap-1">
+                        <button onclick="event.stopPropagation(); deleteItem('{{ item.path }}')"
+                                class="p-1.5 bg-white rounded-lg shadow hover:bg-red-100" title="Delete">
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 text-center">
+            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+            <p class="text-gray-500 mb-4">This folder is empty</p>
+            <div class="flex items-center justify-center gap-2">
+                <button onclick="openCreateFolderModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                    Create Folder
+                </button>
+                <button onclick="document.getElementById('fileUpload').click()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm">
+                    Upload Files
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Upload Progress -->
+    <div id="uploadProgress" class="hidden fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 w-80">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium">Uploading...</span>
+            <span id="uploadProgressText" class="text-sm text-gray-500">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+            <div id="uploadProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Folder Modal -->
+<div id="createFolderModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Create New Folder</h3>
+                <button onclick="closeCreateFolderModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Folder Name</label>
+                <input type="text" id="newFolderName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="my-folder">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="createFolder()" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Create
+                </button>
+                <button onclick="closeCreateFolderModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Modal -->
+<div id="renameModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Rename</h3>
+                <button onclick="closeRenameModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="renameOldPath">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">New Name</label>
+                <input type="text" id="renameNewName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="doRename()" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Rename
+                </button>
+                <button onclick="closeRenameModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const currentPath = '{{ current_path }}';
+const selectedItems = new Set();
+
+// Upload files
+async function uploadFiles(files) {
+    if (!files || files.length === 0) return;
+
+    const formData = new FormData();
+    formData.append('path', currentPath);
+    for (const file of files) {
+        formData.append('files', file);
+    }
+
+    // Show progress
+    const progressEl = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const progressText = document.getElementById('uploadProgressText');
+    progressEl.classList.remove('hidden');
+    progressBar.style.width = '0%';
+
+    try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/media/api/upload', true);
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '%';
+            }
+        };
+
+        xhr.onload = () => {
+            progressEl.classList.add('hidden');
+            if (xhr.status === 200) {
+                const result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Upload failed: ' + result.error);
+                }
+            } else {
+                alert('Upload failed');
+            }
+        };
+
+        xhr.onerror = () => {
+            progressEl.classList.add('hidden');
+            alert('Upload failed');
+        };
+
+        xhr.send(formData);
+    } catch (e) {
+        progressEl.classList.add('hidden');
+        alert('Error: ' + e.message);
+    }
+
+    // Reset file input
+    document.getElementById('fileUpload').value = '';
+}
+
+// Create folder modal
+function openCreateFolderModal() {
+    document.getElementById('newFolderName').value = '';
+    document.getElementById('createFolderModal').classList.remove('hidden');
+    document.getElementById('newFolderName').focus();
+}
+
+function closeCreateFolderModal() {
+    document.getElementById('createFolderModal').classList.add('hidden');
+}
+
+async function createFolder() {
+    const name = document.getElementById('newFolderName').value.trim();
+    if (!name) {
+        alert('Please enter a folder name');
+        return;
+    }
+
+    try {
+        const response = await fetch('/media/api/create-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parent_path: currentPath, name: name })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Delete item
+async function deleteItem(path) {
+    if (!confirm(`Delete "${path}"?`)) return;
+
+    try {
+        const response = await fetch('/media/api/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: path })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Rename modal
+function renameItem(path, currentName, isDir) {
+    document.getElementById('renameOldPath').value = path;
+    document.getElementById('renameNewName').value = currentName;
+    document.getElementById('renameModal').classList.remove('hidden');
+    document.getElementById('renameNewName').focus();
+}
+
+function closeRenameModal() {
+    document.getElementById('renameModal').classList.add('hidden');
+}
+
+async function doRename() {
+    const oldPath = document.getElementById('renameOldPath').value;
+    const newName = document.getElementById('renameNewName').value.trim();
+
+    if (!newName) {
+        alert('Please enter a new name');
+        return;
+    }
+
+    try {
+        const response = await fetch('/media/api/rename', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: oldPath, new_name: newName })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Copy URL
+function copyUrl(url) {
+    const fullUrl = window.location.origin + url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        // Show temporary feedback
+        const btn = event.target.closest('button');
+        const originalTitle = btn.title;
+        btn.title = 'Copied!';
+        setTimeout(() => { btn.title = originalTitle; }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+// Selection
+function toggleSelect(path) {
+    if (selectedItems.has(path)) {
+        selectedItems.delete(path);
+    } else {
+        selectedItems.add(path);
+    }
+    updateSelectionUI();
+}
+
+function updateSelectionCheckbox(checkbox) {
+    const path = checkbox.dataset.path;
+    if (checkbox.checked) {
+        selectedItems.add(path);
+    } else {
+        selectedItems.delete(path);
+    }
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    const selectionBar = document.getElementById('selectionBar');
+    const countEl = document.getElementById('selectedCount');
+
+    if (selectedItems.size > 0) {
+        selectionBar.classList.remove('hidden');
+        countEl.textContent = selectedItems.size;
+    } else {
+        selectionBar.classList.add('hidden');
+    }
+
+    // Update checkboxes
+    document.querySelectorAll('.selection-checkbox').forEach(cb => {
+        cb.checked = selectedItems.has(cb.dataset.path);
+    });
+
+    // Update item borders
+    document.querySelectorAll('[data-path]').forEach(el => {
+        const path = el.dataset.path;
+        const itemEl = document.getElementById('item-' + path.replace(/\//g, '-').replace(/\./g, '-'));
+        if (itemEl) {
+            if (selectedItems.has(path)) {
+                itemEl.classList.add('border-purple-500');
+                itemEl.classList.remove('border-transparent');
+            } else {
+                itemEl.classList.remove('border-purple-500');
+                itemEl.classList.add('border-transparent');
+            }
+        }
+    });
+}
+
+function clearSelection() {
+    selectedItems.clear();
+    updateSelectionUI();
+}
+
+async function deleteSelected() {
+    if (selectedItems.size === 0) return;
+
+    if (!confirm(`Delete ${selectedItems.size} selected items?`)) return;
+
+    try {
+        const response = await fetch('/media/api/delete-multiple', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paths: Array.from(selectedItems) })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// Drag and drop
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.body;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    dropZone.addEventListener('dragover', () => {
+        dropZone.classList.add('bg-purple-50');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('bg-purple-50');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        dropZone.classList.remove('bg-purple-50');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeCreateFolderModal();
+        closeRenameModal();
+    }
+    if (e.key === 'Enter') {
+        if (!document.getElementById('createFolderModal').classList.contains('hidden')) {
+            createFolder();
+        }
+        if (!document.getElementById('renameModal').classList.contains('hidden')) {
+            doRename();
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -356,7 +356,8 @@
 </div>
 
 <script>
-const API_BASE = 'https://moodsprint.ru';
+// Use relative URLs - admin serves its own static files
+// On client, nginx routes /static/gallery/ to admin
 const loadedGenres = {};
 
 // Rarity helpers
@@ -410,7 +411,7 @@ async function loadTemplates(genre) {
             let html = '<div class="divide-y divide-gray-100">';
 
             for (const t of data.templates) {
-                const imageUrl = t.image_url ? `${API_BASE}${t.image_url}` : null;
+                const imageUrl = t.image_url || null;
                 const statusClass = t.is_active ? '' : 'opacity-50';
                 const statusBadge = t.is_active
                     ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">Активен</span>'
@@ -551,7 +552,7 @@ async function editTemplate(templateId, genre) {
         // Show image preview
         const preview = document.getElementById('editImagePreview');
         if (t.image_url) {
-            preview.innerHTML = `<img src="${API_BASE}${t.image_url}" class="w-full h-full object-cover">`;
+            preview.innerHTML = `<img src="${t.image_url}" class="w-full h-full object-cover">`;
         } else {
             preview.innerHTML = `<span class="text-2xl text-gray-400">${t.emoji || '🎴'}</span>`;
         }
@@ -586,7 +587,7 @@ async function uploadTemplateImage(input) {
             status.className = 'text-xs mt-1 text-center text-green-600';
             // Update preview
             const preview = document.getElementById('editImagePreview');
-            preview.innerHTML = `<img src="${API_BASE}${result.image_url}" class="w-full h-full object-cover">`;
+            preview.innerHTML = `<img src="${result.image_url}" class="w-full h-full object-cover">`;
             // Reload templates to show new image
             const genre = document.getElementById('editGenre').value;
             loadedGenres[genre] = false;
@@ -730,33 +731,78 @@ async function importTemplates() {
     }
 }
 
-// Gallery Picker
-async function openGalleryPicker() {
+// Media Picker (uses unified media storage)
+let currentMediaPath = '';
+
+async function openGalleryPicker(path = '') {
     const modal = document.getElementById('galleryPickerModal');
     const content = document.getElementById('galleryPickerContent');
     modal.classList.remove('hidden');
+    currentMediaPath = path;
 
     try {
-        const response = await fetch('/gallery/images');
+        const response = await fetch(`/media/api/list?path=${encodeURIComponent(path)}`);
         const data = await response.json();
 
-        if (!data.success || data.images.length === 0) {
+        if (!data.success) {
+            content.innerHTML = `<div class="text-center text-red-500 col-span-full py-8">Ошибка: ${data.error}</div>`;
+            return;
+        }
+
+        const items = data.items || [];
+        const images = items.filter(i => i.is_image);
+        const folders = items.filter(i => i.is_dir);
+
+        if (items.length === 0) {
             content.innerHTML = `
                 <div class="text-center text-gray-500 col-span-full py-8">
                     <div class="text-4xl mb-2">📭</div>
-                    <p>Галерея пуста</p>
-                    <a href="/gallery" class="text-purple-600 hover:underline text-sm">Перейти в галерею для загрузки</a>
+                    <p>Папка пуста</p>
+                    <a href="/media" class="text-purple-600 hover:underline text-sm">Перейти в Media для загрузки</a>
                 </div>
             `;
             return;
         }
 
         let html = '';
-        for (const img of data.images) {
+
+        // Breadcrumb / back button
+        if (path) {
+            const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+            html += `
+                <div onclick="openGalleryPicker('${parentPath}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-gray-300 bg-gray-50 flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                        </svg>
+                        <span class="text-xs text-gray-500 mt-1">Назад</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Folders
+        for (const folder of folders) {
+            html += `
+                <div onclick="openGalleryPicker('${folder.path}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-yellow-300 bg-yellow-50 flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-10 h-10 mx-auto text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                        </svg>
+                        <span class="text-xs text-gray-600 mt-1 truncate max-w-full px-1">${folder.name}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Images
+        for (const img of images) {
             html += `
                 <div onclick="selectGalleryImage('${img.url}')"
                      class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-500 transition-colors bg-gray-100">
-                    <img src="${img.url}" alt="${img.filename}" class="w-full h-full object-cover">
+                    <img src="${img.url}" alt="${img.name}" class="w-full h-full object-cover">
                 </div>
             `;
         }
@@ -863,7 +909,7 @@ async function loadLegendaryTemplates() {
             `;
 
             for (const t of templates) {
-                const imageUrl = t.image_url ? `${API_BASE}${t.image_url}` : null;
+                const imageUrl = t.image_url || null;
                 html += `
                     <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-amber-100 hover:border-amber-300 transition-colors">
                         <div class="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 overflow-hidden">
