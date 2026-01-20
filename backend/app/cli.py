@@ -1,7 +1,6 @@
 """CLI commands for Flask application."""
 
 import click
-from flask import current_app
 from flask.cli import with_appcontext
 
 
@@ -20,8 +19,6 @@ def translate():
 @with_appcontext
 def content(dry_run):
     """Translate database content from Russian to English using OpenAI."""
-    import openai
-
     from app import db
     from app.models import (
         CampaignChapter,
@@ -31,8 +28,12 @@ def content(dry_run):
         Monster,
         MonsterCard,
     )
+    from app.services.openai_client import get_openai_client
 
-    client = openai.OpenAI(api_key=current_app.config.get("OPENAI_API_KEY"))
+    client = get_openai_client()
+    if not client:
+        click.echo("Error: OpenAI client not available. Check OPENAI_API_KEY config.")
+        return
 
     def translate_text(text: str) -> str:
         """Translate Russian text to English using OpenAI."""
