@@ -43,7 +43,7 @@ class CampaignService:
             return profile.favorite_genre
         return "fantasy"
 
-    def get_campaign_overview(self, user_id: int) -> dict[str, Any]:
+    def get_campaign_overview(self, user_id: int, lang: str = "ru") -> dict[str, Any]:
         """Get campaign overview for user (filtered by user's genre)."""
         progress = self.get_user_progress(user_id)
         user_genre = self.get_user_genre(user_id)
@@ -65,7 +65,7 @@ class CampaignService:
 
         chapters_data = []
         for chapter in chapters:
-            chapter_data = chapter.to_dict()
+            chapter_data = chapter.to_dict(lang)
 
             # Check if unlocked
             is_unlocked = chapter.number <= progress.current_chapter
@@ -100,7 +100,9 @@ class CampaignService:
             "chapters": chapters_data,
         }
 
-    def get_chapter_details(self, user_id: int, chapter_number: int) -> dict[str, Any]:
+    def get_chapter_details(
+        self, user_id: int, chapter_number: int, lang: str = "ru"
+    ) -> dict[str, Any]:
         """Get detailed info about a chapter."""
         progress = self.get_user_progress(user_id)
         user_genre = self.get_user_genre(user_id)
@@ -125,7 +127,7 @@ class CampaignService:
         levels_data = []
 
         for level in levels:
-            level_data = level.to_dict()
+            level_data = level.to_dict(lang)
 
             # Get completion info
             completion = CampaignLevelCompletion.query.filter_by(
@@ -158,14 +160,23 @@ class CampaignService:
         # Get chapter rewards
         rewards = CampaignReward.query.filter_by(chapter_id=chapter.id).all()
 
+        # Get localized story_intro
+        story_intro = (
+            chapter.story_intro_en
+            if lang == "en" and chapter.story_intro_en
+            else chapter.story_intro
+        )
+
         return {
-            "chapter": chapter.to_dict(),
+            "chapter": chapter.to_dict(lang),
             "levels": levels_data,
-            "rewards": [r.to_dict() for r in rewards],
-            "story_intro": chapter.story_intro,
+            "rewards": [r.to_dict(lang) for r in rewards],
+            "story_intro": story_intro,
         }
 
-    def start_level(self, user_id: int, level_id: int) -> dict[str, Any]:
+    def start_level(
+        self, user_id: int, level_id: int, lang: str = "ru"
+    ) -> dict[str, Any]:
         """Start a campaign level (initiates battle)."""
         level = CampaignLevel.query.get(level_id)
         if not level:
@@ -192,11 +203,18 @@ class CampaignService:
             if not prev_completion:
                 return {"error": "previous_level_not_completed"}
 
+        # Get localized dialogue_before
+        dialogue_before = (
+            level.dialogue_before_en
+            if lang == "en" and level.dialogue_before_en
+            else level.dialogue_before
+        )
+
         # Return level data for battle initiation
         return {
             "success": True,
-            "level": level.to_dict(),
-            "dialogue_before": level.dialogue_before,
+            "level": level.to_dict(lang),
+            "dialogue_before": dialogue_before,
             "monster_id": level.monster_id,
             "difficulty_multiplier": level.difficulty_multiplier,
         }
@@ -264,6 +282,7 @@ class CampaignService:
         rounds: int,
         hp_remaining: int,
         cards_lost: int,
+        lang: str = "ru",
     ) -> dict[str, Any]:
         """Complete a campaign level after battle."""
         level = CampaignLevel.query.get(level_id)
@@ -383,12 +402,24 @@ class CampaignService:
             "rewards": rewards,
         }
 
-        if level.dialogue_after:
-            result["dialogue_after"] = level.dialogue_after
+        # Get localized dialogue_after
+        dialogue_after = (
+            level.dialogue_after_en
+            if lang == "en" and level.dialogue_after_en
+            else level.dialogue_after
+        )
+        if dialogue_after:
+            result["dialogue_after"] = dialogue_after
 
         # Show outro if this is the final level of the chapter
-        if level.is_final and level.chapter.story_outro:
-            result["story_outro"] = level.chapter.story_outro
+        if level.is_final:
+            story_outro = (
+                level.chapter.story_outro_en
+                if lang == "en" and level.chapter.story_outro_en
+                else level.chapter.story_outro
+            )
+            if story_outro:
+                result["story_outro"] = story_outro
 
         return result
 

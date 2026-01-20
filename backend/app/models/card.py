@@ -25,11 +25,13 @@ class CardAbility(str, Enum):
     POISON = "poison"  # Deal 10% damage over 3 turns
 
 
-# Ability configuration
+# Ability configuration with localization
 ABILITY_CONFIG = {
     CardAbility.HEAL: {
         "name": "Исцеление",
+        "name_en": "Healing",
         "description": "Восстанавливает 30% HP союзной карте",
+        "description_en": "Restores 30% HP to an ally card",
         "emoji": "💚",
         "cooldown": 3,
         "target": "ally",  # ally, enemy, self
@@ -37,7 +39,9 @@ ABILITY_CONFIG = {
     },
     CardAbility.DOUBLE_STRIKE: {
         "name": "Двойной удар",
+        "name_en": "Double Strike",
         "description": "Атакует дважды за ход (60% урона каждый удар)",
+        "description_en": "Attacks twice per turn (60% damage each hit)",
         "emoji": "⚔️",
         "cooldown": 2,
         "target": "enemy",
@@ -45,7 +49,9 @@ ABILITY_CONFIG = {
     },
     CardAbility.SHIELD: {
         "name": "Щит",
+        "name_en": "Shield",
         "description": "Накладывает щит на союзника, блокируя следующую атаку",
+        "description_en": "Places a shield on an ally, blocking the next attack",
         "emoji": "🛡️",
         "cooldown": 4,
         "target": "ally",  # Can now target allies
@@ -53,7 +59,9 @@ ABILITY_CONFIG = {
     },
     CardAbility.POISON: {
         "name": "Яд",
+        "name_en": "Poison",
         "description": "Отравляет врага: 10% урона каждый ход 3 хода",
+        "description_en": "Poisons enemy: 10% damage per turn for 3 turns",
         "emoji": "☠️",
         "cooldown": 3,
         "target": "enemy",
@@ -61,6 +69,32 @@ ABILITY_CONFIG = {
         "duration": 3,
     },
 }
+
+
+def get_ability_info(ability_type: str, lang: str = "ru") -> dict | None:
+    """Get ability info with localization."""
+    try:
+        ability_enum = CardAbility(ability_type)
+        config = ABILITY_CONFIG.get(ability_enum, {})
+        if not config:
+            return None
+        use_en = lang == "en"
+        return {
+            "type": ability_type,
+            "name": (
+                config.get("name_en") if use_en else config.get("name", ability_type)
+            ),
+            "description": (
+                config.get("description_en")
+                if use_en
+                else config.get("description", "")
+            ),
+            "emoji": config.get("emoji", "✨"),
+            "cooldown": config.get("cooldown", 0),
+        }
+    except ValueError:
+        return None
+
 
 # Chance of getting an ability by rarity
 # Only rare+ cards get abilities (guaranteed)
@@ -103,6 +137,8 @@ class CardTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    name_en = db.Column(db.String(100), nullable=True)  # English translation
+    description_en = db.Column(db.Text, nullable=True)  # English translation
     genre = db.Column(db.String(50), nullable=False)
 
     # Base stats (will be modified by rarity when card is generated)
@@ -123,12 +159,23 @@ class CardTemplate(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        # Use English if available and requested
+        name = self.name_en if lang == "en" and self.name_en else self.name
+        description = (
+            self.description_en
+            if lang == "en" and self.description_en
+            else self.description
+        )
         return {
             "id": self.id,
-            "name": self.name,
-            "description": self.description,
+            "name": name,
+            "description": description,
+            "name_ru": self.name,
+            "name_en": self.name_en,
+            "description_ru": self.description,
+            "description_en": self.description_en,
             "genre": self.genre,
             "base_hp": self.base_hp,
             "base_attack": self.base_attack,

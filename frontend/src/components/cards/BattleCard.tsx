@@ -5,6 +5,7 @@ import { Heart, Swords, Skull, Shield, Sparkles, Plus, Droplets, Zap } from 'luc
 import { DamageNumber } from './DamageNumber';
 import { HealNumber } from './HealNumber';
 import type { AbilityInfo, StatusEffect } from '@/domain/types';
+import { useTranslation } from '@/lib/i18n';
 
 export interface BattleCardProps {
   id: number | string;
@@ -116,6 +117,7 @@ export function BattleCard({
   healReceived = null,
   onHealClick,
 }: BattleCardProps) {
+  const { t } = useTranslation();
   const hasPoisonEffect = statusEffects.some(e => e.type === 'poison');
   const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
@@ -463,7 +465,7 @@ export function BattleCard({
               config.glow,
               isReady && 'animate-pulse'
             )}
-            title={`${abilityInfo.name}${!isReady ? `: перезарядка ${abilityCooldown}` : ': готово!'}`}
+            title={`${abilityInfo.name}${!isReady ? `: ${t('cooldownLabel')} ${abilityCooldown}` : `: ${t('cooldownReady')}`}`}
           >
             {isReady ? config.icon : (
               <span className="text-[10px] font-bold text-gray-400">{abilityCooldown}</span>

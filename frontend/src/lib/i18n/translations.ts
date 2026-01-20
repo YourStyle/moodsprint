@@ -480,6 +480,28 @@ export const translations = {
     spotlightNext: 'Далее',
     spotlightDone: 'Готово',
     spotlightSkip: 'Пропустить',
+
+    // Genres
+    genreMagic: 'Магия',
+    genreFantasy: 'Фэнтези',
+    genreScifi: 'Sci-Fi',
+    genreCyberpunk: 'Киберпанк',
+    genreAnime: 'Аниме',
+
+    // Card UI strings
+    noDescription: 'Нет описания',
+    genre: 'Жанр',
+    received: 'Получена',
+    cooldownTurns: 'Перезарядка',
+    turn: 'ход',
+    turns: 'хода',
+    turnsPlural: 'ходов',
+    recovery: 'Восстановление',
+    skipCooldown: 'Пропустить',
+    tapToReturn: 'Нажми чтобы вернуться',
+    sellForStars: 'Продать за Stars',
+    cooldownReady: 'готово!',
+    cooldownLabel: 'перезарядка',
   },
 
   en: {
@@ -963,6 +985,28 @@ export const translations = {
     spotlightNext: 'Next',
     spotlightDone: 'Done',
     spotlightSkip: 'Skip',
+
+    // Genres
+    genreMagic: 'Magic',
+    genreFantasy: 'Fantasy',
+    genreScifi: 'Sci-Fi',
+    genreCyberpunk: 'Cyberpunk',
+    genreAnime: 'Anime',
+
+    // Card UI strings
+    noDescription: 'No description',
+    genre: 'Genre',
+    received: 'Received',
+    cooldownTurns: 'Cooldown',
+    turn: 'turn',
+    turns: 'turns',
+    turnsPlural: 'turns',
+    recovery: 'Recovery',
+    skipCooldown: 'Skip',
+    tapToReturn: 'Tap to return',
+    sellForStars: 'Sell for Stars',
+    cooldownReady: 'ready!',
+    cooldownLabel: 'cooldown',
   },
 } as const;
 

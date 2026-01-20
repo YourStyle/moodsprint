@@ -23,6 +23,12 @@ class CampaignChapter(db.Model):
     story_intro = db.Column(db.Text, nullable=True)  # Shown at chapter start
     story_outro = db.Column(db.Text, nullable=True)  # Shown after boss defeat
 
+    # English translations
+    name_en = db.Column(db.String(100), nullable=True)
+    description_en = db.Column(db.Text, nullable=True)
+    story_intro_en = db.Column(db.Text, nullable=True)
+    story_outro_en = db.Column(db.Text, nullable=True)
+
     # Visual
     emoji = db.Column(db.String(10), default="📖")
     image_url = db.Column(db.String(500), nullable=True)  # Chapter cover image
@@ -53,16 +59,38 @@ class CampaignChapter(db.Model):
         cascade="all, delete-orphan",
     )
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        # Use English if available and requested
+        use_en = lang == "en"
         return {
             "id": self.id,
             "number": self.number,
-            "name": self.name,
+            "name": self.name_en if use_en and self.name_en else self.name,
             "genre": self.genre,
-            "description": self.description,
-            "story_intro": self.story_intro,
-            "story_outro": self.story_outro,
+            "description": (
+                self.description_en
+                if use_en and self.description_en
+                else self.description
+            ),
+            "story_intro": (
+                self.story_intro_en
+                if use_en and self.story_intro_en
+                else self.story_intro
+            ),
+            "story_outro": (
+                self.story_outro_en
+                if use_en and self.story_outro_en
+                else self.story_outro
+            ),
+            "name_ru": self.name,
+            "name_en": self.name_en,
+            "description_ru": self.description,
+            "description_en": self.description_en,
+            "story_intro_ru": self.story_intro,
+            "story_intro_en": self.story_intro_en,
+            "story_outro_ru": self.story_outro,
+            "story_outro_en": self.story_outro_en,
             "emoji": self.emoji,
             "image_url": self.image_url,
             "background_color": self.background_color,
@@ -106,6 +134,11 @@ class CampaignLevel(db.Model):
     # Format: [{"speaker": "Boss", "text": "...", "emoji": "👹"}, ...]
     dialogue_after = db.Column(db.JSON, nullable=True)
 
+    # English translations
+    title_en = db.Column(db.String(100), nullable=True)
+    dialogue_before_en = db.Column(db.JSON, nullable=True)
+    dialogue_after_en = db.Column(db.JSON, nullable=True)
+
     # Difficulty scaling
     difficulty_multiplier = db.Column(db.Float, default=1.0)
     required_power = db.Column(db.Integer, default=0)
@@ -129,19 +162,34 @@ class CampaignLevel(db.Model):
     # Relationships
     monster = db.relationship("Monster")
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        use_en = lang == "en"
         return {
             "id": self.id,
             "chapter_id": self.chapter_id,
             "number": self.number,
             "monster_id": self.monster_id,
-            "monster": self.monster.to_dict() if self.monster else None,
+            "monster": self.monster.to_dict(lang) if self.monster else None,
             "is_boss": self.is_boss,
             "is_final": self.is_final,
-            "title": self.title,
-            "dialogue_before": self.dialogue_before,
-            "dialogue_after": self.dialogue_after,
+            "title": self.title_en if use_en and self.title_en else self.title,
+            "dialogue_before": (
+                self.dialogue_before_en
+                if use_en and self.dialogue_before_en
+                else self.dialogue_before
+            ),
+            "dialogue_after": (
+                self.dialogue_after_en
+                if use_en and self.dialogue_after_en
+                else self.dialogue_after
+            ),
+            "title_ru": self.title,
+            "title_en": self.title_en,
+            "dialogue_before_ru": self.dialogue_before,
+            "dialogue_before_en": self.dialogue_before_en,
+            "dialogue_after_ru": self.dialogue_after,
+            "dialogue_after_en": self.dialogue_after_en,
             "difficulty_multiplier": self.difficulty_multiplier,
             "required_power": self.required_power,
             "xp_reward": self.xp_reward,
@@ -280,14 +328,27 @@ class CampaignReward(db.Model):
     description = db.Column(db.String(200), nullable=True)
     emoji = db.Column(db.String(10), default="🎁")
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    # English translations
+    name_en = db.Column(db.String(100), nullable=True)
+    description_en = db.Column(db.String(200), nullable=True)
+
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        use_en = lang == "en"
         return {
             "id": self.id,
             "chapter_id": self.chapter_id,
             "reward_type": self.reward_type,
             "reward_data": self.reward_data,
-            "name": self.name,
-            "description": self.description,
+            "name": self.name_en if use_en and self.name_en else self.name,
+            "description": (
+                self.description_en
+                if use_en and self.description_en
+                else self.description
+            ),
+            "name_ru": self.name,
+            "name_en": self.name_en,
+            "description_ru": self.description,
+            "description_en": self.description_en,
             "emoji": self.emoji,
         }

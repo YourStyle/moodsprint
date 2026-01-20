@@ -117,4 +117,9 @@ def create_app(config_name: str | None = None) -> Flask:
             "Achievement": Achievement,
         }
 
+    # Register CLI commands
+    from app import cli
+
+    cli.init_app(app)
+
     return app

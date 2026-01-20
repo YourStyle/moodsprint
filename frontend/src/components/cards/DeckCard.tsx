@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 interface SimpleAbilityInfo {
   type: string;
@@ -38,12 +39,12 @@ export interface DeckCardProps {
   onSkipCooldown?: () => void;
 }
 
-const rarityConfig = {
+const rarityStyles = {
   common: {
     gradient: 'from-slate-600/30 to-slate-700/30',
     border: 'border-slate-500/50',
     glow: '',
-    label: 'Обычная',
+    labelKey: 'rarityCommon' as const,
     labelBg: 'bg-slate-500',
     accent: 'text-slate-300',
   },
@@ -51,7 +52,7 @@ const rarityConfig = {
     gradient: 'from-emerald-600/30 to-emerald-700/30',
     border: 'border-emerald-500/50',
     glow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]',
-    label: 'Необычная',
+    labelKey: 'rarityUncommon' as const,
     labelBg: 'bg-emerald-500',
     accent: 'text-emerald-400',
   },
@@ -59,7 +60,7 @@ const rarityConfig = {
     gradient: 'from-blue-600/30 to-blue-700/30',
     border: 'border-blue-500/50',
     glow: 'shadow-[0_0_20px_rgba(59,130,246,0.3)]',
-    label: 'Редкая',
+    labelKey: 'rarityRare' as const,
     labelBg: 'bg-blue-500',
     accent: 'text-blue-400',
   },
@@ -67,7 +68,7 @@ const rarityConfig = {
     gradient: 'from-purple-600/30 to-purple-700/30',
     border: 'border-purple-500/50',
     glow: 'shadow-[0_0_25px_rgba(168,85,247,0.35)]',
-    label: 'Эпическая',
+    labelKey: 'rarityEpic' as const,
     labelBg: 'bg-purple-500',
     accent: 'text-purple-400',
   },
@@ -75,18 +76,18 @@ const rarityConfig = {
     gradient: 'from-amber-600/30 to-orange-700/30',
     border: 'border-amber-500/50',
     glow: 'shadow-[0_0_30px_rgba(245,158,11,0.4)]',
-    label: 'Легендарная',
+    labelKey: 'rarityLegendary' as const,
     labelBg: 'bg-gradient-to-r from-amber-500 to-orange-500',
     accent: 'text-amber-400',
   },
 };
 
-const genreLabels: Record<string, string> = {
-  magic: 'Магия',
-  fantasy: 'Фэнтези',
-  scifi: 'Sci-Fi',
-  cyberpunk: 'Киберпанк',
-  anime: 'Аниме',
+const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | 'genreCyberpunk' | 'genreAnime'> = {
+  magic: 'genreMagic',
+  fantasy: 'genreFantasy',
+  scifi: 'genreScifi',
+  cyberpunk: 'genreCyberpunk',
+  anime: 'genreAnime',
 };
 
 // Format cooldown time
@@ -123,9 +124,10 @@ export function DeckCard({
   cooldownRemaining = null,
   onSkipCooldown,
 }: DeckCardProps) {
+  const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
   const [displayCooldown, setDisplayCooldown] = useState(cooldownRemaining || 0);
-  const config = rarityConfig[rarity as keyof typeof rarityConfig] || rarityConfig.common;
+  const config = rarityStyles[rarity as keyof typeof rarityStyles] || rarityStyles.common;
 
   // Update cooldown timer every second
   useEffect(() => {
@@ -170,7 +172,7 @@ export function DeckCard({
 
   return (
     <div
-      className="relative w-full aspect-[3/5] perspective-1000"
+      className="relative w-full aspect-[3/4.3] perspective-1000"
       onClick={handleCardClick}
     >
       {/* Rarity badge - centered, outside of flip container so it doesn't rotate */}
@@ -181,7 +183,7 @@ export function DeckCard({
             config.labelBg
           )}
         >
-          {config.label}
+          {t(config.labelKey)}
         </div>
       )}
 
@@ -241,7 +243,7 @@ export function DeckCard({
             {/* Image - fixed square with flex-shrink-0 to prevent compression */}
             <div className={cn(
               'w-full rounded-lg overflow-hidden border border-white/10 relative flex-shrink-0',
-              compact ? 'mt-1 mb-1' : 'mt-4 mb-2',
+              compact ? 'mt-1 mb-1' : 'mt-3 mb-1',
               isOnCooldown && 'grayscale'
             )} style={{ aspectRatio: '1/1' }}>
               {imageUrl ? (
@@ -268,7 +270,7 @@ export function DeckCard({
                   <span className="text-lg font-bold text-white font-mono">
                     {formatCooldownTime(displayCooldown)}
                   </span>
-                  <span className="text-xs text-gray-400 mt-1">Восстановление</span>
+                  <span className="text-xs text-gray-400 mt-1">{t('recovery')}</span>
                   {onSkipCooldown && !compact && (
                     <button
                       onClick={(e) => {
@@ -278,7 +280,7 @@ export function DeckCard({
                       className="mt-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-lg"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      Пропустить
+                      {t('skipCooldown')}
                     </button>
                   )}
                 </div>
@@ -288,11 +290,11 @@ export function DeckCard({
             {/* Name - below image, fixed height for 2 lines */}
             <div className={cn(
               'px-1 flex items-center justify-center',
-              compact ? 'h-6' : 'h-10'
+              compact ? 'h-6' : 'h-8'
             )}>
               <h3 className={cn(
                 'font-bold text-center leading-tight line-clamp-2',
-                compact ? 'text-[10px]' : 'text-sm',
+                compact ? 'text-[10px]' : 'text-xs',
                 config.accent
               )}>
                 {name}
@@ -302,22 +304,22 @@ export function DeckCard({
             {/* Stats at bottom - no health bar */}
             <div className={cn(
               'flex items-center justify-center bg-gray-900/50 rounded-lg',
-              compact ? 'gap-2 py-1' : 'gap-4 py-1.5'
+              compact ? 'gap-2 py-1' : 'gap-3 py-1'
             )}>
               <div className="flex items-center gap-0.5">
-                <Swords className={cn(compact ? 'w-3 h-3' : 'w-4 h-4', 'text-orange-400')} />
-                <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-sm')}>{attack}</span>
+                <Swords className={cn(compact ? 'w-3 h-3' : 'w-3.5 h-3.5', 'text-orange-400')} />
+                <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-xs')}>{attack}</span>
               </div>
-              <div className={cn('w-px bg-gray-600', compact ? 'h-3' : 'h-4')} />
+              <div className={cn('w-px bg-gray-600', compact ? 'h-3' : 'h-3')} />
               <div className="flex items-center gap-0.5">
                 <Heart className={cn(
-                  compact ? 'w-3 h-3' : 'w-4 h-4',
+                  compact ? 'w-3 h-3' : 'w-3.5 h-3.5',
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )} />
                 <span className={cn(
                   'font-bold',
-                  compact ? 'text-[10px]' : 'text-sm',
+                  compact ? 'text-[10px]' : 'text-xs',
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )}>
@@ -350,14 +352,14 @@ export function DeckCard({
                 'inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-white',
                 config.labelBg
               )}>
-                {config.label}
+                {t(config.labelKey)}
               </span>
             </div>
 
             {/* Description */}
             <div className="flex-1 overflow-auto">
               <p className="text-xs text-gray-300 leading-relaxed">
-                {description || 'Нет описания'}
+                {description || t('noDescription')}
               </p>
             </div>
 
@@ -365,16 +367,16 @@ export function DeckCard({
             <div className="mt-3 pt-2 border-t border-white/10 space-y-1.5">
               {genre && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Жанр</span>
-                  <span className="text-gray-300">{genreLabels[genre] || genre}</span>
+                  <span className="text-gray-500">{t('genre')}</span>
+                  <span className="text-gray-300">{t(genreKeys[genre] || 'genreFantasy')}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">Атака</span>
+                <span className="text-gray-500">{t('attack')}</span>
                 <span className="text-yellow-400 font-medium">{attack}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">Здоровье</span>
+                <span className="text-gray-500">{t('health')}</span>
                 <span className="text-green-400 font-medium">{currentHp}/{hp}</span>
               </div>
               {abilityInfo && (
@@ -388,14 +390,14 @@ export function DeckCard({
                   </p>
                   {abilityInfo.cooldown > 0 && (
                     <p className="text-[10px] text-gray-500 mt-0.5">
-                      Перезарядка: {abilityInfo.cooldown} ход(а)
+                      {t('cooldownTurns')}: {abilityInfo.cooldown} {abilityInfo.cooldown === 1 ? t('turn') : t('turns')}
                     </p>
                   )}
                 </div>
               )}
               {createdAt && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Получена</span>
+                  <span className="text-gray-500">{t('received')}</span>
                   <span className="text-gray-300 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {formatDate(createdAt)}
@@ -406,7 +408,7 @@ export function DeckCard({
 
             {/* Tap hint */}
             <p className="text-center text-[10px] text-gray-500 mt-2">
-              Нажми чтобы вернуться
+              {t('tapToReturn')}
             </p>
           </div>
         </div>

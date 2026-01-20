@@ -5,7 +5,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.api import api_bp
 from app.services.campaign_service import CampaignService
-from app.utils import not_found, success_response, validation_error
+from app.utils import get_lang, not_found, success_response, validation_error
 
 # ============ Campaign Overview ============
 
@@ -15,9 +15,10 @@ from app.utils import not_found, success_response, validation_error
 def get_campaign_overview():
     """Get campaign overview with user's progress."""
     user_id = int(get_jwt_identity())
+    lang = get_lang()
 
     service = CampaignService()
-    result = service.get_campaign_overview(user_id)
+    result = service.get_campaign_overview(user_id, lang)
 
     return success_response(result)
 
@@ -42,14 +43,19 @@ def get_campaign_progress():
 def get_chapter_details(chapter_number: int):
     """Get chapter details with levels."""
     user_id = int(get_jwt_identity())
+    lang = get_lang()
 
     service = CampaignService()
-    result = service.get_chapter_details(user_id, chapter_number)
+    result = service.get_chapter_details(user_id, chapter_number, lang)
 
     if "error" in result:
         error_messages = {
-            "chapter_not_found": "Глава не найдена",
-            "chapter_locked": "Глава ещё не открыта",
+            "chapter_not_found": (
+                "Chapter not found" if lang == "en" else "Глава не найдена"
+            ),
+            "chapter_locked": (
+                "Chapter is locked" if lang == "en" else "Глава ещё не открыта"
+            ),
         }
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}
@@ -70,15 +76,24 @@ def start_campaign_level(level_id: int):
     Returns level data for initiating battle.
     """
     user_id = int(get_jwt_identity())
+    lang = get_lang()
 
     service = CampaignService()
-    result = service.start_level(user_id, level_id)
+    result = service.start_level(user_id, level_id, lang)
 
     if "error" in result:
         error_messages = {
-            "level_not_found": "Уровень не найден",
-            "chapter_locked": "Глава ещё не открыта",
-            "previous_level_not_completed": "Сначала пройдите предыдущий уровень",
+            "level_not_found": (
+                "Level not found" if lang == "en" else "Уровень не найден"
+            ),
+            "chapter_locked": (
+                "Chapter is locked" if lang == "en" else "Глава ещё не открыта"
+            ),
+            "previous_level_not_completed": (
+                "Complete the previous level first"
+                if lang == "en"
+                else "Сначала пройдите предыдущий уровень"
+            ),
         }
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}
@@ -133,6 +148,7 @@ def complete_campaign_level(level_id: int):
     }
     """
     user_id = int(get_jwt_identity())
+    lang = get_lang()
     data = request.get_json() or {}
 
     won = data.get("won", False)
@@ -148,10 +164,11 @@ def complete_campaign_level(level_id: int):
         rounds=rounds,
         hp_remaining=hp_remaining,
         cards_lost=cards_lost,
+        lang=lang,
     )
 
     if "error" in result:
-        return not_found("Уровень не найден")
+        return not_found("Level not found" if lang == "en" else "Уровень не найден")
 
     return success_response(result)
 

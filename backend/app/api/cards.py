@@ -18,7 +18,7 @@ from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.services.card_service import CardService
-from app.utils import not_found, success_response, validation_error
+from app.utils import get_lang, not_found, success_response, validation_error
 from app.utils.notifications import notify_trade_received
 
 # Healing requirements: tasks needed per heal
@@ -427,6 +427,7 @@ def get_card_templates():
     - genre: filter by genre (optional)
     """
     genre = request.args.get("genre")
+    lang = get_lang()
 
     query = CardTemplate.query.filter_by(is_active=True)
     if genre:
@@ -436,7 +437,7 @@ def get_card_templates():
 
     return success_response(
         {
-            "templates": [t.to_dict() for t in templates],
+            "templates": [t.to_dict(lang) for t in templates],
             "total": len(templates),
         }
     )

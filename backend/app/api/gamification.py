@@ -19,12 +19,12 @@ from app.models import (
     UserAchievement,
 )
 from app.models.achievement import get_level_name
-from app.models.character import GENRE_THEMES
+from app.models.character import GENRE_THEMES, get_genre_info
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskStatus
 from app.models.user_profile import UserProfile
-from app.utils import not_found, success_response, validation_error
+from app.utils import get_lang, not_found, success_response, validation_error
 
 
 @api_bp.route("/user/stats", methods=["GET"])
@@ -97,11 +97,12 @@ def get_user_stats():
         MoodCheck.user_id == user_id, MoodCheck.created_at >= today_start
     ).count()
 
+    lang = get_lang()
     return success_response(
         {
             "xp": user.xp,
             "level": user.level,
-            "level_name": get_level_name(user.level),
+            "level_name": get_level_name(user.level, lang),
             "xp_for_next_level": user.xp_for_next_level,
             "xp_progress_percent": user.xp_progress_percent,
             "streak_days": user.streak_days,
@@ -570,15 +571,8 @@ def get_productivity_patterns():
 @jwt_required()
 def get_genres():
     """Get available genre themes."""
-    genres = [
-        {
-            "id": key,
-            "name": value["name"],
-            "description": value["description"],
-            "emoji": value["emoji"],
-        }
-        for key, value in GENRE_THEMES.items()
-    ]
+    lang = get_lang()
+    genres = [get_genre_info(key, lang) for key in GENRE_THEMES.keys()]
     return success_response({"genres": genres})
 
 
@@ -610,14 +604,11 @@ def set_genre():
     profile.favorite_genre = genre
     db.session.commit()
 
+    lang = get_lang()
     return success_response(
         {
             "genre": genre,
-            "genre_info": {
-                "name": GENRE_THEMES[genre]["name"],
-                "description": GENRE_THEMES[genre]["description"],
-                "emoji": GENRE_THEMES[genre]["emoji"],
-            },
+            "genre_info": get_genre_info(genre, lang),
         }
     )
 
@@ -690,17 +681,19 @@ def get_character():
         genre = "fantasy"
     genre_info = GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"])
 
+    # Get localized stat names
+    lang = get_lang()
+    stat_names_key = "stat_names_en" if lang == "en" else "stat_names"
+    default_stats = (
+        {"strength": "Strength", "agility": "Agility", "intelligence": "Intelligence"}
+        if lang == "en"
+        else {"strength": "Сила", "agility": "Ловкость", "intelligence": "Интеллект"}
+    )
+
     return success_response(
         {
             "character": character.to_dict(),
-            "stat_names": genre_info.get(
-                "stat_names",
-                {
-                    "strength": "Сила",
-                    "agility": "Ловкость",
-                    "intelligence": "Интеллект",
-                },
-            ),
+            "stat_names": genre_info.get(stat_names_key, default_stats),
             "genre": genre,
         }
     )

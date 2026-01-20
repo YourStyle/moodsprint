@@ -4,53 +4,88 @@ from datetime import datetime
 
 from app import db
 
-# Genre themes for quests
+# Genre themes for quests with localization
 GENRE_THEMES = {
     "magic": {
         "name": "Магия",
+        "name_en": "Magic",
         "description": "Волшебный мир как в Гарри Поттере",
+        "description_en": "A magical world like Harry Potter",
         "emoji": "🧙‍♂️",
         "quest_prefix": ["Заклинание", "Зелье", "Магический"],
+        "quest_prefix_en": ["Spell", "Potion", "Magical"],
         "stat_names": {
             "strength": "Сила заклинаний",
             "agility": "Ловкость волшебника",
             "intelligence": "Мудрость",
         },
+        "stat_names_en": {
+            "strength": "Spell Power",
+            "agility": "Wizard Agility",
+            "intelligence": "Wisdom",
+        },
         "monsters": ["Тёмный маг", "Дементор", "Василиск", "Оборотень", "Горгулья"],
+        "monsters_en": ["Dark Mage", "Dementor", "Basilisk", "Werewolf", "Gargoyle"],
     },
     "fantasy": {
         "name": "Фэнтези",
+        "name_en": "Fantasy",
         "description": "Эпический мир как Властелин Колец",
+        "description_en": "An epic world like Lord of the Rings",
         "emoji": "⚔️",
         "quest_prefix": ["Поход", "Битва", "Легендарный"],
+        "quest_prefix_en": ["Quest", "Battle", "Legendary"],
         "stat_names": {
             "strength": "Сила воина",
             "agility": "Скорость эльфа",
             "intelligence": "Мудрость волшебника",
         },
+        "stat_names_en": {
+            "strength": "Warrior Strength",
+            "agility": "Elf Agility",
+            "intelligence": "Wizard Wisdom",
+        },
         "monsters": ["Орк", "Тролль", "Назгул", "Дракон", "Балрог"],
+        "monsters_en": ["Orc", "Troll", "Nazgul", "Dragon", "Balrog"],
     },
     "scifi": {
         "name": "Научная фантастика",
+        "name_en": "Science Fiction",
         "description": "Космические приключения",
+        "description_en": "Space adventures",
         "emoji": "🚀",
         "quest_prefix": ["Миссия", "Операция", "Протокол"],
+        "quest_prefix_en": ["Mission", "Operation", "Protocol"],
         "stat_names": {
             "strength": "Мощность",
             "agility": "Рефлексы",
             "intelligence": "Интеллект",
         },
+        "stat_names_en": {
+            "strength": "Power",
+            "agility": "Reflexes",
+            "intelligence": "Intelligence",
+        },
         "monsters": ["Киборг", "Инопланетянин", "Дрон", "Мутант", "Робот-страж"],
+        "monsters_en": ["Cyborg", "Alien", "Drone", "Mutant", "Guard Robot"],
     },
     "cyberpunk": {
         "name": "Киберпанк",
+        "name_en": "Cyberpunk",
         "description": "Мир высоких технологий и хакеров",
+        "description_en": "A world of high tech and hackers",
         "emoji": "🌆",
         "quest_prefix": ["Взлом", "Операция", "Контракт"],
+        "quest_prefix_en": ["Hack", "Operation", "Contract"],
         "stat_names": {
             "strength": "Кибер-сила",
             "agility": "Нейро-рефлексы",
             "intelligence": "Хакинг",
+        },
+        "stat_names_en": {
+            "strength": "Cyber Strength",
+            "agility": "Neuro Reflexes",
+            "intelligence": "Hacking",
         },
         "monsters": [
             "Корпоративный дрон",
@@ -59,20 +94,52 @@ GENRE_THEMES = {
             "Мутант",
             "Босс корпорации",
         ],
+        "monsters_en": [
+            "Corporate Drone",
+            "Hacker",
+            "Killer Bot",
+            "Mutant",
+            "Corporation Boss",
+        ],
     },
     "anime": {
         "name": "Аниме",
+        "name_en": "Anime",
         "description": "Мир японских приключений",
+        "description_en": "A world of Japanese adventures",
         "emoji": "🎌",
         "quest_prefix": ["Тренировка", "Испытание", "Путь"],
+        "quest_prefix_en": ["Training", "Trial", "Path"],
         "stat_names": {
             "strength": "Сила духа",
             "agility": "Скорость",
             "intelligence": "Чакра",
         },
+        "stat_names_en": {
+            "strength": "Spirit Strength",
+            "agility": "Speed",
+            "intelligence": "Chakra",
+        },
         "monsters": ["Демон", "Ниндзя", "Каджу", "Тёмный самурай", "Древний дух"],
+        "monsters_en": ["Demon", "Ninja", "Kaiju", "Dark Samurai", "Ancient Spirit"],
     },
 }
+
+
+def get_genre_info(genre: str, lang: str = "ru") -> dict | None:
+    """Get genre info with localization."""
+    theme = GENRE_THEMES.get(genre)
+    if not theme:
+        return None
+    use_en = lang == "en"
+    return {
+        "id": genre,
+        "name": theme.get("name_en") if use_en else theme.get("name"),
+        "description": (
+            theme.get("description_en") if use_en else theme.get("description")
+        ),
+        "emoji": theme.get("emoji"),
+    }
 
 
 class CharacterStats(db.Model):
@@ -194,6 +261,8 @@ class Monster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)  # AI-generated description
+    name_en = db.Column(db.String(100), nullable=True)  # English translation
+    description_en = db.Column(db.Text, nullable=True)  # English translation
     genre = db.Column(db.String(50), nullable=False)  # magic, fantasy, scifi, etc.
 
     # Base stats (will be scaled for players)
@@ -226,12 +295,22 @@ class Monster(db.Model):
     ai_generated = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        name = self.name_en if lang == "en" and self.name_en else self.name
+        description = (
+            self.description_en
+            if lang == "en" and self.description_en
+            else self.description
+        )
         return {
             "id": self.id,
-            "name": self.name,
-            "description": self.description,
+            "name": name,
+            "description": description,
+            "name_ru": self.name,
+            "name_en": self.name_en,
+            "description_ru": self.description,
+            "description_en": self.description_en,
             "genre": self.genre,
             "level": self.level,
             "hp": self.hp,
@@ -345,6 +424,8 @@ class MonsterCard(db.Model):
     )
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    name_en = db.Column(db.String(100), nullable=True)  # English translation
+    description_en = db.Column(db.Text, nullable=True)  # English translation
 
     # Stats
     hp = db.Column(db.Integer, default=50, nullable=False)
@@ -364,13 +445,23 @@ class MonsterCard(db.Model):
         "Monster", backref=db.backref("cards", lazy="dynamic", cascade="all, delete")
     )
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
+        name = self.name_en if lang == "en" and self.name_en else self.name
+        description = (
+            self.description_en
+            if lang == "en" and self.description_en
+            else self.description
+        )
         return {
             "id": self.id,
             "monster_id": self.monster_id,
-            "name": self.name,
-            "description": self.description,
+            "name": name,
+            "description": description,
+            "name_ru": self.name,
+            "name_en": self.name_en,
+            "description_ru": self.description,
+            "description_en": self.description_en,
             "hp": self.hp,
             "attack": self.attack,
             "emoji": self.emoji,
