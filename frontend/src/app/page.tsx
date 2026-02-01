@@ -18,28 +18,30 @@ import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 import type { MoodLevel, EnergyLevel, FocusSession, TaskStatus } from '@/domain/types';
 
+// TODO: Re-enable spotlight onboarding later
 const ONBOARDING_STEPS: OnboardingStep[] = [
-  {
-    id: 'create-task',
-    targetSelector: '[data-onboarding="create-task"]',
-    title: 'Создание задачи',
-    description: 'Нажми сюда, чтобы создать новую задачу. AI разобьёт её на маленькие шаги с учётом твоего настроения!',
-    position: 'bottom',
-  },
-  {
-    id: 'mood-check',
-    targetSelector: '[data-onboarding="mood-check"]',
-    title: 'Проверка настроения',
-    description: 'Здесь ты можешь отслеживать своё настроение. От него зависит как задачи будут разбиты на шаги.',
-    position: 'bottom',
-  },
-  {
-    id: 'nav-deck',
-    targetSelector: '[data-onboarding="nav-deck"]',
-    title: 'Твоя колода карт',
-    description: 'За выполнение задач ты получаешь карты! Собирай колоду, обменивайся с друзьями и сражайся на арене.',
-    position: 'top',
-  },
+  // Temporarily disabled
+  // {
+  //   id: 'create-task',
+  //   targetSelector: '[data-onboarding="create-task"]',
+  //   title: 'Создание задачи',
+  //   description: 'Нажми сюда, чтобы создать новую задачу. AI разобьёт её на маленькие шаги с учётом твоего настроения!',
+  //   position: 'bottom',
+  // },
+  // {
+  //   id: 'mood-check',
+  //   targetSelector: '[data-onboarding="mood-check"]',
+  //   title: 'Проверка настроения',
+  //   description: 'Здесь ты можешь отслеживать своё настроение. От него зависит как задачи будут разбиты на шаги.',
+  //   position: 'bottom',
+  // },
+  // {
+  //   id: 'nav-deck',
+  //   targetSelector: '[data-onboarding="nav-deck"]',
+  //   title: 'Твоя колода карт',
+  //   description: 'За выполнение задач ты получаешь карты! Собирай колоду, обменивайся с друзьями и сражайся на арене.',
+  //   position: 'top',
+  // },
 ];
 
 type FilterStatus = TaskStatus | 'all';
@@ -836,6 +838,8 @@ export default function HomePage() {
   const toggleLanguage = () => {
     const newLang = language === 'ru' ? 'en' : 'ru';
     setLanguage(newLang);
+    // Invalidate all cached queries to refetch with new language
+    queryClient.invalidateQueries();
     hapticFeedback('light');
   };
 
@@ -901,18 +905,20 @@ export default function HomePage() {
               <Smile className="w-5 h-5 text-gray-400" />
             )}
           </button>
-          {/* Avatar */}
-          {user.photo_url ? (
-            <img
-              src={user.photo_url}
-              alt={user.first_name || 'User'}
-              className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-              {(user.first_name?.[0] || '?').toUpperCase()}
-            </div>
-          )}
+          {/* Avatar - click to go to profile */}
+          <button onClick={() => router.push('/profile')} className="focus:outline-none">
+            {user.photo_url ? (
+              <img
+                src={user.photo_url}
+                alt={user.first_name || 'User'}
+                className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                {(user.first_name?.[0] || '?').toUpperCase()}
+              </div>
+            )}
+          </button>
         </div>
       </div>
 
