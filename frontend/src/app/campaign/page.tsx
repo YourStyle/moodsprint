@@ -37,19 +37,23 @@ export default function CampaignPage() {
   const [showDialogue, setShowDialogue] = useState(false);
 
   useEffect(() => {
-    showBackButton(() => {
-      if (showDialogue) {
-        setShowDialogue(false);
-        setSelectedLevel(null);
-      } else if (showLevelSelect) {
-        setShowLevelSelect(false);
-        setSelectedChapter(null);
-      } else {
-        router.back();
-      }
-    });
-    return () => hideBackButton();
-  }, [router, showLevelSelect, showDialogue]);
+    // Only show back button when in sub-views (level select or dialogue),
+    // not at root chapter list (since campaign is now a tab page)
+    if (showLevelSelect || showDialogue) {
+      showBackButton(() => {
+        if (showDialogue) {
+          setShowDialogue(false);
+          setSelectedLevel(null);
+        } else if (showLevelSelect) {
+          setShowLevelSelect(false);
+          setSelectedChapter(null);
+        }
+      });
+      return () => hideBackButton();
+    } else {
+      hideBackButton();
+    }
+  }, [showLevelSelect, showDialogue]);
 
   // Get campaign overview
   const { data: campaignData, isLoading } = useQuery({
@@ -209,6 +213,23 @@ export default function CampaignPage() {
             </div>
           </Card>
         )}
+
+        {/* Arena Banner */}
+        <Card
+          className="bg-gradient-to-r from-red-900/30 to-purple-900/30 border-red-500/20 mb-4 cursor-pointer"
+          onClick={() => router.push('/arena')}
+        >
+          <div className="p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+              <Swords className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white text-sm">{t('arena')}</h3>
+              <p className="text-xs text-gray-400">{t('arenaDesc')}</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
+          </div>
+        </Card>
 
         {/* Chapters List */}
         {isLoading ? (

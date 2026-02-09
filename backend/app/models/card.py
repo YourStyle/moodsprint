@@ -319,14 +319,29 @@ class UserCard(db.Model):
         except ValueError:
             return None
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection.
+
+        Args:
+            lang: Language code ('ru' or 'en'). If 'en' and template has
+                  English translation, uses that instead.
+        """
+        # Use localized name/description from template if available
+        name = self.name
+        description = self.description
+
+        if lang == "en" and self.template:
+            if self.template.name_en:
+                name = self.template.name_en
+            if self.template.description_en:
+                description = self.template.description_en
+
         return {
             "id": self.id,
             "user_id": self.user_id,
             "template_id": self.template_id,
-            "name": self.name,
-            "description": self.description,
+            "name": name,
+            "description": description,
             "genre": self.genre,
             "rarity": self.rarity,
             "hp": self.hp,

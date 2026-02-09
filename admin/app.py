@@ -835,6 +835,97 @@ def business_metrics():
     )
 
 
+@app.route("/users/<int:user_id>/give-card", methods=["POST"])
+@login_required
+def give_card_to_user(user_id: int):
+    """Give a specific card to a user."""
+    import random
+
+    data = request.json or {}
+    template_id = data.get("template_id")
+    rarity = data.get("rarity", "common")
+
+    if not template_id:
+        return jsonify({"success": False, "error": "template_id is required"}), 400
+
+    valid_rarities = ["common", "uncommon", "rare", "epic", "legendary"]
+    if rarity not in valid_rarities:
+        return jsonify({"success": False, "error": f"Invalid rarity. Must be one of: {valid_rarities}"}), 400
+
+    # Get template
+    template = db.session.execute(
+        text("""
+            SELECT id, name, description, genre, base_hp, base_attack, image_url, emoji
+            FROM card_templates WHERE id = :id
+        """),
+        {"id": template_id},
+    ).fetchone()
+
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    # Check if user exists
+    user = db.session.execute(
+        text("SELECT id, first_name, username FROM users WHERE id = :id"),
+        {"id": user_id},
+    ).fetchone()
+
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+
+    # Rarity multipliers for stats
+    rarity_multipliers = {
+        "common": 1.0,
+        "uncommon": 1.2,
+        "rare": 1.5,
+        "epic": 2.0,
+        "legendary": 3.0,
+    }
+    multiplier = rarity_multipliers.get(rarity, 1.0)
+
+    try:
+        # Create the card for the user
+        result = db.session.execute(
+            text("""
+                INSERT INTO user_cards (
+                    user_id, template_id, name, description, genre, rarity,
+                    attack, hp, max_hp, image_url, emoji, level, xp, is_in_deck
+                )
+                VALUES (
+                    :user_id, :template_id, :name, :description, :genre, :rarity,
+                    :attack, :hp, :max_hp, :image_url, :emoji, 1, 0, false
+                )
+                RETURNING id
+            """),
+            {
+                "user_id": user_id,
+                "template_id": template_id,
+                "name": template[1],  # name
+                "description": template[2],  # description
+                "genre": template[3],  # genre
+                "rarity": rarity,
+                "attack": int(template[5] * multiplier),  # base_attack * multiplier
+                "hp": int(template[4] * multiplier),  # base_hp * multiplier
+                "max_hp": int(template[4] * multiplier),
+                "image_url": template[6],  # image_url
+                "emoji": template[7] or "🎴",  # emoji
+            },
+        )
+        card_id = result.fetchone()[0]
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Card '{template[1]}' ({rarity}) given to user {user[1] or user[2] or user_id}",
+            "card_id": card_id,
+            "card_name": template[1],
+            "rarity": rarity,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/users/<int:user_id>/reset-onboarding", methods=["POST"])
 @login_required
 def reset_onboarding(user_id: int):
@@ -1225,7 +1316,7 @@ def monster_detail(monster_id: int):
     monster = db.session.execute(
         text(
             """
-            SELECT id, name, description, genre, base_level, base_hp, base_attack,
+            SELECT id, name, name_en, description, description_en, genre, base_level, base_hp, base_attack,
                    sprite_url, emoji, is_boss, ai_generated, created_at
             FROM monsters
             WHERE id = :monster_id
@@ -1241,7 +1332,7 @@ def monster_detail(monster_id: int):
     monster_cards = db.session.execute(
         text(
             """
-            SELECT id, name, description, emoji, attack, hp, ability
+            SELECT id, name, name_en, description, description_en, emoji, attack, hp, ability
             FROM monster_cards
             WHERE monster_id = :monster_id
             ORDER BY id
@@ -1312,7 +1403,9 @@ def update_monster(monster_id: int):
 
         for field in [
             "name",
+            "name_en",
             "description",
+            "description_en",
             "genre",
             "base_level",
             "base_hp",
@@ -1428,6 +1521,33 @@ def upload_card_template_image(template_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+@app.route("/monsters/<int:monster_id>/set-image", methods=["POST"])
+@login_required
+def set_monster_image_from_media(monster_id: int):
+    """Set monster image from media URL."""
+    data = request.json or {}
+    image_url = data.get("image_url")
+
+    if not image_url:
+        return jsonify({"success": False, "error": "No image_url provided"}), 400
+
+    # Validate the URL is from our media storage
+    if not image_url.startswith("/media/"):
+        return jsonify({"success": False, "error": "Invalid image URL. Must be from /media/"}), 400
+
+    # Update the monster
+    try:
+        db.session.execute(
+            text("UPDATE monsters SET sprite_url = :url WHERE id = :id"),
+            {"url": image_url, "id": monster_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True, "sprite_url": image_url})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/monsters/<int:monster_id>/delete", methods=["POST"])
 @login_required
 def delete_monster(monster_id: int):
@@ -1459,15 +1579,17 @@ def add_monster_card(monster_id: int):
         result = db.session.execute(
             text(
                 """
-                INSERT INTO monster_cards (monster_id, name, description, emoji, attack, hp, ability)
-                VALUES (:monster_id, :name, :description, :emoji, :attack, :hp, :ability)
+                INSERT INTO monster_cards (monster_id, name, name_en, description, description_en, emoji, attack, hp, ability)
+                VALUES (:monster_id, :name, :name_en, :description, :description_en, :emoji, :attack, :hp, :ability)
                 RETURNING id
             """
             ),
             {
                 "monster_id": monster_id,
                 "name": data["name"],
+                "name_en": data.get("name_en"),
                 "description": data.get("description"),
+                "description_en": data.get("description_en"),
                 "emoji": data.get("emoji", "⚔️"),
                 "attack": data.get("attack", 10),
                 "hp": data.get("hp", 20),
@@ -1492,7 +1614,7 @@ def update_monster_card(card_id: int):
         updates = []
         params = {"card_id": card_id}
 
-        for field in ["name", "description", "emoji", "attack", "hp", "ability"]:
+        for field in ["name", "name_en", "description", "description_en", "emoji", "attack", "hp", "ability"]:
             if field in data:
                 updates.append(f"{field} = :{field}")
                 params[field] = data[field]
@@ -1825,27 +1947,31 @@ def create_chapter():
         result = db.session.execute(
             text(
                 """
-                INSERT INTO campaign_chapters (number, name, genre, description, emoji,
+                INSERT INTO campaign_chapters (number, name, name_en, genre, description, description_en, emoji,
                     background_color, required_power, xp_reward, guaranteed_card_rarity,
-                    story_intro, story_outro, is_active)
-                VALUES (:number, :name, :genre, :description, :emoji,
+                    story_intro, story_intro_en, story_outro, story_outro_en, is_active)
+                VALUES (:number, :name, :name_en, :genre, :description, :description_en, :emoji,
                     :background_color, :required_power, :xp_reward, :guaranteed_card_rarity,
-                    :story_intro, :story_outro, true)
+                    :story_intro, :story_intro_en, :story_outro, :story_outro_en, true)
                 RETURNING id
             """
             ),
             {
                 "number": max_number + 1,
                 "name": data["name"],
+                "name_en": data.get("name_en"),
                 "genre": genre,
                 "description": data.get("description"),
+                "description_en": data.get("description_en"),
                 "emoji": data.get("emoji", "📖"),
                 "background_color": data.get("background_color", "#1a1a2e"),
                 "required_power": data.get("required_power", 0),
                 "xp_reward": data.get("xp_reward", 500),
                 "guaranteed_card_rarity": data.get("guaranteed_card_rarity", "rare"),
                 "story_intro": data.get("story_intro"),
+                "story_intro_en": data.get("story_intro_en"),
                 "story_outro": data.get("story_outro"),
+                "story_outro_en": data.get("story_outro_en"),
             },
         )
         chapter_id = result.scalar()
@@ -1863,9 +1989,9 @@ def chapter_detail(chapter_id: int):
     chapter = db.session.execute(
         text(
             """
-            SELECT id, number, name, genre, description, emoji, background_color,
+            SELECT id, number, name, name_en, genre, description, description_en, emoji, background_color,
                    image_url, required_power, xp_reward, guaranteed_card_rarity, is_active,
-                   story_intro, story_outro
+                   story_intro, story_intro_en, story_outro, story_outro_en
             FROM campaign_chapters
             WHERE id = :chapter_id
         """
@@ -1879,9 +2005,9 @@ def chapter_detail(chapter_id: int):
     levels = db.session.execute(
         text(
             """
-            SELECT l.id, l.number, l.monster_id, l.is_boss, l.is_final, l.title,
-                   l.dialogue_before, l.dialogue_after, l.difficulty_multiplier,
-                   l.required_power, l.xp_reward, l.stars_max, l.star_conditions, l.is_active,
+            SELECT l.id, l.number, l.monster_id, l.is_boss, l.is_final, l.title, l.title_en,
+                   l.dialogue_before, l.dialogue_before_en, l.dialogue_after, l.dialogue_after_en,
+                   l.difficulty_multiplier, l.required_power, l.xp_reward, l.stars_max, l.star_conditions, l.is_active,
                    m.name as monster_name, m.emoji as monster_emoji
             FROM campaign_levels l
             LEFT JOIN monsters m ON m.id = l.monster_id
@@ -1928,8 +2054,10 @@ def update_chapter(chapter_id: int):
 
         for field in [
             "name",
+            "name_en",
             "genre",
             "description",
+            "description_en",
             "emoji",
             "background_color",
             "image_url",
@@ -1937,7 +2065,9 @@ def update_chapter(chapter_id: int):
             "xp_reward",
             "guaranteed_card_rarity",
             "story_intro",
+            "story_intro_en",
             "story_outro",
+            "story_outro_en",
             "is_active",
         ]:
             if field in data:
@@ -2055,11 +2185,11 @@ def create_level(chapter_id: int):
         result = db.session.execute(
             text(
                 """
-                INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
-                    dialogue_before, dialogue_after, difficulty_multiplier,
+                INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title, title_en,
+                    dialogue_before, dialogue_before_en, dialogue_after, dialogue_after_en, difficulty_multiplier,
                     required_power, xp_reward, stars_max, star_conditions, is_active)
-                VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
-                    :dialogue_before, :dialogue_after, :difficulty_multiplier,
+                VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title, :title_en,
+                    :dialogue_before, :dialogue_before_en, :dialogue_after, :dialogue_after_en, :difficulty_multiplier,
                     :required_power, :xp_reward, :stars_max, :star_conditions, true)
                 RETURNING id
             """
@@ -2071,11 +2201,18 @@ def create_level(chapter_id: int):
                 "is_boss": data.get("is_boss", False),
                 "is_final": data.get("is_final", False),
                 "title": data.get("title"),
+                "title_en": data.get("title_en"),
                 "dialogue_before": json.dumps(data.get("dialogue_before"))
                 if data.get("dialogue_before")
                 else None,
+                "dialogue_before_en": json.dumps(data.get("dialogue_before_en"))
+                if data.get("dialogue_before_en")
+                else None,
                 "dialogue_after": json.dumps(data.get("dialogue_after"))
                 if data.get("dialogue_after")
+                else None,
+                "dialogue_after_en": json.dumps(data.get("dialogue_after_en"))
+                if data.get("dialogue_after_en")
                 else None,
                 "difficulty_multiplier": data.get("difficulty_multiplier", 1.0),
                 "required_power": data.get("required_power", 0),
@@ -2104,14 +2241,17 @@ def update_level(level_id: int):
         updates = []
         params = {"level_id": level_id}
 
-        json_fields = ["dialogue_before", "dialogue_after", "star_conditions"]
+        json_fields = ["dialogue_before", "dialogue_before_en", "dialogue_after", "dialogue_after_en", "star_conditions"]
         for field in [
             "monster_id",
             "is_boss",
             "is_final",
             "title",
+            "title_en",
             "dialogue_before",
+            "dialogue_before_en",
             "dialogue_after",
+            "dialogue_after_en",
             "difficulty_multiplier",
             "required_power",
             "xp_reward",
@@ -2614,11 +2754,14 @@ def export_level_json(level_id: int):
     """Export chapter template for AI prompting (genre, monsters, dialogue format)."""
     level = db.session.execute(
         text("""
-            SELECT l.id, l.number, l.is_boss,
+            SELECT l.id, l.number, l.is_boss, l.title, l.title_en,
                    c.id as chapter_id, c.number as chapter_number,
-                   c.name as chapter_name, c.genre as chapter_genre,
+                   c.name as chapter_name, c.name_en as chapter_name_en,
+                   c.genre as chapter_genre,
                    c.description as chapter_description,
-                   c.story_intro, c.story_outro
+                   c.description_en as chapter_description_en,
+                   c.story_intro, c.story_intro_en,
+                   c.story_outro, c.story_outro_en
             FROM campaign_levels l
             LEFT JOIN campaign_chapters c ON c.id = l.chapter_id
             WHERE l.id = :level_id
@@ -2635,7 +2778,7 @@ def export_level_json(level_id: int):
     # Get all monsters for this genre
     monsters = db.session.execute(
         text("""
-            SELECT id, name, description, emoji, base_hp, base_attack, sprite_url
+            SELECT id, name, name_en, description, description_en, emoji, base_hp, base_attack, sprite_url
             FROM monsters WHERE genre = :genre ORDER BY base_hp ASC
         """),
         {"genre": genre},
@@ -2644,7 +2787,7 @@ def export_level_json(level_id: int):
     # Get all levels in this chapter to show context
     chapter_levels = db.session.execute(
         text("""
-            SELECT l.number, l.title, l.is_boss, m.name as monster_name
+            SELECT l.number, l.title, l.title_en, l.is_boss, m.name as monster_name, m.name_en as monster_name_en
             FROM campaign_levels l
             LEFT JOIN monsters m ON m.id = l.monster_id
             WHERE l.chapter_id = :chapter_id
@@ -2660,11 +2803,12 @@ def export_level_json(level_id: int):
             "id": level_dict["id"],
             "number": level_dict["number"],
             "is_boss": level_dict["is_boss"],
-            "title": None,  # AI should fill: короткое название уровня
+            "title": level_dict.get("title"),  # AI should fill: короткое название уровня (RU)
+            "title_en": level_dict.get("title_en"),  # AI should fill: level title (EN)
             "monster_id": None,  # AI should fill: ID из available_monsters
             "dialogue_before": [
                 # AI should fill array of dialogue lines
-                # {"speaker": "monster" | "narrator", "text": "..."}
+                # {"speaker": "monster" | "narrator", "text": "...", "text_en": "..."}
             ],
             "dialogue_after": [
                 # AI should fill array of dialogue lines
@@ -2673,17 +2817,23 @@ def export_level_json(level_id: int):
         "chapter_context": {
             "number": level_dict["chapter_number"],
             "name": level_dict["chapter_name"],
+            "name_en": level_dict.get("chapter_name_en"),
             "genre": genre,
             "description": level_dict["chapter_description"],
+            "description_en": level_dict.get("chapter_description_en"),
             "story_intro": level_dict.get("story_intro"),
+            "story_intro_en": level_dict.get("story_intro_en"),
             "story_outro": level_dict.get("story_outro"),
+            "story_outro_en": level_dict.get("story_outro_en"),
         },
         "existing_levels": [
             {
                 "number": lvl[0],
                 "title": lvl[1],
-                "is_boss": lvl[2],
-                "monster": lvl[3],
+                "title_en": lvl[2],
+                "is_boss": lvl[3],
+                "monster": lvl[4],
+                "monster_en": lvl[5],
             }
             for lvl in chapter_levels
         ],
@@ -2691,24 +2841,27 @@ def export_level_json(level_id: int):
             {
                 "id": m[0],
                 "name": m[1],
-                "description": m[2],
-                "emoji": m[3],
-                "base_hp": m[4],
-                "base_attack": m[5],
-                "has_image": bool(m[6]),
+                "name_en": m[2],
+                "description": m[3],
+                "description_en": m[4],
+                "emoji": m[5],
+                "base_hp": m[6],
+                "base_attack": m[7],
+                "has_image": bool(m[8]),
             }
             for m in monsters
         ],
         "dialogue_format": {
             "example": [
-                {"speaker": "monster", "text": "Ты осмелился прийти сюда?"},
-                {"speaker": "narrator", "text": "Монстр готовится к атаке..."},
+                {"speaker": "monster", "text": "Ты осмелился прийти сюда?", "text_en": "You dare to come here?"},
+                {"speaker": "narrator", "text": "Монстр готовится к атаке...", "text_en": "The monster prepares to attack..."},
             ],
             "speakers": ["monster", "narrator", "hero"],
             "tips": [
                 "dialogue_before: 2-4 реплики перед боем",
                 "dialogue_after: 1-3 реплики после победы",
                 "Используй характер монстра из его description",
+                "Добавляй text_en для английского перевода каждой реплики",
             ],
         },
     }
@@ -2734,6 +2887,10 @@ def import_level_json(level_id: int):
             updates.append("title = :title")
             params["title"] = data["title"]
 
+        if "title_en" in data:
+            updates.append("title_en = :title_en")
+            params["title_en"] = data["title_en"]
+
         # Update monster_id if provided
         if "monster_id" in data:
             updates.append("monster_id = :monster_id")
@@ -2745,11 +2902,19 @@ def import_level_json(level_id: int):
             # Use 'is not None' to preserve empty arrays []
             params["dialogue_before"] = json.dumps(data["dialogue_before"]) if data["dialogue_before"] is not None else None
 
+        if "dialogue_before_en" in data:
+            updates.append("dialogue_before_en = :dialogue_before_en")
+            params["dialogue_before_en"] = json.dumps(data["dialogue_before_en"]) if data["dialogue_before_en"] is not None else None
+
         # Update dialogue_after if provided
         if "dialogue_after" in data:
             updates.append("dialogue_after = :dialogue_after")
             # Use 'is not None' to preserve empty arrays []
             params["dialogue_after"] = json.dumps(data["dialogue_after"]) if data["dialogue_after"] is not None else None
+
+        if "dialogue_after_en" in data:
+            updates.append("dialogue_after_en = :dialogue_after_en")
+            params["dialogue_after_en"] = json.dumps(data["dialogue_after_en"]) if data["dialogue_after_en"] is not None else None
 
         # Update difficulty_multiplier if provided
         if "difficulty_multiplier" in data:
@@ -2810,11 +2975,11 @@ def bulk_import_levels(chapter_id: int):
             result = db.session.execute(
                 text(
                     """
-                    INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title,
-                        dialogue_before, dialogue_after, difficulty_multiplier,
+                    INSERT INTO campaign_levels (chapter_id, number, monster_id, is_boss, is_final, title, title_en,
+                        dialogue_before, dialogue_before_en, dialogue_after, dialogue_after_en, difficulty_multiplier,
                         required_power, xp_reward, stars_max, star_conditions, is_active)
-                    VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title,
-                        :dialogue_before, :dialogue_after, :difficulty_multiplier,
+                    VALUES (:chapter_id, :number, :monster_id, :is_boss, :is_final, :title, :title_en,
+                        :dialogue_before, :dialogue_before_en, :dialogue_after, :dialogue_after_en, :difficulty_multiplier,
                         :required_power, :xp_reward, :stars_max, :star_conditions, true)
                     RETURNING id
                 """
@@ -2826,11 +2991,18 @@ def bulk_import_levels(chapter_id: int):
                     "is_boss": level_data.get("is_boss", False),
                     "is_final": level_data.get("is_final", False),
                     "title": level_data.get("title"),
+                    "title_en": level_data.get("title_en"),
                     "dialogue_before": json.dumps(level_data.get("dialogue_before"))
                     if level_data.get("dialogue_before")
                     else None,
+                    "dialogue_before_en": json.dumps(level_data.get("dialogue_before_en"))
+                    if level_data.get("dialogue_before_en")
+                    else None,
                     "dialogue_after": json.dumps(level_data.get("dialogue_after"))
                     if level_data.get("dialogue_after")
+                    else None,
+                    "dialogue_after_en": json.dumps(level_data.get("dialogue_after_en"))
+                    if level_data.get("dialogue_after_en")
                     else None,
                     "difficulty_multiplier": level_data.get("difficulty_multiplier", 1.0),
                     "required_power": level_data.get("required_power", 0),
@@ -3084,7 +3256,7 @@ def card_pool_templates(genre: str):
 
     templates = db.session.execute(
         text("""
-            SELECT id, name, description, genre, base_hp, base_attack,
+            SELECT id, name, name_en, description, description_en, genre, base_hp, base_attack,
                    image_url, emoji, ai_generated, is_active, created_at, rarity
             FROM card_templates
             WHERE genre = :genre
@@ -3099,16 +3271,18 @@ def card_pool_templates(genre: str):
             {
                 "id": t[0],
                 "name": t[1],
-                "description": t[2],
-                "genre": t[3],
-                "base_hp": t[4],
-                "base_attack": t[5],
-                "image_url": t[6],
-                "emoji": t[7],
-                "ai_generated": t[8],
-                "is_active": t[9],
-                "created_at": t[10].isoformat() if t[10] else None,
-                "rarity": t[11],
+                "name_en": t[2],
+                "description": t[3],
+                "description_en": t[4],
+                "genre": t[5],
+                "base_hp": t[6],
+                "base_attack": t[7],
+                "image_url": t[8],
+                "emoji": t[9],
+                "ai_generated": t[10],
+                "is_active": t[11],
+                "created_at": t[12].isoformat() if t[12] else None,
+                "rarity": t[13],
             }
             for t in templates
         ],
@@ -3164,10 +3338,15 @@ def generate_card_template(genre: str):
     }
     emojis = genre_emojis.get(genre, genre_emojis["fantasy"])
 
+    custom_name_en = data.get("name_en")
+    custom_description_en = data.get("description_en")
+
     if custom_name:
         # Create with custom name
         template_name = custom_name
+        template_name_en = custom_name_en
         template_description = custom_description or f"Character from {genre} genre"
+        template_description_en = custom_description_en
         ai_generated = False
     else:
         # Generate simple name (no AI for now)
@@ -3188,19 +3367,23 @@ def generate_card_template(genre: str):
         prefix = random.choice(prefixes.get(genre, prefixes["fantasy"]))
         suffix = random.choice(suffixes.get(genre, suffixes["fantasy"]))
         template_name = f"{prefix} {suffix}"
+        template_name_en = template_name  # Already in English
         template_description = f"A powerful {genre} character"
+        template_description_en = template_description  # Already in English
         ai_generated = False
 
     # Insert template
     result = db.session.execute(
         text("""
-            INSERT INTO card_templates (name, description, genre, base_hp, base_attack, emoji, ai_generated, is_active, created_at)
-            VALUES (:name, :description, :genre, 50, 15, :emoji, :ai_generated, true, NOW())
+            INSERT INTO card_templates (name, name_en, description, description_en, genre, base_hp, base_attack, emoji, ai_generated, is_active, created_at)
+            VALUES (:name, :name_en, :description, :description_en, :genre, 50, 15, :emoji, :ai_generated, true, NOW())
             RETURNING id
         """),
         {
             "name": template_name,
+            "name_en": template_name_en,
             "description": template_description,
+            "description_en": template_description_en,
             "genre": genre,
             "emoji": random.choice(emojis),
             "ai_generated": ai_generated,
@@ -3214,7 +3397,9 @@ def generate_card_template(genre: str):
         "template": {
             "id": template_id,
             "name": template_name,
+            "name_en": template_name_en,
             "description": template_description,
+            "description_en": template_description_en,
             "genre": genre,
         },
     })
@@ -3226,7 +3411,7 @@ def get_card_template(template_id: int):
     """Get a single template by ID."""
     template = db.session.execute(
         text("""
-            SELECT id, name, description, genre, base_hp, base_attack,
+            SELECT id, name, name_en, description, description_en, genre, base_hp, base_attack,
                    image_url, emoji, ai_generated, is_active, created_at, rarity
             FROM card_templates
             WHERE id = :id
@@ -3242,16 +3427,18 @@ def get_card_template(template_id: int):
         "template": {
             "id": template[0],
             "name": template[1],
-            "description": template[2],
-            "genre": template[3],
-            "base_hp": template[4],
-            "base_attack": template[5],
-            "image_url": template[6],
-            "emoji": template[7],
-            "ai_generated": template[8],
-            "is_active": template[9],
-            "created_at": template[10].isoformat() if template[10] else None,
-            "rarity": template[11],
+            "name_en": template[2],
+            "description": template[3],
+            "description_en": template[4],
+            "genre": template[5],
+            "base_hp": template[6],
+            "base_attack": template[7],
+            "image_url": template[8],
+            "emoji": template[9],
+            "ai_generated": template[10],
+            "is_active": template[11],
+            "created_at": template[12].isoformat() if template[12] else None,
+            "rarity": template[13],
         },
     })
 
@@ -3278,9 +3465,17 @@ def update_card_template(template_id: int):
         update_fields.append("name = :name")
         params["name"] = data["name"]
 
+    if "name_en" in data:
+        update_fields.append("name_en = :name_en")
+        params["name_en"] = data["name_en"]
+
     if "description" in data:
         update_fields.append("description = :description")
         params["description"] = data["description"]
+
+    if "description_en" in data:
+        update_fields.append("description_en = :description_en")
+        params["description_en"] = data["description_en"]
 
     if "base_hp" in data:
         update_fields.append("base_hp = :base_hp")
@@ -3316,7 +3511,7 @@ def update_card_template(template_id: int):
     # Fetch updated template
     updated = db.session.execute(
         text("""
-            SELECT id, name, description, genre, base_hp, base_attack,
+            SELECT id, name, name_en, description, description_en, genre, base_hp, base_attack,
                    image_url, emoji, ai_generated, is_active, rarity
             FROM card_templates
             WHERE id = :id
@@ -3329,15 +3524,17 @@ def update_card_template(template_id: int):
         "template": {
             "id": updated[0],
             "name": updated[1],
-            "description": updated[2],
-            "genre": updated[3],
-            "base_hp": updated[4],
-            "base_attack": updated[5],
-            "image_url": updated[6],
-            "emoji": updated[7],
-            "ai_generated": updated[8],
-            "is_active": updated[9],
-            "rarity": updated[10],
+            "name_en": updated[2],
+            "description": updated[3],
+            "description_en": updated[4],
+            "genre": updated[5],
+            "base_hp": updated[6],
+            "base_attack": updated[7],
+            "image_url": updated[8],
+            "emoji": updated[9],
+            "ai_generated": updated[10],
+            "is_active": updated[11],
+            "rarity": updated[12],
         },
     })
 
@@ -3345,16 +3542,16 @@ def update_card_template(template_id: int):
 @app.route("/card-pool/template/<int:template_id>/set-image", methods=["POST"])
 @login_required
 def set_template_image_from_gallery(template_id: int):
-    """Set template image from gallery URL."""
+    """Set template image from gallery or media URL."""
     data = request.json or {}
     image_url = data.get("image_url")
 
     if not image_url:
         return jsonify({"success": False, "error": "No image_url provided"}), 400
 
-    # Validate the URL is from our gallery
-    if not image_url.startswith("/static/gallery/"):
-        return jsonify({"success": False, "error": "Invalid image URL"}), 400
+    # Validate the URL is from our media storage or legacy gallery
+    if not (image_url.startswith("/media/") or image_url.startswith("/static/gallery/")):
+        return jsonify({"success": False, "error": "Invalid image URL. Must be from /media/ or /static/gallery/"}), 400
 
     # Update the template
     db.session.execute(
@@ -3399,7 +3596,9 @@ def export_card_template_format():
         "templates": [
             {
                 "name": "Название персонажа",
+                "name_en": "Character Name",
                 "description": "Описание персонажа (опционально)",
+                "description_en": "Character description (optional)",
                 "genre": "fantasy",  # fantasy, magic, scifi, cyberpunk, anime
                 "base_hp": 50,
                 "base_attack": 15,
@@ -3410,7 +3609,9 @@ def export_card_template_format():
             },
             {
                 "name": "Легендарный Герой",
+                "name_en": "Legendary Hero",
                 "description": "Уникальный легендарный персонаж",
+                "description_en": "Unique legendary character",
                 "genre": "fantasy",
                 "base_hp": 80,
                 "base_attack": 25,
@@ -3463,13 +3664,15 @@ def bulk_import_card_templates():
             result = db.session.execute(
                 text("""
                     INSERT INTO card_templates
-                    (name, description, genre, base_hp, base_attack, emoji, rarity, image_url, is_active, ai_generated, created_at)
-                    VALUES (:name, :description, :genre, :base_hp, :base_attack, :emoji, :rarity, :image_url, :is_active, false, NOW())
+                    (name, name_en, description, description_en, genre, base_hp, base_attack, emoji, rarity, image_url, is_active, ai_generated, created_at)
+                    VALUES (:name, :name_en, :description, :description_en, :genre, :base_hp, :base_attack, :emoji, :rarity, :image_url, :is_active, false, NOW())
                     RETURNING id
                 """),
                 {
                     "name": name,
+                    "name_en": t.get("name_en"),
                     "description": t.get("description"),
+                    "description_en": t.get("description_en"),
                     "genre": genre,
                     "base_hp": t.get("base_hp", 50),
                     "base_attack": t.get("base_attack", 15),
@@ -3480,7 +3683,7 @@ def bulk_import_card_templates():
                 },
             )
             template_id = result.fetchone()[0]
-            imported.append({"id": template_id, "name": name, "genre": genre})
+            imported.append({"id": template_id, "name": name, "name_en": t.get("name_en"), "genre": genre})
         except Exception as e:
             errors.append(f"Template {i+1} ({t.get('name', 'unknown')}): {str(e)}")
 
@@ -3500,7 +3703,7 @@ def get_legendary_templates():
     """Get all legendary templates grouped by genre."""
     templates = db.session.execute(
         text("""
-            SELECT id, name, description, genre, base_hp, base_attack,
+            SELECT id, name, name_en, description, description_en, genre, base_hp, base_attack,
                    image_url, emoji, is_active, created_at
             FROM card_templates
             WHERE rarity = 'legendary'
@@ -3511,20 +3714,22 @@ def get_legendary_templates():
     # Group by genre
     by_genre = {}
     for t in templates:
-        genre = t[3]
+        genre = t[5]
         if genre not in by_genre:
             by_genre[genre] = []
         by_genre[genre].append({
             "id": t[0],
             "name": t[1],
-            "description": t[2],
-            "genre": t[3],
-            "base_hp": t[4],
-            "base_attack": t[5],
-            "image_url": t[6],
-            "emoji": t[7],
-            "is_active": t[8],
-            "created_at": t[9].isoformat() if t[9] else None,
+            "name_en": t[2],
+            "description": t[3],
+            "description_en": t[4],
+            "genre": t[5],
+            "base_hp": t[6],
+            "base_attack": t[7],
+            "image_url": t[8],
+            "emoji": t[9],
+            "is_active": t[10],
+            "created_at": t[11].isoformat() if t[11] else None,
         })
 
     return jsonify({
@@ -4038,6 +4243,123 @@ def media_rename():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============ Broadcast ============
+
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
+
+@app.route("/broadcast")
+@login_required
+def broadcast():
+    """Broadcast message form."""
+    # Get user counts for filter preview
+    with db.engine.connect() as conn:
+        total_users = conn.execute(
+            text("SELECT COUNT(*) FROM users WHERE telegram_id IS NOT NULL")
+        ).scalar()
+        lang_counts = conn.execute(
+            text("""
+                SELECT COALESCE(up.language, 'ru') as lang, COUNT(*) as cnt
+                FROM users u
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE u.telegram_id IS NOT NULL
+                GROUP BY COALESCE(up.language, 'ru')
+            """)
+        ).fetchall()
+        lang_stats = {row[0]: row[1] for row in lang_counts}
+
+    return render_template(
+        "broadcast.html",
+        total_users=total_users,
+        lang_stats=lang_stats,
+    )
+
+
+@app.route("/broadcast/send", methods=["POST"])
+@login_required
+def broadcast_send():
+    """Send broadcast message to filtered users."""
+    import requests as http_requests
+
+    message_text = request.form.get("message", "").strip()
+    filter_type = request.form.get("filter_type", "all")
+    filter_language = request.form.get("filter_language", "")
+    filter_level_min = request.form.get("filter_level_min", "")
+    filter_level_max = request.form.get("filter_level_max", "")
+    filter_active_days = request.form.get("filter_active_days", "")
+
+    if not message_text:
+        return jsonify({"success": False, "error": "Message is empty"}), 400
+
+    if not BOT_TOKEN:
+        return jsonify({"success": False, "error": "BOT_TOKEN not configured"}), 500
+
+    # Build query based on filter
+    base_query = """
+        SELECT DISTINCT u.telegram_id
+        FROM users u
+        LEFT JOIN user_profiles up ON up.user_id = u.id
+        WHERE u.telegram_id IS NOT NULL
+    """
+    params = {}
+
+    if filter_type == "language" and filter_language:
+        base_query += " AND COALESCE(up.language, 'ru') = :lang"
+        params["lang"] = filter_language
+
+    elif filter_type == "level":
+        if filter_level_min:
+            base_query += " AND u.level >= :level_min"
+            params["level_min"] = int(filter_level_min)
+        if filter_level_max:
+            base_query += " AND u.level <= :level_max"
+            params["level_max"] = int(filter_level_max)
+
+    elif filter_type == "activity" and filter_active_days:
+        days = int(filter_active_days)
+        base_query += " AND u.last_activity_at >= NOW() - INTERVAL ':days days'".replace(
+            ":days", str(days)
+        )
+
+    # Fetch user telegram IDs
+    with db.engine.connect() as conn:
+        result = conn.execute(text(base_query), params)
+        telegram_ids = [row[0] for row in result.fetchall()]
+
+    if not telegram_ids:
+        return jsonify({"success": False, "error": "No users match the filter"}), 400
+
+    # Send messages via Telegram Bot API
+    api_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    success_count = 0
+    fail_count = 0
+
+    for tid in telegram_ids:
+        try:
+            resp = http_requests.post(
+                api_url,
+                json={
+                    "chat_id": tid,
+                    "text": message_text,
+                    "parse_mode": "HTML",
+                },
+                timeout=10,
+            )
+            if resp.status_code == 200 and resp.json().get("ok"):
+                success_count += 1
+            else:
+                fail_count += 1
+        except Exception:
+            fail_count += 1
+
+    return jsonify({
+        "success": True,
+        "total": len(telegram_ids),
+        "sent": success_count,
+        "failed": fail_count,
+    })
 
 
 if __name__ == "__main__":

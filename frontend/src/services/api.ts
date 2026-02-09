@@ -26,6 +26,17 @@ class ApiClient {
     return this.token;
   }
 
+  private getLanguage(): string {
+    if (typeof window !== 'undefined') {
+      // Check app's language setting from localStorage (set by LanguageContext)
+      const storedLang = localStorage.getItem('moodsprint_language');
+      if (storedLang === 'en' || storedLang === 'ru') {
+        return storedLang;
+      }
+    }
+    return 'ru';
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -34,6 +45,7 @@ class ApiClient {
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'Accept-Language': this.getLanguage(),
       ...options.headers,
     };
 

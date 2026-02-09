@@ -16,6 +16,7 @@ from app.models.campaign import (
 from app.models.card import CardRarity
 from app.models.sparks import SparksTransaction
 from app.models.user_profile import UserProfile
+from app.utils import get_lang
 
 # Sparks rewards per star earned
 SPARKS_PER_STAR = 5  # 5 sparks per star = 15 max per level
@@ -334,6 +335,15 @@ class CampaignService:
         # Update progress
         progress.total_stars_earned += stars if is_new_completion else 0
 
+        # Check quests for campaign stars
+        if is_new_completion and stars > 0:
+            try:
+                from app.services.quest_service import QuestService
+
+                QuestService().check_campaign_stars_quests(user_id, stars)
+            except Exception:
+                pass  # Don't fail level completion on quest errors
+
         # Check if this was a boss level (for bonus sparks)
         if level.is_boss:
             progress.bosses_defeated += 1
@@ -501,10 +511,11 @@ class CampaignService:
                     forced_rarity=rarity,
                 )
                 if card:
+                    lang = get_lang()
                     given_rewards.append(
                         {
                             "type": "card",
-                            "card": card.to_dict(),
+                            "card": card.to_dict(lang),
                             "name": reward.name or f"Карта {rarity_str}",
                         }
                     )

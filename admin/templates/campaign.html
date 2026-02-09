@@ -125,11 +125,19 @@
             <h3 class="text-lg font-semibold">Add New Chapter</h3>
         </div>
         <form id="addChapterForm" class="p-4 space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input type="text" name="name" required
-                       class="w-full border rounded-lg px-3 py-2"
-                       placeholder="Chapter name">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (RU) *</label>
+                    <input type="text" name="name" required
+                           class="w-full border rounded-lg px-3 py-2"
+                           placeholder="Название главы">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (EN)</label>
+                    <input type="text" name="name_en"
+                           class="w-full border rounded-lg px-3 py-2"
+                           placeholder="Chapter name">
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -154,11 +162,19 @@
                     🤖 Generate name, description, intro & outro with AI
                 </button>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" rows="2"
-                          class="w-full border rounded-lg px-3 py-2"
-                          placeholder="Chapter description"></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (RU)</label>
+                    <textarea name="description" rows="2"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Описание главы"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (EN)</label>
+                    <textarea name="description_en" rows="2"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Chapter description"></textarea>
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -175,17 +191,33 @@
                     </select>
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro</label>
-                <textarea name="story_intro" rows="3"
-                          class="w-full border rounded-lg px-3 py-2"
-                          placeholder="Text shown at the beginning of the chapter"></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro (RU)</label>
+                    <textarea name="story_intro" rows="3"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Текст в начале главы"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro (EN)</label>
+                    <textarea name="story_intro_en" rows="3"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Text shown at the beginning"></textarea>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro</label>
-                <textarea name="story_outro" rows="3"
-                          class="w-full border rounded-lg px-3 py-2"
-                          placeholder="Text shown after completing the chapter"></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro (RU)</label>
+                    <textarea name="story_outro" rows="3"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Текст после прохождения главы"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro (EN)</label>
+                    <textarea name="story_outro_en" rows="3"
+                              class="w-full border rounded-lg px-3 py-2"
+                              placeholder="Text shown after completing"></textarea>
+                </div>
             </div>
         </form>
         <div class="p-4 border-t flex justify-end gap-2">

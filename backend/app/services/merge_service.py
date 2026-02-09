@@ -7,6 +7,7 @@ from typing import Any
 from app import db
 from app.models.card import CardRarity, MergeLog, UserCard
 from app.services.card_service import CardService
+from app.utils import get_lang
 
 logger = logging.getLogger(__name__)
 
@@ -230,14 +231,25 @@ class MergeService:
 
         db.session.commit()
 
+        # Check quests for merge
+        try:
+            from app.services.quest_service import QuestService
+
+            quest_service = QuestService()
+            quest_service.check_merge_quests(user_id)
+            quest_service.check_card_received_quests(user_id, result_rarity.value)
+        except Exception:
+            pass  # Don't fail merge on quest errors
+
         # Check if rarity improved
         max_input_rarity = max(RARITY_ORDER[r1], RARITY_ORDER[r2])
         result_rarity_order = RARITY_ORDER[result_rarity]
         rarity_upgrade = result_rarity_order > max_input_rarity
 
+        lang = get_lang()
         return {
             "success": True,
-            "new_card": new_card.to_dict(),
+            "new_card": new_card.to_dict(lang),
             "merged_cards": [card1.name, card2.name],
             "rarity_upgrade": rarity_upgrade,
             "message": self._get_merge_message(rarity_upgrade, result_rarity),

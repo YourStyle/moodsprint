@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sparkles, CheckCircle, Brain, Trophy, Users, ArrowRight, Mail, Lock, User, Globe, Swords, Target, Layers, Star, Zap, Shield, RotateCcw } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { authService } from '@/services';
@@ -193,6 +193,7 @@ export function LandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>('en');
   const [isScrolled, setIsScrolled] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [email, setEmail] = useState('');
@@ -202,16 +203,17 @@ export function LandingPage() {
   const t = translations[language];
 
   // Track scroll for header background
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+  const handleScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      setIsScrolled(scrollContainerRef.current.scrollTop > 20);
+    }
   }, []);
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === 'en' ? 'ru' : 'en');
+    const newLang = language === 'en' ? 'ru' : 'en';
+    setLanguage(newLang);
+    // Save to localStorage so 404 page and other pages can read it
+    localStorage.setItem('moodsprint_language', newLang);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -291,7 +293,7 @@ export function LandingPage() {
 
   if (mode === 'login') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900">
+      <div className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900 z-40">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
@@ -361,7 +363,7 @@ export function LandingPage() {
 
   if (mode === 'register') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900">
+      <div className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900 z-40">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
@@ -438,9 +440,13 @@ export function LandingPage() {
     );
   }
 
-  // Landing page
+  // Landing page - fixed to escape layout padding
   return (
-    <div className="min-h-screen bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900">
+    <div
+      ref={scrollContainerRef}
+      onScroll={handleScroll}
+      className="fixed inset-0 overflow-y-auto bg-gradient-to-b from-dark-900 via-dark-800 to-dark-900 z-40"
+    >
       <Header />
 
       {/* Hero Section */}

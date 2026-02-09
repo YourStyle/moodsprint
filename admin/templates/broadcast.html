@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Broadcast - MoodSprint Admin{% endblock %}
+{% block header %}Broadcast{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">{{ total_users }}</div>
+            <div class="text-sm text-gray-500">Total Users</div>
+        </div>
+        {% for lang, count in lang_stats.items() %}
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-2xl font-bold text-gray-900">{{ count }}</div>
+            <div class="text-sm text-gray-500">{{ lang | upper }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Broadcast Form -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Send Message</h3>
+
+        <form id="broadcastForm">
+            <!-- Filter -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter</label>
+                <select id="filterType" name="filter_type" class="w-full border rounded-lg px-3 py-2" onchange="updateFilterFields()">
+                    <option value="all">All Users ({{ total_users }})</option>
+                    <option value="language">By Language</option>
+                    <option value="level">By Level Range</option>
+                    <option value="activity">By Recent Activity</option>
+                </select>
+            </div>
+
+            <!-- Language filter -->
+            <div id="langFilter" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                <select name="filter_language" class="w-full border rounded-lg px-3 py-2">
+                    {% for lang, count in lang_stats.items() %}
+                    <option value="{{ lang }}">{{ lang | upper }} ({{ count }} users)</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Level filter -->
+            <div id="levelFilter" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Level Range</label>
+                <div class="flex gap-2">
+                    <input type="number" name="filter_level_min" placeholder="Min level" min="1" class="flex-1 border rounded-lg px-3 py-2">
+                    <span class="py-2">-</span>
+                    <input type="number" name="filter_level_max" placeholder="Max level" min="1" class="flex-1 border rounded-lg px-3 py-2">
+                </div>
+            </div>
+
+            <!-- Activity filter -->
+            <div id="activityFilter" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Active in last N days</label>
+                <input type="number" name="filter_active_days" placeholder="e.g. 7" min="1" max="365" class="w-full border rounded-lg px-3 py-2">
+            </div>
+
+            <!-- Message -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Message (HTML supported)</label>
+                <textarea
+                    id="messageText"
+                    name="message"
+                    rows="6"
+                    class="w-full border rounded-lg px-3 py-2 font-mono text-sm"
+                    placeholder="Enter your message here...&#10;&#10;Supports <b>bold</b>, <i>italic</i>, <a href='url'>links</a>"
+                ></textarea>
+            </div>
+
+            <!-- Preview -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+                <div id="preview" class="border rounded-lg p-4 bg-gray-50 min-h-[60px] text-sm">
+                    <span class="text-gray-400">Message preview will appear here...</span>
+                </div>
+            </div>
+
+            <!-- Send -->
+            <div class="flex items-center gap-4">
+                <button
+                    type="button"
+                    id="sendBtn"
+                    onclick="sendBroadcast()"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium"
+                >
+                    Send Broadcast
+                </button>
+                <div id="sendResult" class="text-sm"></div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateFilterFields() {
+    const filterType = document.getElementById('filterType').value;
+    document.getElementById('langFilter').classList.toggle('hidden', filterType !== 'language');
+    document.getElementById('levelFilter').classList.toggle('hidden', filterType !== 'level');
+    document.getElementById('activityFilter').classList.toggle('hidden', filterType !== 'activity');
+}
+
+// Live preview
+document.getElementById('messageText').addEventListener('input', function() {
+    const preview = document.getElementById('preview');
+    if (this.value.trim()) {
+        preview.innerHTML = this.value.replace(/\n/g, '<br>');
+    } else {
+        preview.innerHTML = '<span class="text-gray-400">Message preview will appear here...</span>';
+    }
+});
+
+function sendBroadcast() {
+    const btn = document.getElementById('sendBtn');
+    const result = document.getElementById('sendResult');
+    const form = document.getElementById('broadcastForm');
+
+    const message = document.getElementById('messageText').value.trim();
+    if (!message) {
+        result.innerHTML = '<span class="text-red-600">Please enter a message</span>';
+        return;
+    }
+
+    if (!confirm('Are you sure you want to send this broadcast?')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    result.innerHTML = '<span class="text-gray-500">Processing...</span>';
+
+    const formData = new FormData(form);
+
+    fetch('{{ url_for("broadcast_send") }}', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = `<span class="text-green-600">Sent: ${data.sent}/${data.total} (${data.failed} failed)</span>`;
+        } else {
+            result.innerHTML = `<span class="text-red-600">${data.error}</span>`;
+        }
+    })
+    .catch(err => {
+        result.innerHTML = `<span class="text-red-600">Error: ${err.message}</span>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Broadcast';
+    });
+}
+</script>
+{% endblock %}

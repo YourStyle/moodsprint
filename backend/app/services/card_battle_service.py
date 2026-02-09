@@ -23,6 +23,7 @@ from app.models import (
 from app.models.card import CardRarity, UserCard
 from app.models.character import GENRE_THEMES
 from app.models.user_profile import UserProfile
+from app.utils import get_lang
 
 logger = logging.getLogger(__name__)
 
@@ -240,13 +241,15 @@ class CardBattleService:
             SeasonalEvent.end_date >= now,
         ).first()
 
+        lang = get_lang()
+
         if active_event:
             event_monsters = EventMonster.query.filter_by(
                 event_id=active_event.id
             ).all()
             for em in event_monsters:
                 if em.monster and em.monster.id not in defeated_ids:
-                    monster_dict = em.monster.to_dict()
+                    monster_dict = em.monster.to_dict(lang)
                     scaled = self._scale_monster_for_deck(em.monster, deck_power)
                     monster_dict.update(scaled)
                     monster_dict["deck_size"] = self._get_monster_deck_size(em.monster)
@@ -269,7 +272,7 @@ class CardBattleService:
         if period_monsters:
             for dm in period_monsters:
                 if dm.monster and dm.monster.id not in defeated_ids:
-                    monster_dict = dm.monster.to_dict()
+                    monster_dict = dm.monster.to_dict(lang)
                     scaled = self._scale_monster_for_deck(dm.monster, deck_power)
                     monster_dict.update(scaled)
                     monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
@@ -291,7 +294,7 @@ class CardBattleService:
 
         for dm in period_monsters:
             if dm.monster and dm.monster.id not in defeated_ids:
-                monster_dict = dm.monster.to_dict()
+                monster_dict = dm.monster.to_dict(lang)
                 scaled = self._scale_monster_for_deck(dm.monster, deck_power)
                 monster_dict.update(scaled)
                 monster_dict["deck_size"] = self._get_monster_deck_size(dm.monster)
@@ -573,7 +576,8 @@ class CardBattleService:
         # Check for existing active battle
         existing = self.get_active_battle(user_id)
         if existing:
-            return {"error": "battle_in_progress", "battle": existing.to_dict()}
+            lang = get_lang()
+            return {"error": "battle_in_progress", "battle": existing.to_dict(lang)}
 
         monster = Monster.query.get(monster_id)
         if not monster:
@@ -661,9 +665,10 @@ class CardBattleService:
         db.session.add(battle)
         db.session.commit()
 
+        lang = get_lang()
         return {
             "success": True,
-            "battle": battle.to_dict(),
+            "battle": battle.to_dict(lang),
             "message": "Бой начался! Выбери карту для атаки.",
         }
 
@@ -788,6 +793,13 @@ class CardBattleService:
             )
             if "error" in ability_result:
                 return ability_result
+            # Track ability usage for quests
+            try:
+                from app.services.quest_service import QuestService
+
+                QuestService().check_ability_used_quests(battle.user_id)
+            except Exception:
+                pass
         else:
             # Find target monster card for attack
             monster_card = None
@@ -933,9 +945,10 @@ class CardBattleService:
         battle.state = state
         db.session.commit()
 
+        lang = get_lang()
         return {
             "success": True,
-            "battle": battle.to_dict(),
+            "battle": battle.to_dict(lang),
             "turn_log": turn_log,
             "status": "continue",
         }
@@ -1307,7 +1320,8 @@ class CardBattleService:
                     monster_type=monster_type,
                 )
                 if reward_card:
-                    new_card = reward_card.to_dict()
+                    lang = get_lang()
+                    new_card = reward_card.to_dict(lang)
 
         # Update actual player cards in database
         for card_state in state["player_cards"]:
@@ -1318,6 +1332,21 @@ class CardBattleService:
                     # Put card on cooldown instead of destroying it
                     card.start_cooldown(hours=1)
                     cards_lost.append(card_state["id"])
+
+        # Check quests for battle win
+        if won:
+            try:
+                from app.services.quest_service import QuestService
+
+                quest_service = QuestService()
+                quest_service.check_battle_win_quests(battle.user_id)
+                # Check card rarity quest if a new card was earned
+                if new_card and new_card.get("rarity"):
+                    quest_service.check_card_received_quests(
+                        battle.user_id, new_card["rarity"]
+                    )
+            except Exception:
+                pass  # Don't fail battle on quest errors
 
         # Log battle
         battle_record = BattleLog(
@@ -1333,10 +1362,11 @@ class CardBattleService:
         db.session.add(battle_record)
         db.session.commit()
 
+        lang = get_lang()
         return {
             "success": True,
             "status": "won" if won else "lost",
-            "battle": battle.to_dict(),
+            "battle": battle.to_dict(lang),
             "turn_log": turn_log,
             "campaign_level_id": state.get("campaign_level_id"),
             "result": {

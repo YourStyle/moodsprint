@@ -7,7 +7,7 @@ import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, Ch
 import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
-import { CardEarnedModal, type EarnedCard } from '@/components/cards';
+import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { tasksService, focusService, moodService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -178,6 +178,7 @@ export default function TaskDetailPage() {
   const [editingSubtask, setEditingSubtask] = useState<{ id: number; title: string; estimated_minutes: number } | null>(null);
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
+  const [showCardTutorial, setShowCardTutorial] = useState(false);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
 
@@ -1234,8 +1235,17 @@ export default function TaskDetailPage() {
         onClose={() => {
           setShowCardModal(false);
           setEarnedCard(null);
+          if (shouldShowCardTutorial()) {
+            setShowCardTutorial(true);
+          }
         }}
         t={t}
+      />
+
+      {/* Card Tutorial */}
+      <CardTutorial
+        isOpen={showCardTutorial}
+        onClose={() => setShowCardTutorial(false)}
       />
     </div>
   );

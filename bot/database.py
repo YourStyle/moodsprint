@@ -29,6 +29,128 @@ async def get_user_by_telegram_id(telegram_id: int) -> dict | None:
         return None
 
 
+async def get_user_language(telegram_id: int) -> str:
+    """Get user's language preference. Returns 'ru' as default."""
+    try:
+        async with async_session() as session:
+            # First try with language column
+            try:
+                result = await session.execute(
+                    text(
+                        """
+                        SELECT COALESCE(up.language, 'ru') as language
+                        FROM users u
+                        LEFT JOIN user_profiles up ON up.user_id = u.id
+                        WHERE u.telegram_id = :tid
+                    """
+                    ),
+                    {"tid": telegram_id},
+                )
+                row = result.fetchone()
+                if row:
+                    return row._mapping["language"]
+            except Exception:
+                # Column might not exist yet, fall through to default
+                pass
+            return "ru"
+    except Exception:
+        return "ru"
+
+
+async def update_user_language(telegram_id: int, language: str):
+    """Update user's language preference."""
+    async with async_session() as session:
+        # Ensure user profile exists
+        await session.execute(
+            text(
+                """
+                INSERT INTO user_profiles (user_id, language)
+                SELECT id, :lang FROM users WHERE telegram_id = :tid
+                ON CONFLICT (user_id) DO UPDATE SET language = :lang
+            """
+            ),
+            {"tid": telegram_id, "lang": language},
+        )
+        await session.commit()
+
+
+async def create_task_from_voice(
+    telegram_id: int,
+    title: str,
+    due_date: str,
+    scheduled_at: str | None = None,
+) -> dict | None:
+    """
+    Create a task from voice message.
+
+    Args:
+        telegram_id: User's telegram ID
+        title: Task title
+        due_date: Due date in format 'YYYY-MM-DD'
+        scheduled_at: Optional scheduled time in ISO format
+
+    Returns:
+        Created task dict or None if failed
+    """
+    from datetime import date as date_type
+    from datetime import datetime
+
+    async with async_session() as session:
+        # Get user_id
+        user_result = await session.execute(
+            text("SELECT id FROM users WHERE telegram_id = :tid"),
+            {"tid": telegram_id},
+        )
+        user_row = user_result.fetchone()
+        if not user_row:
+            return None
+
+        user_id = user_row._mapping["id"]
+
+        # Convert string date to date object for asyncpg
+        if isinstance(due_date, str):
+            due_date_obj = date_type.fromisoformat(due_date)
+        else:
+            due_date_obj = due_date
+
+        # Convert scheduled_at string to datetime if provided
+        scheduled_at_obj = None
+        if scheduled_at:
+            if isinstance(scheduled_at, str):
+                scheduled_at_obj = datetime.fromisoformat(
+                    scheduled_at.replace("Z", "+00:00")
+                )
+            else:
+                scheduled_at_obj = scheduled_at
+
+        # Create task
+        result = await session.execute(
+            text(
+                """
+                INSERT INTO tasks
+                    (user_id, title, due_date, scheduled_at,
+                     status, priority, created_at, updated_at)
+                VALUES
+                    (:user_id, :title, :due_date, :scheduled_at,
+                     'pending', 'medium', NOW(), NOW())
+                RETURNING id, title, due_date, scheduled_at
+            """
+            ),
+            {
+                "user_id": user_id,
+                "title": title,
+                "due_date": due_date_obj,
+                "scheduled_at": scheduled_at_obj,
+            },
+        )
+        row = result.fetchone()
+        await session.commit()
+
+        if row:
+            return dict(row._mapping)
+        return None
+
+
 async def get_all_users() -> list[dict]:
     """Get all users for broadcast."""
     async with async_session() as session:
@@ -619,6 +741,23 @@ async def reschedule_task_to_days(task_id: int, days: int):
             """
             ),
             {"task_id": task_id},
+        )
+        await session.commit()
+
+
+async def update_task_scheduled_at(task_id: int, scheduled_at: str):
+    """Update task scheduled_at time for reminder."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                UPDATE tasks
+                SET scheduled_at = :scheduled_at,
+                    reminder_sent = false
+                WHERE id = :task_id
+            """
+            ),
+            {"task_id": task_id, "scheduled_at": scheduled_at},
         )
         await session.commit()
 

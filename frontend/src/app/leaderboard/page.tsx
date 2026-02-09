@@ -1,20 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Trophy, Medal, Flame, Star, Crown, Skull } from 'lucide-react';
 import { Card, ScrollBackdrop } from '@/components/ui';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
+import { setupBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 
 type LeaderboardType = 'weekly' | 'all_time';
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const { user } = useAppStore();
   const { t } = useLanguage();
   const [type, setType] = useState<LeaderboardType>('weekly');
+
+  // Setup back button for non-tab page
+  useEffect(() => setupBackButton(() => router.back()), [router]);
 
   const { data: leaderboardData, isLoading } = useQuery({
     queryKey: ['leaderboard', type],

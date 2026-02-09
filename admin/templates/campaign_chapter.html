@@ -40,18 +40,23 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
         <form id="chapterForm" class="hidden space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (RU)</label>
                     <input type="text" name="name" value="{{ chapter.name }}"
                            class="w-full border rounded-lg px-3 py-2">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Genre</label>
-                    <select name="genre" class="w-full border rounded-lg px-3 py-2">
-                        {% for g in ['fantasy', 'magic', 'scifi', 'cyberpunk', 'anime'] %}
-                        <option value="{{ g }}" {{ 'selected' if g == chapter.genre else '' }}>{{ g|capitalize }}</option>
-                        {% endfor %}
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (EN)</label>
+                    <input type="text" name="name_en" value="{{ chapter.name_en or '' }}"
+                           class="w-full border rounded-lg px-3 py-2" placeholder="English name">
                 </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Genre</label>
+                <select name="genre" class="w-full border rounded-lg px-3 py-2">
+                    {% for g in ['fantasy', 'magic', 'scifi', 'cyberpunk', 'anime'] %}
+                    <option value="{{ g }}" {{ 'selected' if g == chapter.genre else '' }}>{{ g|capitalize }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="grid grid-cols-3 gap-4">
                 <div>
@@ -84,10 +89,17 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                 <img src="{{ chapter.image_url }}" alt="Preview" class="h-24 rounded-lg">
             </div>
             {% endif %}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" rows="2"
-                          class="w-full border rounded-lg px-3 py-2">{{ chapter.description or '' }}</textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (RU)</label>
+                    <textarea name="description" rows="2"
+                              class="w-full border rounded-lg px-3 py-2">{{ chapter.description or '' }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (EN)</label>
+                    <textarea name="description_en" rows="2"
+                              class="w-full border rounded-lg px-3 py-2" placeholder="English description">{{ chapter.description_en or '' }}</textarea>
+                </div>
             </div>
             <div class="grid grid-cols-3 gap-4">
                 <div>
@@ -109,15 +121,29 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                     </select>
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro (shown at chapter start)</label>
-                <textarea name="story_intro" rows="4"
-                          class="w-full border rounded-lg px-3 py-2 font-mono text-sm">{{ chapter.story_intro or '' }}</textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro (RU)</label>
+                    <textarea name="story_intro" rows="4"
+                              class="w-full border rounded-lg px-3 py-2 font-mono text-sm">{{ chapter.story_intro or '' }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Intro (EN)</label>
+                    <textarea name="story_intro_en" rows="4"
+                              class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder="English intro">{{ chapter.story_intro_en or '' }}</textarea>
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro (shown after boss defeat)</label>
-                <textarea name="story_outro" rows="4"
-                          class="w-full border rounded-lg px-3 py-2 font-mono text-sm">{{ chapter.story_outro or '' }}</textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro (RU)</label>
+                    <textarea name="story_outro" rows="4"
+                              class="w-full border rounded-lg px-3 py-2 font-mono text-sm">{{ chapter.story_outro or '' }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Story Outro (EN)</label>
+                    <textarea name="story_outro_en" rows="4"
+                              class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder="English outro">{{ chapter.story_outro_en or '' }}</textarea>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <label class="flex items-center gap-2">
@@ -301,20 +327,26 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title (RU)</label>
                     <input type="text" name="title"
                            class="w-full border rounded-lg px-3 py-2"
-                           placeholder="Level title (optional)">
+                           placeholder="Название уровня">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Monster</label>
-                    <select name="monster_id" class="w-full border rounded-lg px-3 py-2">
-                        <option value="">Select monster...</option>
-                        {% for monster in all_monsters %}
-                        <option value="{{ monster.id }}">{{ monster.emoji }} {{ monster.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title (EN)</label>
+                    <input type="text" name="title_en"
+                           class="w-full border rounded-lg px-3 py-2"
+                           placeholder="Level title">
                 </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Monster</label>
+                <select name="monster_id" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">Select monster...</option>
+                    {% for monster in all_monsters %}
+                    <option value="{{ monster.id }}">{{ monster.emoji }} {{ monster.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
@@ -385,6 +417,8 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
                     No dialogue configured
                 </div>
                 <input type="hidden" name="dialogue_after" value="">
+                <input type="hidden" name="dialogue_before_en" value="">
+                <input type="hidden" name="dialogue_after_en" value="">
             </div>
 
             <!-- Star Conditions -->
@@ -435,13 +469,24 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
 <!-- Dialog Builder Modal -->
 <div id="dialogBuilderModal" class="fixed inset-0 bg-black/50 hidden z-[60] flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-        <div class="p-4 border-b flex items-center justify-between">
-            <h3 id="dialogBuilderTitle" class="text-lg font-semibold">Dialog Builder</h3>
-            <button onclick="closeDialogBuilder()" class="text-gray-500 hover:text-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
+        <div class="p-4 border-b">
+            <div class="flex items-center justify-between mb-3">
+                <h3 id="dialogBuilderTitle" class="text-lg font-semibold">Dialog Builder</h3>
+                <button onclick="closeDialogBuilder()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <!-- Language Tabs -->
+            <div class="flex gap-2">
+                <button id="langTabRu" onclick="switchDialogLang('ru')" class="px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white">
+                    🇷🇺 Русский
+                </button>
+                <button id="langTabEn" onclick="switchDialogLang('en')" class="px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+                    🇬🇧 English
+                </button>
+            </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4">
@@ -705,6 +750,7 @@ function editLevel(level) {
     document.getElementById('levelModalTitle').textContent = 'Edit Level ' + level.number;
     document.querySelector('[name="level_id"]').value = level.id;
     document.querySelector('[name="title"]').value = level.title || '';
+    document.querySelector('[name="title_en"]').value = level.title_en || '';
     document.querySelector('[name="monster_id"]').value = level.monster_id || '';
     document.querySelector('[name="difficulty_multiplier"]').value = level.difficulty_multiplier;
     document.querySelector('[name="xp_reward"]').value = level.xp_reward;
@@ -1008,19 +1054,61 @@ document.getElementById('levelModal').addEventListener('click', function(e) {
 
 // ============ Dialog Builder ============
 let currentDialogType = null; // 'before' or 'after'
-let dialogData = { before: [], after: [] };
+let currentDialogLang = 'ru'; // 'ru' or 'en'
+let dialogData = { before: [], after: [], before_en: [], after_en: [] };
+
+function getDialogKey() {
+    return currentDialogLang === 'en' ? `${currentDialogType}_en` : currentDialogType;
+}
+
+function switchDialogLang(lang) {
+    // Save current data before switching
+    saveCurrentDialogData();
+
+    currentDialogLang = lang;
+
+    // Update tab styles
+    const ruTab = document.getElementById('langTabRu');
+    const enTab = document.getElementById('langTabEn');
+    if (lang === 'ru') {
+        ruTab.className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white';
+        enTab.className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
+    } else {
+        ruTab.className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
+        enTab.className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white';
+    }
+
+    renderDialogNodes();
+}
+
+function saveCurrentDialogData() {
+    if (!currentDialogType) return;
+    const key = getDialogKey();
+    dialogData[key] = collectDialogData();
+}
 
 function openDialogBuilder(type) {
     currentDialogType = type;
+    currentDialogLang = 'ru'; // Always start with Russian
     document.getElementById('dialogBuilderTitle').textContent =
         type === 'before' ? 'Dialogue Before Battle' : 'Dialogue After Battle';
 
-    // Load existing data
-    const input = document.querySelector(`[name="dialogue_${type}"]`);
+    // Reset tab styles
+    document.getElementById('langTabRu').className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-purple-600 text-white';
+    document.getElementById('langTabEn').className = 'px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200';
+
+    // Load existing data for both languages
+    const inputRu = document.querySelector(`[name="dialogue_${type}"]`);
+    const inputEn = document.querySelector(`[name="dialogue_${type}_en"]`);
     try {
-        dialogData[type] = input.value ? JSON.parse(input.value) : [];
+        dialogData[type] = inputRu.value ? JSON.parse(inputRu.value) : [];
     } catch (e) {
         dialogData[type] = [];
+    }
+    try {
+        dialogData[`${type}_en`] = inputEn.value ? JSON.parse(inputEn.value) : [];
+    } catch (e) {
+        dialogData[`${type}_en`] = [];
     }
 
     renderDialogNodes();
@@ -1036,12 +1124,14 @@ function renderDialogNodes() {
     const container = document.getElementById('dialogNodes');
     container.innerHTML = '';
 
-    if (dialogData[currentDialogType].length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center py-8">No dialogue lines yet. Click "Add Dialogue Line" to start.</p>';
+    const key = getDialogKey();
+    if (!dialogData[key] || dialogData[key].length === 0) {
+        const langLabel = currentDialogLang === 'en' ? 'English' : 'Russian';
+        container.innerHTML = `<p class="text-gray-500 text-center py-8">No ${langLabel} dialogue lines yet. Click "Add Dialogue Line" to start.</p>`;
         return;
     }
 
-    dialogData[currentDialogType].forEach((node, index) => {
+    dialogData[key].forEach((node, index) => {
         const template = document.getElementById('dialogNodeTemplate');
         const clone = template.content.cloneNode(true);
         const nodeEl = clone.querySelector('.dialog-node');
@@ -1090,13 +1180,14 @@ function renderDialogNodes() {
 
 function addDialogNode() {
     // IMPORTANT: Save current data from DOM before adding new node
+    const key = getDialogKey();
     const existingData = collectDialogData();
-    dialogData[currentDialogType] = existingData;
+    dialogData[key] = existingData;
 
     const defaultEmoji = currentDialogType === 'before' ? '👹' : '🎉';
     const defaultSpeaker = currentDialogType === 'before' ? 'Monster' : 'Hero';
 
-    dialogData[currentDialogType].push({
+    dialogData[key].push({
         speaker: defaultSpeaker,
         text: '',
         emoji: defaultEmoji
@@ -1117,38 +1208,41 @@ function addDialogNode() {
 
 function removeNode(btn) {
     // Save current data first
-    dialogData[currentDialogType] = collectDialogData();
+    const key = getDialogKey();
+    dialogData[key] = collectDialogData();
 
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
-    dialogData[currentDialogType].splice(index, 1);
+    dialogData[key].splice(index, 1);
     renderDialogNodes();
 }
 
 function moveNodeUp(btn) {
     // Save current data first
-    dialogData[currentDialogType] = collectDialogData();
+    const key = getDialogKey();
+    dialogData[key] = collectDialogData();
 
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
     if (index > 0) {
-        const temp = dialogData[currentDialogType][index];
-        dialogData[currentDialogType][index] = dialogData[currentDialogType][index - 1];
-        dialogData[currentDialogType][index - 1] = temp;
+        const temp = dialogData[key][index];
+        dialogData[key][index] = dialogData[key][index - 1];
+        dialogData[key][index - 1] = temp;
         renderDialogNodes();
     }
 }
 
 function moveNodeDown(btn) {
     // Save current data first
-    dialogData[currentDialogType] = collectDialogData();
+    const key = getDialogKey();
+    dialogData[key] = collectDialogData();
 
     const node = btn.closest('.dialog-node');
     const index = parseInt(node.dataset.nodeId);
-    if (index < dialogData[currentDialogType].length - 1) {
-        const temp = dialogData[currentDialogType][index];
-        dialogData[currentDialogType][index] = dialogData[currentDialogType][index + 1];
-        dialogData[currentDialogType][index + 1] = temp;
+    if (index < dialogData[key].length - 1) {
+        const temp = dialogData[key][index];
+        dialogData[key][index] = dialogData[key][index + 1];
+        dialogData[key][index + 1] = temp;
         renderDialogNodes();
     }
 }
@@ -1234,12 +1328,17 @@ function collectDialogData() {
 }
 
 function saveDialogBuilder() {
+    // Save current language data
+    const key = getDialogKey();
     const data = collectDialogData();
-    dialogData[currentDialogType] = data;
+    dialogData[key] = data;
 
-    // Update hidden input
-    const input = document.querySelector(`[name="dialogue_${currentDialogType}"]`);
-    input.value = data.length > 0 ? JSON.stringify(data) : '';
+    // Update hidden inputs for both languages
+    const inputRu = document.querySelector(`[name="dialogue_${currentDialogType}"]`);
+    const inputEn = document.querySelector(`[name="dialogue_${currentDialogType}_en"]`);
+
+    inputRu.value = dialogData[currentDialogType]?.length > 0 ? JSON.stringify(dialogData[currentDialogType]) : '';
+    inputEn.value = dialogData[`${currentDialogType}_en`]?.length > 0 ? JSON.stringify(dialogData[`${currentDialogType}_en`]) : '';
 
     // Update preview
     updateDialogPreview(currentDialogType);
@@ -1249,28 +1348,54 @@ function saveDialogBuilder() {
 
 function updateDialogPreview(type) {
     const previewEl = document.getElementById(`dialog${type === 'before' ? 'Before' : 'After'}Preview`);
-    const data = dialogData[type];
+    const dataRu = dialogData[type];
+    const dataEn = dialogData[`${type}_en`];
 
-    if (!data || data.length === 0) {
+    if ((!dataRu || dataRu.length === 0) && (!dataEn || dataEn.length === 0)) {
         previewEl.innerHTML = '<span class="text-gray-400">No dialogue configured</span>';
         return;
     }
 
-    let html = '<div class="space-y-2">';
-    data.forEach((node, i) => {
-        const hasEvent = node.event ? `<span class="text-purple-600 text-xs">[${node.event}]</span>` : '';
-        const hasChoices = node.choices ? `<span class="text-blue-600 text-xs">[${node.choices.length} choices]</span>` : '';
-        html += `
-            <div class="flex items-start gap-2">
-                <span class="text-lg">${node.emoji || '💬'}</span>
-                <div>
-                    <span class="font-medium text-gray-700">${node.speaker}:</span>
-                    <span class="text-gray-600">${node.text?.substring(0, 50) || '...'}${node.text?.length > 50 ? '...' : ''}</span>
-                    ${hasEvent} ${hasChoices}
+    let html = '<div class="space-y-3">';
+
+    // Russian preview
+    if (dataRu && dataRu.length > 0) {
+        html += '<div class="border-l-2 border-purple-400 pl-2">';
+        html += '<div class="text-xs font-medium text-purple-600 mb-1">🇷🇺 Russian</div>';
+        html += '<div class="space-y-1">';
+        dataRu.forEach((node, i) => {
+            const hasEvent = node.event ? `<span class="text-purple-600 text-xs">[${node.event}]</span>` : '';
+            html += `
+                <div class="flex items-start gap-1 text-xs">
+                    <span>${node.emoji || '💬'}</span>
+                    <span class="text-gray-600">${node.text?.substring(0, 40) || '...'}${node.text?.length > 40 ? '...' : ''}</span>
+                    ${hasEvent}
                 </div>
-            </div>
-        `;
-    });
+            `;
+        });
+        html += '</div></div>';
+    }
+
+    // English preview
+    if (dataEn && dataEn.length > 0) {
+        html += '<div class="border-l-2 border-blue-400 pl-2">';
+        html += '<div class="text-xs font-medium text-blue-600 mb-1">🇬🇧 English</div>';
+        html += '<div class="space-y-1">';
+        dataEn.forEach((node, i) => {
+            const hasEvent = node.event ? `<span class="text-blue-600 text-xs">[${node.event}]</span>` : '';
+            html += `
+                <div class="flex items-start gap-1 text-xs">
+                    <span>${node.emoji || '💬'}</span>
+                    <span class="text-gray-600">${node.text?.substring(0, 40) || '...'}${node.text?.length > 40 ? '...' : ''}</span>
+                    ${hasEvent}
+                </div>
+            `;
+        });
+        html += '</div></div>';
+    } else if (dataRu && dataRu.length > 0) {
+        html += '<div class="text-xs text-orange-500 mt-1">⚠️ English translation missing</div>';
+    }
+
     html += '</div>';
     previewEl.innerHTML = html;
 }
@@ -1280,35 +1405,53 @@ const originalEditLevel = editLevel;
 editLevel = function(level) {
     originalEditLevel(level);
 
-    // Load dialogue data
+    // Load Russian dialogue data
     if (level.dialogue_before) {
         dialogData.before = level.dialogue_before;
         document.querySelector('[name="dialogue_before"]').value = JSON.stringify(level.dialogue_before);
-        updateDialogPreview('before');
     } else {
         dialogData.before = [];
         document.querySelector('[name="dialogue_before"]').value = '';
-        updateDialogPreview('before');
     }
 
     if (level.dialogue_after) {
         dialogData.after = level.dialogue_after;
         document.querySelector('[name="dialogue_after"]').value = JSON.stringify(level.dialogue_after);
-        updateDialogPreview('after');
     } else {
         dialogData.after = [];
         document.querySelector('[name="dialogue_after"]').value = '';
-        updateDialogPreview('after');
     }
+
+    // Load English dialogue data
+    if (level.dialogue_before_en) {
+        dialogData.before_en = level.dialogue_before_en;
+        document.querySelector('[name="dialogue_before_en"]').value = JSON.stringify(level.dialogue_before_en);
+    } else {
+        dialogData.before_en = [];
+        document.querySelector('[name="dialogue_before_en"]').value = '';
+    }
+
+    if (level.dialogue_after_en) {
+        dialogData.after_en = level.dialogue_after_en;
+        document.querySelector('[name="dialogue_after_en"]').value = JSON.stringify(level.dialogue_after_en);
+    } else {
+        dialogData.after_en = [];
+        document.querySelector('[name="dialogue_after_en"]').value = '';
+    }
+
+    updateDialogPreview('before');
+    updateDialogPreview('after');
 };
 
 // Reset on add new level
 const originalShowAddLevelModal = showAddLevelModal;
 showAddLevelModal = function() {
     originalShowAddLevelModal();
-    dialogData = { before: [], after: [] };
+    dialogData = { before: [], after: [], before_en: [], after_en: [] };
     document.querySelector('[name="dialogue_before"]').value = '';
     document.querySelector('[name="dialogue_after"]').value = '';
+    document.querySelector('[name="dialogue_before_en"]').value = '';
+    document.querySelector('[name="dialogue_after_en"]').value = '';
     updateDialogPreview('before');
     updateDialogPreview('after');
 };

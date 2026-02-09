@@ -1561,7 +1561,7 @@ export default function ArenaPage() {
                   onClick={() => router.push('/')}
                 >
                   <Plus className="w-5 h-5 mr-2" />
-                  Создать задачу
+                  {t('createTask')}
                 </Button>
               )}
 
@@ -1569,7 +1569,7 @@ export default function ArenaPage() {
                 {campaignMode ? (
                   <>
                     <Map className="w-5 h-5 mr-2" />
-                    Вернуться в кампанию
+                    {t('backToCampaign')}
                   </>
                 ) : (
                   t('returnToSelect')
@@ -1596,7 +1596,7 @@ export default function ArenaPage() {
                   setShowCampaignOutro(true);
                 }
               }}
-              monsterName={selectedMonster?.name || 'Монстр'}
+              monsterName={selectedMonster?.name || t('monster')}
               monsterEmoji={selectedMonster?.emoji || '👾'}
               monsterImageUrl={selectedMonster?.sprite_url || undefined}
               dialogue={campaignResult.dialogue_after.map(d => ({
@@ -1604,8 +1604,7 @@ export default function ArenaPage() {
                 text: d.text,
                 emoji: d.emoji,
               }))}
-              title="После победы"
-              continueButtonText={campaignResult?.story_outro ? 'Продолжить' : 'Готово'}
+              continueButtonText={campaignResult?.story_outro ? t('continueStory') : t('done')}
             />
           )}
 
@@ -1615,7 +1614,7 @@ export default function ArenaPage() {
               isOpen={showCampaignOutro}
               onClose={() => setShowCampaignOutro(false)}
               type="level_complete"
-              title="Эпилог"
+              title=""
               text={campaignResult.story_outro}
               emoji="📜"
               starsEarned={campaignResult.stars_earned}

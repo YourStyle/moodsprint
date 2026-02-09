@@ -22,6 +22,7 @@ export const translations = {
     profile: 'Профиль',
     settings: 'Настройки',
     arena: 'Арена',
+    arenaDesc: 'Случайные бои и события',
     deck: 'Колода',
     leaderboard: 'Лидерборд',
 
@@ -460,6 +461,18 @@ export const translations = {
     joinNow: 'Присоединяйся!',
     cardsOnSale: 'карт на продаже',
 
+    // Card tutorial
+    tutorialTitle: 'Твоя первая карта!',
+    tutorialStep1Title: 'Карты героев',
+    tutorialStep1Text: 'Каждая карта — уникальный герой со своими атакой, здоровьем и способностями. Выполняй задачи, чтобы получать новые карты!',
+    tutorialStep2Title: 'Собери колоду',
+    tutorialStep2Text: 'Добавь лучшие карты в колоду из 5 героев. Баланс атаки и защиты — ключ к победе!',
+    tutorialStep3Title: 'Бои в кампании',
+    tutorialStep3Text: 'Используй колоду в пошаговых боях против монстров. Побеждай боссов и зарабатывай звёзды!',
+    tutorialStep4Title: 'Слияние карт',
+    tutorialStep4Text: 'Объединяй две карты, чтобы получить новую более редкую. Чем круче карты — тем выше шанс легендарного героя!',
+    tutorialGotIt: 'Понятно!',
+
     // Admin panel
     adminPanel: 'Админ-панель',
     adminPanelDesc: 'Управление пулом карт и статистика',
@@ -502,6 +515,17 @@ export const translations = {
     sellForStars: 'Продать за Stars',
     cooldownReady: 'готово!',
     cooldownLabel: 'перезарядка',
+
+    // Dialogue
+    hero: 'Герой',
+    narrator: 'Рассказчик',
+    monster: 'Монстр',
+    toBattleButton: 'В бой!',
+    skipDialogue: 'Пропустить »',
+    tapToSkip: 'Нажмите, чтобы пропустить',
+    tapToStartBattle: 'Нажмите, чтобы начать бой',
+    tapToContinue: 'Нажмите для продолжения',
+    backToCampaign: 'Вернуться в кампанию',
   },
 
   en: {
@@ -527,6 +551,7 @@ export const translations = {
     profile: 'Profile',
     settings: 'Settings',
     arena: 'Arena',
+    arenaDesc: 'Random battles and events',
     deck: 'Deck',
     leaderboard: 'Leaderboard',
 
@@ -965,6 +990,18 @@ export const translations = {
     joinNow: 'Join now!',
     cardsOnSale: 'cards on sale',
 
+    // Card tutorial
+    tutorialTitle: 'Your first card!',
+    tutorialStep1Title: 'Hero Cards',
+    tutorialStep1Text: 'Each card is a unique hero with attack, health, and abilities. Complete tasks to earn new cards!',
+    tutorialStep2Title: 'Build a Deck',
+    tutorialStep2Text: 'Add your best cards to a deck of 5 heroes. Balancing attack and defense is the key to victory!',
+    tutorialStep3Title: 'Campaign Battles',
+    tutorialStep3Text: 'Use your deck in turn-based battles against monsters. Defeat bosses and earn stars!',
+    tutorialStep4Title: 'Merge to Evolve',
+    tutorialStep4Text: 'Combine two cards to get a new, rarer one. Better cards mean higher chances for legendary heroes!',
+    tutorialGotIt: 'Got it!',
+
     // Admin panel
     adminPanel: 'Admin Panel',
     adminPanelDesc: 'Card pool management and statistics',
@@ -1007,6 +1044,17 @@ export const translations = {
     sellForStars: 'Sell for Stars',
     cooldownReady: 'ready!',
     cooldownLabel: 'cooldown',
+
+    // Dialogue
+    hero: 'Hero',
+    narrator: 'Narrator',
+    monster: 'Monster',
+    toBattleButton: 'To battle!',
+    skipDialogue: 'Skip »',
+    tapToSkip: 'Tap to skip',
+    tapToStartBattle: 'Tap to start battle',
+    tapToContinue: 'Tap to continue',
+    backToCampaign: 'Back to campaign',
   },
 } as const;
 

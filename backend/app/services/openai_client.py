@@ -27,9 +27,15 @@ def get_openai_client():
     proxy_url = current_app.config.get("OPENAI_PROXY")
 
     if proxy_url:
-        # Create httpx client with proxy
-        http_client = httpx.Client(proxy=proxy_url)
+        # Create httpx client with explicit proxy mounts for HTTPS
         current_app.logger.info("OpenAI client initialized with proxy")
+        http_client = httpx.Client(
+            mounts={
+                "https://": httpx.HTTPTransport(proxy=proxy_url),
+                "http://": httpx.HTTPTransport(proxy=proxy_url),
+            },
+            timeout=60.0,
+        )
         return OpenAI(api_key=api_key, http_client=http_client)
     else:
         return OpenAI(api_key=api_key)

@@ -6,6 +6,7 @@ import { Swords, User, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { hapticFeedback } from '@/lib/telegram';
+import { useLanguage } from '@/lib/i18n';
 
 interface DialogueLine {
   speaker: string;
@@ -34,12 +35,17 @@ export function DialogueSheet({
   monsterName,
   monsterEmoji,
   monsterImageUrl,
-  heroName = 'Герой',
+  heroName,
   dialogue,
-  continueButtonText = 'В бой!',
+  continueButtonText,
   showSkipButton = false,
 }: DialogueSheetProps) {
+  const { t } = useLanguage();
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
+
+  // Use translations for default values
+  const displayHeroName = heroName || t('hero');
+  const displayContinueButtonText = continueButtonText || t('toBattleButton');
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [monsterText, setMonsterText] = useState('');
@@ -51,11 +57,14 @@ export function DialogueSheet({
   // Determine speaker type
   const getSpeakerType = (speaker: string): 'monster' | 'hero' | 'narrator' => {
     const lowerSpeaker = speaker.toLowerCase();
-    if (lowerSpeaker === 'monster' || lowerSpeaker === monsterName.toLowerCase()) {
+    if (lowerSpeaker === 'monster' || lowerSpeaker === 'монстр' || lowerSpeaker === monsterName.toLowerCase()) {
       return 'monster';
     }
-    if (lowerSpeaker === 'hero' || lowerSpeaker === 'герой' || lowerSpeaker === heroName.toLowerCase()) {
+    if (lowerSpeaker === 'hero' || lowerSpeaker === 'герой' || lowerSpeaker === displayHeroName.toLowerCase()) {
       return 'hero';
+    }
+    if (lowerSpeaker === 'narrator' || lowerSpeaker === 'рассказчик') {
+      return 'narrator';
     }
     return 'narrator';
   };
@@ -160,7 +169,7 @@ export function DialogueSheet({
               }}
               className="absolute bottom-28 right-4 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 text-xs font-medium transition-colors z-10"
             >
-              Пропустить »
+              {t('skipDialogue')}
             </button>
           )}
 
@@ -293,7 +302,7 @@ export function DialogueSheet({
                 <p className={cn(
                   "text-sm font-medium mt-2 transition-colors",
                   speakerType === 'hero' ? "text-blue-400" : "text-blue-400/50"
-                )}>{heroName}</p>
+                )}>{displayHeroName}</p>
               </motion.div>
             )}
 
@@ -315,7 +324,7 @@ export function DialogueSheet({
 
               {/* Hint text */}
               <p className="text-center text-xs text-white/40">
-                {isTyping ? 'Нажмите, чтобы пропустить' : isLastLine ? 'Нажмите, чтобы начать бой' : 'Нажмите для продолжения'}
+                {isTyping ? t('tapToSkip') : isLastLine ? t('tapToStartBattle') : t('tapToContinue')}
               </p>
 
               {/* Battle button */}
@@ -332,7 +341,7 @@ export function DialogueSheet({
                     className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
                   >
                     <Swords className="w-5 h-5 mr-2" />
-                    {continueButtonText}
+                    {displayContinueButtonText}
                   </Button>
                 </motion.div>
               )}

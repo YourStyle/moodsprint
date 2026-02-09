@@ -235,6 +235,62 @@ class QuestService:
 
         return updated_quests
 
+    def check_battle_win_quests(self, user_id: int) -> list[DailyQuest]:
+        """Check and update quests when a battle is won."""
+        updated_quests = []
+
+        quest = self.update_quest_progress(user_id, "arena_battles")
+        if quest:
+            updated_quests.append(quest)
+
+        return updated_quests
+
+    def check_merge_quests(self, user_id: int) -> list[DailyQuest]:
+        """Check and update quests when cards are merged."""
+        updated_quests = []
+
+        quest = self.update_quest_progress(user_id, "merge_cards")
+        if quest:
+            updated_quests.append(quest)
+
+        return updated_quests
+
+    def check_card_received_quests(self, user_id: int, rarity: str) -> list[DailyQuest]:
+        """Check and update quests when a card is received."""
+        updated_quests = []
+
+        # collect_rarity triggers for rare+ cards
+        rare_rarities = {"rare", "epic", "legendary"}
+        if rarity in rare_rarities:
+            quest = self.update_quest_progress(user_id, "collect_rarity")
+            if quest:
+                updated_quests.append(quest)
+
+        return updated_quests
+
+    def check_campaign_stars_quests(self, user_id: int, stars: int) -> list[DailyQuest]:
+        """Check and update quests when campaign stars are earned."""
+        updated_quests = []
+
+        if stars > 0:
+            quest = self.update_quest_progress(
+                user_id, "campaign_stars", increment=stars
+            )
+            if quest:
+                updated_quests.append(quest)
+
+        return updated_quests
+
+    def check_ability_used_quests(self, user_id: int) -> list[DailyQuest]:
+        """Check and update quests when a card ability is used in battle."""
+        updated_quests = []
+
+        quest = self.update_quest_progress(user_id, "use_abilities")
+        if quest:
+            updated_quests.append(quest)
+
+        return updated_quests
+
     def claim_quest_reward(self, user_id: int, quest_id: int) -> dict | None:
         """
         Claim reward for completed quest.

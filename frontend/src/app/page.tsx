@@ -8,7 +8,7 @@ import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
 import { DailyBonus } from '@/components/gamification';
-import { CardEarnedModal, type EarnedCard } from '@/components/cards';
+import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
@@ -450,6 +450,7 @@ export default function HomePage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
+  const [showCardTutorial, setShowCardTutorial] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1166,8 +1167,18 @@ export default function HomePage() {
         onClose={() => {
           setShowCardModal(false);
           setEarnedCard(null);
+          // Show tutorial on first card earned
+          if (shouldShowCardTutorial()) {
+            setShowCardTutorial(true);
+          }
         }}
         t={t}
+      />
+
+      {/* Card Tutorial (first-time onboarding) */}
+      <CardTutorial
+        isOpen={showCardTutorial}
+        onClose={() => setShowCardTutorial(false)}
       />
     </div>
     </div>

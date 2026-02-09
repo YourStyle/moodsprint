@@ -50,6 +50,14 @@ class Config:
     # Admin IDs (comma-separated)
     ADMIN_IDS: list[int] = field(default_factory=list)
 
+    # OpenAI API
+    OPENAI_API_KEY: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_API_KEY", "")
+    )
+    OPENAI_PROXY: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_PROXY", "")
+    )
+
     def __post_init__(self):
         admin_ids_str = os.environ.get("ADMIN_IDS", "")
         if admin_ids_str:

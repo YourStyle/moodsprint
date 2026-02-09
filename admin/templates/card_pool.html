@@ -279,14 +279,26 @@
             <input type="hidden" id="editTemplateId">
             <input type="hidden" id="editGenre">
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
-                <input type="text" id="editName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Имя (RU)</label>
+                    <input type="text" id="editName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (EN)</label>
+                    <input type="text" id="editNameEn" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="English name">
+                </div>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-                <textarea id="editDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Описание (RU)</label>
+                    <textarea id="editDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (EN)</label>
+                    <textarea id="editDescriptionEn" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="English description"></textarea>
+                </div>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
@@ -356,8 +368,8 @@
 </div>
 
 <script>
-// Use relative URLs - admin serves its own static files
-// On client, nginx routes /static/gallery/ to admin
+// Base URL for API requests (handles /admin prefix)
+const BASE_URL = "{{ request.script_root }}";
 const loadedGenres = {};
 
 // Rarity helpers
@@ -404,7 +416,7 @@ async function loadTemplates(genre) {
     const container = document.getElementById(`templates-${genre}`);
 
     try {
-        const response = await fetch(`/card-pool/${genre}/templates`);
+        const response = await fetch(`${BASE_URL}/card-pool/${genre}/templates`);
         const data = await response.json();
 
         if (data.success && data.templates.length > 0) {
@@ -483,7 +495,7 @@ async function loadTemplates(genre) {
 
 async function toggleTemplate(templateId, genre) {
     try {
-        const response = await fetch(`/card-pool/template/${templateId}/toggle`, {
+        const response = await fetch(`${BASE_URL}/card-pool/template/${templateId}/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -504,7 +516,7 @@ async function generateTemplate(genre) {
     const name = prompt('Имя шаблона (оставьте пустым для автогенерации):');
 
     try {
-        const response = await fetch(`/card-pool/${genre}/generate`, {
+        const response = await fetch(`${BASE_URL}/card-pool/${genre}/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name || undefined })
@@ -530,7 +542,7 @@ async function generateTemplate(genre) {
 // Edit Modal
 async function editTemplate(templateId, genre) {
     try {
-        const response = await fetch(`/card-pool/template/${templateId}`);
+        const response = await fetch(`${BASE_URL}/card-pool/template/${templateId}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -542,7 +554,9 @@ async function editTemplate(templateId, genre) {
         document.getElementById('editTemplateId').value = t.id;
         document.getElementById('editGenre').value = genre;
         document.getElementById('editName').value = t.name || '';
+        document.getElementById('editNameEn').value = t.name_en || '';
         document.getElementById('editDescription').value = t.description || '';
+        document.getElementById('editDescriptionEn').value = t.description_en || '';
         document.getElementById('editEmoji').value = t.emoji || '';
         document.getElementById('editBaseHp').value = t.base_hp || 50;
         document.getElementById('editBaseAttack').value = t.base_attack || 15;
@@ -577,7 +591,7 @@ async function uploadTemplateImage(input) {
     formData.append('image', file);
 
     try {
-        const response = await fetch(`/cards/templates/${templateId}/upload-image`, {
+        const response = await fetch(`${BASE_URL}/cards/templates/${templateId}/upload-image`, {
             method: 'POST',
             body: formData
         });
@@ -613,7 +627,9 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
 
     const payload = {
         name: document.getElementById('editName').value,
+        name_en: document.getElementById('editNameEn').value || null,
         description: document.getElementById('editDescription').value,
+        description_en: document.getElementById('editDescriptionEn').value || null,
         emoji: document.getElementById('editEmoji').value,
         base_hp: parseInt(document.getElementById('editBaseHp').value),
         base_attack: parseInt(document.getElementById('editBaseAttack').value),
@@ -622,7 +638,7 @@ document.getElementById('editForm').addEventListener('submit', async (e) => {
     };
 
     try {
-        const response = await fetch(`/card-pool/template/${templateId}`, {
+        const response = await fetch(`${BASE_URL}/card-pool/template/${templateId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -652,7 +668,7 @@ document.addEventListener('keydown', (e) => {
 // Import/Export functions
 async function exportTemplate() {
     try {
-        const response = await fetch('/card-pool/export-template');
+        const response = await fetch(`${BASE_URL}/card-pool/export-template`);
         const data = await response.json();
 
         // Create and download file
@@ -706,7 +722,7 @@ async function importTemplates() {
     status.classList.remove('hidden');
 
     try {
-        const response = await fetch('/card-pool/bulk-import', {
+        const response = await fetch(`${BASE_URL}/card-pool/bulk-import`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -741,7 +757,7 @@ async function openGalleryPicker(path = '') {
     currentMediaPath = path;
 
     try {
-        const response = await fetch(`/media/api/list?path=${encodeURIComponent(path)}`);
+        const response = await fetch(`${BASE_URL}/media/api/list?path=${encodeURIComponent(path)}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -824,7 +840,7 @@ async function selectGalleryImage(imageUrl) {
     status.className = 'text-xs text-center text-blue-600';
 
     try {
-        const response = await fetch(`/card-pool/template/${templateId}/set-image`, {
+        const response = await fetch(`${BASE_URL}/card-pool/template/${templateId}/set-image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image_url: imageUrl })
@@ -876,7 +892,7 @@ async function loadLegendaryTemplates() {
     const content = document.getElementById('legendary-content');
 
     try {
-        const response = await fetch('/card-pool/legendary');
+        const response = await fetch(`${BASE_URL}/card-pool/legendary`);
         const data = await response.json();
 
         if (!data.success) {

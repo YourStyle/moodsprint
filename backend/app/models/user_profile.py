@@ -69,6 +69,9 @@ class UserProfile(db.Model):
     work_days = db.Column(db.JSON, default=[1, 2, 3, 4, 5])  # 1=Mon, 2=Tue, ..., 7=Sun
     timezone = db.Column(db.String(50), default="Europe/Moscow")
 
+    # Language preference (ru, en)
+    language = db.Column(db.String(5), default="ru", nullable=False)
+
     # Card healing tracking
     heals_today = db.Column(db.Integer, default=0, nullable=False)
     last_heal_date = db.Column(db.Date, nullable=True)
@@ -121,6 +124,7 @@ class UserProfile(db.Model):
             "work_end_time": self.work_end_time,
             "work_days": self.work_days,
             "timezone": self.timezone,
+            "language": self.language,
             "favorite_genre": self.favorite_genre,
             "spotlight_reset_at": (
                 self.spotlight_reset_at.isoformat() if self.spotlight_reset_at else None

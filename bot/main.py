@@ -181,6 +181,7 @@ async def main():
         [
             BotCommand(command="start", description="Начать"),
             BotCommand(command="app", description="Открыть MoodSprint"),
+            BotCommand(command="task", description="Добавить задачу"),
             BotCommand(command="freetime", description="Есть свободное время?"),
             BotCommand(command="admin", description="Админ-панель"),
         ]

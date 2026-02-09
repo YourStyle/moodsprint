@@ -961,7 +961,9 @@ class CardService:
         card.is_in_deck = True
         db.session.commit()
 
-        return {"success": True, "card": card.to_dict()}
+        from app.utils import get_lang
+
+        return {"success": True, "card": card.to_dict(get_lang())}
 
     def remove_from_deck(self, user_id: int, card_id: int) -> dict:
         """Remove a card from user's battle deck."""
@@ -991,7 +993,9 @@ class CardService:
         card.heal()
         db.session.commit()
 
-        return {"success": True, "card": card.to_dict()}
+        from app.utils import get_lang
+
+        return {"success": True, "card": card.to_dict(get_lang())}
 
     def heal_all_cards(self, user_id: int) -> int:
         """Heal all user's cards. Returns number of cards healed."""
@@ -1405,8 +1409,11 @@ class CardService:
         }
 
         rarity_label = rarity_names.get(new_rarity, new_rarity)
+
+        from app.utils import get_lang
+
         return {
             "success": True,
-            "card": new_card.to_dict(),
+            "card": new_card.to_dict(get_lang()),
             "message": f"Карты объединены! Получена {rarity_label} карта!",
         }

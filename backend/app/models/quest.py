@@ -157,6 +157,36 @@ QUEST_TEMPLATES = {
         "xp_reward": 100,
         "stat_points_reward": 3,
     },
+    "arena_battles": {
+        "description": "Победи в 2 боях на арене",
+        "target_count": 2,
+        "xp_reward": 60,
+        "stat_points_reward": 2,
+    },
+    "merge_cards": {
+        "description": "Выполни слияние карт",
+        "target_count": 1,
+        "xp_reward": 50,
+        "stat_points_reward": 1,
+    },
+    "collect_rarity": {
+        "description": "Получи редкую карту или выше",
+        "target_count": 1,
+        "xp_reward": 70,
+        "stat_points_reward": 2,
+    },
+    "campaign_stars": {
+        "description": "Заработай 3 звезды в кампании",
+        "target_count": 3,
+        "xp_reward": 80,
+        "stat_points_reward": 2,
+    },
+    "use_abilities": {
+        "description": "Используй 3 способности карт в боях",
+        "target_count": 3,
+        "xp_reward": 50,
+        "stat_points_reward": 1,
+    },
 }
 
 
@@ -171,6 +201,11 @@ QUEST_NAME_PROMPTS = {
         "subtask_warrior": "малые заклинания",
         "mood_tracker": "чтение ауры",
         "complete_all": "завершение магического ритуала",
+        "arena_battles": "дуэли магов",
+        "merge_cards": "слияние артефактов",
+        "collect_rarity": "поиск редкого артефакта",
+        "campaign_stars": "покорение звёздных башен",
+        "use_abilities": "применение заклинаний",
     },
     "fantasy": {
         "early_bird": "рассветный поход",
@@ -181,6 +216,11 @@ QUEST_NAME_PROMPTS = {
         "subtask_warrior": "малые подвиги",
         "mood_tracker": "совет с мудрецом",
         "complete_all": "завершение эпического квеста",
+        "arena_battles": "поединки на арене",
+        "merge_cards": "ковка легендарного оружия",
+        "collect_rarity": "обнаружение реликвии",
+        "campaign_stars": "завоевание звёзд подземелья",
+        "use_abilities": "применение боевых умений",
     },
     "scifi": {
         "early_bird": "утренний протокол",
@@ -191,6 +231,11 @@ QUEST_NAME_PROMPTS = {
         "subtask_warrior": "выполнение подпротоколов",
         "mood_tracker": "сканирование биометрии",
         "complete_all": "выполнение директивы",
+        "arena_battles": "космические сражения",
+        "merge_cards": "синтез компонентов",
+        "collect_rarity": "обнаружение артефакта предтеч",
+        "campaign_stars": "колонизация секторов",
+        "use_abilities": "активация спецсистем",
     },
     "cyberpunk": {
         "early_bird": "ранний взлом",
@@ -201,6 +246,11 @@ QUEST_NAME_PROMPTS = {
         "subtask_warrior": "обход файрволов",
         "mood_tracker": "нейросканирование",
         "complete_all": "завершение операции",
+        "arena_battles": "уличные перестрелки",
+        "merge_cards": "апгрейд импланта",
+        "collect_rarity": "добыча прототипа",
+        "campaign_stars": "зачистка районов",
+        "use_abilities": "активация аугментаций",
     },
     "anime": {
         "early_bird": "утренняя тренировка",
@@ -211,5 +261,10 @@ QUEST_NAME_PROMPTS = {
         "subtask_warrior": "отработка техник",
         "mood_tracker": "чтение чакры",
         "complete_all": "путь ниндзя",
+        "arena_battles": "турнирные бои",
+        "merge_cards": "слияние духов",
+        "collect_rarity": "призыв легендарного духа",
+        "campaign_stars": "прохождение испытаний",
+        "use_abilities": "использование ультимативных техник",
     },
 }

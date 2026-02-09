@@ -8,3 +8,4 @@ export { CardInfoSheet } from './CardInfoSheet';
 export { ReferralRewardModal } from './ReferralRewardModal';
 export { DamageNumber } from './DamageNumber';
 export { HealNumber } from './HealNumber';
+export { CardTutorial, shouldShowCardTutorial, markCardTutorialSeen } from './CardTutorial';

@@ -506,13 +506,13 @@ class ActiveBattle(db.Model):
     user = db.relationship("User")
     monster = db.relationship("Monster")
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
         return {
             "id": self.id,
             "user_id": self.user_id,
             "monster_id": self.monster_id,
-            "monster": self.monster.to_dict() if self.monster else None,
+            "monster": self.monster.to_dict(lang) if self.monster else None,
             "state": self.state,
             "status": self.status,
             "current_round": self.current_round,
@@ -554,12 +554,12 @@ class BattleLog(db.Model):
     user = db.relationship("User", backref=db.backref("battles", lazy="dynamic"))
     monster = db.relationship("Monster")
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary."""
+    def to_dict(self, lang: str = "ru") -> dict:
+        """Convert to dictionary with optional language selection."""
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "monster": self.monster.to_dict() if self.monster else None,
+            "monster": self.monster.to_dict(lang) if self.monster else None,
             "won": self.won,
             "rounds": self.rounds,
             "damage_dealt": self.damage_dealt,

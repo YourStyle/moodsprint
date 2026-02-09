@@ -258,6 +258,8 @@ export default function SettingsPage() {
               key={lang.id}
               onClick={() => {
                 setLanguage(lang.id);
+                // Invalidate all cached queries to refetch with new language
+                queryClient.invalidateQueries();
                 hapticFeedback('light');
               }}
               className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${

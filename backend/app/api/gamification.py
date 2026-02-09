@@ -854,7 +854,8 @@ def get_active_battle():
     if not battle:
         return success_response({"battle": None})
 
-    return success_response({"battle": battle.to_dict()})
+    lang = get_lang()
+    return success_response({"battle": battle.to_dict(lang)})
 
 
 @api_bp.route("/arena/battle/turn", methods=["POST"])
@@ -923,9 +924,10 @@ def get_battle_history():
     service = CardBattleService()
     battles = service.get_battle_history(user_id, min(limit, 50))
 
+    lang = get_lang()
     return success_response(
         {
-            "battles": [b.to_dict() for b in battles],
+            "battles": [b.to_dict(lang) for b in battles],
         }
     )
 
@@ -1381,10 +1383,11 @@ def preview_card_merge():
     if "error" in result:
         return validation_error(result)
 
+    lang = get_lang()
     return success_response(
         {
-            "card1": card1.to_dict(),
-            "card2": card2.to_dict(),
+            "card1": card1.to_dict(lang),
+            "card2": card2.to_dict(lang),
             **result,
         }
     )

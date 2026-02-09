@@ -51,8 +51,20 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-gray-500">{t('loginToViewProfile')}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="p-6 bg-purple-500/20 rounded-full mb-6">
+          <Settings className="w-12 h-12 text-purple-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">{t('loginToViewProfile')}</h2>
+        <p className="text-gray-400 text-center mb-6 max-w-sm">
+          Войдите в приложение, чтобы просмотреть свой профиль и статистику
+        </p>
+        <button
+          onClick={() => router.push('/')}
+          className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
+        >
+          На главную
+        </button>
       </div>
     );
   }

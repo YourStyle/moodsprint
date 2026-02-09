@@ -102,12 +102,15 @@
 </div>
 
 <script>
+const BASE_URL = "{{ request.script_root }}";
+const userId = {{ user.id }};
+
 function resetOnboarding(userId) {
     if (!confirm('Are you sure you want to reset onboarding for this user? They will need to complete it again.')) {
         return;
     }
 
-    fetch(`/users/${userId}/reset-onboarding`, {
+    fetch(`${BASE_URL}/users/${userId}/reset-onboarding`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -132,7 +135,7 @@ function resetSpotlight(userId) {
         return;
     }
 
-    fetch(`/users/${userId}/reset-spotlight`, {
+    fetch(`${BASE_URL}/users/${userId}/reset-spotlight`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -172,6 +175,16 @@ function resetSpotlight(userId) {
         <p class="text-3xl font-bold text-yellow-600">{{ win_rate }}%</p>
         <p class="text-sm text-gray-500">Win Rate</p>
     </div>
+</div>
+
+<!-- Give Card Button -->
+<div class="mb-6">
+    <button onclick="openGiveCardModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Give Card to User
+    </button>
 </div>
 
 <!-- Cards by Rarity -->
@@ -542,7 +555,7 @@ function resetSpotlight(userId) {
     }
 
     // Fetch activity data
-    fetch(`/users/${userId}/activity-heatmap`)
+    fetch(`${BASE_URL}/users/${userId}/activity-heatmap`)
         .then(res => res.json())
         .then(data => {
             if (!data.success) return;
@@ -704,4 +717,179 @@ function resetSpotlight(userId) {
     <p class="text-gray-500">No activity logged yet</p>
     {% endif %}
 </div>
+
+<!-- Give Card Modal -->
+<div id="giveCardModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Give Card to User</h3>
+                <button onclick="closeGiveCardModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-5 space-y-4">
+            <!-- Genre Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Genre</label>
+                <select id="giveCardGenre" onchange="loadTemplatesForGenre()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <option value="">Select genre...</option>
+                    <option value="magic">Magic</option>
+                    <option value="fantasy">Fantasy</option>
+                    <option value="scifi">Sci-Fi</option>
+                    <option value="cyberpunk">Cyberpunk</option>
+                    <option value="anime">Anime</option>
+                </select>
+            </div>
+
+            <!-- Template Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Card Template</label>
+                <select id="giveCardTemplate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <option value="">Select genre first...</option>
+                </select>
+            </div>
+
+            <!-- Rarity Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rarity</label>
+                <select id="giveCardRarity" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <option value="common">Common</option>
+                    <option value="uncommon">Uncommon</option>
+                    <option value="rare">Rare</option>
+                    <option value="epic">Epic</option>
+                    <option value="legendary">Legendary</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Higher rarities have better stats (HP/ATK multipliers)</p>
+            </div>
+
+            <!-- Status -->
+            <div id="giveCardStatus" class="hidden"></div>
+
+            <!-- Actions -->
+            <div class="flex gap-3 pt-3">
+                <button onclick="giveCard()" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Give Card
+                </button>
+                <button onclick="closeGiveCardModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Give Card Functions
+let templatesCache = {};
+
+function openGiveCardModal() {
+    document.getElementById('giveCardGenre').value = '';
+    document.getElementById('giveCardTemplate').innerHTML = '<option value="">Select genre first...</option>';
+    document.getElementById('giveCardRarity').value = 'common';
+    document.getElementById('giveCardStatus').classList.add('hidden');
+    document.getElementById('giveCardModal').classList.remove('hidden');
+}
+
+function closeGiveCardModal() {
+    document.getElementById('giveCardModal').classList.add('hidden');
+}
+
+async function loadTemplatesForGenre() {
+    const genre = document.getElementById('giveCardGenre').value;
+    const templateSelect = document.getElementById('giveCardTemplate');
+
+    if (!genre) {
+        templateSelect.innerHTML = '<option value="">Select genre first...</option>';
+        return;
+    }
+
+    templateSelect.innerHTML = '<option value="">Loading...</option>';
+
+    try {
+        // Check cache first
+        if (templatesCache[genre]) {
+            populateTemplateOptions(templatesCache[genre]);
+            return;
+        }
+
+        const response = await fetch(`${BASE_URL}/card-pool/${genre}/templates`);
+        const data = await response.json();
+
+        if (data.success && data.templates) {
+            templatesCache[genre] = data.templates;
+            populateTemplateOptions(data.templates);
+        } else {
+            templateSelect.innerHTML = '<option value="">No templates found</option>';
+        }
+    } catch (e) {
+        console.error('Error loading templates:', e);
+        templateSelect.innerHTML = '<option value="">Error loading templates</option>';
+    }
+}
+
+function populateTemplateOptions(templates) {
+    const templateSelect = document.getElementById('giveCardTemplate');
+    let html = '<option value="">Select template...</option>';
+
+    templates.forEach(t => {
+        const rarityBadge = t.rarity ? ` [${t.rarity}]` : '';
+        html += `<option value="${t.id}">${t.emoji || ''} ${t.name}${rarityBadge} (HP:${t.base_hp} ATK:${t.base_attack})</option>`;
+    });
+
+    templateSelect.innerHTML = html;
+}
+
+async function giveCard() {
+    const templateId = document.getElementById('giveCardTemplate').value;
+    const rarity = document.getElementById('giveCardRarity').value;
+    const status = document.getElementById('giveCardStatus');
+
+    if (!templateId) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Please select a card template';
+        status.classList.remove('hidden');
+        return;
+    }
+
+    status.className = 'p-3 bg-blue-50 text-blue-700 rounded-lg text-sm';
+    status.textContent = 'Giving card...';
+    status.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${BASE_URL}/users/${userId}/give-card`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                template_id: parseInt(templateId),
+                rarity: rarity
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            status.className = 'p-3 bg-green-50 text-green-700 rounded-lg text-sm';
+            status.textContent = `${data.message}`;
+            // Reload page after 2 seconds to show updated card collection
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+            status.textContent = 'Error: ' + data.error;
+        }
+    } catch (e) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Error: ' + e.message;
+    }
+}
+
+// Close modal on ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeGiveCardModal();
+    }
+});
+</script>
 {% endblock %}

@@ -41,23 +41,35 @@
         <form id="monsterForm" class="hidden space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (RU)</label>
                     <input type="text" name="name" value="{{ monster.name }}"
                            class="w-full border rounded-lg px-3 py-2">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Genre</label>
-                    <select name="genre" class="w-full border rounded-lg px-3 py-2">
-                        {% for g in ['fantasy', 'magic', 'scifi', 'cyberpunk', 'anime'] %}
-                        <option value="{{ g }}" {{ 'selected' if g == monster.genre else '' }}>{{ g|capitalize }}</option>
-                        {% endfor %}
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (EN)</label>
+                    <input type="text" name="name_en" value="{{ monster.name_en or '' }}"
+                           class="w-full border rounded-lg px-3 py-2" placeholder="English name">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" rows="2"
-                          class="w-full border rounded-lg px-3 py-2">{{ monster.description or '' }}</textarea>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Genre</label>
+                <select name="genre" class="w-full border rounded-lg px-3 py-2">
+                    {% for g in ['fantasy', 'magic', 'scifi', 'cyberpunk', 'anime'] %}
+                    <option value="{{ g }}" {{ 'selected' if g == monster.genre else '' }}>{{ g|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (RU)</label>
+                    <textarea name="description" rows="2"
+                              class="w-full border rounded-lg px-3 py-2">{{ monster.description or '' }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (EN)</label>
+                    <textarea name="description_en" rows="2"
+                              class="w-full border rounded-lg px-3 py-2" placeholder="English description">{{ monster.description_en or '' }}</textarea>
+                </div>
             </div>
             <div class="grid grid-cols-4 gap-4">
                 <div>
@@ -90,6 +102,9 @@
                         Upload
                         <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="uploadImage(this)">
                     </label>
+                    <button type="button" onclick="openMediaPicker()" class="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg">
+                        From Media
+                    </button>
                 </div>
                 <div id="uploadStatus" class="text-sm mt-1"></div>
             </div>
@@ -186,6 +201,27 @@
     </div>
 </div>
 
+<!-- Media Picker Modal -->
+<div id="mediaPickerModal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-gray-100 shrink-0">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Select from Media</h3>
+                <button onclick="closeMediaPicker()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+            <div id="mediaPickerContent" class="grid grid-cols-4 md:grid-cols-6 gap-3">
+                <div class="text-center text-gray-500 col-span-full py-8">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add/Edit Card Modal -->
 <div id="cardModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
@@ -196,20 +232,32 @@
             <input type="hidden" name="card_id" value="">
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (RU) *</label>
                     <input type="text" name="name" required
                            class="w-full border rounded-lg px-3 py-2">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
-                    <input type="text" name="emoji" value="⚔️"
-                           class="w-full border rounded-lg px-3 py-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name (EN)</label>
+                    <input type="text" name="name_en"
+                           class="w-full border rounded-lg px-3 py-2" placeholder="English name">
                 </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" rows="2"
-                          class="w-full border rounded-lg px-3 py-2"></textarea>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+                <input type="text" name="emoji" value="⚔️"
+                       class="w-full border rounded-lg px-3 py-2">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (RU)</label>
+                    <textarea name="description" rows="2"
+                              class="w-full border rounded-lg px-3 py-2"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (EN)</label>
+                    <textarea name="description_en" rows="2"
+                              class="w-full border rounded-lg px-3 py-2" placeholder="English description"></textarea>
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -244,6 +292,7 @@
 {% block scripts %}
 <script>
 const monsterId = {{ monster.id }};
+const BASE_URL = "{{ request.script_root }}";
 
 function toggleEditMode() {
     const form = document.getElementById('monsterForm');
@@ -273,7 +322,7 @@ async function uploadImage(input) {
     formData.append('image', file);
 
     try {
-        const response = await fetch(`/monsters/${monsterId}/upload-image`, {
+        const response = await fetch(`${BASE_URL}/monsters/${monsterId}/upload-image`, {
             method: 'POST',
             body: formData
         });
@@ -304,7 +353,7 @@ document.getElementById('monsterForm').addEventListener('submit', async function
     data.base_attack = parseInt(data.base_attack) || 10;
 
     try {
-        const response = await fetch(`/monsters/${monsterId}/update`, {
+        const response = await fetch(`${BASE_URL}/monsters/${monsterId}/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -324,12 +373,12 @@ async function deleteMonster() {
     if (!confirm('Are you sure you want to delete this monster and all its cards?')) return;
 
     try {
-        const response = await fetch(`/monsters/${monsterId}/delete`, {
+        const response = await fetch(`${BASE_URL}/monsters/${monsterId}/delete`, {
             method: 'POST'
         });
         const result = await response.json();
         if (result.success) {
-            window.location.href = '/monsters';
+            window.location.href = `${BASE_URL}/monsters`;
         } else {
             alert('Error: ' + result.error);
         }
@@ -354,8 +403,10 @@ function editCard(card) {
     document.getElementById('cardModalTitle').textContent = 'Edit Card';
     document.querySelector('[name="card_id"]').value = card.id;
     document.querySelector('[name="name"]').value = card.name || '';
+    document.querySelector('[name="name_en"]').value = card.name_en || '';
     document.querySelector('[name="emoji"]').value = card.emoji || '⚔️';
     document.querySelector('[name="description"]').value = card.description || '';
+    document.querySelector('[name="description_en"]').value = card.description_en || '';
     document.querySelector('[name="attack"]').value = card.attack;
     document.querySelector('[name="hp"]').value = card.hp;
     document.querySelector('[name="ability"]').value = card.ability || '';
@@ -372,8 +423,8 @@ async function saveCard() {
     delete data.card_id;
 
     const url = cardId
-        ? `/monsters/cards/${cardId}/update`
-        : `/monsters/${monsterId}/cards/add`;
+        ? `${BASE_URL}/monsters/cards/${cardId}/update`
+        : `${BASE_URL}/monsters/${monsterId}/cards/add`;
 
     try {
         const response = await fetch(url, {
@@ -396,7 +447,7 @@ async function deleteCard(cardId) {
     if (!confirm('Are you sure you want to delete this card?')) return;
 
     try {
-        const response = await fetch(`/monsters/cards/${cardId}/delete`, {
+        const response = await fetch(`${BASE_URL}/monsters/cards/${cardId}/delete`, {
             method: 'POST'
         });
         const result = await response.json();
@@ -413,6 +464,128 @@ async function deleteCard(cardId) {
 // Close modal on backdrop click
 document.getElementById('cardModal').addEventListener('click', function(e) {
     if (e.target === this) hideCardModal();
+});
+
+// Media Picker Functions
+let currentMediaPath = '';
+
+async function openMediaPicker(path = '') {
+    const modal = document.getElementById('mediaPickerModal');
+    const content = document.getElementById('mediaPickerContent');
+    modal.classList.remove('hidden');
+    currentMediaPath = path;
+
+    try {
+        const response = await fetch(`${BASE_URL}/media/api/list?path=${encodeURIComponent(path)}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            content.innerHTML = `<div class="text-center text-red-500 col-span-full py-8">Error: ${data.error}</div>`;
+            return;
+        }
+
+        const items = data.items || [];
+        const images = items.filter(i => i.is_image);
+        const folders = items.filter(i => i.is_dir);
+
+        if (items.length === 0) {
+            content.innerHTML = `
+                <div class="text-center text-gray-500 col-span-full py-8">
+                    <div class="text-4xl mb-2">📭</div>
+                    <p>Folder is empty</p>
+                    <a href="${BASE_URL}/media" class="text-purple-600 hover:underline text-sm">Go to Media to upload</a>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // Back button if in subfolder
+        if (path) {
+            const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+            html += `
+                <div onclick="openMediaPicker('${parentPath}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-gray-300 bg-gray-50 flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                        </svg>
+                        <span class="text-xs text-gray-500 mt-1">Back</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Folders
+        for (const folder of folders) {
+            html += `
+                <div onclick="openMediaPicker('${folder.path}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-yellow-300 bg-yellow-50 flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-10 h-10 mx-auto text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                        </svg>
+                        <span class="text-xs text-gray-600 mt-1 truncate max-w-full px-1">${folder.name}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Images
+        for (const img of images) {
+            html += `
+                <div onclick="selectMediaImage('${img.url}')"
+                     class="aspect-square rounded-lg overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-500 transition-colors bg-gray-100">
+                    <img src="${img.url}" alt="${img.name}" class="w-full h-full object-cover">
+                </div>
+            `;
+        }
+        content.innerHTML = html;
+    } catch (e) {
+        content.innerHTML = `<div class="text-center text-red-500 col-span-full py-8">Error: ${e.message}</div>`;
+    }
+}
+
+function closeMediaPicker() {
+    document.getElementById('mediaPickerModal').classList.add('hidden');
+}
+
+async function selectMediaImage(imageUrl) {
+    const status = document.getElementById('uploadStatus');
+    status.textContent = 'Setting image...';
+    status.className = 'text-sm mt-1 text-blue-600';
+
+    try {
+        const response = await fetch(`${BASE_URL}/monsters/${monsterId}/set-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_url: imageUrl })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            status.textContent = 'Image set successfully!';
+            status.className = 'text-sm mt-1 text-green-600';
+            document.querySelector('[name="sprite_url"]').value = imageUrl;
+            closeMediaPicker();
+            // Reload to show new image
+            setTimeout(() => window.location.reload(), 500);
+        } else {
+            status.textContent = 'Error: ' + result.error;
+            status.className = 'text-sm mt-1 text-red-600';
+        }
+    } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.className = 'text-sm mt-1 text-red-600';
+    }
+}
+
+// Close media picker on ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeMediaPicker();
+    }
 });
 </script>
 {% endblock %}

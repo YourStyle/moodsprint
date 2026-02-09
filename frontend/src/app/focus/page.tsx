@@ -8,7 +8,7 @@ import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { FocusTimer } from '@/components/focus';
 import { useAppStore } from '@/lib/store';
 import { focusService, tasksService } from '@/services';
-import { hapticFeedback } from '@/lib/telegram';
+import { hapticFeedback, setupBackButton } from '@/lib/telegram';
 import { DEFAULT_FOCUS_DURATION } from '@/domain/constants';
 import type { Subtask } from '@/domain/types';
 
@@ -18,6 +18,9 @@ export default function FocusPage() {
   const { activeSession, setActiveSession, showXPAnimation } = useAppStore();
   const [showSelectSubtask, setShowSelectSubtask] = useState(false);
   const [duration, setDuration] = useState(DEFAULT_FOCUS_DURATION);
+
+  // Setup back button for non-tab page
+  useEffect(() => setupBackButton(() => router.back()), [router]);
 
   // Load active session from server on mount to restore state after navigation
   const { data: activeSessionData } = useQuery({

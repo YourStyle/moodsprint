@@ -54,9 +54,10 @@ def get_user_cards():
     for card in cards:
         rarity_counts[card.rarity] = rarity_counts.get(card.rarity, 0) + 1
 
+    lang = get_lang()
     return success_response(
         {
-            "cards": [c.to_dict() for c in cards],
+            "cards": [c.to_dict(lang) for c in cards],
             "total": len(cards),
             "rarity_counts": rarity_counts,
         }
@@ -73,7 +74,7 @@ def get_card_details(card_id: int):
     if not card:
         return not_found("Card not found")
 
-    return success_response({"card": card.to_dict()})
+    return success_response({"card": card.to_dict(get_lang())})
 
 
 @api_bp.route("/cards/<int:card_id>/generate-image", methods=["POST"])
@@ -108,9 +109,10 @@ def get_deck():
     total_attack = sum(c.attack for c in deck)
     genres = list(set(c.genre for c in deck))
 
+    lang = get_lang()
     return success_response(
         {
-            "deck": [c.to_dict() for c in deck],
+            "deck": [c.to_dict(lang) for c in deck],
             "size": len(deck),
             "max_size": 5,
             "stats": {
@@ -667,7 +669,7 @@ def connect_referral():
         # Give bonus card to the inviter (referrer)
         referrer_card = service.generate_referral_reward(referrer_id)
         if referrer_card:
-            rewards["referrer_card"] = referrer_card.to_dict()
+            rewards["referrer_card"] = referrer_card.to_dict(get_lang())
             # Create pending reward for referrer
             pending_referrer = PendingReferralReward(
                 user_id=referrer_id,
@@ -681,7 +683,7 @@ def connect_referral():
         # Give bonus card to the invitee (current user)
         invitee_card = service.generate_referral_reward(user_id)
         if invitee_card:
-            rewards["invitee_card"] = invitee_card.to_dict()
+            rewards["invitee_card"] = invitee_card.to_dict(get_lang())
             # Create pending reward for invitee
             pending_invitee = PendingReferralReward(
                 user_id=user_id,
@@ -917,9 +919,10 @@ def get_friend_cards(friend_id: int):
         is_destroyed=False,
     ).all()
 
+    lang = get_lang()
     return success_response(
         {
-            "cards": [c.to_dict() for c in cards],
+            "cards": [c.to_dict(lang) for c in cards],
             "total": len(cards),
         }
     )

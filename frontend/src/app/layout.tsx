@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: 'MoodSprint',
   description: 'Адаптивное управление задачами на основе твоего настроения',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/moodsprint.ico',
+    shortcut: '/moodsprint.ico',
+    apple: '/moodsprint.ico',
+  },
 };
 
 export const viewport: Viewport = {

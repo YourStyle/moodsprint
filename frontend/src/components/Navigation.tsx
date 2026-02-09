@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ListTodo, Users, User, Swords, Layers } from 'lucide-react';
+import { ListTodo, Users, User, BookOpen, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,7 @@ const navItems: { href: string; icon: typeof ListTodo; labelKey: TranslationKey 
   { href: '/', icon: ListTodo, labelKey: 'tasks' },
   { href: '/friends', icon: Users, labelKey: 'friends' },
   { href: '/deck', icon: Layers, labelKey: 'deck' },
-  { href: '/arena', icon: Swords, labelKey: 'arena' },
+  { href: '/campaign', icon: BookOpen, labelKey: 'campaign' },
   { href: '/profile', icon: User, labelKey: 'profile' },
 ];
 

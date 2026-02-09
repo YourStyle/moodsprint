@@ -50,7 +50,7 @@ class Config:
     # Rate limiting
     RATELIMIT_STORAGE_URL = os.environ.get("REDIS_URL", "memory://")
     RATELIMIT_STRATEGY = "fixed-window"
-    RATELIMIT_DEFAULT = "200 per day;50 per hour"
+    RATELIMIT_DEFAULT = "10000 per day;2000 per hour"
     RATELIMIT_HEADERS_ENABLED = True
 
     # Telegram
@@ -99,8 +99,8 @@ class ProductionConfig(Config):
     """Production configuration."""
 
     DEBUG = False
-    # Stricter rate limits for production
-    RATELIMIT_DEFAULT = "100 per day;30 per hour"
+    # High rate limits for production app usage
+    RATELIMIT_DEFAULT = "10000 per day;2000 per hour"
 
 
 class TestingConfig(Config):
