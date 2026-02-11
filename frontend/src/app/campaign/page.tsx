@@ -71,6 +71,8 @@ export default function CampaignPage() {
 
   const progress = campaignData?.data?.progress;
   const chapters = campaignData?.data?.chapters || [];
+  const energy = campaignData?.data?.energy ?? 3;
+  const maxEnergy = campaignData?.data?.max_energy ?? 5;
 
   const handleChapterClick = (chapter: CampaignChapter) => {
     if (!chapter.is_unlocked) {
@@ -96,6 +98,12 @@ export default function CampaignPage() {
 
   const handleLevelStart = (level: CampaignLevel) => {
     if (!level.is_unlocked) {
+      hapticFeedback('error');
+      return;
+    }
+    // Energy check: chapter 1 is free, rest costs 1 energy
+    const chapterNum = selectedChapter?.number || 1;
+    if (chapterNum > 1 && energy <= 0) {
       hapticFeedback('error');
       return;
     }
@@ -181,9 +189,23 @@ export default function CampaignPage() {
           <h1 className="text-2xl font-bold text-white">{t('campaign')}</h1>
           <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
           {progress && (
-            <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
+                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
+              </div>
+              <div className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+                energy > 0 ? 'bg-cyan-500/20' : 'bg-red-500/20'
+              )}>
+                <span className="text-base">⚡</span>
+                <span className={cn(
+                  'font-medium',
+                  energy > 0 ? 'text-cyan-400' : 'text-red-400'
+                )}>
+                  {energy}/{maxEnergy}
+                </span>
+              </div>
             </div>
           )}
         </div>

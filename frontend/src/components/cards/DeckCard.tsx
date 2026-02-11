@@ -37,6 +37,10 @@ export interface DeckCardProps {
   isOnCooldown?: boolean;
   cooldownRemaining?: number | null; // seconds remaining
   onSkipCooldown?: () => void;
+  // Card leveling
+  cardLevel?: number;
+  // Companion indicator
+  isCompanion?: boolean;
 }
 
 const rarityStyles = {
@@ -123,6 +127,8 @@ export function DeckCard({
   isOnCooldown = false,
   cooldownRemaining = null,
   onSkipCooldown,
+  cardLevel,
+  isCompanion = false,
 }: DeckCardProps) {
   const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -222,9 +228,27 @@ export function DeckCard({
               </button>
             )}
 
+            {/* Card level badge */}
+            {cardLevel && cardLevel > 1 && !compact && (
+              <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-md flex items-center gap-0.5 shadow-lg">
+                <Zap className="w-3 h-3 text-white" />
+                <span className="text-[10px] font-bold text-white">{cardLevel}</span>
+              </div>
+            )}
+
+            {/* Companion indicator */}
+            {isCompanion && !compact && (
+              <div className="absolute bottom-1.5 right-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-pink-500 to-rose-600 rounded-md shadow-lg">
+                <span className="text-[10px] font-bold text-white">🐾</span>
+              </div>
+            )}
+
             {/* In deck indicator */}
             {isInDeck && !compact && (
-              <div className="absolute top-1.5 left-1.5 z-10 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+              <div className={cn(
+                'absolute z-10 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center',
+                cardLevel && cardLevel > 1 ? 'top-8 left-1.5' : 'top-1.5 left-1.5'
+              )}>
                 <Layers className="w-3 h-3 text-white" />
               </div>
             )}

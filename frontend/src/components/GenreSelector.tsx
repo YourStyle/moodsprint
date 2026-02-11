@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Lock } from 'lucide-react';
 import { gamificationService } from '@/services';
+import { cardsService } from '@/services/cards';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 import type { Genre } from '@/services/gamification';
+
+// Genre unlock level thresholds (matches backend GENRE_UNLOCK_LEVELS)
+const GENRE_UNLOCK_LEVELS: Record<number, number> = { 1: 1, 4: 2, 7: 3, 10: 4, 15: 5 };
+
+function getNextUnlockLevel(currentGenreCount: number): number | null {
+  for (const [level, count] of Object.entries(GENRE_UNLOCK_LEVELS).sort(([a], [b]) => Number(a) - Number(b))) {
+    if (count > currentGenreCount) return Number(level);
+  }
+  return null;
+}
 
 const genreOptions: { value: Genre; label: string; emoji: string }[] = [
   { value: 'magic', label: 'Магия', emoji: '🧙‍♂️' },
@@ -22,10 +34,23 @@ interface GenreSelectorProps {
 }
 
 export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [unlockedGenres, setUnlockedGenres] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const currentOption = genreOptions.find(g => g.value === currentGenre);
+
+  useEffect(() => {
+    cardsService.getUnlockedGenres().then((res) => {
+      if (res.data?.unlocked_genres) {
+        setUnlockedGenres(res.data.unlocked_genres);
+      }
+    }).catch(() => {
+      // Fallback: all genres unlocked
+      setUnlockedGenres(genreOptions.map(g => g.value));
+    });
+  }, []);
 
   const mutation = useMutation({
     mutationFn: (genre: Genre) => gamificationService.setGenre(genre),
@@ -37,6 +62,10 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
   });
 
   const handleSelect = (genre: Genre) => {
+    if (!unlockedGenres.includes(genre)) {
+      hapticFeedback('error');
+      return;
+    }
     if (genre !== currentGenre) {
       mutation.mutate(genre);
     } else {
@@ -44,6 +73,8 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
     }
     hapticFeedback('light');
   };
+
+  const nextUnlockLevel = getNextUnlockLevel(unlockedGenres.length);
 
   return (
     <div className={cn('relative', className)}>
@@ -69,25 +100,39 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
           />
 
           {/* Dropdown */}
-          <div className="absolute top-full left-0 mt-2 z-[101] w-48 py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
-            {genreOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleSelect(option.value)}
-                disabled={mutation.isPending}
-                className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 text-left text-sm',
-                  'hover:bg-gray-700/50 transition-colors',
-                  option.value === currentGenre ? 'text-primary-400' : 'text-gray-300'
-                )}
-              >
-                <span>{option.emoji}</span>
-                <span className="flex-1">{option.label}</span>
-                {option.value === currentGenre && (
-                  <Check className="w-4 h-4 text-primary-400" />
-                )}
-              </button>
-            ))}
+          <div className="absolute top-full left-0 mt-2 z-[101] w-56 py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
+            {genreOptions.map((option) => {
+              const isLocked = unlockedGenres.length > 0 && !unlockedGenres.includes(option.value);
+
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleSelect(option.value)}
+                  disabled={mutation.isPending || isLocked}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-2 text-left text-sm',
+                    'transition-colors',
+                    isLocked
+                      ? 'text-gray-600 cursor-not-allowed'
+                      : 'hover:bg-gray-700/50',
+                    option.value === currentGenre ? 'text-primary-400' : isLocked ? '' : 'text-gray-300'
+                  )}
+                >
+                  <span className={isLocked ? 'grayscale opacity-50' : ''}>{option.emoji}</span>
+                  <span className="flex-1">{option.label}</span>
+                  {isLocked ? (
+                    <div className="flex items-center gap-1 text-gray-600">
+                      <Lock className="w-3 h-3" />
+                      <span className="text-[10px]">
+                        {t('genreLocked').replace('{level}', String(nextUnlockLevel || '?'))}
+                      </span>
+                    </div>
+                  ) : option.value === currentGenre ? (
+                    <Check className="w-4 h-4 text-primary-400" />
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
         </>
       )}

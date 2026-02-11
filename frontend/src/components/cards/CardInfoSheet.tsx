@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Swords, Sparkles, Calendar, DollarSign } from 'lucide-react';
+import { Heart, Swords, Sparkles, Calendar, DollarSign, Zap } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { SellCardModal } from '@/components/marketplace';
@@ -33,6 +33,9 @@ interface CardInfoSheetProps {
     createdAt?: string | null;
     abilityInfo?: AbilityInfo | null;
     isOwned?: boolean;
+    cardLevel?: number;
+    cardXp?: number;
+    isCompanion?: boolean;
   } | null;
   showSellButton?: boolean;
 }
@@ -144,6 +147,53 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }:
             </div>
           </div>
         </div>
+
+        {/* Card Level & XP */}
+        {card.cardLevel && card.cardLevel > 0 && (
+          <div className="w-full bg-cyan-500/20 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-cyan-400" />
+                <span className="text-cyan-400 font-bold text-sm">
+                  {t('cardLevel').replace('{level}', String(card.cardLevel))}
+                </span>
+              </div>
+              {card.isCompanion && (
+                <span className="px-2 py-0.5 bg-pink-500/30 rounded-full text-[10px] font-bold text-pink-400">
+                  🐾 {t('companion')}
+                </span>
+              )}
+            </div>
+            {/* XP Progress bar */}
+            {(() => {
+              const maxLevelByRarity: Record<string, number> = {
+                common: 3, uncommon: 5, rare: 7, epic: 10, legendary: 15,
+              };
+              const maxLevel = maxLevelByRarity[card.rarity] || 3;
+              const xpNeeded = card.cardLevel * 100;
+              const xpCurrent = card.cardXp || 0;
+              const isMaxLevel = card.cardLevel >= maxLevel;
+              const progress = isMaxLevel ? 100 : Math.min(100, (xpCurrent / xpNeeded) * 100);
+
+              return (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>{isMaxLevel ? t('cardMaxLevel') : t('cardXp').replace('{current}', String(xpCurrent)).replace('{max}', String(xpNeeded))}</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-all duration-300',
+                        isMaxLevel ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500'
+                      )}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Ability */}
         {card.abilityInfo && (

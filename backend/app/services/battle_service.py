@@ -311,6 +311,8 @@ class BattleService:
         stat_points_earned = 0
         level_up = False
 
+        card_xp_results = []
+
         if won:
             character.battles_won += 1
             xp_earned = m_xp_reward
@@ -325,6 +327,22 @@ class BattleService:
                 level_up = xp_info.get("level_up", False)
 
             character.add_stat_points(stat_points_earned)
+
+            # Award card XP to deck cards that participated (+20 per win)
+            try:
+                from app.models.card import UserCard
+                from app.services.card_service import CardService
+
+                card_service = CardService()
+                deck_cards = UserCard.query.filter_by(
+                    user_id=user_id, is_in_deck=True, is_destroyed=False
+                ).all()
+                for card in deck_cards:
+                    result = card_service.add_card_xp(card.id, user_id, 20)
+                    if result.get("success") and result.get("level_up"):
+                        card_xp_results.append(result)
+            except Exception:
+                pass
         else:
             character.battles_lost += 1
 
@@ -355,7 +373,7 @@ class BattleService:
             }
         )
 
-        return {
+        result = {
             "won": won,
             "rounds": rounds,
             "damage_dealt": damage_dealt,
@@ -367,6 +385,11 @@ class BattleService:
             "character": character.to_dict(),
             "monster": monster_dict,
         }
+
+        if card_xp_results:
+            result["card_level_ups"] = card_xp_results
+
+        return result
 
     def _player_action(
         self, character: CharacterStats, monster_defense: int, combo: int, is_boss: bool

@@ -2,12 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Target, Clock, CheckSquare, TrendingUp, LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Swords, Scroll, Users, Wallet } from 'lucide-react';
-import { Card, Progress, Button, ScrollBackdrop } from '@/components/ui';
+import { LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Clock, Wallet } from 'lucide-react';
+import { Card, ScrollBackdrop } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
-import { XPBar, StreakBadge, AchievementCard } from '@/components/gamification';
+import { XPBar, StreakBadge } from '@/components/gamification';
 import { SparksBalance } from '@/components/sparks';
 import { GenreSelector } from '@/components/GenreSelector';
+import { ShowcaseSlots } from '@/components/cards/ShowcaseSlots';
 import { useAppStore } from '@/lib/store';
 import { gamificationService, onboardingService } from '@/services';
 import { authService } from '@/services';
@@ -24,18 +25,11 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  const { data: achievementsData } = useQuery({
-    queryKey: ['user', 'achievements'],
-    queryFn: () => gamificationService.getUserAchievements(),
-    enabled: !!user,
-  });
-
   const { data: patternsData } = useQuery({
     queryKey: ['user', 'productivity-patterns'],
     queryFn: () => gamificationService.getProductivityPatterns(),
     enabled: !!user,
   });
-
 
   const { data: profileData } = useQuery({
     queryKey: ['onboarding', 'profile'],
@@ -70,7 +64,6 @@ export default function ProfilePage() {
   }
 
   const stats = statsData?.data;
-  const achievements = achievementsData?.data;
   const patterns = patternsData?.data;
   const profile = profileData?.data?.profile;
 
@@ -161,59 +154,10 @@ export default function ProfilePage() {
         <StreakBadge days={stats.streak_days} longestStreak={stats.longest_streak} />
       )}
 
-      {/* Stats Grid */}
-      {stats && (
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="text-center">
-            <CheckSquare className="w-6 h-6 mx-auto text-green-500 mb-2" />
-            <p className="text-2xl font-bold text-white">{stats.total_tasks_completed}</p>
-            <p className="text-xs text-gray-400">{t('tasksCompletedLabel')}</p>
-          </Card>
-          <Card className="text-center">
-            <Target className="w-6 h-6 mx-auto text-blue-500 mb-2" />
-            <p className="text-2xl font-bold text-white">{stats.total_subtasks_completed}</p>
-            <p className="text-xs text-gray-400">{t('stepsCompleted')}</p>
-          </Card>
-          <Card className="text-center">
-            <Clock className="w-6 h-6 mx-auto text-purple-500 mb-2" />
-            <p className="text-2xl font-bold text-white">{Math.round(stats.total_focus_minutes / 60)}ч</p>
-            <p className="text-xs text-gray-400">{t('focusTimeLabel')}</p>
-          </Card>
-          <Card className="text-center">
-            <TrendingUp className="w-6 h-6 mx-auto text-orange-500 mb-2" />
-            <p className="text-2xl font-bold text-white">{stats.longest_streak}</p>
-            <p className="text-xs text-gray-400">{t('bestStreak')}</p>
-          </Card>
-        </div>
-      )}
-
-      {/* Deck, Arena & Friends buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={() => router.push('/deck')}
-        >
-          <Scroll className="w-5 h-5 mr-2" />
-          {t('deck')}
-        </Button>
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={() => router.push('/arena')}
-        >
-          <Swords className="w-5 h-5 mr-2" />
-          {t('arena')}
-        </Button>
-      </div>
-      <Button
-        variant="secondary"
-        className="w-full"
-        onClick={() => router.push('/friends')}
-      >
-        <Users className="w-5 h-5 mr-2" />
-        {t('friends')}
-      </Button>
+      {/* Profile Showcase - 3 card slots */}
+      <Card>
+        <ShowcaseSlots />
+      </Card>
 
       {/* Productivity Patterns */}
       {patterns && patterns.total_sessions > 0 && (
@@ -256,38 +200,6 @@ export default function ProfilePage() {
             </div>
           )}
         </Card>
-      )}
-
-      {/* Achievements */}
-      {achievements && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <h2 className="font-semibold text-white">{t('achievements')}</h2>
-            <span className="text-sm text-gray-400">
-              {achievements.unlocked.length} {t('unlocked')}
-            </span>
-          </div>
-
-          {achievements.unlocked.length > 0 && (
-            <div className="space-y-2">
-              {achievements.unlocked.map((ach) => (
-                <AchievementCard key={ach.id} achievement={ach} />
-              ))}
-            </div>
-          )}
-
-          {achievements.in_progress.length > 0 && (
-            <>
-              <h3 className="text-sm font-medium text-gray-400 mt-4">{t('inProgress')}</h3>
-              <div className="space-y-2">
-                {achievements.in_progress.slice(0, 5).map((ach) => (
-                  <AchievementCard key={ach.id} achievement={ach} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       )}
 
       {/* Logout */}

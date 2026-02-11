@@ -30,9 +30,16 @@ export interface Card {
   ability_info: AbilityInfo | null;
   image_url: string | null;
   emoji: string;
+  card_level: number;
+  card_xp: number;
+  is_companion: boolean;
+  is_showcase: boolean;
+  showcase_slot: number | null;
   is_in_deck: boolean;
   is_tradeable: boolean;
   is_alive: boolean;
+  is_on_cooldown: boolean;
+  cooldown_remaining: number | null;
   rarity_color: string;
   created_at: string;
 }
@@ -290,6 +297,108 @@ class CardsService {
   async claimPendingRewards(): Promise<ApiResponse<{ claimed: number; message: string }>> {
     return api.post<{ claimed: number; message: string }>('/cards/pending-rewards/claim');
   }
+
+  // Genre unlocking
+  async getUnlockedGenres(): Promise<ApiResponse<{
+    unlocked_genres: string[];
+    unlock_available: GenreUnlockInfo | null;
+  }>> {
+    return api.get<{ unlocked_genres: string[]; unlock_available: GenreUnlockInfo | null }>('/genres/unlocked');
+  }
+
+  async selectGenreUnlock(genre: string): Promise<ApiResponse<{
+    success: boolean;
+    unlocked_genres: string[];
+    genre: string;
+  }>> {
+    return api.post<{ success: boolean; unlocked_genres: string[]; genre: string }>('/genres/select', { genre });
+  }
+
+  // Card leveling
+  async addCardXp(cardId: number, amount: number): Promise<ApiResponse<CardXpResult>> {
+    return api.post<CardXpResult>(`/cards/${cardId}/add-xp`, { amount });
+  }
+
+  // Companion system
+  async setCompanion(cardId: number): Promise<ApiResponse<{ success: boolean; card: Card }>> {
+    return api.post<{ success: boolean; card: Card }>(`/cards/${cardId}/companion`);
+  }
+
+  async getCompanion(): Promise<ApiResponse<{ companion: Card | null }>> {
+    return api.get<{ companion: Card | null }>('/companion');
+  }
+
+  async removeCompanion(): Promise<ApiResponse<{ success: boolean }>> {
+    return api.post<{ success: boolean }>('/companion/remove');
+  }
+
+  // Showcase system
+  async setShowcase(cardId: number, slot: number): Promise<ApiResponse<{ success: boolean; card: Card }>> {
+    return api.post<{ success: boolean; card: Card }>(`/cards/${cardId}/showcase`, { slot });
+  }
+
+  async getShowcase(): Promise<ApiResponse<{ slots: (Card | null)[] }>> {
+    return api.get<{ slots: (Card | null)[] }>('/showcase');
+  }
+
+  async removeShowcase(slot: number): Promise<ApiResponse<{ success: boolean }>> {
+    return api.post<{ success: boolean }>('/showcase/remove', { slot });
+  }
+
+  // Campaign energy
+  async getEnergy(): Promise<ApiResponse<{ energy: number; max_energy: number }>> {
+    return api.get<{ energy: number; max_energy: number }>('/energy');
+  }
+
+  // Friend profile & ranking
+  async getFriendProfile(friendId: number): Promise<ApiResponse<FriendProfile>> {
+    return api.get<FriendProfile>(`/friends/${friendId}/profile`);
+  }
+
+  async getFriendsRanking(): Promise<ApiResponse<{ ranking: RankingEntry[] }>> {
+    return api.get<{ ranking: RankingEntry[] }>('/friends/ranking');
+  }
+}
+
+// Additional types
+export interface GenreUnlockInfo {
+  can_unlock: boolean;
+  current_count: number;
+  max_count: number;
+  available_genres: string[];
+  user_level: number;
+}
+
+export interface CardXpResult {
+  success: boolean;
+  level_up: boolean;
+  old_level: number;
+  new_level: number;
+  card_xp: number;
+  xp_to_next: number;
+  max_level: number;
+  card: Card;
+}
+
+export interface FriendProfile {
+  user_id: number;
+  username: string;
+  first_name: string;
+  level: number;
+  deck_power: number;
+  showcase: (Card | null)[];
+  deck: Card[];
+}
+
+export interface RankingEntry {
+  user_id: number;
+  username: string;
+  first_name: string;
+  level: number;
+  deck_power: number;
+  cards_count: number;
+  rank: number;
+  is_me?: boolean;
 }
 
 export const cardsService = new CardsService();

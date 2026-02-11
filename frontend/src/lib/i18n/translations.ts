@@ -526,6 +526,51 @@ export const translations = {
     tapToStartBattle: 'Нажмите, чтобы начать бой',
     tapToContinue: 'Нажмите для продолжения',
     backToCampaign: 'Вернуться в кампанию',
+
+    // Genre unlocking
+    genreUnlockTitle: 'Новый жанр доступен!',
+    genreUnlockDesc: 'Выбери жанр для разблокировки',
+    genreLocked: 'Уровень {level}',
+    unlockGenre: 'Разблокировать',
+    genresAvailable: '{count} из {max} жанров',
+
+    // Card leveling
+    cardLevel: 'Ур. {level}',
+    cardXp: '{current}/{max} XP',
+    cardLevelUp: 'Уровень карты повышен!',
+    cardMaxLevel: 'Макс. уровень',
+
+    // Companion system
+    companion: 'Компаньон',
+    setCompanion: 'Сделать компаньоном',
+    removeCompanion: 'Убрать компаньона',
+    companionGainingXp: 'Получает опыт...',
+    noCompanion: 'Нет компаньона',
+
+    // Showcase
+    showcase: 'Витрина',
+    setShowcase: 'На витрину',
+    showcaseEmpty: 'Установи карты в коллекции',
+    showcaseSlot: 'Слот {slot}',
+
+    // Campaign energy
+    campaignEnergy: 'Энергия',
+    energyFull: 'Энергия полна',
+    noEnergy: 'Нет энергии',
+    noEnergyHint: 'Выполняй задачи и фокус-сессии для получения энергии',
+    energyCost: 'Стоимость: 1 ⚡',
+    chapterFree: 'Бесплатно',
+
+    // Friend ranking
+    ranking: 'Рейтинг',
+    deckPower: 'Сила колоды',
+    friendProfile: 'Профиль друга',
+    viewDeck: 'Посмотреть колоду',
+
+    // Hard mode
+    hardMode: 'Сложный режим',
+    hardModeUnlocked: 'Сложный режим разблокирован!',
+    hardModeDesc: 'Враги сильнее, награды лучше',
   },
 
   en: {
@@ -1055,6 +1100,51 @@ export const translations = {
     tapToStartBattle: 'Tap to start battle',
     tapToContinue: 'Tap to continue',
     backToCampaign: 'Back to campaign',
+
+    // Genre unlocking
+    genreUnlockTitle: 'New genre available!',
+    genreUnlockDesc: 'Choose a genre to unlock',
+    genreLocked: 'Level {level}',
+    unlockGenre: 'Unlock',
+    genresAvailable: '{count} of {max} genres',
+
+    // Card leveling
+    cardLevel: 'Lv. {level}',
+    cardXp: '{current}/{max} XP',
+    cardLevelUp: 'Card leveled up!',
+    cardMaxLevel: 'Max level',
+
+    // Companion system
+    companion: 'Companion',
+    setCompanion: 'Set as companion',
+    removeCompanion: 'Remove companion',
+    companionGainingXp: 'Gaining XP...',
+    noCompanion: 'No companion',
+
+    // Showcase
+    showcase: 'Showcase',
+    setShowcase: 'Add to showcase',
+    showcaseEmpty: 'Set cards in your collection',
+    showcaseSlot: 'Slot {slot}',
+
+    // Campaign energy
+    campaignEnergy: 'Energy',
+    energyFull: 'Energy full',
+    noEnergy: 'No energy',
+    noEnergyHint: 'Complete tasks and focus sessions to earn energy',
+    energyCost: 'Cost: 1 ⚡',
+    chapterFree: 'Free',
+
+    // Friend ranking
+    ranking: 'Ranking',
+    deckPower: 'Deck power',
+    friendProfile: 'Friend profile',
+    viewDeck: 'View deck',
+
+    // Hard mode
+    hardMode: 'Hard mode',
+    hardModeUnlocked: 'Hard mode unlocked!',
+    hardModeDesc: 'Stronger enemies, better rewards',
   },
 } as const;
 

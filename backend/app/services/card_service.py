@@ -29,6 +29,107 @@ LEVEL_STAT_MULTIPLIER = 0.05
 
 logger = logging.getLogger(__name__)
 
+# All available genres
+ALL_GENRES = ["magic", "fantasy", "scifi", "cyberpunk", "anime"]
+
+# Genre unlock thresholds: at user level X, user can have Y genres
+# Key = user level, Value = total genres available
+GENRE_UNLOCK_LEVELS = {1: 1, 4: 2, 7: 3, 10: 4, 15: 5}
+
+# Archetype tier unlock levels
+ARCHETYPE_TIER_LEVELS = {
+    "basic": 1,
+    "advanced": 5,
+    "elite": 10,
+    "legendary": 15,
+}
+
+# Card max level by rarity
+CARD_MAX_LEVEL = {
+    CardRarity.COMMON: 3,
+    CardRarity.UNCOMMON: 5,
+    CardRarity.RARE: 7,
+    CardRarity.EPIC: 10,
+    CardRarity.LEGENDARY: 15,
+}
+CARD_XP_PER_LEVEL = 100  # XP needed per card level
+CARD_LEVEL_STAT_BONUS = 0.05  # +5% stats per card level
+
+# Archetype tiers for each genre's archetypes
+# Map: genre -> list of (name, description, tier)
+GENRE_ARCHETYPE_TIERS = {
+    "magic": [
+        (
+            "Очкарик-Избранный",
+            "Юный волшебник со шрамом молнии, победивший тьму",
+            "basic",
+        ),
+        (
+            "Рыжая Отличница",
+            "Лучшая ученица академии, знает все заклинания наизусть",
+            "basic",
+        ),
+        ("Веснушчатый Друг", "Верный товарищ из большой магической семьи", "basic"),
+        ("Носатый Зельевар", "Мрачный профессор с секретом в сердце", "advanced"),
+        ("Бородатый Директор", "Мудрейший маг с любовью к сладостям", "advanced"),
+        ("Безносый Тёмный Лорд", "Тот-кого-нельзя-называть, но все знают", "advanced"),
+        ("Серый Странник", "Древний маг с посохом и любовью к фейерверкам", "elite"),
+        ("Белый Предатель", "Когда-то мудрец, ныне одержим властью", "elite"),
+        ("Лесная Владычица", "Эльфийка с кольцом и зеркалом судьбы", "legendary"),
+        ("Пламенный Балрог", "Древний демон огня из глубин", "legendary"),
+    ],
+    "fantasy": [
+        ("Храбрый Полурослик", "Маленький герой с волосатыми ногами", "basic"),
+        ("Бородатый Гном-Кузнец", "Мастер топора и вечный спорщик с эльфами", "basic"),
+        ("Лучник-Остроух", "Вечно юный стрелок с идеальным зрением", "basic"),
+        ("Следопыт Севера", "Потомок древних королей, скрывающий имя", "advanced"),
+        ("Блондин-Принц", "Эльфийский воин с роскошными волосами", "advanced"),
+        ("Ничего-не-знающий", "Северянин с честью и волком-альбиносом", "advanced"),
+        ("Мать Ящериц", "Серебровласая королева с огнедышащими питомцами", "elite"),
+        ("Карлик-Стратег", "Маленький, но умнейший советник", "elite"),
+        ("Безликий Убийца", "Та, кто меняет лица как перчатки", "legendary"),
+        ("Горный Великан", "Огромный рыцарь без чести", "legendary"),
+    ],
+    "scifi": [
+        ("Имперский Легионер", "Солдат в белой броне с точностью ±1000%", "basic"),
+        ("Зелёный Магистр", "Древний учитель, говорящий задом наперёд", "basic"),
+        ("Одинокий Охотник", "Мандалорский воин с младенцем необычным", "basic"),
+        ("Чёрный Лорд", "Тяжело дышащий папаша с лазерным мечом", "advanced"),
+        ("Контрабандист с Вуки", "Пилот с мохнатым вторым пилотом", "advanced"),
+        ("Принцесса-Генерал", "Дипломат с бластером и булочками", "advanced"),
+        ("Капитан Энтерпрайс", "Лысый дипломат с чаем и приказами", "elite"),
+        ("Логичный Остроухий", "Вулканец без эмоций, но с бровью", "elite"),
+        ("Синекожая Азари", "Инопланетянка-телепат возрастом в века", "legendary"),
+        ("Киборг-Коллективист", "Сопротивление бесполезно", "legendary"),
+    ],
+    "cyberpunk": [
+        ("V-Наёмник", "Легенда Найт-Сити с чипом в голове", "basic"),
+        ("Рокер-Террорист", "Бессмертная рок-звезда с ядерным прошлым", "basic"),
+        ("Охотник на Репликантов", "Бегущий по лезвию в вечном дожде", "basic"),
+        ("Репликант-Философ", "Искусственный, но слишком человечный", "advanced"),
+        ("Майор-Киборг", "Сознание в механическом теле", "advanced"),
+        ("Избранный в Матрице", "Знает кунг-фу и уклоняется от пуль", "advanced"),
+        ("Агент Смит", "Программа-преследователь в костюме", "elite"),
+        ("Оракул с Печеньем", "Предсказательница в фартуке", "elite"),
+        ("Морфеус-Капитан", "Красная или синяя, решать тебе", "legendary"),
+        ("Нео-Хакер", "Пробудившийся от виртуального сна", "legendary"),
+    ],
+    "anime": [
+        ("Лисий Ниндзя", "Непоседа с девятихвостым внутри", "basic"),
+        ("Мститель-Шаринган", "Последний из клана с красными глазами", "basic"),
+        ("Розовый Медик", "Сильнейший кулак и лечащие руки", "basic"),
+        ("Копирующий Сенсей", "Читает книжки и копирует всё", "basic"),
+        ("Теневой Хокаге", "Лентяй ставший защитником деревни", "advanced"),
+        ("Резиновый Капитан", "Соломенная шляпа и мечта о сокровище", "advanced"),
+        ("Охотник на Мечах", "Три клинка, никакого чувства направления", "advanced"),
+        ("Повар-Рыцарь", "Ногами дерётся, руками готовит", "elite"),
+        ("Сайян с Планеты", "Вечно голодный воин становится сильнее", "elite"),
+        ("Принц Овощей", "Гордость и сила в маленьком росте", "legendary"),
+        ("Солдат с Лезвиями", "Резчик титанов с болью в сердце", "legendary"),
+        ("Титан-Оборотень", "Превращается когда прикусит руку", "legendary"),
+    ],
+}
+
 # Probability-based rarity distribution (independent of task difficulty)
 # Each tuple is (rarity, cumulative_probability)
 # Common: 58%, Uncommon: 28%, Rare: 11%, Epic: 2.5%, Legendary: 0.5%
@@ -625,14 +726,14 @@ class CardService:
         """Generate a card using AI for name and description."""
         genre_info = GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"])
 
-        # Generate name and description
-        name, description = self._generate_card_text(
-            genre, genre_info, rarity, task_title
-        )
-
         # Calculate stats based on rarity and user level
         rarity_mult = RARITY_MULTIPLIERS[rarity]
         user_level = self.get_user_level(user_id)
+
+        # Generate name and description
+        name, description = self._generate_card_text(
+            genre, genre_info, rarity, task_title, user_level
+        )
         level_mult = self._get_level_multiplier(user_level)
 
         base_hp = random.randint(40, 60)
@@ -788,15 +889,20 @@ class CardService:
             return {"success": False, "error": "generation_failed"}
 
     def _generate_card_text(
-        self, genre: str, genre_info: dict, rarity: CardRarity, task_title: str
+        self,
+        genre: str,
+        genre_info: dict,
+        rarity: CardRarity,
+        task_title: str,
+        user_level: int = 1,
     ) -> tuple[str, str]:
         """Generate card name and description using AI or fallback."""
         # For common/uncommon - use archetypes directly (faster, no API call)
         if rarity in [CardRarity.COMMON, CardRarity.UNCOMMON]:
-            return self._generate_fallback_text(genre, rarity)
+            return self._generate_fallback_text(genre, rarity, user_level)
 
         if not self.openai_client:
-            return self._generate_fallback_text(genre, rarity)
+            return self._generate_fallback_text(genre, rarity, user_level)
 
         try:
             rarity_names = {
@@ -867,18 +973,28 @@ class CardService:
 
         except Exception as e:
             logger.error(f"Failed to generate card text via AI: {e}")
-            return self._generate_fallback_text(genre, rarity)
+            return self._generate_fallback_text(genre, rarity, user_level)
 
     def _generate_fallback_text(
-        self, genre: str, rarity: CardRarity
+        self, genre: str, rarity: CardRarity, user_level: int = 1
     ) -> tuple[str, str]:
-        """Generate fallback card name and description using archetypes."""
-        # Try to use archetypes first (recognizable parody characters)
-        archetypes = GENRE_CHARACTER_ARCHETYPES.get(genre, [])
+        """Generate fallback card name and description using tiered archetypes."""
+        # Use tiered archetypes filtered by user level
+        tiered = GENRE_ARCHETYPE_TIERS.get(genre, [])
 
-        if archetypes:
-            # Pick a random archetype
-            name, description = random.choice(archetypes)
+        if tiered:
+            # Filter by user level (tier unlock)
+            available = [
+                (n, d, t)
+                for n, d, t in tiered
+                if user_level >= ARCHETYPE_TIER_LEVELS.get(t, 1)
+            ]
+            if not available:
+                available = [(n, d, t) for n, d, t in tiered if t == "basic"]
+            if not available:
+                available = tiered  # ultimate fallback
+
+            name, description, _tier = random.choice(available)
 
             # Add rarity modifier to name for higher rarities
             rarity_prefixes = {
@@ -1416,4 +1532,350 @@ class CardService:
             "success": True,
             "card": new_card.to_dict(get_lang()),
             "message": f"Карты объединены! Получена {rarity_label} карта!",
+        }
+
+    # ============ Genre & Archetype Unlocking ============
+
+    def get_max_genres_for_level(self, user_level: int) -> int:
+        """Get how many genres a user can have at their level."""
+        max_genres = 1
+        for level_threshold, genres_count in sorted(GENRE_UNLOCK_LEVELS.items()):
+            if user_level >= level_threshold:
+                max_genres = genres_count
+        return max_genres
+
+    def get_unlocked_genres(self, user_id: int) -> list[str]:
+        """Get list of genres the user has unlocked."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return ["fantasy"]
+
+        # If unlocked_genres is set, use it
+        if profile.unlocked_genres:
+            return profile.unlocked_genres
+
+        # Default: just the favorite genre
+        return [profile.favorite_genre or "fantasy"]
+
+    def check_genre_unlock(self, user_id: int) -> dict | None:
+        """Check if user can unlock a new genre after leveling up.
+
+        Returns dict with unlock info, or None if no new unlock available.
+        """
+        user = User.query.get(user_id)
+        if not user:
+            return None
+
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return None
+
+        current_unlocked = profile.unlocked_genres or [
+            profile.favorite_genre or "fantasy"
+        ]
+        max_genres = self.get_max_genres_for_level(user.level)
+
+        if len(current_unlocked) >= max_genres:
+            return None  # Already at max for this level
+
+        # User can unlock a new genre — return available options
+        available = [g for g in ALL_GENRES if g not in current_unlocked]
+        if not available:
+            return None
+
+        return {
+            "can_unlock": True,
+            "current_count": len(current_unlocked),
+            "max_count": max_genres,
+            "available_genres": available,
+            "user_level": user.level,
+        }
+
+    def unlock_genre(self, user_id: int, genre: str) -> dict:
+        """Unlock a new genre for the user."""
+        if genre not in ALL_GENRES:
+            return {"success": False, "error": "invalid_genre"}
+
+        user = User.query.get(user_id)
+        if not user:
+            return {"success": False, "error": "user_not_found"}
+
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return {"success": False, "error": "profile_not_found"}
+
+        current_unlocked = profile.unlocked_genres or [
+            profile.favorite_genre or "fantasy"
+        ]
+        if genre in current_unlocked:
+            return {"success": False, "error": "already_unlocked"}
+
+        max_genres = self.get_max_genres_for_level(user.level)
+        if len(current_unlocked) >= max_genres:
+            return {"success": False, "error": "max_genres_reached"}
+
+        current_unlocked.append(genre)
+        profile.unlocked_genres = current_unlocked
+        db.session.commit()
+
+        return {
+            "success": True,
+            "unlocked_genres": current_unlocked,
+            "genre": genre,
+        }
+
+    def get_available_archetypes(self, genre: str, user_level: int) -> list[tuple]:
+        """Get archetypes available for a genre at a given user level.
+
+        Returns list of (name, description, tier) tuples.
+        """
+        archetypes = GENRE_ARCHETYPE_TIERS.get(genre, [])
+        available = []
+        for name, desc, tier in archetypes:
+            tier_level = ARCHETYPE_TIER_LEVELS.get(tier, 1)
+            if user_level >= tier_level:
+                available.append((name, desc, tier))
+        return available
+
+    # ============ Card Leveling ============
+
+    def add_card_xp(self, card_id: int, user_id: int, xp_amount: int) -> dict:
+        """Add XP to a card and handle level ups.
+
+        Returns dict with card info and level up status.
+        """
+        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
+        if not card:
+            return {"success": False, "error": "card_not_found"}
+
+        if card.is_destroyed:
+            return {"success": False, "error": "card_destroyed"}
+
+        rarity = CardRarity(card.rarity)
+        max_level = CARD_MAX_LEVEL.get(rarity, 3)
+
+        if card.card_level >= max_level:
+            return {"success": True, "level_up": False, "already_max": True}
+
+        old_level = card.card_level or 1
+        card.card_xp = (card.card_xp or 0) + xp_amount
+
+        # Check for level up
+        new_level = old_level
+        while new_level < max_level and card.card_xp >= new_level * CARD_XP_PER_LEVEL:
+            card.card_xp -= new_level * CARD_XP_PER_LEVEL
+            new_level += 1
+
+        leveled_up = new_level > old_level
+        card.card_level = new_level
+
+        # Apply stat bonuses on level up
+        if leveled_up:
+            # Recalculate stats based on card level
+            level_bonus = 1 + (new_level - 1) * CARD_LEVEL_STAT_BONUS
+            old_bonus = 1 + (old_level - 1) * CARD_LEVEL_STAT_BONUS
+            # Scale from old to new
+            card.hp = int(card.hp * level_bonus / old_bonus)
+            card.attack = int(card.attack * level_bonus / old_bonus)
+            card.current_hp = card.hp  # Full heal on level up
+
+        db.session.commit()
+
+        from app.utils import get_lang
+
+        return {
+            "success": True,
+            "level_up": leveled_up,
+            "old_level": old_level,
+            "new_level": new_level,
+            "card_xp": card.card_xp,
+            "xp_to_next": new_level * CARD_XP_PER_LEVEL if new_level < max_level else 0,
+            "max_level": max_level,
+            "card": card.to_dict(get_lang()),
+        }
+
+    # ============ Companion System ============
+
+    def set_companion(self, user_id: int, card_id: int) -> dict:
+        """Set a card as the user's companion."""
+        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
+        if not card:
+            return {"success": False, "error": "card_not_found"}
+
+        if card.is_destroyed:
+            return {"success": False, "error": "card_destroyed"}
+
+        # Remove current companion
+        current_companion = UserCard.query.filter_by(
+            user_id=user_id, is_companion=True
+        ).first()
+        if current_companion:
+            current_companion.is_companion = False
+
+        card.is_companion = True
+        db.session.commit()
+
+        from app.utils import get_lang
+
+        return {"success": True, "card": card.to_dict(get_lang())}
+
+    def remove_companion(self, user_id: int) -> dict:
+        """Remove the current companion."""
+        current = UserCard.query.filter_by(user_id=user_id, is_companion=True).first()
+        if current:
+            current.is_companion = False
+            db.session.commit()
+        return {"success": True}
+
+    def get_companion(self, user_id: int) -> UserCard | None:
+        """Get user's active companion card."""
+        return UserCard.query.filter_by(
+            user_id=user_id, is_companion=True, is_destroyed=False
+        ).first()
+
+    def award_companion_xp(self, user_id: int, xp_amount: int = 10) -> dict | None:
+        """Award XP to the user's companion card (e.g., after focus session)."""
+        companion = self.get_companion(user_id)
+        if not companion:
+            return None
+        return self.add_card_xp(companion.id, user_id, xp_amount)
+
+    # ============ Showcase System ============
+
+    def set_showcase(self, user_id: int, card_id: int, slot: int) -> dict:
+        """Set a card in a showcase slot (1-3)."""
+        if slot not in (1, 2, 3):
+            return {"success": False, "error": "invalid_slot"}
+
+        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
+        if not card:
+            return {"success": False, "error": "card_not_found"}
+
+        if card.is_destroyed:
+            return {"success": False, "error": "card_destroyed"}
+
+        # Remove any card currently in this slot
+        current_in_slot = UserCard.query.filter_by(
+            user_id=user_id, is_showcase=True, showcase_slot=slot
+        ).first()
+        if current_in_slot:
+            current_in_slot.is_showcase = False
+            current_in_slot.showcase_slot = None
+
+        # If this card is already in another slot, clear it
+        if card.is_showcase:
+            card.is_showcase = False
+            card.showcase_slot = None
+
+        card.is_showcase = True
+        card.showcase_slot = slot
+        db.session.commit()
+
+        from app.utils import get_lang
+
+        return {"success": True, "card": card.to_dict(get_lang())}
+
+    def remove_showcase(self, user_id: int, slot: int) -> dict:
+        """Remove a card from a showcase slot."""
+        if slot not in (1, 2, 3):
+            return {"success": False, "error": "invalid_slot"}
+
+        card = UserCard.query.filter_by(
+            user_id=user_id, is_showcase=True, showcase_slot=slot
+        ).first()
+        if card:
+            card.is_showcase = False
+            card.showcase_slot = None
+            db.session.commit()
+
+        return {"success": True}
+
+    def get_showcase_cards(self, user_id: int) -> list[dict]:
+        """Get user's 3 showcase card slots."""
+        from app.utils import get_lang
+
+        lang = get_lang()
+        cards = (
+            UserCard.query.filter_by(
+                user_id=user_id, is_showcase=True, is_destroyed=False
+            )
+            .order_by(UserCard.showcase_slot)
+            .all()
+        )
+
+        # Build slots dict (1-3)
+        slots = {1: None, 2: None, 3: None}
+        for card in cards:
+            if card.showcase_slot in slots:
+                slots[card.showcase_slot] = card.to_dict(lang)
+
+        return [slots[1], slots[2], slots[3]]
+
+    # ============ Campaign Energy ============
+
+    def get_energy(self, user_id: int) -> dict:
+        """Get user's campaign energy."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return {"energy": 3, "max_energy": 5}
+
+        return {
+            "energy": (
+                profile.campaign_energy if profile.campaign_energy is not None else 3
+            ),
+            "max_energy": (
+                profile.max_campaign_energy
+                if profile.max_campaign_energy is not None
+                else 5
+            ),
+        }
+
+    def add_energy(self, user_id: int, amount: int = 1) -> dict:
+        """Add campaign energy (capped at max)."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return {"success": False, "error": "profile_not_found"}
+
+        current = profile.campaign_energy if profile.campaign_energy is not None else 3
+        max_e = (
+            profile.max_campaign_energy
+            if profile.max_campaign_energy is not None
+            else 5
+        )
+        profile.campaign_energy = min(current + amount, max_e)
+        db.session.commit()
+
+        return {
+            "success": True,
+            "energy": profile.campaign_energy,
+            "max_energy": max_e,
+        }
+
+    def spend_energy(self, user_id: int) -> dict:
+        """Spend 1 campaign energy. Returns success/fail."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return {"success": False, "error": "no_energy"}
+
+        current = profile.campaign_energy if profile.campaign_energy is not None else 3
+        if current <= 0:
+            max_e = (
+                profile.max_campaign_energy
+                if profile.max_campaign_energy is not None
+                else 5
+            )
+            return {
+                "success": False,
+                "error": "no_energy",
+                "energy": 0,
+                "max_energy": max_e,
+            }
+
+        profile.campaign_energy = current - 1
+        db.session.commit()
+
+        return {
+            "success": True,
+            "energy": profile.campaign_energy,
+            "max_energy": profile.max_campaign_energy or 5,
         }

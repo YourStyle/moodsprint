@@ -928,6 +928,333 @@ def get_friend_cards(friend_id: int):
     )
 
 
+# ============ Genre Unlocking ============
+
+
+@api_bp.route("/genres/unlocked", methods=["GET"])
+@jwt_required()
+def get_unlocked_genres():
+    """Get user's unlocked genres and unlock availability."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    unlocked = service.get_unlocked_genres(user_id)
+    unlock_info = service.check_genre_unlock(user_id)
+
+    return success_response(
+        {
+            "unlocked_genres": unlocked,
+            "unlock_available": unlock_info,
+        }
+    )
+
+
+@api_bp.route("/genres/select", methods=["POST"])
+@jwt_required()
+def select_genre_unlock():
+    """
+    Unlock a new genre.
+
+    Request body:
+    {
+        "genre": "scifi"
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    genre = data.get("genre")
+    if not genre:
+        return validation_error({"genre": "Genre is required"})
+
+    service = CardService()
+    result = service.unlock_genre(user_id, genre)
+
+    if not result["success"]:
+        error_messages = {
+            "invalid_genre": "Неизвестный жанр",
+            "already_unlocked": "Жанр уже разблокирован",
+            "max_genres_reached": "Достигнут максимум жанров для вашего уровня",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(result)
+
+
+# ============ Card Leveling ============
+
+
+@api_bp.route("/cards/<int:card_id>/add-xp", methods=["POST"])
+@jwt_required()
+def add_card_xp(card_id: int):
+    """
+    Add XP to a card (admin/testing endpoint).
+
+    Request body:
+    {
+        "amount": 50
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    amount = data.get("amount", 10)
+    if amount <= 0:
+        return validation_error({"amount": "Amount must be positive"})
+
+    service = CardService()
+    result = service.add_card_xp(card_id, user_id, amount)
+
+    if not result["success"]:
+        return validation_error({"error": result["error"]})
+
+    return success_response(result)
+
+
+# ============ Companion System ============
+
+
+@api_bp.route("/cards/<int:card_id>/companion", methods=["POST"])
+@jwt_required()
+def set_companion(card_id: int):
+    """Set a card as the active companion."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.set_companion(user_id, card_id)
+
+    if not result["success"]:
+        error_messages = {
+            "card_not_found": "Карта не найдена",
+            "card_destroyed": "Карта уничтожена",
+        }
+        return validation_error(
+            {"error": error_messages.get(result["error"], result["error"])}
+        )
+
+    return success_response(result)
+
+
+@api_bp.route("/companion", methods=["GET"])
+@jwt_required()
+def get_companion():
+    """Get the user's active companion card."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    companion = service.get_companion(user_id)
+
+    if not companion:
+        return success_response({"companion": None})
+
+    return success_response({"companion": companion.to_dict(get_lang())})
+
+
+@api_bp.route("/companion/remove", methods=["POST"])
+@jwt_required()
+def remove_companion():
+    """Remove the active companion."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    result = service.remove_companion(user_id)
+
+    return success_response(result)
+
+
+# ============ Showcase System ============
+
+
+@api_bp.route("/cards/<int:card_id>/showcase", methods=["POST"])
+@jwt_required()
+def set_showcase(card_id: int):
+    """
+    Set a card in a showcase slot.
+
+    Request body:
+    {
+        "slot": 1  // 1, 2, or 3
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    slot = data.get("slot")
+    if slot not in (1, 2, 3):
+        return validation_error({"slot": "Slot must be 1, 2, or 3"})
+
+    service = CardService()
+    result = service.set_showcase(user_id, card_id, slot)
+
+    if not result["success"]:
+        return validation_error({"error": result["error"]})
+
+    return success_response(result)
+
+
+@api_bp.route("/showcase", methods=["GET"])
+@jwt_required()
+def get_showcase():
+    """Get user's showcase cards (3 slots)."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    slots = service.get_showcase_cards(user_id)
+
+    return success_response({"slots": slots})
+
+
+@api_bp.route("/showcase/remove", methods=["POST"])
+@jwt_required()
+def remove_showcase():
+    """
+    Remove a card from a showcase slot.
+
+    Request body:
+    {
+        "slot": 1
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    slot = data.get("slot")
+    if slot not in (1, 2, 3):
+        return validation_error({"slot": "Slot must be 1, 2, or 3"})
+
+    service = CardService()
+    result = service.remove_showcase(user_id, slot)
+
+    return success_response(result)
+
+
+# ============ Campaign Energy ============
+
+
+@api_bp.route("/energy", methods=["GET"])
+@jwt_required()
+def get_energy():
+    """Get user's campaign energy."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    energy = service.get_energy(user_id)
+
+    return success_response(energy)
+
+
+# ============ Friend Profile & Ranking ============
+
+
+@api_bp.route("/friends/<int:friend_id>/profile", methods=["GET"])
+@jwt_required()
+def get_friend_profile(friend_id: int):
+    """Get friend's profile with showcase, level, and deck power."""
+    user_id = int(get_jwt_identity())
+
+    # Verify friendship
+    is_friend = Friendship.query.filter(
+        (
+            (Friendship.user_id == user_id) & (Friendship.friend_id == friend_id)
+            | (Friendship.user_id == friend_id) & (Friendship.friend_id == user_id)
+        )
+        & (Friendship.status == "accepted")
+    ).first()
+
+    if not is_friend:
+        return validation_error({"error": "not_friends"})
+
+    friend = User.query.get(friend_id)
+    if not friend:
+        return not_found("User not found")
+
+    service = CardService()
+
+    # Get friend's deck for power calculation
+    deck = service.get_user_deck(friend_id)
+    deck_power = sum(c.hp + c.attack for c in deck)
+
+    # Get showcase
+    showcase = service.get_showcase_cards(friend_id)
+
+    lang = get_lang()
+    return success_response(
+        {
+            "user_id": friend_id,
+            "username": friend.username,
+            "first_name": friend.first_name,
+            "level": friend.level,
+            "deck_power": deck_power,
+            "showcase": showcase,
+            "deck": [c.to_dict(lang) for c in deck],
+        }
+    )
+
+
+@api_bp.route("/friends/ranking", methods=["GET"])
+@jwt_required()
+def get_friends_ranking():
+    """Get friends sorted by total deck power."""
+    user_id = int(get_jwt_identity())
+
+    service = CardService()
+    friends = service.get_friends(user_id)
+
+    # Calculate deck power for each friend
+    ranking = []
+    for friend_info in friends:
+        fid = friend_info["friend_id"]
+        friend_user = User.query.get(fid)
+        if not friend_user:
+            continue
+
+        deck = service.get_user_deck(fid)
+        deck_power = sum(c.hp + c.attack for c in deck)
+
+        ranking.append(
+            {
+                "user_id": fid,
+                "username": friend_user.username,
+                "first_name": friend_user.first_name,
+                "level": friend_user.level,
+                "deck_power": deck_power,
+                "cards_count": UserCard.query.filter_by(
+                    user_id=fid, is_destroyed=False
+                ).count(),
+            }
+        )
+
+    # Add current user
+    current_user = User.query.get(user_id)
+    if current_user:
+        my_deck = service.get_user_deck(user_id)
+        my_power = sum(c.hp + c.attack for c in my_deck)
+        ranking.append(
+            {
+                "user_id": user_id,
+                "username": current_user.username,
+                "first_name": current_user.first_name,
+                "level": current_user.level,
+                "deck_power": my_power,
+                "cards_count": UserCard.query.filter_by(
+                    user_id=user_id, is_destroyed=False
+                ).count(),
+                "is_me": True,
+            }
+        )
+
+    # Sort by deck power descending
+    ranking.sort(key=lambda x: x["deck_power"], reverse=True)
+
+    # Add rank
+    for i, entry in enumerate(ranking):
+        entry["rank"] = i + 1
+
+    return success_response({"ranking": ranking})
+
+
 @api_bp.route("/admin/remove-friend", methods=["POST"])
 @jwt_required()
 def admin_remove_friend():

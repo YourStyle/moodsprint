@@ -84,6 +84,9 @@ class CampaignService:
             levels_completed = len(level_completions)
             total_levels = chapter.levels.count()
 
+            # Hard mode available if chapter is completed in normal mode
+            has_hard_mode = is_completed
+
             chapter_data.update(
                 {
                     "is_unlocked": is_unlocked,
@@ -92,13 +95,21 @@ class CampaignService:
                     "total_levels": total_levels,
                     "stars_earned": stars_earned,
                     "max_stars": total_levels * 3,
+                    "has_hard_mode": has_hard_mode,
                 }
             )
             chapters_data.append(chapter_data)
 
+        # Get energy info
+        from app.services.card_service import CardService
+
+        energy_info = CardService().get_energy(user_id)
+
         return {
             "progress": progress.to_dict(),
             "chapters": chapters_data,
+            "energy": energy_info.get("energy", 3),
+            "max_energy": energy_info.get("max_energy", 5),
         }
 
     def get_chapter_details(
@@ -147,6 +158,11 @@ class CampaignService:
                 is not None
             )
 
+            # Check hard mode completion
+            hard_completion = CampaignLevelCompletion.query.filter_by(
+                progress_id=progress.id, level_id=level.id, is_hard_mode=True
+            ).first()
+
             level_data.update(
                 {
                     "is_unlocked": is_unlocked,
@@ -154,6 +170,10 @@ class CampaignService:
                     "stars_earned": completion.stars_earned if completion else 0,
                     "best_rounds": completion.best_rounds if completion else None,
                     "attempts": completion.attempts if completion else 0,
+                    "hard_mode_completed": hard_completion is not None,
+                    "hard_mode_stars": (
+                        hard_completion.stars_earned if hard_completion else 0
+                    ),
                 }
             )
             levels_data.append(level_data)
@@ -176,9 +196,13 @@ class CampaignService:
         }
 
     def start_level(
-        self, user_id: int, level_id: int, lang: str = "ru"
+        self,
+        user_id: int,
+        level_id: int,
+        lang: str = "ru",
+        hard_mode: bool = False,
     ) -> dict[str, Any]:
-        """Start a campaign level (initiates battle)."""
+        """Start a campaign level (initiates battle). Costs 1 energy (except chapter 1)."""
         level = CampaignLevel.query.get(level_id)
         if not level:
             return {"error": "level_not_found"}
@@ -188,6 +212,19 @@ class CampaignService:
         # Check if chapter is unlocked
         if level.chapter.number > progress.current_chapter:
             return {"error": "chapter_locked"}
+
+        # Energy gate: chapter 1 is free, rest costs 1 energy
+        if level.chapter.number > 1:
+            from app.services.card_service import CardService
+
+            card_service = CardService()
+            energy_result = card_service.spend_energy(user_id)
+            if not energy_result["success"]:
+                return {
+                    "error": "no_energy",
+                    "energy": energy_result.get("energy", 0),
+                    "max_energy": energy_result.get("max_energy", 5),
+                }
 
         # Check if previous level is completed (except first level)
         if level.number > 1:
@@ -211,13 +248,19 @@ class CampaignService:
             else level.dialogue_before
         )
 
+        # Apply hard mode difficulty scaling
+        difficulty = level.difficulty_multiplier
+        if hard_mode:
+            difficulty *= 1.5
+
         # Return level data for battle initiation
         return {
             "success": True,
             "level": level.to_dict(lang),
             "dialogue_before": dialogue_before,
             "monster_id": level.monster_id,
-            "difficulty_multiplier": level.difficulty_multiplier,
+            "difficulty_multiplier": difficulty,
+            "is_hard_mode": hard_mode,
         }
 
     def process_dialogue_choice(
@@ -284,6 +327,7 @@ class CampaignService:
         hp_remaining: int,
         cards_lost: int,
         lang: str = "ru",
+        is_hard_mode: bool = False,
     ) -> dict[str, Any]:
         """Complete a campaign level after battle."""
         level = CampaignLevel.query.get(level_id)
@@ -302,9 +346,9 @@ class CampaignService:
         # Calculate stars based on performance (use custom conditions if set)
         stars = self._calculate_stars(rounds, hp_remaining, cards_lost, level)
 
-        # Get or create completion record
+        # Get or create completion record (separate for normal vs hard mode)
         completion = CampaignLevelCompletion.query.filter_by(
-            progress_id=progress.id, level_id=level_id
+            progress_id=progress.id, level_id=level_id, is_hard_mode=is_hard_mode
         ).first()
 
         is_new_completion = completion is None
@@ -329,6 +373,7 @@ class CampaignService:
                 stars_earned=stars,
                 best_rounds=rounds,
                 best_hp_remaining=hp_remaining,
+                is_hard_mode=is_hard_mode,
             )
             db.session.add(completion)
 
@@ -401,6 +446,11 @@ class CampaignService:
 
         db.session.commit()
 
+        # Check if hard mode is now available (chapter completed in normal mode)
+        hard_mode_unlocked = False
+        if chapter_completed and not is_hard_mode:
+            hard_mode_unlocked = True
+
         result = {
             "success": True,
             "won": True,
@@ -409,6 +459,8 @@ class CampaignService:
             "sparks_earned": sparks_earned,
             "is_new_completion": is_new_completion,
             "chapter_completed": chapter_completed,
+            "is_hard_mode": is_hard_mode,
+            "hard_mode_unlocked": hard_mode_unlocked,
             "rewards": rewards,
         }
 

@@ -146,6 +146,8 @@ class CampaignService {
   async getCampaignOverview(): Promise<ApiResponse<{
     progress: CampaignProgress;
     chapters: CampaignChapter[];
+    energy: number;
+    max_energy: number;
   }>> {
     return api.get('/campaign');
   }

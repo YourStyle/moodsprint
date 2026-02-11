@@ -232,6 +232,20 @@ def complete_focus_session():
     checker = AchievementChecker(user)
     achievements_unlocked = checker.check_all()
 
+    # Award campaign energy for focus sessions 20+ min
+    companion_xp_result = None
+    try:
+        from app.services.card_service import CardService
+
+        card_service = CardService()
+        actual_minutes = session.actual_duration_minutes or 0
+        if actual_minutes >= 20:
+            card_service.add_energy(user_id, 1)
+            # Award companion XP
+            companion_xp_result = card_service.award_companion_xp(user_id, 10)
+    except Exception:
+        pass
+
     db.session.commit()
 
     response_data = {
@@ -239,6 +253,22 @@ def complete_focus_session():
         "xp_earned": xp_info["xp_earned"],
         "achievements_unlocked": [a.to_dict() for a in achievements_unlocked],
     }
+
+    # Check genre unlock on level up
+    if xp_info.get("level_up"):
+        response_data["level_up"] = True
+        response_data["new_level"] = xp_info["new_level"]
+        try:
+            from app.services.card_service import CardService
+
+            unlock_info = CardService().check_genre_unlock(user_id)
+            if unlock_info:
+                response_data["genre_unlock_available"] = unlock_info
+        except Exception:
+            pass
+
+    if companion_xp_result and companion_xp_result.get("success"):
+        response_data["companion_xp"] = companion_xp_result
 
     if generated_card:
         response_data["card_earned"] = generated_card.to_dict()

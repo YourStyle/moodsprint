@@ -28,9 +28,9 @@ import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, showBackButton, hideBackButton, shareInviteLink } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
-import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward } from '@/services/cards';
+import type { Card as CardType, Friend, FriendRequest, Trade, PendingReward, RankingEntry } from '@/services/cards';
 
-type Tab = 'friends' | 'requests' | 'trades';
+type Tab = 'friends' | 'requests' | 'trades' | 'ranking';
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#9CA3AF',
@@ -167,6 +167,12 @@ export default function FriendsPage() {
     queryKey: ['friends', selectedFriend?.friend_id, 'cards'],
     queryFn: () => cardsService.getFriendCards(selectedFriend!.friend_id),
     enabled: !!selectedFriend,
+  });
+
+  const { data: rankingData, isLoading: rankingLoading } = useQuery({
+    queryKey: ['friends', 'ranking'],
+    queryFn: () => cardsService.getFriendsRanking(),
+    enabled: !!user && activeTab === 'ranking',
   });
 
   // Mutations
@@ -571,6 +577,18 @@ export default function FriendsPage() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('ranking')}
+          className={cn(
+            'flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1',
+            activeTab === 'ranking'
+              ? 'bg-purple-500 text-white'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          <Swords className="w-4 h-4" />
+          <span className="hidden sm:inline">{t('ranking')}</span>
+        </button>
       </div>
 
       {/* Guilds Banner */}
@@ -871,6 +889,66 @@ export default function FriendsPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Ranking Tab */}
+      {activeTab === 'ranking' && (
+        <>
+          {rankingLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-gray-800 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : !rankingData?.data?.ranking?.length ? (
+            <Card className="text-center py-8">
+              <Swords className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">{t('noFriendsYet')}</p>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {rankingData.data.ranking.map((entry: RankingEntry) => {
+                const rankEmoji = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+                return (
+                  <Card
+                    key={entry.user_id}
+                    className={cn(
+                      'flex items-center gap-3',
+                      entry.is_me && 'ring-1 ring-purple-500/50'
+                    )}
+                  >
+                    <div className="w-8 text-center text-lg font-bold">
+                      {typeof rankEmoji === 'string' && rankEmoji.startsWith('#') ? (
+                        <span className="text-gray-500 text-sm">{rankEmoji}</span>
+                      ) : (
+                        <span>{rankEmoji}</span>
+                      )}
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                      {(entry.first_name?.[0] || entry.username?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={cn(
+                        'font-medium truncate',
+                        entry.is_me ? 'text-purple-400' : 'text-white'
+                      )}>
+                        {entry.first_name || entry.username}
+                        {entry.is_me && ` (${t('you')})`}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        Lv.{entry.level} · {entry.cards_count} {t('cards').toLowerCase()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-amber-400">{entry.deck_power}</div>
+                      <div className="text-[10px] text-gray-500">{t('deckPower')}</div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </>

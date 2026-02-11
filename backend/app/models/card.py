@@ -157,6 +157,14 @@ class CardTemplate(db.Model):
     # NULL = universal template (can be any rarity)
     rarity = db.Column(db.String(20), nullable=True)
 
+    # Archetype tier for genre/level unlocking
+    unlock_level = db.Column(
+        db.Integer, default=1, nullable=False
+    )  # User level required
+    archetype_tier = db.Column(
+        db.String(20), nullable=True
+    )  # 'basic', 'advanced', 'elite', 'legendary'
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self, lang: str = "ru") -> dict:
@@ -182,6 +190,8 @@ class CardTemplate(db.Model):
             "image_url": self.image_url,
             "emoji": self.emoji,
             "rarity": self.rarity,
+            "unlock_level": self.unlock_level or 1,
+            "archetype_tier": self.archetype_tier,
         }
 
 
@@ -231,6 +241,15 @@ class UserCard(db.Model):
         db.ForeignKey("tasks.id", ondelete="SET NULL"),
         nullable=True,
     )  # Which task gave this card
+
+    # Card leveling
+    card_level = db.Column(db.Integer, default=1, nullable=False)  # Card's own level
+    card_xp = db.Column(db.Integer, default=0, nullable=False)  # XP from battles/focus
+
+    # Companion & showcase
+    is_companion = db.Column(db.Boolean, default=False)  # Active companion card
+    is_showcase = db.Column(db.Boolean, default=False)  # Displayed on profile
+    showcase_slot = db.Column(db.Integer, nullable=True)  # 1, 2, or 3
 
     # Status
     is_in_deck = db.Column(db.Boolean, default=False)  # In active battle deck
@@ -351,6 +370,11 @@ class UserCard(db.Model):
             "ability_info": self.ability_info,
             "image_url": self.image_url,
             "emoji": self.emoji,
+            "card_level": self.card_level or 1,
+            "card_xp": self.card_xp or 0,
+            "is_companion": self.is_companion or False,
+            "is_showcase": self.is_showcase or False,
+            "showcase_slot": self.showcase_slot,
             "is_in_deck": self.is_in_deck,
             "is_tradeable": self.is_tradeable,
             "is_alive": self.is_alive,

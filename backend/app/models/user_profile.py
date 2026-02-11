@@ -51,6 +51,14 @@ class UserProfile(db.Model):
         db.String(50), nullable=True
     )  # magic, fantasy, scifi, cyberpunk, anime
 
+    # Genre unlocking
+    unlocked_genres = db.Column(db.JSON, nullable=True)  # List of unlocked genre names
+
+    # Campaign energy system
+    campaign_energy = db.Column(db.Integer, default=3, nullable=False)
+    max_campaign_energy = db.Column(db.Integer, default=5, nullable=False)
+    last_energy_update = db.Column(db.DateTime, nullable=True)
+
     # Raw GPT response
     gpt_analysis = db.Column(db.JSON, nullable=True)
 
@@ -126,6 +134,13 @@ class UserProfile(db.Model):
             "timezone": self.timezone,
             "language": self.language,
             "favorite_genre": self.favorite_genre,
+            "unlocked_genres": self.unlocked_genres or [],
+            "campaign_energy": (
+                self.campaign_energy if self.campaign_energy is not None else 3
+            ),
+            "max_campaign_energy": (
+                self.max_campaign_energy if self.max_campaign_energy is not None else 5
+            ),
             "spotlight_reset_at": (
                 self.spotlight_reset_at.isoformat() if self.spotlight_reset_at else None
             ),

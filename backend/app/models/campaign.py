@@ -267,6 +267,9 @@ class CampaignLevelCompletion(db.Model):
         nullable=False,
     )
 
+    # Hard mode (replay with higher difficulty)
+    is_hard_mode = db.Column(db.Boolean, default=False, nullable=False)
+
     # Best result
     stars_earned = db.Column(db.Integer, default=1)  # 1-3 stars
     best_rounds = db.Column(db.Integer, nullable=True)  # Fewest rounds

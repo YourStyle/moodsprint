@@ -515,6 +515,9 @@ def update_task(task_id: int):
             generated_card = card_service.generate_card_for_task(
                 user_id, task.id, task.title, difficulty, max_rarity=max_rarity
             )
+
+            # Award campaign energy for task completion
+            card_service.add_energy(user_id, 1)
         except Exception:
             # Card generation is optional, don't fail task completion
             pass
@@ -527,6 +530,16 @@ def update_task(task_id: int):
         response_data["achievements_unlocked"] = [
             a.to_dict() for a in achievements_unlocked
         ]
+        # Check genre unlock on level up
+        if xp_info.get("level_up"):
+            response_data["level_up"] = True
+            response_data["new_level"] = xp_info["new_level"]
+            try:
+                unlock_info = CardService().check_genre_unlock(user_id)
+                if unlock_info:
+                    response_data["genre_unlock_available"] = unlock_info
+            except Exception:
+                pass
     if generated_card:
         response_data["card_earned"] = generated_card.to_dict()
         # Add quick completion flag and message

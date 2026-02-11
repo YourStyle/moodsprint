@@ -78,8 +78,11 @@ def start_campaign_level(level_id: int):
     user_id = int(get_jwt_identity())
     lang = get_lang()
 
+    data = request.get_json() or {}
+    hard_mode = data.get("hard_mode", False)
+
     service = CampaignService()
-    result = service.start_level(user_id, level_id, lang)
+    result = service.start_level(user_id, level_id, lang, hard_mode=hard_mode)
 
     if "error" in result:
         error_messages = {
@@ -93,6 +96,9 @@ def start_campaign_level(level_id: int):
                 "Complete the previous level first"
                 if lang == "en"
                 else "Сначала пройдите предыдущий уровень"
+            ),
+            "no_energy": (
+                "Not enough energy" if lang == "en" else "Недостаточно энергии"
             ),
         }
         return validation_error(
@@ -155,6 +161,7 @@ def complete_campaign_level(level_id: int):
     rounds = data.get("rounds", 10)
     hp_remaining = data.get("hp_remaining", 0)
     cards_lost = data.get("cards_lost", 0)
+    is_hard_mode = data.get("hard_mode", False)
 
     service = CampaignService()
     result = service.complete_level(
@@ -165,6 +172,7 @@ def complete_campaign_level(level_id: int):
         hp_remaining=hp_remaining,
         cards_lost=cards_lost,
         lang=lang,
+        is_hard_mode=is_hard_mode,
     )
 
     if "error" in result:
