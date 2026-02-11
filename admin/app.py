@@ -839,8 +839,6 @@ def business_metrics():
 @login_required
 def give_card_to_user(user_id: int):
     """Give a specific card to a user."""
-    import random
-
     data = request.json or {}
     template_id = data.get("template_id")
     rarity = data.get("rarity", "common")
@@ -3748,7 +3746,6 @@ ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 def get_gallery_images():
     """Get all images from gallery directory."""
     import glob
-    from pathlib import Path
 
     images = []
     if os.path.exists(GALLERY_DIR):
@@ -3917,7 +3914,6 @@ MEDIA_DIR = "/app/media"
 def get_media_tree(base_path: str = "") -> dict:
     """Get folder tree structure from media directory."""
     import os
-    from pathlib import Path
 
     full_path = os.path.join(MEDIA_DIR, base_path) if base_path else MEDIA_DIR
 
@@ -3949,7 +3945,7 @@ def get_media_tree(base_path: str = "") -> dict:
                 # Count items in folder
                 try:
                     item["items_count"] = len([f for f in os.listdir(entry.path) if not f.startswith('.')])
-                except:
+                except Exception:
                     item["items_count"] = 0
 
             items.append(item)
