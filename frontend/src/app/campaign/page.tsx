@@ -382,77 +382,120 @@ export default function CampaignPage() {
           </Card>
         )}
 
-        {/* Levels List */}
+        {/* Levels — Vertical Progression Path */}
         {chapterLoading ? (
           <div className="text-center text-gray-400 py-8">{t('loading')}</div>
         ) : (
-          <div className="space-y-2 mt-4">
-            {chapterData?.data?.levels?.map((level, index) => (
-              <div
-                key={level.id}
-                className={cn(
-                  'rounded-xl overflow-hidden transition-all cursor-pointer border',
-                  level.is_boss
-                    ? 'bg-gradient-to-r from-red-900/40 to-orange-900/40 border-red-500/40'
-                    : 'bg-gray-800/60 border-gray-700/40',
-                  !level.is_unlocked && 'opacity-50 grayscale',
-                  level.is_completed && 'ring-1 ring-green-500/30'
-                )}
-                onClick={() => handleLevelStart(level)}
-              >
-                <div className="px-3 py-2.5 flex items-center gap-3">
-                  {/* Level number */}
-                  <div className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-                    level.is_boss
-                      ? 'bg-red-600/40'
-                      : 'bg-gray-700/60'
-                  )}>
-                    {level.is_boss ? (
-                      <Crown className="w-5 h-5 text-red-400" />
-                    ) : level.is_unlocked ? (
-                      <span className="text-base font-bold text-white">{level.number}</span>
-                    ) : (
-                      <Lock className="w-4 h-4 text-gray-500" />
+          <div className="mt-4">
+            {chapterData?.data?.levels?.map((level, index) => {
+              const levels = chapterData.data!.levels!;
+              const isLast = index === levels.length - 1;
+              const isCompleted = level.is_completed;
+              const isUnlocked = level.is_unlocked;
+              const isBoss = level.is_boss;
+
+              // Node colors
+              const nodeColor = isCompleted
+                ? 'bg-green-500 border-green-400'
+                : isUnlocked
+                  ? 'bg-purple-500/20 border-purple-500 ring-2 ring-purple-500/50'
+                  : 'bg-gray-700 border-gray-600';
+              const bossNodeColor = isCompleted
+                ? 'bg-green-500 border-green-400 shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                : isUnlocked
+                  ? 'bg-red-500/20 border-red-500 ring-2 ring-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                  : 'bg-gray-700 border-gray-600';
+
+              // Connector color
+              const connectorColor = isCompleted ? 'from-green-500 to-green-500/30' : 'from-gray-600 to-gray-700';
+
+              return (
+                <div key={level.id} className="flex items-start gap-3">
+                  {/* Node column: circle + connector line */}
+                  <div className="flex flex-col items-center shrink-0">
+                    {/* Circle node */}
+                    <div
+                      className={cn(
+                        'rounded-full border-2 flex items-center justify-center transition-all',
+                        isBoss ? 'w-12 h-12' : 'w-10 h-10',
+                        isBoss ? bossNodeColor : nodeColor,
+                        isUnlocked && !isCompleted && 'animate-pulse',
+                        !isUnlocked && 'opacity-50'
+                      )}
+                    >
+                      {isBoss ? (
+                        <Crown className={cn('w-5 h-5', isCompleted ? 'text-white' : isUnlocked ? 'text-red-400' : 'text-gray-500')} />
+                      ) : isCompleted ? (
+                        <Check className="w-5 h-5 text-white" />
+                      ) : isUnlocked ? (
+                        <span className="text-sm font-bold text-white">{level.number}</span>
+                      ) : (
+                        <Lock className="w-4 h-4 text-gray-500" />
+                      )}
+                    </div>
+                    {/* Connector line */}
+                    {!isLast && (
+                      <div className={cn(
+                        'w-0.5 h-8 bg-gradient-to-b',
+                        connectorColor
+                      )} />
                     )}
                   </div>
 
-                  {/* Level info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-white text-sm truncate">
-                        {level.title || (level.is_boss ? t('bossLevel').toUpperCase() : `${t('levelNumber')} ${level.number}`)}
-                      </h3>
-                      {level.is_completed && (
-                        <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                  {/* Info card */}
+                  <div
+                    className={cn(
+                      'flex-1 rounded-xl overflow-hidden transition-all border mb-2',
+                      isBoss
+                        ? 'bg-gradient-to-r from-red-900/40 to-orange-900/40 border-red-500/40'
+                        : isCompleted
+                          ? 'bg-gray-800/40 border-green-500/30'
+                          : 'bg-gray-800/60 border-gray-700/40',
+                      !isUnlocked && 'opacity-50 grayscale',
+                      isUnlocked && 'cursor-pointer'
+                    )}
+                    onClick={() => handleLevelStart(level)}
+                  >
+                    <div className="px-3 py-2.5 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-white text-sm truncate">
+                            {level.title || (isBoss ? t('bossLevel').toUpperCase() : `${t('levelNumber')} ${level.number}`)}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                          <span>+{level.xp_reward} XP</span>
+                          <span className="flex items-center gap-0.5 text-purple-400">
+                            <Sparkles className="w-3 h-3" />
+                            {isBoss ? '65' : '15'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stars */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {[1, 2, 3].map((star) => (
+                          <Star
+                            key={star}
+                            className={cn(
+                              'w-4 h-4',
+                              level.stars_earned >= star
+                                ? 'text-amber-400 fill-amber-400'
+                                : 'text-gray-600'
+                            )}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Play icon for unlocked levels */}
+                      {isUnlocked && !isCompleted && (
+                        <Play className="w-4 h-4 text-purple-400 shrink-0" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                      <span>+{level.xp_reward} XP</span>
-                      <span className="flex items-center gap-0.5 text-purple-400">
-                        <Sparkles className="w-3 h-3" />
-                        {level.is_boss ? '65' : '15'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stars */}
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    {[1, 2, 3].map((star) => (
-                      <Star
-                        key={star}
-                        className={cn(
-                          'w-4 h-4',
-                          level.stars_earned >= star
-                            ? 'text-amber-400 fill-amber-400'
-                            : 'text-gray-600'
-                        )}
-                      />
-                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

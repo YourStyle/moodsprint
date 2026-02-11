@@ -20,7 +20,7 @@ import {
   Share2,
   Gift,
 } from 'lucide-react';
-import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
+import { Card, Button, Progress, Modal, ScrollBackdrop } from '@/components/ui';
 import { ReferralRewardModal } from '@/components/cards';
 import { FeatureBanner } from '@/components/features';
 import { cardsService } from '@/services';
@@ -62,6 +62,7 @@ export default function FriendsPage() {
   const [tradeMessage, setTradeMessage] = useState('');
   const [showTradeForm, setShowTradeForm] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [profileFriendId, setProfileFriendId] = useState<number | null>(null);
   const [referralRewards, setReferralRewards] = useState<Array<{
     friendName?: string;
     friendId?: number;
@@ -173,6 +174,13 @@ export default function FriendsPage() {
     queryKey: ['friends', 'ranking'],
     queryFn: () => cardsService.getFriendsRanking(),
     enabled: !!user && activeTab === 'ranking',
+  });
+
+  // Friend profile (lazy loaded on click)
+  const { data: friendProfileData, isLoading: friendProfileLoading } = useQuery({
+    queryKey: ['friends', profileFriendId, 'profile'],
+    queryFn: () => cardsService.getFriendProfile(profileFriendId!),
+    enabled: !!profileFriendId,
   });
 
   // Mutations
@@ -647,24 +655,34 @@ export default function FriendsPage() {
           ) : (
             <div className="space-y-3">
               {friends.map((friend) => (
-                <Card key={friend.friendship_id} className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                    {(friend.first_name?.[0] || friend.username?.[0] || '?').toUpperCase()}
+                <Card
+                  key={friend.friendship_id}
+                  className="cursor-pointer"
+                  onClick={() => setProfileFriendId(friend.friend_id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold shrink-0">
+                      {(friend.first_name?.[0] || friend.username?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white truncate">
+                        {friend.first_name || friend.username}
+                      </h3>
+                      {friend.username && friend.first_name && (
+                        <p className="text-xs text-gray-400">@{friend.username}</p>
+                      )}
+                      {friend.level && (
+                        <p className="text-xs text-purple-400">{t('level')} {friend.level}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => { e.stopPropagation(); handleStartTrade(friend); }}
+                    >
+                      <ArrowLeftRight className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-white truncate">
-                      {friend.first_name || friend.username}
-                    </h3>
-                    {friend.username && friend.first_name && (
-                      <p className="text-xs text-gray-400">@{friend.username}</p>
-                    )}
-                    {friend.level && (
-                      <p className="text-xs text-purple-400">Уровень {friend.level}</p>
-                    )}
-                  </div>
-                  <Button size="sm" variant="secondary" onClick={() => handleStartTrade(friend)}>
-                    <ArrowLeftRight className="w-4 h-4" />
-                  </Button>
                 </Card>
               ))}
             </div>
@@ -953,6 +971,103 @@ export default function FriendsPage() {
           )}
         </>
       )}
+
+      {/* Friend Profile Modal */}
+      <Modal
+        isOpen={!!profileFriendId}
+        onClose={() => setProfileFriendId(null)}
+        showClose={true}
+      >
+        {friendProfileLoading ? (
+          <div className="flex flex-col items-center py-8">
+            <div className="w-16 h-16 rounded-full bg-gray-700 animate-pulse mb-4" />
+            <div className="h-5 w-32 bg-gray-700 rounded animate-pulse mb-2" />
+            <div className="h-4 w-20 bg-gray-700 rounded animate-pulse" />
+          </div>
+        ) : friendProfileData?.data ? (
+          <div className="flex flex-col items-center">
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold mb-3">
+              {(friendProfileData.data.first_name?.[0] || friendProfileData.data.username?.[0] || '?').toUpperCase()}
+            </div>
+            <h2 className="text-lg font-bold text-white">
+              {friendProfileData.data.first_name || friendProfileData.data.username}
+            </h2>
+            {friendProfileData.data.username && friendProfileData.data.first_name && (
+              <p className="text-sm text-gray-400">@{friendProfileData.data.username}</p>
+            )}
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 w-full mt-4 mb-4">
+              <div className="text-center p-2 bg-gray-800/50 rounded-xl">
+                <p className="text-lg font-bold text-purple-400">{friendProfileData.data.level}</p>
+                <p className="text-[10px] text-gray-500">{t('level')}</p>
+              </div>
+              <div className="text-center p-2 bg-gray-800/50 rounded-xl">
+                <p className="text-lg font-bold text-amber-400">{friendProfileData.data.deck_power}</p>
+                <p className="text-[10px] text-gray-500">{t('deckPower')}</p>
+              </div>
+              <div className="text-center p-2 bg-gray-800/50 rounded-xl">
+                <p className="text-lg font-bold text-green-400">{friendProfileData.data.deck?.length || 0}</p>
+                <p className="text-[10px] text-gray-500">{t('totalCards')}</p>
+              </div>
+            </div>
+
+            {/* Showcase */}
+            {friendProfileData.data.showcase && (
+              <div className="w-full">
+                <h3 className="text-sm font-bold text-gray-400 mb-2">{t('showcase')}</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((idx) => {
+                    const card = friendProfileData.data!.showcase?.[idx] || null;
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'aspect-square rounded-xl border-2 flex items-center justify-center',
+                          card
+                            ? 'border-solid border-purple-500/30 bg-gray-800/50'
+                            : 'border-dashed border-gray-700 bg-gray-800/30'
+                        )}
+                      >
+                        {card ? (
+                          <div className="flex flex-col items-center gap-1 p-1">
+                            {card.image_url ? (
+                              <img src={card.image_url} alt={card.name} className="w-10 h-10 rounded-lg object-cover" />
+                            ) : (
+                              <span className="text-2xl">{card.emoji || '🎴'}</span>
+                            )}
+                            <span className="text-[9px] font-medium text-gray-300 line-clamp-1 text-center">
+                              {card.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-600 text-xl">+</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Trade button */}
+            <Button
+              className="w-full mt-4"
+              onClick={() => {
+                const friend = friends.find(f => f.friend_id === profileFriendId);
+                if (friend) {
+                  setProfileFriendId(null);
+                  handleStartTrade(friend);
+                }
+              }}
+            >
+              <ArrowLeftRight className="w-4 h-4 mr-2" />
+              {t('proposeTradeBtnLabel')}
+            </Button>
+          </div>
+        ) : null}
+      </Modal>
 
       {/* Referral Rewards Modal */}
       <ReferralRewardModal

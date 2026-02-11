@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Swords, Sparkles, Calendar, DollarSign, Zap } from 'lucide-react';
+import { Heart, Swords, Sparkles, Calendar, DollarSign, Zap, Layers, Plus, Minus, Star } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { SellCardModal } from '@/components/marketplace';
@@ -38,6 +38,10 @@ interface CardInfoSheetProps {
     isCompanion?: boolean;
   } | null;
   showSellButton?: boolean;
+  isInDeck?: boolean;
+  onAddToDeck?: (id: number) => void;
+  onRemoveFromDeck?: (id: number) => void;
+  onAddToShowcase?: (id: number, slot: number) => void;
 }
 
 const rarityStyles = {
@@ -76,9 +80,10 @@ const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | '
   anime: 'genreAnime',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase }: CardInfoSheetProps) {
   const { t } = useTranslation();
   const [showSellModal, setShowSellModal] = useState(false);
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
 
   if (!card) return null;
 
@@ -243,6 +248,68 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false }:
             <DollarSign className="w-4 h-4 mr-2" />
             {t('sellForStars')}
           </Button>
+        )}
+
+        {/* Deck & Showcase Actions */}
+        {card.id && card.isOwned !== false && (onAddToDeck || onRemoveFromDeck || onAddToShowcase) && (
+          <div className="w-full mt-4 space-y-2">
+            {/* Deck button */}
+            {isInDeck && onRemoveFromDeck ? (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => { onRemoveFromDeck(card.id!); onClose(); }}
+              >
+                <Minus className="w-4 h-4 mr-2" />
+                {t('removeFromDeck')}
+              </Button>
+            ) : !isInDeck && onAddToDeck ? (
+              <Button
+                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                onClick={() => { onAddToDeck(card.id!); onClose(); }}
+              >
+                <Layers className="w-4 h-4 mr-2" />
+                {t('addToDeck')}
+              </Button>
+            ) : null}
+
+            {/* Showcase button */}
+            {onAddToShowcase && (
+              <>
+                {!showSlotPicker ? (
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setShowSlotPicker(true)}
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    {t('addToShowcase')}
+                  </Button>
+                ) : (
+                  <div className="bg-gray-800/60 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-2 text-center">{t('selectSlot')}</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3].map((slot) => (
+                        <Button
+                          key={slot}
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            onAddToShowcase(card.id!, slot);
+                            setShowSlotPicker(false);
+                            onClose();
+                          }}
+                        >
+                          {t('slot')} {slot}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
         </div>
       </div>

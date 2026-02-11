@@ -832,7 +832,7 @@ export default function ArenaPage() {
 
   // Show/hide Telegram back button based on game state
   useEffect(() => {
-    if (gameState === 'cards') {
+    if (gameState === 'cards' || gameState === 'select') {
       showBackButton(handleBackToMonsters);
       return () => hideBackButton();
     } else {

@@ -202,14 +202,16 @@ export default function ProfilePage() {
         </Card>
       )}
 
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
-      >
-        <LogOut className="w-4 h-4" />
-        <span>{t('logout')}</span>
-      </button>
+      {/* Logout - only show outside Telegram (TMA manages its own session) */}
+      {!isTelegramEnvironment && (
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 text-gray-400 hover:text-red-400 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>{t('logout')}</span>
+        </button>
+      )}
     </div>
   );
 }

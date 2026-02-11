@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap } from 'lucide-react';
+import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap, Lock } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 
 interface SimpleAbilityInfo {
@@ -41,6 +41,8 @@ export interface DeckCardProps {
   cardLevel?: number;
   // Companion indicator
   isCompanion?: boolean;
+  // Locked (unowned template)
+  isLocked?: boolean;
 }
 
 const rarityStyles = {
@@ -129,6 +131,7 @@ export function DeckCard({
   onSkipCooldown,
   cardLevel,
   isCompanion = false,
+  isLocked = false,
 }: DeckCardProps) {
   const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -178,7 +181,10 @@ export function DeckCard({
 
   return (
     <div
-      className="relative w-full aspect-[3/4.3] perspective-1000"
+      className={cn(
+        'relative w-full aspect-[3/4.3] perspective-1000',
+        isLocked && 'grayscale opacity-60 pointer-events-none'
+      )}
       onClick={handleCardClick}
     >
       {/* Rarity badge - centered, outside of flip container so it doesn't rotate */}
@@ -287,6 +293,13 @@ export function DeckCard({
                 </div>
               )}
 
+              {/* Locked overlay */}
+              {isLocked && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <Lock className="w-8 h-8 text-gray-400" />
+                </div>
+              )}
+
               {/* Cooldown overlay */}
               {isOnCooldown && displayCooldown > 0 && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
@@ -332,22 +345,26 @@ export function DeckCard({
             )}>
               <div className="flex items-center gap-0.5">
                 <Swords className={cn(compact ? 'w-3 h-3' : 'w-3.5 h-3.5', 'text-orange-400')} />
-                <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-xs')}>{attack}</span>
+                <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-xs')}>
+                  {isLocked ? '?' : attack}
+                </span>
               </div>
               <div className={cn('w-px bg-gray-600', compact ? 'h-3' : 'h-3')} />
               <div className="flex items-center gap-0.5">
                 <Heart className={cn(
                   compact ? 'w-3 h-3' : 'w-3.5 h-3.5',
+                  isLocked ? 'text-gray-400' :
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )} />
                 <span className={cn(
                   'font-bold',
                   compact ? 'text-[10px]' : 'text-xs',
+                  isLocked ? 'text-gray-400' :
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )}>
-                  {currentHp}/{hp}
+                  {isLocked ? '?' : `${currentHp}/${hp}`}
                 </span>
               </div>
             </div>

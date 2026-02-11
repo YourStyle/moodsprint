@@ -571,6 +571,17 @@ export const translations = {
     hardMode: 'Сложный режим',
     hardModeUnlocked: 'Сложный режим разблокирован!',
     hardModeDesc: 'Враги сильнее, награды лучше',
+
+    // Card actions in modal
+    addToShowcase: 'На витрину',
+    selectSlot: 'Выбери слот',
+    slot: 'Слот',
+
+    // Locked cards
+    lockedCard: 'Заблокирована',
+
+    // Friends profile
+    totalCards: 'Всего карт',
   },
 
   en: {
@@ -1145,6 +1156,17 @@ export const translations = {
     hardMode: 'Hard mode',
     hardModeUnlocked: 'Hard mode unlocked!',
     hardModeDesc: 'Stronger enemies, better rewards',
+
+    // Card actions in modal
+    addToShowcase: 'Add to showcase',
+    selectSlot: 'Select slot',
+    slot: 'Slot',
+
+    // Locked cards
+    lockedCard: 'Locked',
+
+    // Friends profile
+    totalCards: 'Total cards',
   },
 } as const;
 

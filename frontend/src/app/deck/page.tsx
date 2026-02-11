@@ -91,6 +91,13 @@ export default function DeckPage() {
     enabled: !!user,
   });
 
+  // Fetch card templates (for locked cards in collection)
+  const { data: templatesData } = useQuery({
+    queryKey: ['card-templates'],
+    queryFn: () => cardsService.getTemplates(),
+    enabled: !!user && activeTab === 'collection',
+  });
+
   // Add to deck mutation
   const addToDeckMutation = useMutation({
     mutationFn: (cardId: number) => cardsService.addToDeck(cardId),
@@ -121,6 +128,16 @@ export default function DeckPage() {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
       queryClient.invalidateQueries({ queryKey: ['deck'] });
       refetchHealStatus();
+    },
+  });
+
+  // Set showcase mutation
+  const setShowcaseMutation = useMutation({
+    mutationFn: ({ cardId, slot }: { cardId: number; slot: number }) =>
+      cardsService.setShowcase(cardId, slot),
+    onSuccess: () => {
+      hapticFeedback('success');
+      queryClient.invalidateQueries({ queryKey: ['showcase'] });
     },
   });
 
@@ -166,11 +183,47 @@ export default function DeckPage() {
   const maxDeckSize = deckData?.data?.max_size || 5;
   const rarityCounts = cardsData?.data?.rarity_counts || {};
   const healStatus = healStatusData?.data;
+  const templates = templatesData?.data?.templates || [];
+
+  // Build collection: owned cards + locked unowned templates
+  const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
+  const lockedCards: (CardType & { _isLocked?: boolean })[] = templates
+    .filter((tmpl) => !ownedCardTemplateIds.has(tmpl.id))
+    .map((tmpl) => ({
+      id: -tmpl.id, // negative to avoid collisions
+      user_id: 0,
+      template_id: tmpl.id,
+      name: tmpl.name,
+      description: tmpl.description,
+      emoji: tmpl.emoji,
+      image_url: tmpl.image_url,
+      hp: tmpl.base_hp,
+      current_hp: tmpl.base_hp,
+      attack: tmpl.base_attack,
+      rarity: 'common' as const,
+      genre: tmpl.genre,
+      is_in_deck: false,
+      is_tradeable: false,
+      is_alive: true,
+      is_on_cooldown: false,
+      cooldown_remaining: null,
+      is_companion: false,
+      is_showcase: false,
+      showcase_slot: null,
+      rarity_color: '#9CA3AF',
+      created_at: '',
+      ability: null,
+      ability_info: null,
+      card_level: 0,
+      card_xp: 0,
+      _isLocked: true,
+    }));
+  const allCollectionCards = [...cards, ...lockedCards];
 
   // Filter cards
-  const filteredCards = rarityFilter === 'all'
-    ? cards
-    : cards.filter((c) => c.rarity === rarityFilter);
+  const filteredCards = (rarityFilter === 'all'
+    ? allCollectionCards
+    : allCollectionCards.filter((c) => c.rarity === rarityFilter));
 
   // Check if any card needs healing
   const cardsNeedHealing = cards.some((c) => c.current_hp < c.hp);
@@ -474,28 +527,32 @@ export default function DeckPage() {
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                {filteredCards.map((card) => (
-                  <DeckCard
-                    key={card.id}
-                    id={card.id}
-                    name={card.name}
-                    description={card.description}
-                    emoji={card.emoji}
-                    imageUrl={card.image_url}
-                    hp={card.hp}
-                    currentHp={card.current_hp}
-                    attack={card.attack}
-                    rarity={card.rarity}
-                    genre={card.genre}
-                    isInDeck={card.is_in_deck}
-                    isGenerating={generatingImages.has(card.id)}
-                    createdAt={card.created_at}
-                    ability={card.ability}
-                    abilityInfo={card.ability_info}
-                    onClick={() => handleCardClick(card)}
-                    onInfoClick={() => setInfoCard(card)}
-                  />
-                ))}
+                {filteredCards.map((card) => {
+                  const isLocked = '_isLocked' in card && card._isLocked === true;
+                  return (
+                    <DeckCard
+                      key={card.id}
+                      id={card.id}
+                      name={card.name}
+                      description={card.description}
+                      emoji={card.emoji}
+                      imageUrl={card.image_url}
+                      hp={card.hp}
+                      currentHp={card.current_hp}
+                      attack={card.attack}
+                      rarity={card.rarity}
+                      genre={card.genre}
+                      isInDeck={card.is_in_deck}
+                      isGenerating={!isLocked && generatingImages.has(card.id)}
+                      createdAt={isLocked ? undefined : card.created_at}
+                      ability={card.ability}
+                      abilityInfo={card.ability_info}
+                      isLocked={isLocked}
+                      onClick={isLocked ? undefined : () => handleCardClick(card)}
+                      onInfoClick={isLocked ? undefined : () => setInfoCard(card)}
+                    />
+                  );
+                })}
               </div>
 
               {/* Selected card actions */}
@@ -922,6 +979,10 @@ export default function DeckPage() {
           isOwned: true,
         } : null}
         showSellButton={isTelegramEnvironment}
+        isInDeck={infoCard?.is_in_deck}
+        onAddToDeck={(id) => addToDeckMutation.mutate(id)}
+        onRemoveFromDeck={(id) => removeFromDeckMutation.mutate(id)}
+        onAddToShowcase={(id, slot) => setShowcaseMutation.mutate({ cardId: id, slot })}
       />
     </div>
   );
