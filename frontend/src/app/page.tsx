@@ -442,6 +442,18 @@ export default function HomePage() {
           genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         setShowLevelUpModal(true);
+      } else {
+        // No catch-up rewards — check if user has pending genre unlocks
+        cardsService.getUnlockedGenres().then((genreResult) => {
+          if (genreResult.success && genreResult.data?.unlock_available?.can_unlock) {
+            setLevelUpData({
+              newLevel: user.level || 0,
+              rewards: [],
+              genreUnlockAvailable: genreResult.data.unlock_available,
+            });
+            setShowLevelUpModal(true);
+          }
+        }).catch(() => {});
       }
     }).catch(() => {
       // Allow retry on next mount if the request failed
