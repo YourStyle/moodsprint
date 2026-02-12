@@ -44,6 +44,8 @@ interface CardInfoSheetProps {
   onAddToShowcase?: (id: number, slot: number) => void;
   showcaseSlot?: number | null;
   onRemoveFromShowcase?: (slot: number) => void;
+  onSetCompanion?: (id: number) => void;
+  onRemoveCompanion?: () => void;
 }
 
 const rarityStyles = {
@@ -82,7 +84,7 @@ const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | '
   anime: 'genreAnime',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase, onSetCompanion, onRemoveCompanion }: CardInfoSheetProps) {
   const { t } = useTranslation();
   const [showSellModal, setShowSellModal] = useState(false);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
@@ -284,6 +286,24 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
               >
                 <Layers className="w-4 h-4 mr-2" />
                 {t('addToDeck')}
+              </Button>
+            ) : null}
+
+            {/* Companion button */}
+            {card.isCompanion && onRemoveCompanion ? (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => { onRemoveCompanion(); onClose(); }}
+              >
+                🐾 {t('removeCompanion')}
+              </Button>
+            ) : !card.isCompanion && onSetCompanion ? (
+              <Button
+                className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                onClick={() => { onSetCompanion(card.id!); onClose(); }}
+              >
+                🐾 {t('setCompanion')}
               </Button>
             ) : null}
 

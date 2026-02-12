@@ -439,6 +439,7 @@ export default function HomePage() {
         setLevelUpData({
           newLevel: result.data.new_level || 0,
           rewards: result.data.rewards,
+          genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         setShowLevelUpModal(true);
       }

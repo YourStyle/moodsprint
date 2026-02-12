@@ -43,10 +43,21 @@ def catch_up_level_rewards():
     service = LevelService()
     result = service.grant_level_rewards(user_id, current_level)
 
-    return success_response(
-        {
-            "has_rewards": result["granted"],
-            "rewards": result["rewards"],
-            "new_level": current_level,
-        }
-    )
+    response_data = {
+        "has_rewards": result["granted"],
+        "rewards": result["rewards"],
+        "new_level": current_level,
+    }
+
+    # Include genre unlock info if any genre_unlock rewards were granted
+    if result["granted"]:
+        try:
+            from app.services.card_service import CardService
+
+            unlock_info = CardService().check_genre_unlock(user_id)
+            if unlock_info:
+                response_data["genre_unlock_available"] = unlock_info
+        except Exception:
+            pass
+
+    return success_response(response_data)

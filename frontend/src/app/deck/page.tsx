@@ -163,6 +163,22 @@ export default function DeckPage() {
     },
   });
 
+  const setCompanionMutation = useMutation({
+    mutationFn: (cardId: number) => cardsService.setCompanion(cardId),
+    onSuccess: () => {
+      hapticFeedback('success');
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+    },
+  });
+
+  const removeCompanionMutation = useMutation({
+    mutationFn: () => cardsService.removeCompanion(),
+    onSuccess: () => {
+      hapticFeedback('light');
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+    },
+  });
+
   // Merge preview mutation
   const mergePreviewMutation = useMutation({
     mutationFn: ({ card1Id, card2Id }: { card1Id: number; card2Id: number }) =>
@@ -1107,12 +1123,17 @@ export default function DeckPage() {
           createdAt: infoCard.created_at,
           abilityInfo: infoCard.ability_info,
           isOwned: true,
+          cardLevel: infoCard.card_level,
+          cardXp: infoCard.card_xp,
+          isCompanion: infoCard.is_companion,
         } : null}
         showSellButton={isTelegramEnvironment}
         isInDeck={infoCard?.is_in_deck}
         onAddToDeck={(id) => addToDeckMutation.mutate(id)}
         onRemoveFromDeck={(id) => removeFromDeckMutation.mutate(id)}
         onAddToShowcase={(id, slot) => setShowcaseMutation.mutate({ cardId: id, slot })}
+        onSetCompanion={(id) => setCompanionMutation.mutate(id)}
+        onRemoveCompanion={() => removeCompanionMutation.mutate()}
       />
     </div>
   );

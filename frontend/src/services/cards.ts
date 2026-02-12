@@ -351,8 +351,8 @@ class CardsService {
     return api.get<{ level_rewards: Record<string, LevelRewardItem[]> }>('/level-rewards');
   }
 
-  async claimLevelCatchUp(): Promise<ApiResponse<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number }>> {
-    return api.post<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number }>('/level-rewards/catch-up');
+  async claimLevelCatchUp(): Promise<ApiResponse<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number; genre_unlock_available?: { can_unlock: boolean; available_genres: string[]; suggested_genres?: string[] } | null }>> {
+    return api.post<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number; genre_unlock_available?: { can_unlock: boolean; available_genres: string[]; suggested_genres?: string[] } | null }>('/level-rewards/catch-up');
   }
 
   // Campaign energy
