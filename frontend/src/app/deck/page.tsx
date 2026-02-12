@@ -184,43 +184,49 @@ export default function DeckPage() {
   const rarityCounts = cardsData?.data?.rarity_counts || {};
   const healStatus = healStatusData?.data;
   const templates = templatesData?.data?.templates || [];
+  const collectedTemplateIds = templatesData?.data?.collected_template_ids || [];
 
-  // Build collection: owned cards + locked unowned templates
+  // Build collection: owned cards + unowned templates (locked or previously owned)
   const { allCollectionCards } = useMemo(() => {
     const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
-    const lockedCards: (CardType & { _isLocked?: boolean })[] = templates
+    const collectedSet = new Set(collectedTemplateIds);
+    const unownedCards: (CardType & { _isLocked?: boolean; _isPreviouslyOwned?: boolean })[] = templates
       .filter((tmpl) => !ownedCardTemplateIds.has(tmpl.id))
-      .map((tmpl) => ({
-        id: -tmpl.id, // negative to avoid collisions
-        user_id: 0,
-        template_id: tmpl.id,
-        name: tmpl.name,
-        description: tmpl.description,
-        emoji: tmpl.emoji,
-        image_url: tmpl.image_url,
-        hp: tmpl.base_hp,
-        current_hp: tmpl.base_hp,
-        attack: tmpl.base_attack,
-        rarity: (tmpl.rarity || 'common') as CardType['rarity'],
-        genre: tmpl.genre,
-        is_in_deck: false,
-        is_tradeable: false,
-        is_alive: true,
-        is_on_cooldown: false,
-        cooldown_remaining: null,
-        is_companion: false,
-        is_showcase: false,
-        showcase_slot: null,
-        rarity_color: '#9CA3AF',
-        created_at: '',
-        ability: null,
-        ability_info: null,
-        card_level: 0,
-        card_xp: 0,
-        _isLocked: true,
-      }));
-    return { allCollectionCards: [...cards, ...lockedCards] };
-  }, [cards, templates]);
+      .map((tmpl) => {
+        const wasCollected = collectedSet.has(tmpl.id);
+        return {
+          id: -tmpl.id, // negative to avoid collisions
+          user_id: 0,
+          template_id: tmpl.id,
+          name: tmpl.name,
+          description: tmpl.description,
+          emoji: tmpl.emoji,
+          image_url: tmpl.image_url,
+          hp: tmpl.base_hp,
+          current_hp: tmpl.base_hp,
+          attack: tmpl.base_attack,
+          rarity: (tmpl.rarity || 'common') as CardType['rarity'],
+          genre: tmpl.genre,
+          is_in_deck: false,
+          is_tradeable: false,
+          is_alive: true,
+          is_on_cooldown: false,
+          cooldown_remaining: null,
+          is_companion: false,
+          is_showcase: false,
+          showcase_slot: null,
+          rarity_color: '#9CA3AF',
+          created_at: '',
+          ability: null,
+          ability_info: null,
+          card_level: 0,
+          card_xp: 0,
+          _isLocked: !wasCollected,
+          _isPreviouslyOwned: wasCollected,
+        };
+      });
+    return { allCollectionCards: [...cards, ...unownedCards] };
+  }, [cards, templates, collectedTemplateIds]);
 
   // Filter cards
   const filteredCards = (rarityFilter === 'all'
@@ -532,6 +538,8 @@ export default function DeckPage() {
               <div className="grid grid-cols-2 gap-3">
                 {filteredCards.map((card) => {
                   const isLocked = '_isLocked' in card && card._isLocked === true;
+                  const isPreviouslyOwned = '_isPreviouslyOwned' in card && card._isPreviouslyOwned === true;
+                  const isUnavailable = isLocked || isPreviouslyOwned;
                   return (
                     <DeckCard
                       key={card.id}
@@ -546,13 +554,14 @@ export default function DeckPage() {
                       rarity={card.rarity}
                       genre={card.genre}
                       isInDeck={card.is_in_deck}
-                      isGenerating={!isLocked && generatingImages.has(card.id)}
-                      createdAt={isLocked ? undefined : card.created_at}
+                      isGenerating={!isUnavailable && generatingImages.has(card.id)}
+                      createdAt={isUnavailable ? undefined : card.created_at}
                       ability={card.ability}
                       abilityInfo={card.ability_info}
                       isLocked={isLocked}
-                      onClick={isLocked ? undefined : () => handleCardClick(card)}
-                      onInfoClick={isLocked ? undefined : () => setInfoCard(card)}
+                      isPreviouslyOwned={isPreviouslyOwned}
+                      onClick={isUnavailable ? undefined : () => handleCardClick(card)}
+                      onInfoClick={isUnavailable ? undefined : () => setInfoCard(card)}
                     />
                   );
                 })}

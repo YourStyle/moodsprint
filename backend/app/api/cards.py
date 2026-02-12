@@ -428,6 +428,7 @@ def get_card_templates():
     Query params:
     - genre: filter by genre (optional)
     """
+    user_id = get_jwt_identity()
     genre = request.args.get("genre")
     lang = get_lang()
 
@@ -437,10 +438,23 @@ def get_card_templates():
 
     templates = query.all()
 
+    # Get all template IDs the user has ever owned (including destroyed/merged)
+    collected_rows = (
+        db.session.query(UserCard.template_id)
+        .filter(
+            UserCard.user_id == user_id,
+            UserCard.template_id.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+    collected_template_ids = [r[0] for r in collected_rows]
+
     return success_response(
         {
             "templates": [t.to_dict(lang) for t in templates],
             "total": len(templates),
+            "collected_template_ids": collected_template_ids,
         }
     )
 

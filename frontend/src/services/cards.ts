@@ -191,10 +191,10 @@ class CardsService {
   }
 
   // Card templates
-  async getTemplates(genre?: string): Promise<ApiResponse<{ templates: CardTemplate[]; total: number }>> {
+  async getTemplates(genre?: string): Promise<ApiResponse<{ templates: CardTemplate[]; total: number; collected_template_ids: number[] }>> {
     let url = '/card-templates';
     if (genre) url += `?genre=${genre}`;
-    return api.get<{ templates: CardTemplate[]; total: number }>(url);
+    return api.get<{ templates: CardTemplate[]; total: number; collected_template_ids: number[] }>(url);
   }
 
   // Friends system
