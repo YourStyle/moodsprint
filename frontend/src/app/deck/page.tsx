@@ -487,7 +487,7 @@ export default function DeckPage() {
       {activeTab === 'collection' && (
         <>
           {/* Rarity filter */}
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
             <button
               onClick={() => setRarityFilter('all')}
               className={cn(
@@ -518,7 +518,7 @@ export default function DeckPage() {
           </div>
 
           {/* Genre filter */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
             <button
               onClick={() => setGenreFilter('all')}
               className={cn(

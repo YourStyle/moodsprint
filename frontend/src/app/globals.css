@@ -272,6 +272,15 @@ body.modal-open {
   color: #ffffff;
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* 3D Card Flip utilities */
 .perspective-1000 {
   perspective: 1000px;

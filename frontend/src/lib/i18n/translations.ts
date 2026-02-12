@@ -609,6 +609,17 @@ export const translations = {
     // Deck filters
     filterByGenre: 'Жанр',
     allGenres: 'Все',
+
+    // Genre unlock feedback
+    genreUnlocked: 'Жанр разблокирован!',
+
+    // Subtask creation
+    addSubtasks: 'Добавить подпункты',
+    subtaskPlaceholder: 'Название подпункта',
+    addAnotherSubtask: 'Ещё подпункт',
+
+    // Companion hint
+    companionEarningXp: 'получает опыт',
   },
 
   en: {
@@ -1221,6 +1232,17 @@ export const translations = {
     // Deck filters
     filterByGenre: 'Genre',
     allGenres: 'All',
+
+    // Genre unlock feedback
+    genreUnlocked: 'Genre unlocked!',
+
+    // Subtask creation
+    addSubtasks: 'Add subtasks',
+    subtaskPlaceholder: 'Subtask title',
+    addAnotherSubtask: 'Add another',
+
+    // Companion hint
+    companionEarningXp: 'is earning XP',
   },
 } as const;
 

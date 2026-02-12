@@ -655,18 +655,30 @@ export default function HomePage() {
   }, [weekTasksData]);
 
   const createMutation = useMutation({
-    mutationFn: async (input: { title: string; description: string; due_date: string; scheduled_at?: string; autoDecompose?: boolean }) => {
+    mutationFn: async (input: { title: string; description: string; due_date: string; scheduled_at?: string; autoDecompose?: boolean; subtasks?: string[] }) => {
       const result = await tasksService.createTask(input);
-      if (result.success && result.data?.task && input.autoDecompose) {
-        // Auto-decompose the task after creation
-        try {
-          const decomposeResult = await tasksService.decomposeTask(result.data.task.id, latestMood?.id);
-          // Invalidate queries to show new subtasks
-          if (decomposeResult.success) {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      if (result.success && result.data?.task) {
+        const taskId = result.data.task.id;
+        // Create manual subtasks if provided
+        if (input.subtasks && input.subtasks.length > 0) {
+          for (const subtaskTitle of input.subtasks) {
+            try {
+              await tasksService.createSubtask(taskId, { title: subtaskTitle.trim() });
+            } catch (err) {
+              console.error('[CreateSubtask] Failed:', err);
+            }
           }
-        } catch (err) {
-          console.error('[AutoDecompose] Failed:', err);
+        }
+        // Auto-decompose the task after creation (only if no manual subtasks)
+        if (input.autoDecompose && (!input.subtasks || input.subtasks.length === 0)) {
+          try {
+            const decomposeResult = await tasksService.decomposeTask(taskId, latestMood?.id);
+            if (decomposeResult.success) {
+              queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            }
+          } catch (err) {
+            console.error('[AutoDecompose] Failed:', err);
+          }
         }
       }
       return result;
@@ -785,8 +797,8 @@ export default function HomePage() {
     return activeSessions.find(s => s.task_id === taskId);
   };
 
-  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean) => {
-    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt, autoDecompose });
+  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => {
+    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt, autoDecompose, subtasks });
   };
 
   // Toggle compact mode

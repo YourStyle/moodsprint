@@ -87,6 +87,7 @@ export function LevelUpModal({
   const { t } = useTranslation();
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [genreUnlocked, setGenreUnlocked] = useState<string | null>(null);
 
   const handleGenreUnlock = async () => {
     if (!selectedGenre) return;
@@ -94,7 +95,9 @@ export function LevelUpModal({
     try {
       const result = await cardsService.selectGenreUnlock(selectedGenre);
       if (result.success) {
+        setGenreUnlocked(selectedGenre);
         onGenreSelect?.(selectedGenre);
+        setTimeout(() => handleClose(), 1500);
       }
     } catch (e) {
       console.error('Genre unlock failed:', e);
@@ -105,6 +108,7 @@ export function LevelUpModal({
 
   const handleClose = () => {
     setSelectedGenre(null);
+    setGenreUnlocked(null);
     onClose();
   };
 
@@ -113,7 +117,7 @@ export function LevelUpModal({
   const suggestedGenres = genreUnlockAvailable?.suggested_genres || genreUnlockAvailable?.available_genres || [];
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={t('levelUp')}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={t('levelUp').replace('{level}', String(newLevel))}>
       <div className="flex flex-col items-center">
         {/* Level number with celebration */}
         <div className="relative mb-6">
@@ -190,38 +194,47 @@ export function LevelUpModal({
         {/* Genre unlock selection */}
         {hasGenreUnlock && suggestedGenres.length > 0 && (
           <div className="w-full mb-5">
-            <p className="text-sm text-gray-400 text-center mb-3">{t('selectNewGenre')}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {suggestedGenres.slice(0, 2).map((genre) => {
-                const info = GENRE_INFO[genre] || { emoji: '?', color: 'from-gray-500 to-gray-600' };
-                const isSelected = selectedGenre === genre;
-                return (
-                  <button
-                    key={genre}
-                    onClick={() => setSelectedGenre(genre)}
-                    className={`relative p-4 rounded-xl border-2 transition-all ${
-                      isSelected
-                        ? 'border-yellow-500 bg-yellow-500/10'
-                        : 'border-gray-700 bg-dark-700/60 hover:border-gray-500'
-                    }`}
+            {genreUnlocked ? (
+              <div className="text-center py-4">
+                <span className="text-3xl">{GENRE_INFO[genreUnlocked]?.emoji}</span>
+                <p className="text-sm text-green-400 mt-2">{t('genreUnlocked')}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-400 text-center mb-3">{t('selectNewGenre')}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {suggestedGenres.slice(0, 2).map((genre) => {
+                    const info = GENRE_INFO[genre] || { emoji: '?', color: 'from-gray-500 to-gray-600' };
+                    const isSelected = selectedGenre === genre;
+                    return (
+                      <button
+                        key={genre}
+                        onClick={() => setSelectedGenre(genre)}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          isSelected
+                            ? 'border-yellow-500 bg-yellow-500/10'
+                            : 'border-gray-700 bg-dark-700/60 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">{info.emoji}</div>
+                        <div className="text-sm font-medium text-white">
+                          {t(genreKeys[genre] || 'genreFantasy')}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedGenre && (
+                  <Button
+                    onClick={handleGenreUnlock}
+                    variant="gradient"
+                    className="w-full mt-3"
+                    disabled={isUnlocking}
                   >
-                    <div className="text-2xl mb-1">{info.emoji}</div>
-                    <div className="text-sm font-medium text-white">
-                      {t(genreKeys[genre] || 'genreFantasy')}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {selectedGenre && (
-              <Button
-                onClick={handleGenreUnlock}
-                variant="gradient"
-                className="w-full mt-3"
-                disabled={isUnlocking}
-              >
-                {isUnlocking ? t('loading') : t('selectNewGenre')}
-              </Button>
+                    {isUnlocking ? t('loading') : t('selectNewGenre')}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

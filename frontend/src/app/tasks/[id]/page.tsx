@@ -10,6 +10,7 @@ import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { LevelUpModal, type LevelRewardItem } from '@/components/gamification';
 import { tasksService, focusService, moodService } from '@/services';
+import { cardsService } from '@/services/cards';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { useLanguage, type TranslationKey } from '@/lib/i18n';
@@ -34,6 +35,8 @@ function FocusTimer({
   onPause,
   onResume,
   onCancel,
+  isPauseLoading,
+  isResumeLoading,
   t,
 }: {
   session: {
@@ -46,6 +49,8 @@ function FocusTimer({
   onPause: () => void;
   onResume: () => void;
   onCancel: () => void;
+  isPauseLoading?: boolean;
+  isResumeLoading?: boolean;
   t: (key: TranslationKey) => string;
 }) {
   const isPaused = session.status === 'paused';
@@ -101,6 +106,7 @@ function FocusTimer({
         <Button
           variant={isPaused ? 'primary' : 'secondary'}
           onClick={isPaused ? onResume : onPause}
+          isLoading={isPaused ? isResumeLoading : isPauseLoading}
           className="flex-1"
         >
           {isPaused ? (
@@ -205,6 +211,14 @@ export default function TaskDetailPage() {
   const activeSession = useMemo(() => {
     return getSessionForTask(taskId);
   }, [getSessionForTask, taskId, activeSessions]);
+
+  // Fetch companion card for hint
+  const { data: companionData } = useQuery({
+    queryKey: ['companion'],
+    queryFn: () => cardsService.getCompanion(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const companion = companionData?.data?.companion;
 
   const [showNoNewStepsMessage, setShowNoNewStepsMessage] = useState(false);
   const [noNewStepsReason, setNoNewStepsReason] = useState('');
@@ -326,6 +340,10 @@ export default function TaskDetailPage() {
         hapticFeedback('light');
       }
     },
+    onError: (error) => {
+      console.error('Pause failed:', error);
+      queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
+    },
   });
 
   const resumeSessionMutation = useMutation({
@@ -336,6 +354,10 @@ export default function TaskDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
         hapticFeedback('light');
       }
+    },
+    onError: (error) => {
+      console.error('Resume failed:', error);
+      queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
     },
   });
 
@@ -631,6 +653,8 @@ export default function TaskDetailPage() {
             onPause={() => pauseSessionMutation.mutate()}
             onResume={() => resumeSessionMutation.mutate()}
             onCancel={() => completeSessionMutation.mutate(activeSession.id)}
+            isPauseLoading={pauseSessionMutation.isPending}
+            isResumeLoading={resumeSessionMutation.isPending}
             t={t}
           />
         ) : (
@@ -654,6 +678,14 @@ export default function TaskDetailPage() {
             </Button>
           </div>
         )
+      )}
+
+      {/* Companion hint during active session */}
+      {activeSession && companion && (
+        <div className="flex items-center gap-2 text-xs text-pink-400 -mt-2">
+          <span>🐾</span>
+          <span>{companion.name} {t('companionEarningXp')}</span>
+        </div>
       )}
 
       {/* Decompose Button */}

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Bell, Sparkles } from 'lucide-react';
+import { Calendar, Bell, Sparkles, ListPlus, X, Plus } from 'lucide-react';
 import { Button, Input, Textarea } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean) => void;
+  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
@@ -54,6 +54,10 @@ export function TaskForm({
   const [autoDecompose, setAutoDecompose] = useState(false);
   const showAutoDecompose = description.length >= 50;
 
+  // Subtask state
+  const [showSubtasks, setShowSubtasks] = useState(false);
+  const [subtasks, setSubtasks] = useState<string[]>(['']);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
@@ -63,7 +67,8 @@ export function TaskForm({
         const localDate = new Date(`${reminderDate}T${reminderTime}:00`);
         scheduledAt = localDate.toISOString();
       }
-      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt, showAutoDecompose && autoDecompose);
+      const validSubtasks = subtasks.filter(s => s.trim());
+      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt, showAutoDecompose && autoDecompose, validSubtasks.length > 0 ? validSubtasks : undefined);
     }
   };
 
@@ -116,6 +121,54 @@ export function TaskForm({
           </div>
         </label>
       )}
+
+      {/* Subtasks */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSubtasks(!showSubtasks)}
+          className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+        >
+          <ListPlus className="w-4 h-4 text-primary-400" />
+          {t('addSubtasks')}
+        </button>
+        {showSubtasks && (
+          <div className="space-y-2 mt-2">
+            {subtasks.map((st, idx) => (
+              <div key={idx} className="flex gap-2">
+                <input
+                  type="text"
+                  value={st}
+                  onChange={(e) => {
+                    const updated = [...subtasks];
+                    updated[idx] = e.target.value;
+                    setSubtasks(updated);
+                  }}
+                  placeholder={t('subtaskPlaceholder')}
+                  className="flex-1 px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                {subtasks.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
+                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSubtasks([...subtasks, ''])}
+              className="flex items-center gap-1 text-xs text-primary-400 hover:text-primary-300 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              {t('addAnotherSubtask')}
+            </button>
+          </div>
+        )}
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
