@@ -147,20 +147,17 @@ export function LevelUpModal({
                   <div className="flex-1 min-w-0">
                     {reward.type === 'sparks' && (
                       <span className="text-sm text-white">
-                        +{reward.amount} {t('sparksReward')}
+                        {t('sparksReward').replace('{amount}', String(reward.amount || 0))}
                       </span>
                     )}
                     {reward.type === 'energy' && (
                       <span className="text-sm text-white">
-                        +{reward.amount} {t('energyReward')}
+                        {t('energyReward').replace('{amount}', String(reward.amount || 0))}
                       </span>
                     )}
                     {reward.type === 'card' && (
                       <span className="text-sm text-white">
-                        {t('cardReward')}{' '}
-                        <span className={RARITY_COLORS[reward.rarity || 'common']}>
-                          {t(RARITY_KEYS[reward.rarity || 'common'])}
-                        </span>
+                        {t('cardReward').replace('{rarity}', t(RARITY_KEYS[reward.rarity || 'common']))}
                         {reward.card && (
                           <span className="text-gray-400 ml-1">
                             — {reward.card.emoji} {reward.card.name}
@@ -175,12 +172,12 @@ export function LevelUpModal({
                     )}
                     {reward.type === 'archetype_tier' && (
                       <span className="text-sm text-white capitalize">
-                        {reward.tier} {t('xpBoostReward')}
+                        {reward.tier} {t('xpBoostReward').replace('{amount}', String(reward.amount || ''))}
                       </span>
                     )}
                     {reward.type === 'xp_boost' && (
                       <span className="text-sm text-white">
-                        {t('xpBoostReward')}
+                        {t('xpBoostReward').replace('{amount}', String(reward.amount || ''))}
                       </span>
                     )}
                   </div>
