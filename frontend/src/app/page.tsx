@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
-import { DailyBonus } from '@/components/gamification';
+import { DailyBonus, LevelUpModal, type LevelRewardItem } from '@/components/gamification';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
+import { cardsService } from '@/services/cards';
 import { hapticFeedback, isMobileApp } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
@@ -291,7 +292,7 @@ function MiniTimer({ session, onPause, onResume, onComplete, onStop }: {
         </span>
       </div>
       <button
-        onClick={isPaused ? onResume : onPause}
+        onClick={(e) => { e.stopPropagation(); (isPaused ? onResume : onPause)(); }}
         className={`w-6 h-6 rounded flex items-center justify-center ${
           isPaused ? 'bg-primary-500/20 text-primary-400' : 'bg-yellow-500/20 text-yellow-400'
         }`}
@@ -299,13 +300,13 @@ function MiniTimer({ session, onPause, onResume, onComplete, onStop }: {
         {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
       </button>
       <button
-        onClick={onComplete}
+        onClick={(e) => { e.stopPropagation(); onComplete(); }}
         className="w-6 h-6 rounded bg-green-500/20 text-green-400 flex items-center justify-center"
       >
         <CheckCircle2 className="w-3 h-3" />
       </button>
       <button
-        onClick={onStop}
+        onClick={(e) => { e.stopPropagation(); onStop(); }}
         className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 flex items-center justify-center"
       >
         <Square className="w-3 h-3" />
@@ -411,8 +412,42 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t, language, setLanguage } = useLanguage();
-  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
+  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
+
+  // Fetch active focus sessions so timers survive page navigation
+  const { data: activeSessionsData } = useQuery({
+    queryKey: ['focus', 'active'],
+    queryFn: () => focusService.getActiveSession(),
+    enabled: !!user,
+    refetchInterval: 30000, // Sync every 30s
+  });
+
+  useEffect(() => {
+    if (activeSessionsData?.data?.sessions) {
+      setActiveSessions(activeSessionsData.data.sessions);
+    }
+  }, [activeSessionsData, setActiveSessions]);
+
+  // Retroactive level rewards catch-up (one-shot on first load)
+  const catchUpCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!user || catchUpCheckedRef.current) return;
+    catchUpCheckedRef.current = true;
+    cardsService.claimLevelCatchUp().then((result) => {
+      if (result.success && result.data?.has_rewards) {
+        setLevelUpData({
+          newLevel: result.data.new_level || 0,
+          rewards: result.data.rewards,
+        });
+        setShowLevelUpModal(true);
+      }
+    }).catch(() => {
+      // Allow retry on next mount if the request failed
+      catchUpCheckedRef.current = false;
+    });
+  }, [user]);
+
   // Date selection with smart focus:
   // - If last visit was today: restore last selected date
   // - If last visit was another day: focus on today
@@ -447,10 +482,28 @@ export default function HomePage() {
   }, [selectedDate]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postponeNotificationDismissed, setPostponeNotificationDismissed] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
+    if (typeof window === 'undefined') return 'pending';
+    const stored = localStorage.getItem('moodsprint_filter_status');
+    if (stored === 'pending' || stored === 'in_progress' || stored === 'completed' || stored === 'all') {
+      return stored as FilterStatus;
+    }
+    return 'pending';
+  });
+  // Persist filter status
+  useEffect(() => {
+    localStorage.setItem('moodsprint_filter_status', filterStatus);
+  }, [filterStatus]);
+
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
   const [showCardTutorial, setShowCardTutorial] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{
+    newLevel: number;
+    rewards: LevelRewardItem[];
+    genreUnlockAvailable?: { can_unlock: boolean; available_genres: string[]; suggested_genres?: string[] } | null;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -631,6 +684,7 @@ export default function HomePage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
       }
     },
   });
@@ -640,6 +694,7 @@ export default function HomePage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
       }
     },
   });
@@ -660,6 +715,15 @@ export default function HomePage() {
           quick_completion_message: result.data.quick_completion_message,
         } as EarnedCard);
         setShowCardModal(true);
+      }
+      // Level-up rewards
+      if (result.data?.level_up) {
+        setLevelUpData({
+          newLevel: result.data.new_level || 0,
+          rewards: result.data.level_rewards || [],
+          genreUnlockAvailable: result.data.genre_unlock_available || null,
+        });
+        if (!result.data?.card_earned) setShowLevelUpModal(true);
       }
       hapticFeedback('success');
     },
@@ -689,6 +753,15 @@ export default function HomePage() {
           quick_completion_message: result.data.quick_completion_message,
         } as EarnedCard);
         setShowCardModal(true);
+      }
+      // Level-up rewards
+      if (result.data?.level_up) {
+        setLevelUpData({
+          newLevel: result.data.new_level || 0,
+          rewards: result.data.level_rewards || [],
+          genreUnlockAvailable: result.data.genre_unlock_available || null,
+        });
+        if (!result.data?.card_earned) setShowLevelUpModal(true);
       }
       hapticFeedback('success');
     },
@@ -1167,13 +1240,36 @@ export default function HomePage() {
         onClose={() => {
           setShowCardModal(false);
           setEarnedCard(null);
-          // Show tutorial on first card earned
-          if (shouldShowCardTutorial()) {
+          // Show level-up modal after card modal if there was a level up
+          if (levelUpData) {
+            setShowLevelUpModal(true);
+          } else if (shouldShowCardTutorial()) {
             setShowCardTutorial(true);
           }
         }}
         t={t}
       />
+
+      {/* Level Up Modal */}
+      {levelUpData && (
+        <LevelUpModal
+          isOpen={showLevelUpModal}
+          onClose={() => {
+            setShowLevelUpModal(false);
+            setLevelUpData(null);
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
+            if (shouldShowCardTutorial()) {
+              setShowCardTutorial(true);
+            }
+          }}
+          newLevel={levelUpData.newLevel}
+          rewards={levelUpData.rewards}
+          genreUnlockAvailable={levelUpData.genreUnlockAvailable}
+          onGenreSelect={() => {
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
+          }}
+        />
+      )}
 
       {/* Card Tutorial (first-time onboarding) */}
       <CardTutorial

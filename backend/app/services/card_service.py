@@ -1528,10 +1528,37 @@ class CardService:
 
     # ============ Genre & Archetype Unlocking ============
 
+    def get_genre_sequence(self, starting_genre: str) -> list[str]:
+        """Get deterministic genre rotation starting from the user's favorite genre."""
+        if starting_genre not in ALL_GENRES:
+            starting_genre = "fantasy"
+        idx = ALL_GENRES.index(starting_genre)
+        return ALL_GENRES[idx:] + ALL_GENRES[:idx]
+
+    def _get_genre_unlock_levels(self) -> dict[int, int]:
+        """Load genre unlock levels from LevelReward table, with fallback."""
+        try:
+            from app.models.level_reward import LevelReward
+
+            genre_rewards = LevelReward.query.filter_by(
+                reward_type="genre_unlock", is_active=True
+            ).all()
+            if genre_rewards:
+                levels = {}
+                for r in genre_rewards:
+                    slot = r.reward_value.get("slot", 1)
+                    # Map slot number to (level → total genres)
+                    levels[r.level] = slot
+                return levels
+        except Exception:
+            pass
+        return GENRE_UNLOCK_LEVELS
+
     def get_max_genres_for_level(self, user_level: int) -> int:
         """Get how many genres a user can have at their level."""
+        unlock_levels = self._get_genre_unlock_levels()
         max_genres = 1
-        for level_threshold, genres_count in sorted(GENRE_UNLOCK_LEVELS.items()):
+        for level_threshold, genres_count in sorted(unlock_levels.items()):
             if user_level >= level_threshold:
                 max_genres = genres_count
         return max_genres
@@ -1552,7 +1579,8 @@ class CardService:
     def check_genre_unlock(self, user_id: int) -> dict | None:
         """Check if user can unlock a new genre after leveling up.
 
-        Returns dict with unlock info, or None if no new unlock available.
+        Returns dict with unlock info including 2 suggested genres
+        based on the user's genre sequence, plus all available as fallback.
         """
         user = User.query.get(user_id)
         if not user:
@@ -1570,16 +1598,22 @@ class CardService:
         if len(current_unlocked) >= max_genres:
             return None  # Already at max for this level
 
-        # User can unlock a new genre — return available options
+        # Build available genres list
         available = [g for g in ALL_GENRES if g not in current_unlocked]
         if not available:
             return None
+
+        # Suggest 2 genres from the deterministic sequence
+        starting_genre = profile.favorite_genre or "fantasy"
+        sequence = self.get_genre_sequence(starting_genre)
+        suggested = [g for g in sequence if g not in current_unlocked][:2]
 
         return {
             "can_unlock": True,
             "current_count": len(current_unlocked),
             "max_count": max_genres,
             "available_genres": available,
+            "suggested_genres": suggested,
             "user_level": user.level,
         }
 

@@ -12,6 +12,7 @@ from app.api import cards  # noqa: F401, E402
 from app.api import focus  # noqa: F401, E402
 from app.api import gamification  # noqa: F401, E402
 from app.api import guilds  # noqa: F401, E402
+from app.api import levels  # noqa: F401, E402
 from app.api import marketplace  # noqa: F401, E402
 from app.api import mood  # noqa: F401, E402
 from app.api import onboarding  # noqa: F401, E402

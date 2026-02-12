@@ -38,6 +38,7 @@ from app.models.guild import (
     GuildRaid,
     GuildRaidContribution,
 )
+from app.models.level_reward import LevelReward
 from app.models.marketplace import MarketListing, StarsTransaction, UserStarsBalance
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
@@ -97,6 +98,8 @@ __all__ = [
     "SparksTransaction",
     "TonDeposit",
     "SPARKS_PACKS",
+    # Level rewards
+    "LevelReward",
     # Campaign
     "CampaignChapter",
     "CampaignLevel",

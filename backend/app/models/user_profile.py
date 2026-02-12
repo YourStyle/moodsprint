@@ -84,6 +84,9 @@ class UserProfile(db.Model):
     heals_today = db.Column(db.Integer, default=0, nullable=False)
     last_heal_date = db.Column(db.Date, nullable=True)
 
+    # Level reward tracking (idempotency)
+    last_rewarded_level = db.Column(db.Integer, default=1, nullable=False)
+
     # Spotlight onboarding reset (set by admin to force re-show spotlight)
     spotlight_reset_at = db.Column(db.DateTime, nullable=True)
 

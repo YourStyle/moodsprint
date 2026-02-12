@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Clock, Wallet } from 'lucide-react';
 import { Card, ScrollBackdrop } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
@@ -9,15 +10,20 @@ import { XPBar, StreakBadge } from '@/components/gamification';
 import { SparksBalance } from '@/components/sparks';
 import { GenreSelector } from '@/components/GenreSelector';
 import { ShowcaseSlots } from '@/components/cards/ShowcaseSlots';
+import { CardInfoSheet } from '@/components/cards/CardInfoSheet';
 import { useAppStore } from '@/lib/store';
-import { gamificationService, onboardingService } from '@/services';
+import { gamificationService, onboardingService, cardsService } from '@/services';
 import { authService } from '@/services';
 import { useLanguage } from '@/lib/i18n';
+import type { Card as CardType } from '@/services/cards';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, setUser, isTelegramEnvironment } = useAppStore();
   const { t } = useLanguage();
+  const [showcaseSelectedCard, setShowcaseSelectedCard] = useState<CardType | null>(null);
+  const [showcaseSelectedSlot, setShowcaseSelectedSlot] = useState<number | null>(null);
 
   const { data: statsData } = useQuery({
     queryKey: ['user', 'stats'],
@@ -156,7 +162,12 @@ export default function ProfilePage() {
 
       {/* Profile Showcase - 3 card slots */}
       <Card>
-        <ShowcaseSlots />
+        <ShowcaseSlots
+          onCardSelect={(card, slot) => {
+            setShowcaseSelectedCard(card);
+            setShowcaseSelectedSlot(slot);
+          }}
+        />
       </Card>
 
       {/* Productivity Patterns */}
@@ -212,6 +223,47 @@ export default function ProfilePage() {
           <span>{t('logout')}</span>
         </button>
       )}
+
+      {/* Showcase Card Info Sheet (rendered at page level for proper z-index) */}
+      <CardInfoSheet
+        isOpen={!!showcaseSelectedCard}
+        onClose={() => {
+          setShowcaseSelectedCard(null);
+          setShowcaseSelectedSlot(null);
+        }}
+        card={
+          showcaseSelectedCard
+            ? {
+                id: showcaseSelectedCard.id,
+                name: showcaseSelectedCard.name,
+                description: showcaseSelectedCard.description,
+                emoji: showcaseSelectedCard.emoji,
+                imageUrl: showcaseSelectedCard.image_url,
+                hp: showcaseSelectedCard.hp,
+                currentHp: showcaseSelectedCard.current_hp,
+                attack: showcaseSelectedCard.attack,
+                rarity: showcaseSelectedCard.rarity,
+                genre: showcaseSelectedCard.genre,
+                createdAt: showcaseSelectedCard.created_at,
+                abilityInfo: showcaseSelectedCard.ability_info,
+                cardLevel: showcaseSelectedCard.card_level,
+                cardXp: showcaseSelectedCard.card_xp,
+                isOwned: true,
+              }
+            : null
+        }
+        showcaseSlot={showcaseSelectedSlot}
+        onRemoveFromShowcase={async (slot) => {
+          try {
+            await cardsService.removeShowcase(slot);
+            setShowcaseSelectedCard(null);
+            setShowcaseSelectedSlot(null);
+            queryClient.invalidateQueries({ queryKey: ['showcase'] });
+          } catch {
+            // Silently fail
+          }
+        }}
+      />
     </div>
   );
 }

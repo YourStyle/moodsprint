@@ -189,8 +189,8 @@ async def update_user_notifications(telegram_id: int, enabled: bool):
         await session.commit()
 
 
-async def get_user_stats(telegram_id: int) -> dict:
-    """Get user statistics."""
+async def get_user_stats(telegram_id: int, weekly: bool = False) -> dict:
+    """Get user statistics. If weekly=True, only count data from the last 7 days."""
     async with async_session() as session:
         # Get basic user info
         user_result = await session.execute(
@@ -202,29 +202,41 @@ async def get_user_stats(telegram_id: int) -> dict:
 
         user_id = user._mapping["id"]
 
+        date_filter = ""
+        if weekly:
+            date_filter = (
+                "AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+            )
+
         # Get task stats
         tasks_result = await session.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) FILTER (WHERE status = 'completed') as completed_tasks,
                     COUNT(*) as total_tasks
-                FROM tasks WHERE user_id = :uid
+                FROM tasks WHERE user_id = :uid {date_filter}
             """
             ),
             {"uid": user_id},
         )
         tasks = tasks_result.fetchone()
 
+        focus_date_filter = ""
+        if weekly:
+            focus_date_filter = (
+                "AND started_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+            )
+
         # Get focus stats
         focus_result = await session.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) as total_sessions,
                     COALESCE(SUM(actual_duration_minutes), 0) as total_minutes
                 FROM focus_sessions
-                WHERE user_id = :uid AND status = 'completed'
+                WHERE user_id = :uid AND status = 'completed' {focus_date_filter}
             """
             ),
             {"uid": user_id},

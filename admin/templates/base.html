@@ -96,6 +96,13 @@
                     </svg>
                     Media
                 </a>
+                <a href="{{ url_for('levels') }}"
+                   class="flex items-center px-6 py-3 hover:bg-gray-800 {% if request.endpoint == 'levels' %}bg-gray-800{% endif %}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Levels
+                </a>
                 <a href="{{ url_for('broadcast') }}"
                    class="flex items-center px-6 py-3 hover:bg-gray-800 {% if request.endpoint == 'broadcast' %}bg-gray-800{% endif %}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

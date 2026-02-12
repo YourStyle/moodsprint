@@ -127,7 +127,7 @@ class NotificationService:
 
         for user in users:
             try:
-                stats = await get_user_stats(user["telegram_id"])
+                stats = await get_user_stats(user["telegram_id"], weekly=True)
                 if not stats:
                     continue
 

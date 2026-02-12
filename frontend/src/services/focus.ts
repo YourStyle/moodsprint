@@ -23,6 +23,27 @@ interface FocusSessionWithXP {
   card_earned?: Card;
   quick_completion?: boolean;
   quick_completion_message?: string;
+  level_up?: boolean;
+  new_level?: number;
+  level_rewards?: LevelRewardPayload[];
+  genre_unlock_available?: GenreUnlockPayload | null;
+}
+
+// Level-up payload returned with XP-granting responses
+interface LevelRewardPayload {
+  type: 'sparks' | 'energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost';
+  amount?: number;
+  rarity?: string;
+  slot?: number;
+  tier?: string;
+  card?: { id: number; name: string; emoji: string; rarity: string } | null;
+  description?: string;
+}
+
+interface GenreUnlockPayload {
+  can_unlock: boolean;
+  available_genres: string[];
+  suggested_genres?: string[];
 }
 
 interface FocusHistoryResponse {

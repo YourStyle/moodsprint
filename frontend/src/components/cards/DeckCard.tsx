@@ -45,6 +45,8 @@ export interface DeckCardProps {
   isLocked?: boolean;
   // Previously owned but lost (merge/sell)
   isPreviouslyOwned?: boolean;
+  // Genre not yet unlocked
+  isGenreLocked?: boolean;
 }
 
 const rarityStyles = {
@@ -135,6 +137,7 @@ export function DeckCard({
   isCompanion = false,
   isLocked = false,
   isPreviouslyOwned = false,
+  isGenreLocked = false,
 }: DeckCardProps) {
   const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -187,8 +190,9 @@ export function DeckCard({
     <div
       className={cn(
         'relative w-full aspect-[3/4.3] perspective-1000',
-        isLocked && 'grayscale opacity-60',
-        isPreviouslyOwned && 'opacity-50'
+        isGenreLocked && 'grayscale opacity-40',
+        isLocked && !isGenreLocked && 'grayscale opacity-60',
+        isPreviouslyOwned && !isGenreLocked && 'opacity-50'
       )}
       onClick={handleCardClick}
     >
@@ -299,18 +303,30 @@ export function DeckCard({
                 </div>
               )}
 
-              {/* Locked overlay (never owned) */}
-              {isLocked && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              {/* Genre locked overlay */}
+              {isGenreLocked && (
+                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
                   <Lock className="w-8 h-8 text-gray-400" />
+                  <span className="text-[10px] font-medium text-gray-400 bg-black/50 px-2 py-0.5 rounded-full">
+                    {t('cardGenreLocked')}
+                  </span>
+                </div>
+              )}
+
+              {/* Locked overlay (never owned) */}
+              {isLocked && !isGenreLocked && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-gray-400 bg-black/50 px-2 py-0.5 rounded-full">
+                    {t('cardNotFound')}
+                  </span>
                 </div>
               )}
 
               {/* Previously owned overlay */}
-              {isPreviouslyOwned && (
+              {isPreviouslyOwned && !isGenreLocked && (
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <span className="text-[10px] font-medium text-gray-300 bg-black/50 px-2 py-0.5 rounded-full">
-                    {t('notCollected')}
+                  <span className="text-[10px] font-medium text-amber-400 bg-black/50 px-2 py-0.5 rounded-full">
+                    {t('cardLost')}
                   </span>
                 </div>
               )}
@@ -361,25 +377,25 @@ export function DeckCard({
               <div className="flex items-center gap-0.5">
                 <Swords className={cn(compact ? 'w-3 h-3' : 'w-3.5 h-3.5', 'text-orange-400')} />
                 <span className={cn('font-bold text-white', compact ? 'text-[10px]' : 'text-xs')}>
-                  {(isLocked || isPreviouslyOwned) ? '?' : attack}
+                  {(isLocked || isPreviouslyOwned || isGenreLocked) ? '?' : attack}
                 </span>
               </div>
               <div className={cn('w-px bg-gray-600', compact ? 'h-3' : 'h-3')} />
               <div className="flex items-center gap-0.5">
                 <Heart className={cn(
                   compact ? 'w-3 h-3' : 'w-3.5 h-3.5',
-                  (isLocked || isPreviouslyOwned) ? 'text-gray-400' :
+                  (isLocked || isPreviouslyOwned || isGenreLocked) ? 'text-gray-400' :
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )} />
                 <span className={cn(
                   'font-bold',
                   compact ? 'text-[10px]' : 'text-xs',
-                  (isLocked || isPreviouslyOwned) ? 'text-gray-400' :
+                  (isLocked || isPreviouslyOwned || isGenreLocked) ? 'text-gray-400' :
                   currentHp < hp * 0.3 ? 'text-red-400' :
                   currentHp < hp * 0.7 ? 'text-yellow-400' : 'text-green-400'
                 )}>
-                  {(isLocked || isPreviouslyOwned) ? '?' : `${currentHp}/${hp}`}
+                  {(isLocked || isPreviouslyOwned || isGenreLocked) ? '?' : `${currentHp}/${hp}`}
                 </span>
               </div>
             </div>

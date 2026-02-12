@@ -586,6 +586,29 @@ export const translations = {
 
     // Friends profile
     totalCards: 'Всего карт',
+
+    // Level rewards
+    levelUp: 'Уровень {level}!',
+    levelRewards: 'Награды за уровень',
+    catchUpRewardsTitle: 'Награды за уровни!',
+    sparksReward: '+{amount} искр',
+    energyReward: '+{amount} энергии',
+    cardReward: 'Карта ({rarity})',
+    genreUnlockReward: 'Открой новый жанр!',
+    xpBoostReward: 'Буст опыта x{amount}',
+    selectNewGenre: 'Выбери новый жанр',
+
+    // Deck card states
+    cardNotFound: 'Не найдена',
+    cardLost: 'Утрачена',
+    cardGenreLocked: 'Жанр закрыт',
+
+    // Showcase actions
+    removeFromShowcase: 'Убрать с витрины',
+
+    // Deck filters
+    filterByGenre: 'Жанр',
+    allGenres: 'Все',
   },
 
   en: {
@@ -1175,6 +1198,29 @@ export const translations = {
 
     // Friends profile
     totalCards: 'Total cards',
+
+    // Level rewards
+    levelUp: 'Level {level}!',
+    levelRewards: 'Level Rewards',
+    catchUpRewardsTitle: 'Level Rewards!',
+    sparksReward: '+{amount} sparks',
+    energyReward: '+{amount} energy',
+    cardReward: 'Card ({rarity})',
+    genreUnlockReward: 'Unlock a new genre!',
+    xpBoostReward: 'XP boost x{amount}',
+    selectNewGenre: 'Choose a new genre',
+
+    // Deck card states
+    cardNotFound: 'Not found',
+    cardLost: 'Lost',
+    cardGenreLocked: 'Genre locked',
+
+    // Showcase actions
+    removeFromShowcase: 'Remove from showcase',
+
+    // Deck filters
+    filterByGenre: 'Genre',
+    allGenres: 'All',
   },
 } as const;
 

@@ -38,6 +38,14 @@ TRANSLATIONS = {
             "\nВыполните хотя бы одну задачу сегодня."
         ),
         "notif_streak_lost": "😔 Серия прервана. Но ничего, начнём заново!",
+        # Level-up notifications
+        "notif_level_up": "🎉 Поздравляем! Вы достигли уровня {level}!",
+        "notif_level_rewards": "🎁 Ваши награды: {rewards}",
+        "notif_genre_unlock": "🔓 Теперь вы можете открыть новый жанр карт!",
+        "notif_card_gift": (
+            "🎁 Вам пришёл подарок!\n\nВы получили карту"
+            " {card_name} ({rarity})\n\nОткройте приложение!"
+        ),
         # Task reminders
         "reminder_title": "⏰ Напоминание о задаче",
         "reminder_task": "Задача: {title}",
@@ -176,6 +184,14 @@ MoodSprint — умный планировщик с геймификацией.
             "⚠️ Your {days}-day streak is at risk!" "\nComplete at least one task today."
         ),
         "notif_streak_lost": "😔 Streak lost. But let's start again!",
+        # Level-up notifications
+        "notif_level_up": "🎉 Congratulations! You reached level {level}!",
+        "notif_level_rewards": "🎁 Your rewards: {rewards}",
+        "notif_genre_unlock": "🔓 You can now unlock a new card genre!",
+        "notif_card_gift": (
+            "🎁 You received a gift!\n\nYou got the card"
+            " {card_name} ({rarity})\n\nOpen the app to check it out!"
+        ),
         # Task reminders
         "reminder_title": "⏰ Task Reminder",
         "reminder_task": "Task: {title}",

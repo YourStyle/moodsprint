@@ -73,7 +73,7 @@ function FocusTimer({ session, onComplete, onPause, onResume, onStop }: {
         </span>
       </div>
       <button
-        onClick={isPaused ? onResume : onPause}
+        onClick={(e) => { e.stopPropagation(); (isPaused ? onResume : onPause)(); }}
         className={`p-1.5 rounded-lg transition-colors ${
           isPaused ? 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
         }`}
@@ -81,13 +81,13 @@ function FocusTimer({ session, onComplete, onPause, onResume, onStop }: {
         {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
       </button>
       <button
-        onClick={onComplete}
+        onClick={(e) => { e.stopPropagation(); onComplete(); }}
         className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
       >
         <CheckCircle2 className="w-4 h-4" />
       </button>
       <button
-        onClick={onStop}
+        onClick={(e) => { e.stopPropagation(); onStop(); }}
         className="p-1.5 rounded-lg bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 transition-colors"
       >
         <Square className="w-4 h-4" />

@@ -5,18 +5,17 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
 import { cardsService } from '@/services/cards';
 import type { Card } from '@/services/cards';
-import { CardInfoSheet } from './CardInfoSheet';
 import { Modal } from '@/components/ui';
 
 interface ShowcaseSlotsProps {
   userId?: number;
   readOnly?: boolean;
+  onCardSelect?: (card: Card, slot: number) => void;
 }
 
-export function ShowcaseSlots({ readOnly = false }: ShowcaseSlotsProps) {
+export function ShowcaseSlots({ readOnly = false, onCardSelect }: ShowcaseSlotsProps) {
   const { t } = useTranslation();
   const [slots, setSlots] = useState<(Card | null)[]>([null, null, null]);
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   // Card picker state
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
@@ -100,7 +99,7 @@ export function ShowcaseSlots({ readOnly = false }: ShowcaseSlotsProps) {
         {slots.map((card, index) => (
           <button
             key={index}
-            onClick={() => card ? setSelectedCard(card) : handleEmptySlotClick(index)}
+            onClick={() => card ? onCardSelect?.(card, index + 1) : handleEmptySlotClick(index)}
             className={cn(
               'aspect-square rounded-xl border-2 border-dashed flex items-center justify-center transition-all',
               card
@@ -149,31 +148,6 @@ export function ShowcaseSlots({ readOnly = false }: ShowcaseSlotsProps) {
       {slots.every((s) => !s) && !readOnly && (
         <p className="text-xs text-gray-500 text-center mt-2">{t('showcaseEmpty')}</p>
       )}
-
-      <CardInfoSheet
-        isOpen={!!selectedCard}
-        onClose={() => setSelectedCard(null)}
-        card={
-          selectedCard
-            ? {
-                id: selectedCard.id,
-                name: selectedCard.name,
-                description: selectedCard.description,
-                emoji: selectedCard.emoji,
-                imageUrl: selectedCard.image_url,
-                hp: selectedCard.hp,
-                currentHp: selectedCard.current_hp,
-                attack: selectedCard.attack,
-                rarity: selectedCard.rarity,
-                genre: selectedCard.genre,
-                createdAt: selectedCard.created_at,
-                abilityInfo: selectedCard.ability_info,
-                cardLevel: selectedCard.card_level,
-                cardXp: selectedCard.card_xp,
-              }
-            : null
-        }
-      />
 
       {/* Card picker modal */}
       <Modal

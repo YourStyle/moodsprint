@@ -254,10 +254,20 @@ def complete_focus_session():
         "achievements_unlocked": [a.to_dict() for a in achievements_unlocked],
     }
 
-    # Check genre unlock on level up
+    # Grant level-up rewards
     if xp_info.get("level_up"):
         response_data["level_up"] = True
         response_data["new_level"] = xp_info["new_level"]
+        try:
+            from app.services.level_service import LevelService
+
+            reward_summary = LevelService().grant_level_rewards(
+                user_id, xp_info["new_level"]
+            )
+            if reward_summary.get("granted"):
+                response_data["level_rewards"] = reward_summary["rewards"]
+        except Exception:
+            pass
         try:
             from app.services.card_service import CardService
 

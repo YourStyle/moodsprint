@@ -191,10 +191,10 @@ class CardsService {
   }
 
   // Card templates
-  async getTemplates(genre?: string): Promise<ApiResponse<{ templates: CardTemplate[]; total: number; collected_template_ids: number[] }>> {
+  async getTemplates(genre?: string): Promise<ApiResponse<{ templates: CardTemplate[]; total: number; collected_template_ids: number[]; unlocked_genres: string[] }>> {
     let url = '/card-templates';
     if (genre) url += `?genre=${genre}`;
-    return api.get<{ templates: CardTemplate[]; total: number; collected_template_ids: number[] }>(url);
+    return api.get<{ templates: CardTemplate[]; total: number; collected_template_ids: number[]; unlocked_genres: string[] }>(url);
   }
 
   // Friends system
@@ -346,6 +346,15 @@ class CardsService {
     return api.post<{ success: boolean }>('/showcase/remove', { slot });
   }
 
+  // Level rewards
+  async getLevelRewards(): Promise<ApiResponse<{ level_rewards: Record<string, LevelRewardItem[]> }>> {
+    return api.get<{ level_rewards: Record<string, LevelRewardItem[]> }>('/level-rewards');
+  }
+
+  async claimLevelCatchUp(): Promise<ApiResponse<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number }>> {
+    return api.post<{ has_rewards: boolean; rewards: LevelRewardItem[]; new_level: number }>('/level-rewards/catch-up');
+  }
+
   // Campaign energy
   async getEnergy(): Promise<ApiResponse<{ energy: number; max_energy: number }>> {
     return api.get<{ energy: number; max_energy: number }>('/energy');
@@ -367,7 +376,18 @@ export interface GenreUnlockInfo {
   current_count: number;
   max_count: number;
   available_genres: string[];
+  suggested_genres?: string[];
   user_level: number;
+}
+
+export interface LevelRewardItem {
+  type: 'sparks' | 'energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost';
+  amount?: number;
+  rarity?: string;
+  slot?: number;
+  tier?: string;
+  card?: { id: number; name: string; emoji: string; rarity: string } | null;
+  description?: string;
 }
 
 export interface CardXpResult {

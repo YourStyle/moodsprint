@@ -450,11 +450,16 @@ def get_card_templates():
     )
     collected_template_ids = [r[0] for r in collected_rows]
 
+    # Include unlocked genres for card status classification
+    card_service = CardService()
+    unlocked_genres = card_service.get_unlocked_genres(user_id)
+
     return success_response(
         {
             "templates": [t.to_dict(lang) for t in templates],
             "total": len(templates),
             "collected_template_ids": collected_template_ids,
+            "unlocked_genres": unlocked_genres,
         }
     )
 

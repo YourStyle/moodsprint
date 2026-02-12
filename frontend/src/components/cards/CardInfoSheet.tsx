@@ -42,6 +42,8 @@ interface CardInfoSheetProps {
   onAddToDeck?: (id: number) => void;
   onRemoveFromDeck?: (id: number) => void;
   onAddToShowcase?: (id: number, slot: number) => void;
+  showcaseSlot?: number | null;
+  onRemoveFromShowcase?: (slot: number) => void;
 }
 
 const rarityStyles = {
@@ -80,7 +82,7 @@ const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | '
   anime: 'genreAnime',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase }: CardInfoSheetProps) {
   const { t } = useTranslation();
   const [showSellModal, setShowSellModal] = useState(false);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
@@ -247,6 +249,18 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
           >
             <DollarSign className="w-4 h-4 mr-2" />
             {t('sellForStars')}
+          </Button>
+        )}
+
+        {/* Remove from Showcase */}
+        {showcaseSlot != null && onRemoveFromShowcase && (
+          <Button
+            variant="secondary"
+            className="w-full mt-4"
+            onClick={() => { onRemoveFromShowcase(showcaseSlot); onClose(); }}
+          >
+            <Star className="w-4 h-4 mr-2" />
+            {t('removeFromShowcase')}
           </Button>
         )}
 

@@ -8,6 +8,7 @@ import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
+import { LevelUpModal, type LevelRewardItem } from '@/components/gamification';
 import { tasksService, focusService, moodService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -32,7 +33,6 @@ function FocusTimer({
   session,
   onPause,
   onResume,
-  onCompleteSession,
   onCancel,
   t,
 }: {
@@ -45,7 +45,6 @@ function FocusTimer({
   };
   onPause: () => void;
   onResume: () => void;
-  onCompleteSession: () => void;
   onCancel: () => void;
   t: (key: TranslationKey) => string;
 }) {
@@ -99,38 +98,22 @@ function FocusTimer({
       </div>
 
       <div className="flex gap-2">
-        {isPaused ? (
-          <Button
-            variant="primary"
-            onClick={onResume}
-            className="flex-1"
-          >
-            <Play className="w-4 h-4 mr-1" />
-            {t('resume')}
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            onClick={onPause}
-            className="flex-1"
-          >
-            <Pause className="w-4 h-4 mr-1" />
-            {t('pause')}
-          </Button>
-        )}
         <Button
-          variant="secondary"
-          onClick={onCompleteSession}
-          className="flex-1 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400"
+          variant={isPaused ? 'primary' : 'secondary'}
+          onClick={isPaused ? onResume : onPause}
+          className="flex-1"
         >
-          <Check className="w-4 h-4 mr-1" />
-          {t('complete')}
+          {isPaused ? (
+            <><Play className="w-4 h-4 mr-1" />{t('resume')}</>
+          ) : (
+            <><Pause className="w-4 h-4 mr-1" />{t('pause')}</>
+          )}
         </Button>
         <Button
-          variant="danger"
+          variant="secondary"
           onClick={onCancel}
-          className="px-3"
-          title={t('cancel')}
+          className="px-3 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400"
+          title={t('complete')}
         >
           <Square className="w-4 h-4" />
         </Button>
@@ -179,6 +162,12 @@ export default function TaskDetailPage() {
   const [earnedCard, setEarnedCard] = useState<EarnedCard | null>(null);
   const [showCardModal, setShowCardModal] = useState(false);
   const [showCardTutorial, setShowCardTutorial] = useState(false);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{
+    newLevel: number;
+    rewards: LevelRewardItem[];
+    genreUnlockAvailable?: { can_unlock: boolean; available_genres: string[]; suggested_genres?: string[] } | null;
+  } | null>(null);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
 
@@ -260,6 +249,15 @@ export default function TaskDetailPage() {
         });
         setShowCardModal(true);
       }
+      // Level-up rewards
+      if (result.data?.level_up) {
+        setLevelUpData({
+          newLevel: result.data.new_level || 0,
+          rewards: result.data.level_rewards || [],
+          genreUnlockAvailable: result.data.genre_unlock_available || null,
+        });
+        if (!result.data?.card_earned) setShowLevelUpModal(true);
+      }
       hapticFeedback('success');
     },
   });
@@ -324,6 +322,7 @@ export default function TaskDetailPage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
         hapticFeedback('light');
       }
     },
@@ -334,6 +333,7 @@ export default function TaskDetailPage() {
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['focus', 'active'] });
         hapticFeedback('light');
       }
     },
@@ -410,6 +410,15 @@ export default function TaskDetailPage() {
           quick_completion_message: result.data.quick_completion_message,
         });
         setShowCardModal(true);
+      }
+      // Level-up rewards
+      if (result.data?.level_up) {
+        setLevelUpData({
+          newLevel: result.data.new_level || 0,
+          rewards: result.data.level_rewards || [],
+          genreUnlockAvailable: result.data.genre_unlock_available || null,
+        });
+        if (!result.data?.card_earned) setShowLevelUpModal(true);
       }
       hapticFeedback('success');
     },
@@ -528,13 +537,20 @@ export default function TaskDetailPage() {
               if (task.scheduled_at) {
                 const scheduledDate = new Date(task.scheduled_at);
                 setEditReminderEnabled(true);
-                setEditReminderDate(scheduledDate.toISOString().split('T')[0]);
+                // Use local date components (not UTC) so timezone doesn't shift values
+                const y = scheduledDate.getFullYear();
+                const m = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+                const d = String(scheduledDate.getDate()).padStart(2, '0');
+                setEditReminderDate(`${y}-${m}-${d}`);
                 setEditReminderTime(scheduledDate.toTimeString().slice(0, 5));
               } else {
                 setEditReminderEnabled(false);
                 const now = new Date();
                 now.setHours(now.getHours() + 1);
-                setEditReminderDate(now.toISOString().split('T')[0]);
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, '0');
+                const d = String(now.getDate()).padStart(2, '0');
+                setEditReminderDate(`${y}-${m}-${d}`);
                 setEditReminderTime(now.toTimeString().slice(0, 5));
               }
               setShowEditTask(true);
@@ -614,8 +630,7 @@ export default function TaskDetailPage() {
             session={activeSession}
             onPause={() => pauseSessionMutation.mutate()}
             onResume={() => resumeSessionMutation.mutate()}
-            onCompleteSession={() => completeSessionMutation.mutate(activeSession.id)}
-            onCancel={() => cancelSessionMutation.mutate(activeSession.id)}
+            onCancel={() => completeSessionMutation.mutate(activeSession.id)}
             t={t}
           />
         ) : (
@@ -755,18 +770,6 @@ export default function TaskDetailPage() {
         >
           <Plus className="w-4 h-4 mr-2" />
           {t('addStepManually')}
-        </Button>
-      )}
-
-      {/* Complete Task button (shown when timer is active) */}
-      {task.status !== 'completed' && activeSession && (
-        <Button
-          onClick={() => completeTaskMutation.mutate()}
-          isLoading={completeTaskMutation.isPending}
-          className="w-full bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-400"
-        >
-          <Check className="w-5 h-5 mr-2" />
-          {t('completeTask')}
         </Button>
       )}
 
@@ -1235,12 +1238,35 @@ export default function TaskDetailPage() {
         onClose={() => {
           setShowCardModal(false);
           setEarnedCard(null);
-          if (shouldShowCardTutorial()) {
+          if (levelUpData) {
+            setShowLevelUpModal(true);
+          } else if (shouldShowCardTutorial()) {
             setShowCardTutorial(true);
           }
         }}
         t={t}
       />
+
+      {/* Level Up Modal */}
+      {levelUpData && (
+        <LevelUpModal
+          isOpen={showLevelUpModal}
+          onClose={() => {
+            setShowLevelUpModal(false);
+            setLevelUpData(null);
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
+            if (shouldShowCardTutorial()) {
+              setShowCardTutorial(true);
+            }
+          }}
+          newLevel={levelUpData.newLevel}
+          rewards={levelUpData.rewards}
+          genreUnlockAvailable={levelUpData.genreUnlockAvailable}
+          onGenreSelect={() => {
+            queryClient.invalidateQueries({ queryKey: ['cards'] });
+          }}
+        />
+      )}
 
       {/* Card Tutorial */}
       <CardTutorial

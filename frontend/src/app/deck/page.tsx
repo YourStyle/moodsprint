@@ -15,6 +15,7 @@ import {
   X,
   Check,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { Card, Button, Modal, ScrollBackdrop } from '@/components/ui';
 import { DeckCard, CardInfoSheet } from '@/components/cards';
@@ -28,6 +29,23 @@ import type { Card as CardType, HealStatus } from '@/services/cards';
 
 type Tab = 'collection' | 'deck' | 'merge';
 type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+type GenreFilter = 'all' | string;
+
+const ALL_GENRES = ['magic', 'fantasy', 'scifi', 'cyberpunk', 'anime'];
+const GENRE_EMOJIS: Record<string, string> = {
+  magic: '✨',
+  fantasy: '⚔️',
+  scifi: '🚀',
+  cyberpunk: '🌆',
+  anime: '🌸',
+};
+const GENRE_KEYS: Record<string, string> = {
+  magic: 'genreMagic',
+  fantasy: 'genreFantasy',
+  scifi: 'genreScifi',
+  cyberpunk: 'genreCyberpunk',
+  anime: 'genreAnime',
+};
 
 interface MergePreview {
   card1: CardType;
@@ -60,6 +78,7 @@ export default function DeckPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('collection');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
+  const [genreFilter, setGenreFilter] = useState<GenreFilter>('all');
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [infoCard, setInfoCard] = useState<CardType | null>(null);
 
@@ -75,6 +94,7 @@ export default function DeckPage() {
     queryKey: ['cards'],
     queryFn: () => cardsService.getCards(),
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch deck
@@ -89,6 +109,7 @@ export default function DeckPage() {
     queryKey: ['heal-status'],
     queryFn: () => cardsService.getHealStatus(),
     enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   // Fetch card templates (for locked cards in collection)
@@ -96,6 +117,7 @@ export default function DeckPage() {
     queryKey: ['card-templates'],
     queryFn: () => cardsService.getTemplates(),
     enabled: !!user && activeTab === 'collection',
+    staleTime: 10 * 60 * 1000,
   });
 
   // Add to deck mutation
@@ -185,15 +207,18 @@ export default function DeckPage() {
   const healStatus = healStatusData?.data;
   const templates = templatesData?.data?.templates || [];
   const collectedTemplateIds = templatesData?.data?.collected_template_ids || [];
+  const unlockedGenres = templatesData?.data?.unlocked_genres || [];
+  const unlockedGenresSet = useMemo(() => new Set(unlockedGenres), [unlockedGenres]);
 
-  // Build collection: owned cards + unowned templates (locked or previously owned)
+  // Build collection: owned cards + unowned templates (locked, previously owned, or genre-locked)
   const { allCollectionCards } = useMemo(() => {
     const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
     const collectedSet = new Set(collectedTemplateIds);
-    const unownedCards: (CardType & { _isLocked?: boolean; _isPreviouslyOwned?: boolean })[] = templates
+    const unownedCards: (CardType & { _isLocked?: boolean; _isPreviouslyOwned?: boolean; _isGenreLocked?: boolean })[] = templates
       .filter((tmpl) => !ownedCardTemplateIds.has(tmpl.id))
       .map((tmpl) => {
         const wasCollected = collectedSet.has(tmpl.id);
+        const genreLocked = !unlockedGenresSet.has(tmpl.genre);
         return {
           id: -tmpl.id, // negative to avoid collisions
           user_id: 0,
@@ -221,17 +246,44 @@ export default function DeckPage() {
           ability_info: null,
           card_level: 0,
           card_xp: 0,
-          _isLocked: !wasCollected,
-          _isPreviouslyOwned: wasCollected,
+          _isGenreLocked: genreLocked,
+          _isLocked: !wasCollected && !genreLocked,
+          _isPreviouslyOwned: wasCollected && !genreLocked,
         };
       });
     return { allCollectionCards: [...cards, ...unownedCards] };
-  }, [cards, templates, collectedTemplateIds]);
+  }, [cards, templates, collectedTemplateIds, unlockedGenresSet]);
 
-  // Filter cards
-  const filteredCards = (rarityFilter === 'all'
-    ? allCollectionCards
-    : allCollectionCards.filter((c) => c.rarity === rarityFilter));
+  // Filter cards by rarity and genre
+  const filteredCards = useMemo(() => {
+    let result = allCollectionCards;
+    if (rarityFilter !== 'all') {
+      result = result.filter((c) => c.rarity === rarityFilter);
+    }
+    if (genreFilter !== 'all') {
+      result = result.filter((c) => c.genre === genreFilter);
+    }
+    return result;
+  }, [allCollectionCards, rarityFilter, genreFilter]);
+
+  // Group filtered cards by genre for section headers
+  const groupedByGenre = useMemo(() => {
+    const groups: Record<string, typeof filteredCards> = {};
+    for (const card of filteredCards) {
+      const genre = card.genre || 'unknown';
+      if (!groups[genre]) groups[genre] = [];
+      groups[genre].push(card);
+    }
+    // Sort genres: unlocked first, then locked
+    const sorted = Object.entries(groups).sort(([a], [b]) => {
+      const aUnlocked = unlockedGenresSet.has(a);
+      const bUnlocked = unlockedGenresSet.has(b);
+      if (aUnlocked && !bUnlocked) return -1;
+      if (!aUnlocked && bUnlocked) return 1;
+      return ALL_GENRES.indexOf(a) - ALL_GENRES.indexOf(b);
+    });
+    return sorted;
+  }, [filteredCards, unlockedGenresSet]);
 
   // Check if any card needs healing
   const cardsNeedHealing = cards.some((c) => c.current_hp < c.hp);
@@ -291,7 +343,7 @@ export default function DeckPage() {
   const [generatingImages, setGeneratingImages] = useState<Set<number>>(new Set());
   const generatedCardsRef = useRef<Set<number>>(new Set());
 
-  // Auto-generate images for cards without them
+  // Auto-generate images for cards without them (1 at a time, during idle)
   useEffect(() => {
     const cardsWithoutImages = cards.filter(
       (c) => !c.image_url && !generatingImages.has(c.id) && !generatedCardsRef.current.has(c.id)
@@ -299,10 +351,9 @@ export default function DeckPage() {
 
     if (cardsWithoutImages.length === 0) return;
 
-    // Generate images for up to 3 cards at a time
-    const cardsToGenerate = cardsWithoutImages.slice(0, 3);
+    const card = cardsWithoutImages[0];
 
-    cardsToGenerate.forEach((card) => {
+    const generateOne = () => {
       setGeneratingImages((prev) => new Set(prev).add(card.id));
       generatedCardsRef.current.add(card.id);
 
@@ -323,7 +374,15 @@ export default function DeckPage() {
             return next;
           });
         });
-    });
+    };
+
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(generateOne);
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(generateOne, 200);
+      return () => clearTimeout(id);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards, queryClient]);
 
@@ -412,7 +471,7 @@ export default function DeckPage() {
       {activeTab === 'collection' && (
         <>
           {/* Rarity filter */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
             <button
               onClick={() => setRarityFilter('all')}
               className={cn(
@@ -440,6 +499,42 @@ export default function DeckPage() {
                 {t(RARITY_KEYS[rarity as keyof typeof RARITY_KEYS])} ({rarityCounts[rarity] || 0})
               </button>
             ))}
+          </div>
+
+          {/* Genre filter */}
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            <button
+              onClick={() => setGenreFilter('all')}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                genreFilter === 'all'
+                  ? 'bg-indigo-500 text-white'
+                  : 'bg-gray-800 text-gray-400'
+              )}
+            >
+              {t('allGenres')}
+            </button>
+            {ALL_GENRES.map((genre) => {
+              const isUnlocked = unlockedGenresSet.has(genre);
+              return (
+                <button
+                  key={genre}
+                  onClick={() => setGenreFilter(genre)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1',
+                    genreFilter === genre
+                      ? 'bg-indigo-500 text-white'
+                      : isUnlocked
+                        ? 'bg-gray-800 text-gray-400'
+                        : 'bg-gray-800/50 text-gray-600'
+                  )}
+                >
+                  {!isUnlocked && <Lock className="w-3 h-3" />}
+                  <span>{GENRE_EMOJIS[genre]}</span>
+                  {t(GENRE_KEYS[genre] as any)}
+                </button>
+              );
+            })}
           </div>
 
           {/* Heal all button */}
@@ -535,37 +630,60 @@ export default function DeckPage() {
             </Card>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                {filteredCards.map((card) => {
-                  const isLocked = '_isLocked' in card && card._isLocked === true;
-                  const isPreviouslyOwned = '_isPreviouslyOwned' in card && card._isPreviouslyOwned === true;
-                  const isUnavailable = isLocked || isPreviouslyOwned;
-                  return (
-                    <DeckCard
-                      key={card.id}
-                      id={card.id}
-                      name={card.name}
-                      description={card.description}
-                      emoji={card.emoji}
-                      imageUrl={card.image_url}
-                      hp={card.hp}
-                      currentHp={card.current_hp}
-                      attack={card.attack}
-                      rarity={card.rarity}
-                      genre={card.genre}
-                      isInDeck={card.is_in_deck}
-                      isGenerating={!isUnavailable && generatingImages.has(card.id)}
-                      createdAt={isUnavailable ? undefined : card.created_at}
-                      ability={card.ability}
-                      abilityInfo={card.ability_info}
-                      isLocked={isLocked}
-                      isPreviouslyOwned={isPreviouslyOwned}
-                      onClick={isUnavailable ? undefined : () => handleCardClick(card)}
-                      onInfoClick={isUnavailable ? undefined : () => setInfoCard(card)}
-                    />
-                  );
-                })}
-              </div>
+              {/* Genre-grouped cards */}
+              {groupedByGenre.map(([genre, genreCards]) => (
+                <div key={genre} className="mb-4">
+                  {/* Genre section header (only when showing all genres) */}
+                  {genreFilter === 'all' && groupedByGenre.length > 1 && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm">{GENRE_EMOJIS[genre] || '?'}</span>
+                      <span className="text-sm font-medium text-gray-300">
+                        {t(GENRE_KEYS[genre] as any) || genre}
+                      </span>
+                      {!unlockedGenresSet.has(genre) && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Lock className="w-3 h-3" />
+                          {t('cardGenreLocked')}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500 ml-auto">{genreCards.length}</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    {genreCards.map((card) => {
+                      const isGenreLocked = '_isGenreLocked' in card && card._isGenreLocked === true;
+                      const isLocked = '_isLocked' in card && card._isLocked === true;
+                      const isPreviouslyOwned = '_isPreviouslyOwned' in card && card._isPreviouslyOwned === true;
+                      const isUnavailable = isGenreLocked || isLocked || isPreviouslyOwned;
+                      return (
+                        <DeckCard
+                          key={card.id}
+                          id={card.id}
+                          name={card.name}
+                          description={card.description}
+                          emoji={card.emoji}
+                          imageUrl={card.image_url}
+                          hp={card.hp}
+                          currentHp={card.current_hp}
+                          attack={card.attack}
+                          rarity={card.rarity}
+                          genre={card.genre}
+                          isInDeck={card.is_in_deck}
+                          isGenerating={!isUnavailable && generatingImages.has(card.id)}
+                          createdAt={isUnavailable ? undefined : card.created_at}
+                          ability={card.ability}
+                          abilityInfo={card.ability_info}
+                          isLocked={isLocked}
+                          isPreviouslyOwned={isPreviouslyOwned}
+                          isGenreLocked={isGenreLocked}
+                          onClick={isUnavailable ? undefined : () => handleCardClick(card)}
+                          onInfoClick={isUnavailable ? undefined : () => setInfoCard(card)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
               {/* Selected card actions */}
               {selectedCard && (

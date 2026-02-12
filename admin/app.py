@@ -864,7 +864,7 @@ def give_card_to_user(user_id: int):
 
     # Check if user exists
     user = db.session.execute(
-        text("SELECT id, first_name, username FROM users WHERE id = :id"),
+        text("SELECT id, first_name, username, telegram_id FROM users WHERE id = :id"),
         {"id": user_id},
     ).fetchone()
 
@@ -911,6 +911,29 @@ def give_card_to_user(user_id: int):
         )
         card_id = result.fetchone()[0]
         db.session.commit()
+
+        # Send Telegram notification to the user
+        telegram_id = user[3]  # telegram_id from query
+        if telegram_id and BOT_TOKEN:
+            import requests as http_requests
+
+            msg = (
+                f"🎁 <b>Вам пришёл подарок!</b>\n\n"
+                f"Вы получили карту <b>{template[1]}</b> ({rarity})\n\n"
+                f"Откройте приложение, чтобы посмотреть!"
+            )
+            try:
+                http_requests.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={
+                        "chat_id": telegram_id,
+                        "text": msg,
+                        "parse_mode": "HTML",
+                    },
+                    timeout=10,
+                )
+            except Exception:
+                pass  # Don't fail card creation if notification fails
 
         return jsonify({
             "success": True,
@@ -4238,6 +4261,159 @@ def media_rename():
             "new_name": new_name,
         })
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============ Level Rewards ============
+
+
+@app.route("/levels")
+@login_required
+def levels():
+    """Level rewards management page."""
+    rewards_rows = db.session.execute(
+        text("SELECT * FROM level_rewards ORDER BY level, id")
+    ).fetchall()
+
+    # Group rewards by level
+    levels_data = {}
+    for row in rewards_rows:
+        r = dict(row._mapping)
+        lvl = r["level"]
+        if lvl not in levels_data:
+            levels_data[lvl] = []
+        levels_data[lvl].append(r)
+
+    total_rewards = len(rewards_rows)
+    levels_with_rewards = len(levels_data)
+
+    max_player_level = db.session.execute(
+        text("""
+            SELECT COALESCE(MAX(
+                CAST(FLOOR(SQRT(xp / 100.0)) + 1 AS INTEGER)
+            ), 1) FROM user_profiles WHERE xp > 0
+        """)
+    ).scalar() or 1
+
+    return render_template(
+        "levels.html",
+        levels_data=levels_data,
+        total_rewards=total_rewards,
+        levels_with_rewards=levels_with_rewards,
+        max_player_level=max_player_level,
+    )
+
+
+@app.route("/levels/reward", methods=["POST"])
+@login_required
+def levels_reward_create():
+    """Create a new level reward."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data"}), 400
+
+    try:
+        import json as json_mod
+
+        reward_value = data.get("reward_value", {})
+        if isinstance(reward_value, str):
+            reward_value = json_mod.loads(reward_value)
+
+        db.session.execute(
+            text("""
+                INSERT INTO level_rewards (level, reward_type, reward_value, description, is_active, created_at)
+                VALUES (:level, :reward_type, :reward_value, :description, :is_active, NOW())
+            """),
+            {
+                "level": data["level"],
+                "reward_type": data["reward_type"],
+                "reward_value": json_mod.dumps(reward_value),
+                "description": data.get("description"),
+                "is_active": data.get("is_active", True),
+            },
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/levels/reward/<int:reward_id>", methods=["GET"])
+@login_required
+def levels_reward_get(reward_id):
+    """Get a single level reward."""
+    row = db.session.execute(
+        text("SELECT * FROM level_rewards WHERE id = :id"),
+        {"id": reward_id},
+    ).fetchone()
+
+    if not row:
+        return jsonify({"success": False, "error": "Not found"}), 404
+
+    r = dict(row._mapping)
+    # Ensure reward_value is parsed
+    if isinstance(r.get("reward_value"), str):
+        import json as json_mod
+        r["reward_value"] = json_mod.loads(r["reward_value"])
+
+    return jsonify({"success": True, "reward": r})
+
+
+@app.route("/levels/reward/<int:reward_id>", methods=["POST"])
+@login_required
+def levels_reward_update(reward_id):
+    """Update a level reward."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data"}), 400
+
+    try:
+        import json as json_mod
+
+        reward_value = data.get("reward_value", {})
+        if isinstance(reward_value, str):
+            reward_value = json_mod.loads(reward_value)
+
+        db.session.execute(
+            text("""
+                UPDATE level_rewards
+                SET level = :level,
+                    reward_type = :reward_type,
+                    reward_value = :reward_value,
+                    description = :description,
+                    is_active = :is_active
+                WHERE id = :id
+            """),
+            {
+                "id": reward_id,
+                "level": data["level"],
+                "reward_type": data["reward_type"],
+                "reward_value": json_mod.dumps(reward_value),
+                "description": data.get("description"),
+                "is_active": data.get("is_active", True),
+            },
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/levels/reward/<int:reward_id>/delete", methods=["POST"])
+@login_required
+def levels_reward_delete(reward_id):
+    """Delete a level reward."""
+    try:
+        db.session.execute(
+            text("DELETE FROM level_rewards WHERE id = :id"),
+            {"id": reward_id},
+        )
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
 

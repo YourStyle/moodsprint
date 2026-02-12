@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Levels - Admin{% endblock %}
+{% block header %}Level Rewards Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-amber-100 rounded-lg">
+                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ total_rewards }}</div>
+                    <div class="text-sm text-gray-500">Наград настроено</div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-purple-100 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ levels_with_rewards }}</div>
+                    <div class="text-sm text-gray-500">Уровней с наградами</div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-5">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-green-100 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-gray-900">{{ max_player_level }}</div>
+                    <div class="text-sm text-gray-500">Макс. уровень игроков</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Reward Button -->
+    <div class="flex justify-end">
+        <button onclick="openAddModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Добавить награду
+        </button>
+    </div>
+
+    <!-- Rewards Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уровень</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Награды</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for level, rewards in levels_data.items()|sort %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-sm">{{ level }}</span>
+                            <span class="text-sm text-gray-500">Уровень</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-wrap gap-2">
+                            {% for reward in rewards %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
+                                {% if reward.reward_type == 'sparks' %}bg-yellow-100 text-yellow-800
+                                {% elif reward.reward_type == 'energy' %}bg-blue-100 text-blue-800
+                                {% elif reward.reward_type == 'card' %}bg-purple-100 text-purple-800
+                                {% elif reward.reward_type == 'genre_unlock' %}bg-green-100 text-green-800
+                                {% elif reward.reward_type == 'archetype_tier' %}bg-red-100 text-red-800
+                                {% elif reward.reward_type == 'xp_boost' %}bg-cyan-100 text-cyan-800
+                                {% endif %}">
+                                {% if reward.reward_type == 'sparks' %}✨ {{ reward.reward_value.get('amount', '?') }} sparks
+                                {% elif reward.reward_type == 'energy' %}⚡ {{ reward.reward_value.get('amount', '?') }} energy
+                                {% elif reward.reward_type == 'card' %}🎴 {{ reward.reward_value.get('rarity', '?') }} card
+                                {% elif reward.reward_type == 'genre_unlock' %}🔓 {{ reward.reward_value.get('slot', '?') }}-й жанр
+                                {% elif reward.reward_type == 'archetype_tier' %}🏆 {{ reward.reward_value.get('tier', '?') }} tier
+                                {% elif reward.reward_type == 'xp_boost' %}🚀 {{ reward.reward_value.get('amount', '?') }}x XP
+                                {% endif %}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% set all_active = rewards|selectattr('is_active')|list|length == rewards|length %}
+                        {% if all_active %}
+                        <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">Активно</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded">Частично</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            {% for reward in rewards %}
+                            <button onclick="editReward({{ reward.id }})"
+                                    class="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-700" title="Ред. {{ reward.reward_type }}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteReward({{ reward.id }})"
+                                    class="p-1.5 hover:bg-red-100 rounded-lg text-gray-400 hover:text-red-600" title="Удалить {{ reward.reward_type }}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not levels_data %}
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                        <div class="text-4xl mb-2">🎯</div>
+                        <div>Нет настроенных наград</div>
+                        <button onclick="openAddModal()" class="mt-3 text-purple-600 hover:underline">Добавить первую награду</button>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Reward Modal -->
+<div id="rewardModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">Добавить награду</h3>
+                <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <form id="rewardForm" class="p-5 space-y-4">
+            <input type="hidden" id="rewardId" value="">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Уровень</label>
+                    <input type="number" id="rewardLevel" min="2" max="50" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Тип награды</label>
+                    <select id="rewardType" required onchange="updateValueFields()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="sparks">✨ Sparks</option>
+                        <option value="energy">⚡ Energy</option>
+                        <option value="card">🎴 Card</option>
+                        <option value="genre_unlock">🔓 Genre Unlock</option>
+                        <option value="archetype_tier">🏆 Archetype Tier</option>
+                        <option value="xp_boost">🚀 XP Boost</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic value fields -->
+            <div id="valueFields">
+                <div id="amountField">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Количество</label>
+                    <input type="number" id="rewardAmount" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div id="rarityField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Редкость карты</label>
+                    <select id="rewardRarity"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="common">⚪ Common</option>
+                        <option value="uncommon">🟢 Uncommon</option>
+                        <option value="rare">🔵 Rare</option>
+                        <option value="epic">🟣 Epic</option>
+                        <option value="legendary">🟡 Legendary</option>
+                    </select>
+                </div>
+                <div id="slotField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Номер слота жанра</label>
+                    <input type="number" id="rewardSlot" min="1" max="5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <p class="text-xs text-gray-500 mt-1">1 = стартовый жанр, 2 = второй жанр и т.д.</p>
+                </div>
+                <div id="tierField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Тир архетипа</label>
+                    <select id="rewardTier"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="basic">Basic</option>
+                        <option value="advanced">Advanced</option>
+                        <option value="elite">Elite</option>
+                        <option value="legendary">Legendary</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Описание (опционально)</label>
+                <input type="text" id="rewardDescription"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                       placeholder="Напр.: Награда за достижение 5-го уровня">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="rewardActive" checked class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                <label for="rewardActive" class="text-sm text-gray-700">Активна</label>
+            </div>
+
+            <div class="flex gap-3 pt-3">
+                <button type="submit" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+                    Сохранить
+                </button>
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Отмена
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const BASE_URL = "{{ request.script_root }}";
+
+function updateValueFields() {
+    const type = document.getElementById('rewardType').value;
+    document.getElementById('amountField').classList.toggle('hidden', !['sparks', 'energy', 'xp_boost'].includes(type));
+    document.getElementById('rarityField').classList.toggle('hidden', type !== 'card');
+    document.getElementById('slotField').classList.toggle('hidden', type !== 'genre_unlock');
+    document.getElementById('tierField').classList.toggle('hidden', type !== 'archetype_tier');
+}
+
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Добавить награду';
+    document.getElementById('rewardId').value = '';
+    document.getElementById('rewardLevel').value = '';
+    document.getElementById('rewardType').value = 'sparks';
+    document.getElementById('rewardAmount').value = '';
+    document.getElementById('rewardRarity').value = 'uncommon';
+    document.getElementById('rewardSlot').value = '';
+    document.getElementById('rewardTier').value = 'basic';
+    document.getElementById('rewardDescription').value = '';
+    document.getElementById('rewardActive').checked = true;
+    updateValueFields();
+    document.getElementById('rewardModal').classList.remove('hidden');
+}
+
+async function editReward(id) {
+    try {
+        const response = await fetch(`${BASE_URL}/levels/reward/${id}`);
+        const data = await response.json();
+        if (!data.success) {
+            alert('Ошибка: ' + data.error);
+            return;
+        }
+
+        const r = data.reward;
+        document.getElementById('modalTitle').textContent = 'Редактировать награду';
+        document.getElementById('rewardId').value = r.id;
+        document.getElementById('rewardLevel').value = r.level;
+        document.getElementById('rewardType').value = r.reward_type;
+        document.getElementById('rewardDescription').value = r.description || '';
+        document.getElementById('rewardActive').checked = r.is_active;
+
+        const val = r.reward_value || {};
+        document.getElementById('rewardAmount').value = val.amount || '';
+        document.getElementById('rewardRarity').value = val.rarity || 'uncommon';
+        document.getElementById('rewardSlot').value = val.slot || '';
+        document.getElementById('rewardTier').value = val.tier || 'basic';
+
+        updateValueFields();
+        document.getElementById('rewardModal').classList.remove('hidden');
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+}
+
+async function deleteReward(id) {
+    if (!confirm('Удалить эту награду?')) return;
+
+    try {
+        const response = await fetch(`${BASE_URL}/levels/reward/${id}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+}
+
+function closeModal() {
+    document.getElementById('rewardModal').classList.add('hidden');
+}
+
+function buildRewardValue() {
+    const type = document.getElementById('rewardType').value;
+    switch (type) {
+        case 'sparks':
+        case 'energy':
+        case 'xp_boost':
+            return { amount: parseInt(document.getElementById('rewardAmount').value) || 0 };
+        case 'card':
+            return { rarity: document.getElementById('rewardRarity').value };
+        case 'genre_unlock':
+            return { slot: parseInt(document.getElementById('rewardSlot').value) || 1 };
+        case 'archetype_tier':
+            return { tier: document.getElementById('rewardTier').value };
+        default:
+            return {};
+    }
+}
+
+document.getElementById('rewardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById('rewardId').value;
+    const payload = {
+        level: parseInt(document.getElementById('rewardLevel').value),
+        reward_type: document.getElementById('rewardType').value,
+        reward_value: buildRewardValue(),
+        description: document.getElementById('rewardDescription').value || null,
+        is_active: document.getElementById('rewardActive').checked,
+    };
+
+    const url = id ? `${BASE_URL}/levels/reward/${id}` : `${BASE_URL}/levels/reward`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка: ' + e.message);
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}
