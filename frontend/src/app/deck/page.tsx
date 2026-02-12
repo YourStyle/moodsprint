@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Layers,
@@ -186,39 +186,41 @@ export default function DeckPage() {
   const templates = templatesData?.data?.templates || [];
 
   // Build collection: owned cards + locked unowned templates
-  const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
-  const lockedCards: (CardType & { _isLocked?: boolean })[] = templates
-    .filter((tmpl) => !ownedCardTemplateIds.has(tmpl.id))
-    .map((tmpl) => ({
-      id: -tmpl.id, // negative to avoid collisions
-      user_id: 0,
-      template_id: tmpl.id,
-      name: tmpl.name,
-      description: tmpl.description,
-      emoji: tmpl.emoji,
-      image_url: tmpl.image_url,
-      hp: tmpl.base_hp,
-      current_hp: tmpl.base_hp,
-      attack: tmpl.base_attack,
-      rarity: 'common' as const,
-      genre: tmpl.genre,
-      is_in_deck: false,
-      is_tradeable: false,
-      is_alive: true,
-      is_on_cooldown: false,
-      cooldown_remaining: null,
-      is_companion: false,
-      is_showcase: false,
-      showcase_slot: null,
-      rarity_color: '#9CA3AF',
-      created_at: '',
-      ability: null,
-      ability_info: null,
-      card_level: 0,
-      card_xp: 0,
-      _isLocked: true,
-    }));
-  const allCollectionCards = [...cards, ...lockedCards];
+  const { allCollectionCards } = useMemo(() => {
+    const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
+    const lockedCards: (CardType & { _isLocked?: boolean })[] = templates
+      .filter((tmpl) => !ownedCardTemplateIds.has(tmpl.id))
+      .map((tmpl) => ({
+        id: -tmpl.id, // negative to avoid collisions
+        user_id: 0,
+        template_id: tmpl.id,
+        name: tmpl.name,
+        description: tmpl.description,
+        emoji: tmpl.emoji,
+        image_url: tmpl.image_url,
+        hp: tmpl.base_hp,
+        current_hp: tmpl.base_hp,
+        attack: tmpl.base_attack,
+        rarity: (tmpl.rarity || 'common') as CardType['rarity'],
+        genre: tmpl.genre,
+        is_in_deck: false,
+        is_tradeable: false,
+        is_alive: true,
+        is_on_cooldown: false,
+        cooldown_remaining: null,
+        is_companion: false,
+        is_showcase: false,
+        showcase_slot: null,
+        rarity_color: '#9CA3AF',
+        created_at: '',
+        ability: null,
+        ability_info: null,
+        card_level: 0,
+        card_xp: 0,
+        _isLocked: true,
+      }));
+    return { allCollectionCards: [...cards, ...lockedCards] };
+  }, [cards, templates]);
 
   // Filter cards
   const filteredCards = (rarityFilter === 'all'
@@ -316,7 +318,8 @@ export default function DeckPage() {
           });
         });
     });
-  }, [cards, generatingImages, queryClient]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, queryClient]);
 
   if (!user) {
     return (

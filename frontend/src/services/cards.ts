@@ -49,6 +49,7 @@ export interface CardTemplate {
   name: string;
   description: string | null;
   genre: string;
+  rarity: string | null;
   base_hp: number;
   base_attack: number;
   image_url: string | null;

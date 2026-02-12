@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap, Lock } from 'lucide-react';
+import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
 
 interface SimpleAbilityInfo {
@@ -183,7 +183,7 @@ export function DeckCard({
     <div
       className={cn(
         'relative w-full aspect-[3/4.3] perspective-1000',
-        isLocked && 'grayscale opacity-60 pointer-events-none'
+        isLocked && 'opacity-50'
       )}
       onClick={handleCardClick}
     >
@@ -293,10 +293,12 @@ export function DeckCard({
                 </div>
               )}
 
-              {/* Locked overlay */}
+              {/* Not collected overlay */}
               {isLocked && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Lock className="w-8 h-8 text-gray-400" />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-gray-300 bg-black/50 px-2 py-0.5 rounded-full">
+                    {t('notCollected')}
+                  </span>
                 </div>
               )}
 

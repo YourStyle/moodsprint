@@ -578,7 +578,11 @@ export const translations = {
     slot: 'Слот',
 
     // Locked cards
-    lockedCard: 'Заблокирована',
+    lockedCard: 'Не собрана',
+    notCollected: 'Не собрана',
+
+    // Showcase picker
+    selectCardForSlot: 'Выбери карту для слота {slot}',
 
     // Friends profile
     totalCards: 'Всего карт',
@@ -1163,7 +1167,11 @@ export const translations = {
     slot: 'Slot',
 
     // Locked cards
-    lockedCard: 'Locked',
+    lockedCard: 'Not collected',
+    notCollected: 'Not collected',
+
+    // Showcase picker
+    selectCardForSlot: 'Select card for slot {slot}',
 
     // Friends profile
     totalCards: 'Total cards',
