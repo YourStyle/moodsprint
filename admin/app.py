@@ -1497,7 +1497,7 @@ def upload_card_template_image(template_id: int):
     try:
         # Generate unique filename
         filename = f"card_{uuid.uuid4()}.{ext}"
-        filepath = os.path.join("/app/static/card_images", filename)
+        filepath = os.path.join("/app/media", filename)
 
         # Ensure directory exists
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -1506,7 +1506,7 @@ def upload_card_template_image(template_id: int):
         file.save(filepath)
 
         # Update database
-        image_url = f"/static/card_images/{filename}"
+        image_url = f"/media/{filename}"
         db.session.execute(
             text("UPDATE card_templates SET image_url = :url WHERE id = :id"),
             {"url": image_url, "id": template_id},

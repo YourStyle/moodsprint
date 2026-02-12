@@ -391,16 +391,8 @@ class CardService:
         self._openai_client = None
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
 
-        # Get static folder from Flask config or use default
-        from flask import current_app
-
-        try:
-            static_folder = current_app.static_folder or "/app/static"
-        except RuntimeError:
-            static_folder = "/app/static"
-
-        # Ensure images directory exists
-        self.images_dir = Path(static_folder) / "card_images"
+        # Store images in /app/media (unified media storage)
+        self.images_dir = Path("/app/media")
         self.images_dir.mkdir(parents=True, exist_ok=True)
 
     @property
@@ -824,7 +816,7 @@ class CardService:
                 filepath.write_bytes(response.content)
 
                 # Return URL path for the image
-                image_url = f"/static/card_images/{filename}"
+                image_url = f"/media/{filename}"
                 logger.info(f"Card image generated successfully: {image_url}")
                 return image_url
             else:
