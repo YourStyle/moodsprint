@@ -1630,9 +1630,9 @@ class CardService:
         if not profile:
             return {"success": False, "error": "profile_not_found"}
 
-        current_unlocked = profile.unlocked_genres or [
-            profile.favorite_genre or "fantasy"
-        ]
+        current_unlocked = list(
+            profile.unlocked_genres or [profile.favorite_genre or "fantasy"]
+        )
         if genre in current_unlocked:
             return {"success": False, "error": "already_unlocked"}
 
@@ -1641,7 +1641,9 @@ class CardService:
             return {"success": False, "error": "max_genres_reached"}
 
         current_unlocked.append(genre)
-        profile.unlocked_genres = current_unlocked
+        profile.unlocked_genres = (
+            current_unlocked  # New list → SQLAlchemy detects change
+        )
         db.session.commit()
 
         return {
