@@ -189,6 +189,7 @@
 </div>
 
 <script>
+const BASE_URL = "{{ request.script_root }}";
 function openCreateModal() {
     document.getElementById('createModal').classList.remove('hidden');
 }
@@ -204,7 +205,7 @@ document.getElementById('createEventForm').addEventListener('submit', async (e) 
     data.xp_multiplier = parseFloat(data.xp_multiplier);
 
     try {
-        const response = await fetch('/events/create', {
+        const response = await fetch(`${BASE_URL}/events/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -222,7 +223,7 @@ document.getElementById('createEventForm').addEventListener('submit', async (e) 
 
 async function toggleEvent(eventId, enable) {
     try {
-        const response = await fetch(`/events/${eventId}/toggle`, {
+        const response = await fetch(`${BASE_URL}/events/${eventId}/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_active: enable })

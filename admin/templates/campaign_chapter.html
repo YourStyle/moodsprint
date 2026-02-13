@@ -677,6 +677,7 @@ Chapter {{ chapter.number }}: {{ chapter.name }}
 
 {% block scripts %}
 <script>
+const BASE_URL = "{{ request.script_root }}";
 const chapterId = {{ chapter.id }};
 
 // Parse levels data from JSON script tag
@@ -716,7 +717,7 @@ document.getElementById('chapterForm').addEventListener('submit', async function
     data.xp_reward = parseInt(data.xp_reward) || 500;
 
     try {
-        const response = await fetch(`/campaign/chapters/${chapterId}/update`, {
+        const response = await fetch(`${BASE_URL}/campaign/chapters/${chapterId}/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -880,8 +881,8 @@ async function saveLevel() {
     delete data.star_base;
 
     const url = levelId
-        ? `/campaign/levels/${levelId}/update`
-        : `/campaign/chapters/${chapterId}/levels/new`;
+        ? `${BASE_URL}/campaign/levels/${levelId}/update`
+        : `${BASE_URL}/campaign/chapters/${chapterId}/levels/new`;
 
     try {
         const response = await fetch(url, {
@@ -904,7 +905,7 @@ async function deleteLevel(levelId) {
     if (!confirm('Are you sure you want to delete this level?')) return;
 
     try {
-        const response = await fetch(`/campaign/levels/${levelId}/delete`, {
+        const response = await fetch(`${BASE_URL}/campaign/levels/${levelId}/delete`, {
             method: 'POST'
         });
         const result = await response.json();
@@ -921,7 +922,7 @@ async function deleteLevel(levelId) {
 // ============ Export/Import JSON ============
 async function exportLevelJson(levelId) {
     try {
-        const response = await fetch(`/campaign/levels/${levelId}/export`);
+        const response = await fetch(`${BASE_URL}/campaign/levels/${levelId}/export`);
         const result = await response.json();
 
         if (result.success === false) {
@@ -960,7 +961,7 @@ function importLevelJson(levelId) {
             // If the JSON has level_to_fill structure, extract it
             const levelData = data.level_to_fill || data;
 
-            const response = await fetch(`/campaign/levels/${levelId}/import`, {
+            const response = await fetch(`${BASE_URL}/campaign/levels/${levelId}/import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(levelData)
@@ -1027,7 +1028,7 @@ function bulkImportLevels() {
         }
 
         try {
-            const response = await fetch(`/campaign/chapters/${chapterId}/levels/bulk-import`, {
+            const response = await fetch(`${BASE_URL}/campaign/chapters/${chapterId}/levels/bulk-import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(levelsData)
@@ -1494,7 +1495,7 @@ async function generateDialogueWithAI() {
         : `Напиши диалог после победы над монстром. Монстр побеждён, герой торжествует.`;
 
     try {
-        const response = await fetch('/campaign/generate-dialogue', {
+        const response = await fetch(`${BASE_URL}/campaign/generate-dialogue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1577,7 +1578,7 @@ async function saveReward() {
     };
 
     try {
-        const response = await fetch(`/campaign/chapters/${chapterId}/rewards/new`, {
+        const response = await fetch(`${BASE_URL}/campaign/chapters/${chapterId}/rewards/new`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1597,7 +1598,7 @@ async function deleteReward(rewardId) {
     if (!confirm('Are you sure you want to delete this reward?')) return;
 
     try {
-        const response = await fetch(`/campaign/rewards/${rewardId}/delete`, {
+        const response = await fetch(`${BASE_URL}/campaign/rewards/${rewardId}/delete`, {
             method: 'POST'
         });
         const result = await response.json();
@@ -1634,7 +1635,7 @@ async function generateChapterImage() {
         const description = document.querySelector('[name="description"]').value || chapterData.description;
         const genre = document.querySelector('[name="genre"]').value || chapterData.genre;
 
-        const response = await fetch('/campaign/generate-chapter-image', {
+        const response = await fetch(`${BASE_URL}/campaign/generate-chapter-image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, description, genre })
@@ -1671,7 +1672,7 @@ async function generateLevel() {
         const levelNumber = document.querySelectorAll('#level-container > div').length + 1;
         const totalLevels = document.querySelectorAll('#level-container > div').length + 5;
 
-        const response = await fetch('/campaign/generate-level', {
+        const response = await fetch(`${BASE_URL}/campaign/generate-level`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

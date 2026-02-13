@@ -242,6 +242,7 @@
 </div>
 
 <script>
+const BASE_URL = "{{ request.script_root }}";
 const eventId = {{ event.id }};
 
 function openEditModal() {
@@ -264,7 +265,7 @@ document.getElementById('editEventForm').addEventListener('submit', async (e) =>
     data.xp_multiplier = parseFloat(data.xp_multiplier);
 
     try {
-        const response = await fetch(`/events/${eventId}/update`, {
+        const response = await fetch(`${BASE_URL}/events/${eventId}/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -288,7 +289,7 @@ document.getElementById('addMonsterForm').addEventListener('submit', async (e) =
     data.appear_day = parseInt(data.appear_day);
 
     try {
-        const response = await fetch(`/events/${eventId}/monsters/add`, {
+        const response = await fetch(`${BASE_URL}/events/${eventId}/monsters/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -306,7 +307,7 @@ document.getElementById('addMonsterForm').addEventListener('submit', async (e) =
 
 async function toggleEvent(eventId, enable) {
     try {
-        const response = await fetch(`/events/${eventId}/toggle`, {
+        const response = await fetch(`${BASE_URL}/events/${eventId}/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_active: enable })
@@ -326,7 +327,7 @@ async function removeMonster(eventMonsterId) {
     if (!confirm('Remove this monster from the event?')) return;
 
     try {
-        const response = await fetch(`/events/monsters/${eventMonsterId}/remove`, {
+        const response = await fetch(`${BASE_URL}/events/monsters/${eventMonsterId}/remove`, {
             method: 'POST'
         });
         const result = await response.json();

@@ -233,6 +233,7 @@
 
 {% block scripts %}
 <script>
+const BASE_URL = "{{ request.script_root }}";
 function showAddChapterModal() {
     document.getElementById('addChapterModal').classList.remove('hidden');
 }
@@ -249,7 +250,7 @@ async function createChapter() {
     data.xp_reward = parseInt(data.xp_reward) || 500;
 
     try {
-        const response = await fetch('/campaign/chapters/new', {
+        const response = await fetch(`${BASE_URL}/campaign/chapters/new`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -276,7 +277,7 @@ async function deleteChapter(chapterId, chapterName) {
     }
 
     try {
-        const response = await fetch(`/campaign/chapters/${chapterId}/delete`, {
+        const response = await fetch(`${BASE_URL}/campaign/chapters/${chapterId}/delete`, {
             method: 'POST'
         });
         const result = await response.json();
@@ -296,7 +297,7 @@ async function renumberChapters(genre) {
     }
 
     try {
-        const response = await fetch(`/campaign/chapters/renumber/${genre}`, {
+        const response = await fetch(`${BASE_URL}/campaign/chapters/renumber/${genre}`, {
             method: 'POST'
         });
         const result = await response.json();
@@ -320,7 +321,7 @@ async function generateChapterContent() {
     btn.innerHTML = '⏳ Generating...';
 
     try {
-        const response = await fetch('/campaign/generate-chapter-content', {
+        const response = await fetch(`${BASE_URL}/campaign/generate-chapter-content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ genre })

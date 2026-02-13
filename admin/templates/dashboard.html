@@ -142,8 +142,9 @@
     });
 
     // Realtime stats polling
+    const BASE_URL = "{{ request.script_root }}";
     function updateRealtimeStats() {
-        fetch('/api/metrics/realtime')
+        fetch(`${BASE_URL}/api/metrics/realtime`)
             .then(r => r.json())
             .then(data => {
                 document.getElementById('activeSessions').textContent = data.active_sessions;
