@@ -34,9 +34,10 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Telegram Mini App environment - add top safe area */
+/* Telegram Mini App environment - safe area set dynamically via JS (providers.tsx)
+   Fallback: use 70px if JS hasn't set it yet */
 body.telegram-env {
-  --safe-area-top: 70px;
+  --safe-area-top: var(--tg-safe-area-top, 70px);
 }
 
 html {
@@ -45,7 +46,7 @@ html {
 
 body {
   min-height: 100%;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  font-family: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(180deg, #0a0612 0%, #0f0a1e 50%, #1a1433 100%);
   background-attachment: fixed;

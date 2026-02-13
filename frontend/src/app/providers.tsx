@@ -152,6 +152,28 @@ function AuthProvider({ children }: { children: ReactNode }) {
       if (isTg) {
         readyTelegramWebApp();
 
+        // Dynamic safe area: read actual values from Telegram WebApp API
+        const updateSafeArea = () => {
+          const webApp = (window as any).Telegram?.WebApp;
+          if (!webApp) return;
+          const systemTop = webApp.safeAreaInset?.top ?? 0;
+          const contentTop = webApp.contentSafeAreaInset?.top ?? 0;
+          const totalTop = systemTop + contentTop;
+          if (totalTop > 0) {
+            document.documentElement.style.setProperty('--tg-safe-area-top', `${totalTop}px`);
+          }
+        };
+        updateSafeArea();
+        // Re-check after expand/fullscreen since values may change
+        setTimeout(updateSafeArea, 200);
+        setTimeout(updateSafeArea, 500);
+        const webAppRef = (window as any).Telegram?.WebApp;
+        if (webAppRef?.onEvent) {
+          webAppRef.onEvent('viewportChanged', updateSafeArea);
+          webAppRef.onEvent('safeAreaChanged', updateSafeArea);
+          webAppRef.onEvent('contentSafeAreaChanged', updateSafeArea);
+        }
+
         // Expand immediately and retry after delays
         // This is needed because keyboard buttons may open in compact mode
         expandTelegramWebApp();

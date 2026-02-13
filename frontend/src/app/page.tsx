@@ -415,6 +415,10 @@ export default function HomePage() {
   const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
 
+  // Modal phase queue: ensures modals show one at a time
+  // catchup → dailyBonus → mood → done
+  const [modalPhase, setModalPhase] = useState<'catchup' | 'dailyBonus' | 'mood' | 'done'>('catchup');
+
   // Fetch active focus sessions so timers survive page navigation
   const { data: activeSessionsData } = useQuery({
     queryKey: ['focus', 'active'],
@@ -442,6 +446,7 @@ export default function HomePage() {
           genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         setShowLevelUpModal(true);
+        // Phase advances when level-up modal closes (see onClose handler)
       } else {
         // No catch-up rewards — check if user has pending genre unlocks
         cardsService.getUnlockedGenres().then((genreResult) => {
@@ -452,12 +457,17 @@ export default function HomePage() {
               genreUnlockAvailable: genreResult.data.unlock_available,
             });
             setShowLevelUpModal(true);
+          } else {
+            // No level-up to show → advance to daily bonus phase
+            setModalPhase('dailyBonus');
           }
-        }).catch(() => {});
+        }).catch(() => {
+          setModalPhase('dailyBonus');
+        });
       }
     }).catch(() => {
-      // Allow retry on next mount if the request failed
       catchUpCheckedRef.current = false;
+      setModalPhase('dailyBonus');
     });
   }, [user]);
 
@@ -558,21 +568,20 @@ export default function HomePage() {
     return dates;
   }, []);
 
-  // Check if we should show mood modal on first entry
-  // Skip on first visit, first day, or during spotlight onboarding to reduce overwhelm for new users
+  // Check if we should show mood modal — only when modal queue reaches 'mood' phase
   useEffect(() => {
+    if (modalPhase !== 'mood') return;
     if (user && !latestMood && !isFirstVisit && !isFirstDay && !isSpotlightActive) {
-      // Check if mood was checked today
       moodService.getLatestMood().then((result) => {
         if (result.success && result.data?.mood_check) {
           setLatestMood(result.data.mood_check);
         } else {
-          // No mood today, show modal (only for returning users on subsequent days)
           setShowMoodModal(true);
         }
       });
     }
-  }, [user, latestMood, setLatestMood, setShowMoodModal, isFirstVisit, isFirstDay, isSpotlightActive]);
+    setModalPhase('done');
+  }, [modalPhase, user, latestMood, setLatestMood, setShowMoodModal, isFirstVisit, isFirstDay, isSpotlightActive]);
 
   // Fallback: mark first visit as completed if spotlight isn't showing
   // (This handles edge case where onboarding_home is set but first_visit_completed isn't)
@@ -912,14 +921,14 @@ export default function HomePage() {
           MoodSprint
         </h1>
         <p className="text-gray-400 mb-8 max-w-xs">
-          Это твой личный помощник, который знает, как распределить дела для максимальной эффективности.
+          {t('personalAssistantDesc')}
         </p>
         <Button variant="gradient" size="lg" className="w-full max-w-xs">
           <Sparkles className="w-5 h-5" />
-          Открыть в Telegram
+          {t('openInTelegram')}
         </Button>
         <p className="text-xs text-gray-500 mt-4">
-          Пожалуйста, откройте приложение через Telegram для продолжения.
+          {t('telegramOnlyHint')}
         </p>
       </div>
     );
@@ -948,8 +957,11 @@ export default function HomePage() {
       {/* Scroll overlay with blur */}
       <ScrollBackdrop />
     <div className="p-4 space-y-6">
-      {/* Daily Bonus Modal */}
-      <DailyBonus />
+      {/* Daily Bonus Modal — only enabled when modal phase reaches it */}
+      <DailyBonus
+        enabled={modalPhase === 'dailyBonus'}
+        onDone={() => setModalPhase('mood')}
+      />
 
       {/* Postponed Tasks Notification */}
       {showPostponeNotification && postponeStatus && (
@@ -961,7 +973,7 @@ export default function HomePage() {
             <p className="text-sm text-amber-200">{postponeStatus.message}</p>
             {postponeStatus.priority_changes && postponeStatus.priority_changes.length > 0 && (
               <div className="mt-1 text-xs text-amber-400/80">
-                Приоритет повышен: {postponeStatus.priority_changes.map(c => c.task_title).join(', ')}
+                {t('priorityRaised')}: {postponeStatus.priority_changes.map(c => c.task_title).join(', ')}
               </div>
             )}
           </div>
@@ -1283,6 +1295,10 @@ export default function HomePage() {
             setShowLevelUpModal(false);
             setLevelUpData(null);
             queryClient.invalidateQueries({ queryKey: ['cards'] });
+            // Advance modal queue to next phase
+            if (modalPhase === 'catchup') {
+              setModalPhase('dailyBonus');
+            }
             if (shouldShowCardTutorial()) {
               setShowCardTutorial(true);
             }

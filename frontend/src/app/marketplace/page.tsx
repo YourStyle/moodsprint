@@ -126,7 +126,7 @@ export default function MarketplacePage() {
     onSuccess: (result) => {
       if (result.success) {
         hapticFeedback('success');
-        showTelegramAlert(`Покупка завершена! Карта "${result.data?.card?.name}" добавлена в коллекцию.`);
+        showTelegramAlert(`${t('purchaseComplete')} ${t('cardAddedToCollection')}`);
         setSelectedListing(null);
         queryClient.invalidateQueries({ queryKey: ['marketplace'] });
         queryClient.invalidateQueries({ queryKey: ['cards'] });
@@ -134,12 +134,12 @@ export default function MarketplacePage() {
         queryClient.invalidateQueries({ queryKey: ['user'] });
       } else {
         hapticFeedback('error');
-        showTelegramAlert(result.error?.message || 'Ошибка при покупке');
+        showTelegramAlert(result.error?.message || t('purchaseError'));
       }
     },
     onError: () => {
       hapticFeedback('error');
-      showTelegramAlert('Произошла ошибка');
+      showTelegramAlert(t('genericError'));
     },
   });
 
@@ -148,7 +148,7 @@ export default function MarketplacePage() {
   const handlePurchase = (listing: MarketListing) => {
     const price = getListingPrice(listing);
     if (sparks < price) {
-      showTelegramAlert(`Недостаточно Sparks. Нужно: ${price}, у вас: ${sparks}`);
+      showTelegramAlert(`${t('insufficientSparks')}. ${t('sparksNeeded')}: ${price}, ${t('sparksYouHave')}: ${sparks}`);
       return;
     }
     purchaseMutation.mutate(listing.id);
@@ -158,13 +158,17 @@ export default function MarketplacePage() {
     <div className="p-4 pb-4">
       <ScrollBackdrop />
       {/* Header */}
-      <div className="text-center mb-4">
-        <Store className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">{t('marketplace')}</h1>
-        <p className="text-sm text-gray-400">{t('marketplaceSubtitle')}</p>
-        <div className="flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full mt-3 w-fit mx-auto">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-400 font-medium">{sparks.toLocaleString()}</span>
+      <div className="mb-4">
+        <div className="flex items-center gap-3">
+          <Store className="w-8 h-8 text-amber-500" />
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-white">{t('marketplace')}</h1>
+            <p className="text-sm text-gray-400">{t('marketplaceSubtitle')}</p>
+          </div>
+          <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="text-amber-400 font-medium">{sparks.toLocaleString()}</span>
+          </div>
         </div>
       </div>
 

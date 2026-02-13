@@ -57,13 +57,13 @@ export default function ProfilePage() {
         </div>
         <h2 className="text-xl font-bold text-white mb-2">{t('loginToViewProfile')}</h2>
         <p className="text-gray-400 text-center mb-6 max-w-sm">
-          Войдите в приложение, чтобы просмотреть свой профиль и статистику
+          {t('loginPrompt')}
         </p>
         <button
           onClick={() => router.push('/')}
           className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
         >
-          На главную
+          {t('goToMain')}
         </button>
       </div>
     );
@@ -101,7 +101,7 @@ export default function ProfilePage() {
         {user.photo_url ? (
           <img
             src={user.photo_url}
-            alt={user.first_name || user.username || 'Профиль'}
+            alt={user.first_name || user.username || t('profile')}
             className="w-20 h-20 mx-auto rounded-full object-cover mb-3"
           />
         ) : (

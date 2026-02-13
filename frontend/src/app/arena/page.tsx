@@ -105,12 +105,12 @@ export default function ArenaPage() {
 
   // Battle events pool
   const battleEvents = [
-    { type: 'buff' as const, target: 'player' as const, title: 'Прилив сил!', description: '+20% к атаке на этот ход', emoji: '💪' },
-    { type: 'buff' as const, target: 'player' as const, title: 'Божественное благословение', description: 'Следующая атака нанесёт критический урон', emoji: '✨' },
-    { type: 'debuff' as const, target: 'monster' as const, title: 'Монстр ослаблен', description: '-20% к защите противника', emoji: '😵' },
-    { type: 'heal' as const, target: 'player' as const, title: 'Исцеляющий ветер', description: 'Все карты восстановили немного HP', emoji: '🍀' },
-    { type: 'damage' as const, target: 'player' as const, title: 'Ловушка!', description: 'Случайная карта получила урон', emoji: '💥' },
-    { type: 'damage' as const, target: 'monster' as const, title: 'Метеорит!', description: 'Монстр получил урон с небес', emoji: '☄️' },
+    { type: 'buff' as const, target: 'player' as const, title: t('battleEventPowerSurge'), description: t('battleEventPowerSurgeDesc'), emoji: '💪' },
+    { type: 'buff' as const, target: 'player' as const, title: t('battleEventBlessing'), description: t('battleEventBlessingDesc'), emoji: '✨' },
+    { type: 'debuff' as const, target: 'monster' as const, title: t('battleEventMonsterWeakened'), description: t('battleEventMonsterWeakenedDesc'), emoji: '😵' },
+    { type: 'heal' as const, target: 'player' as const, title: t('battleEventHealingWind'), description: t('battleEventHealingWindDesc'), emoji: '🍀' },
+    { type: 'damage' as const, target: 'player' as const, title: t('battleEventTrap'), description: t('battleEventTrapDesc'), emoji: '💥' },
+    { type: 'damage' as const, target: 'monster' as const, title: t('battleEventMeteor'), description: t('battleEventMeteorDesc'), emoji: '☄️' },
   ];
 
   // Leaderboard state
@@ -198,7 +198,7 @@ export default function ArenaPage() {
       } else if (!response.success && response.error) {
         // Handle API error response (including rate limit)
         hapticFeedback('error');
-        setErrorMessage(response.error.message || 'Не удалось начать бой');
+        setErrorMessage(response.error.message || t('battleStartFailed'));
         // Reset battle started ref so user can try again
         battleStartedRef.current = false;
       }
@@ -860,8 +860,8 @@ export default function ArenaPage() {
     return (
       <div className="p-4 flex flex-col items-center justify-center min-h-[60vh]">
         <Map className="w-16 h-16 text-purple-500 animate-pulse mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Загрузка уровня...</h2>
-        <p className="text-gray-400 text-sm">Подготовка к битве</p>
+        <h2 className="text-xl font-bold text-white mb-2">{t('loadingLevel')}</h2>
+        <p className="text-gray-400 text-sm">{t('preparingBattle')}</p>
         {selectedMonster && (
           <div className="mt-6 text-center">
             <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 flex items-center justify-center mx-auto mb-2 overflow-hidden">
@@ -883,10 +883,14 @@ export default function ArenaPage() {
       <ScrollBackdrop />
       {/* Header - hidden during battle and result */}
       {gameState !== 'battle' && gameState !== 'result' && (
-        <div className="text-center mb-4">
-          <Swords className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-white">{t('arena')}</h1>
-          <p className="text-sm text-gray-400">{t('arenaSubtitle')}</p>
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            <Swords className="w-8 h-8 text-purple-500" />
+            <div>
+              <h1 className="text-xl font-bold text-white">{t('arena')}</h1>
+              <p className="text-sm text-gray-400">{t('arenaSubtitle')}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1207,7 +1211,7 @@ export default function ArenaPage() {
                   {t('monsterDeck')} ({aliveMonsterCards.length} {t('cards')})
                   {abilityTargetMode && currentAbilityType && (
                     <span className="ml-2 text-purple-400 animate-pulse">
-                      — Выберите цель для {currentAbilityType === 'poison' ? 'яда' : 'атаки'}
+                      — {currentAbilityType === 'poison' ? t('selectTargetForPoison') : t('selectTargetForAttack')}
                     </span>
                   )}
                 </h3>
@@ -1272,12 +1276,12 @@ export default function ArenaPage() {
                   {t('yourCards')} ({alivePlayerCards.length} {t('alive')})
                   {healTargetMode && (
                     <span className="ml-2 text-green-400 animate-pulse">
-                      — Выберите карту для лечения
+                      — {t('selectCardToHeal')}
                     </span>
                   )}
                   {abilityTargetMode && (
                     <span className="ml-2 text-purple-400 animate-pulse">
-                      — Выберите врага сверху
+                      — {t('selectEnemyAbove')}
                     </span>
                   )}
                 </h3>
@@ -1380,7 +1384,7 @@ export default function ArenaPage() {
                         onClick={cancelHealMode}
                       >
                         <X className="w-5 h-5 mr-2" />
-                        Отменить {currentAbilityType === 'shield' ? 'щит' : 'лечение'}
+                        {currentAbilityType === 'shield' ? t('cancelShield') : t('cancelHealAbility')}
                       </Button>
                     ) : abilityTargetMode ? (
                       <Button
@@ -1388,7 +1392,7 @@ export default function ArenaPage() {
                         onClick={cancelAbilityMode}
                       >
                         <X className="w-5 h-5 mr-2" />
-                        Отменить {currentAbilityType === 'poison' ? 'яд' : 'двойной удар'}
+                        {currentAbilityType === 'poison' ? t('cancelPoison') : t('cancelDoubleStrike')}
                       </Button>
                     ) : (
                       <Button
@@ -1452,7 +1456,7 @@ export default function ArenaPage() {
                     <Skull className="w-20 h-20 text-gray-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-white mb-2">{t('defeat')}</h2>
                     <p className="text-gray-400 text-sm max-w-xs mx-auto">
-                      Ты всегда можешь навалять этому монстру, выполнив пару своих задач ;)
+                      {t('defeatHint')}
                     </p>
                   </>
                 )}
@@ -1490,7 +1494,7 @@ export default function ArenaPage() {
                       {/* Campaign sparks */}
                       {campaignMode && campaignResult?.sparks_earned && campaignResult.sparks_earned > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-gray-400">Искры</span>
+                          <span className="text-gray-400">{t('sparksReward')}</span>
                           <span className="text-purple-400">
                             +{campaignResult.sparks_earned} ✨
                           </span>
@@ -1512,9 +1516,9 @@ export default function ArenaPage() {
                   <div className="flex items-center gap-3">
                     <Map className="w-6 h-6 text-purple-400" />
                     <div>
-                      <h3 className="font-medium text-white">Глава завершена!</h3>
+                      <h3 className="font-medium text-white">{t('chapterCompleted')}</h3>
                       <p className="text-sm text-purple-400">
-                        Открыта следующая глава кампании
+                        {t('nextChapterUnlocked')}
                       </p>
                     </div>
                   </div>
@@ -1526,12 +1530,12 @@ export default function ArenaPage() {
                 <Card className="w-full max-w-sm mb-4 bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-amber-500/30">
                   <div className="flex items-center gap-3 mb-2">
                     <Sparkles className="w-6 h-6 text-amber-400" />
-                    <h3 className="font-medium text-white">Награды</h3>
+                    <h3 className="font-medium text-white">{t('rewardsLabel')}</h3>
                   </div>
                   <div className="space-y-1">
                     {campaignResult.rewards.map((reward, idx) => (
                       <div key={idx} className="text-sm text-amber-400">
-                        {reward.name || reward.type}: {reward.amount || 'Получено!'}
+                        {reward.name || reward.type}: {reward.amount || t('rewardReceived')}
                       </div>
                     ))}
                   </div>
@@ -1755,9 +1759,9 @@ export default function ArenaPage() {
               <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Shield className="w-8 h-8 text-amber-400" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Некоторые карты ослаблены</h3>
+              <h3 className="text-lg font-bold text-white mb-2">{t('someCardsWeakened')}</h3>
               <p className="text-sm text-gray-400">
-                У вас есть карты с 0 HP в колоде. Они не смогут участвовать в бою, пока не восстановят здоровье.
+                {t('weakenedCardsWarning')}
               </p>
             </div>
 
@@ -1768,20 +1772,20 @@ export default function ArenaPage() {
                 onClick={handleLowHpWarningGoHome}
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Выполнить задачи
+                {t('completeTasks')}
               </Button>
               <Button
                 variant="primary"
                 className="w-full"
                 onClick={handleLowHpWarningContinue}
               >
-                Продолжить
+                {t('continueStory')}
               </Button>
               <button
                 onClick={handleLowHpWarningDontShow}
                 className="w-full text-sm text-gray-500 hover:text-gray-300 py-2 transition-colors"
               >
-                Не показывать снова
+                {t('dontShowAgain')}
               </button>
             </div>
           </div>

@@ -633,6 +633,63 @@ export const translations = {
     energySourceTask: 'Выполни задачу',
     energySourceFocus: 'Фокус-сессия 20+ мин',
     energySourceLevelUp: 'Повышение уровня',
+
+    // Landing page (non-Telegram)
+    telegramOnlyHint: 'Пожалуйста, откройте приложение через Telegram для продолжения.',
+    personalAssistantDesc: 'Это твой личный помощник, который знает, как распределить дела для максимальной эффективности.',
+    priorityRaised: 'Приоритет повышен',
+
+    // Profile
+    loginPrompt: 'Войдите в приложение, чтобы просмотреть свой профиль и статистику',
+    goToMain: 'На главную',
+
+    // Friends
+    joinMoodSprint: 'Присоединяйся к MoodSprint!',
+    giftBtn: 'Подарить',
+    tradeBtn: 'Обмен',
+
+    // Guilds
+    joinGuildInvitePrefix: 'Вступай в гильдию',
+
+    // Marketplace
+    purchaseComplete: 'Покупка завершена!',
+    purchaseError: 'Ошибка при покупке',
+    genericError: 'Произошла ошибка',
+    sparksNeeded: 'Нужно',
+    sparksYouHave: 'у вас',
+
+    // Arena — battle events
+    battleEventPowerSurge: 'Прилив сил!',
+    battleEventPowerSurgeDesc: '+20% к атаке на этот ход',
+    battleEventBlessing: 'Божественное благословение',
+    battleEventBlessingDesc: 'Следующая атака нанесёт критический урон',
+    battleEventMonsterWeakened: 'Монстр ослаблен',
+    battleEventMonsterWeakenedDesc: '-20% к защите противника',
+    battleEventHealingWind: 'Исцеляющий ветер',
+    battleEventHealingWindDesc: 'Все карты восстановили немного HP',
+    battleEventTrap: 'Ловушка!',
+    battleEventTrapDesc: 'Случайная карта получила урон',
+    battleEventMeteor: 'Метеорит!',
+    battleEventMeteorDesc: 'Монстр получил урон с небес',
+    battleStartFailed: 'Не удалось начать бой',
+    loadingLevel: 'Загрузка уровня...',
+    preparingBattle: 'Подготовка к битве',
+    selectTargetForPoison: 'Выберите цель для яда',
+    selectTargetForAttack: 'Выберите цель для атаки',
+    selectCardToHeal: 'Выберите карту для лечения',
+    selectEnemyAbove: 'Выберите врага сверху',
+    cancelShield: 'Отменить щит',
+    cancelHealAbility: 'Отменить лечение',
+    cancelPoison: 'Отменить яд',
+    cancelDoubleStrike: 'Отменить двойной удар',
+    defeatHint: 'Ты всегда можешь навалять этому монстру, выполнив пару своих задач ;)',
+    chapterCompleted: 'Глава завершена!',
+    rewardsLabel: 'Награды',
+    rewardReceived: 'Получено!',
+    someCardsWeakened: 'Некоторые карты ослаблены',
+    weakenedCardsWarning: 'У вас есть карты с 0 HP в колоде. Они не смогут участвовать в бою, пока не восстановят здоровье.',
+    completeTasks: 'Выполнить задачи',
+    dontShowAgain: 'Не показывать снова',
   },
 
   en: {
@@ -1269,6 +1326,63 @@ export const translations = {
     energySourceTask: 'Complete a task',
     energySourceFocus: 'Focus session 20+ min',
     energySourceLevelUp: 'Level up',
+
+    // Landing page (non-Telegram)
+    telegramOnlyHint: 'Please open the app through Telegram to continue.',
+    personalAssistantDesc: 'Your personal assistant that knows how to organize tasks for maximum productivity.',
+    priorityRaised: 'Priority raised',
+
+    // Profile
+    loginPrompt: 'Log in to view your profile and statistics',
+    goToMain: 'Go to main',
+
+    // Friends
+    joinMoodSprint: 'Join MoodSprint!',
+    giftBtn: 'Gift',
+    tradeBtn: 'Trade',
+
+    // Guilds
+    joinGuildInvitePrefix: 'Join the guild',
+
+    // Marketplace
+    purchaseComplete: 'Purchase complete!',
+    purchaseError: 'Purchase error',
+    genericError: 'An error occurred',
+    sparksNeeded: 'Need',
+    sparksYouHave: 'you have',
+
+    // Arena — battle events
+    battleEventPowerSurge: 'Power Surge!',
+    battleEventPowerSurgeDesc: '+20% attack this turn',
+    battleEventBlessing: 'Divine Blessing',
+    battleEventBlessingDesc: 'Next attack deals critical damage',
+    battleEventMonsterWeakened: 'Monster Weakened',
+    battleEventMonsterWeakenedDesc: '-20% enemy defense',
+    battleEventHealingWind: 'Healing Wind',
+    battleEventHealingWindDesc: 'All cards recovered some HP',
+    battleEventTrap: 'Trap!',
+    battleEventTrapDesc: 'A random card took damage',
+    battleEventMeteor: 'Meteor!',
+    battleEventMeteorDesc: 'Monster took damage from above',
+    battleStartFailed: 'Failed to start battle',
+    loadingLevel: 'Loading level...',
+    preparingBattle: 'Preparing for battle',
+    selectTargetForPoison: 'Select target for poison',
+    selectTargetForAttack: 'Select target for attack',
+    selectCardToHeal: 'Select card to heal',
+    selectEnemyAbove: 'Select enemy above',
+    cancelShield: 'Cancel shield',
+    cancelHealAbility: 'Cancel heal',
+    cancelPoison: 'Cancel poison',
+    cancelDoubleStrike: 'Cancel double strike',
+    defeatHint: 'You can always beat this monster by completing some tasks ;)',
+    chapterCompleted: 'Chapter completed!',
+    rewardsLabel: 'Rewards',
+    rewardReceived: 'Received!',
+    someCardsWeakened: 'Some cards are weakened',
+    weakenedCardsWarning: 'You have cards with 0 HP in your deck. They cannot participate in battle until they recover health.',
+    completeTasks: 'Complete tasks',
+    dontShowAgain: "Don't show again",
   },
 } as const;
 

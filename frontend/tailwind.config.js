@@ -69,7 +69,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Nunito Sans', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

@@ -429,10 +429,14 @@ export default function DeckPage() {
     <div className="min-h-screen p-4 pb-4">
       <ScrollBackdrop />
       {/* Header */}
-      <div className="text-center mb-4">
-        <Layers className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">{t('deck')}</h1>
-        <p className="text-sm text-gray-400">{t('deckSubtitle')}</p>
+      <div className="mb-4">
+        <div className="flex items-center gap-3">
+          <Layers className="w-8 h-8 text-purple-500" />
+          <div>
+            <h1 className="text-xl font-bold text-white">{t('deck')}</h1>
+            <p className="text-sm text-gray-400">{t('deckSubtitle')}</p>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}

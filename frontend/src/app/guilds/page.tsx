@@ -137,7 +137,7 @@ export default function GuildsPage() {
     hapticFeedback('light');
 
     const webApp = getTelegramWebApp();
-    const shareText = `Вступай в гильдию "${myGuild.name}"! ${myGuild.emoji}`;
+    const shareText = `${t('joinGuildInvitePrefix')} "${myGuild.name}"! ${myGuild.emoji}`;
     const shareUrl = inviteLinkData.data.invite_link;
     const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
@@ -168,10 +168,14 @@ export default function GuildsPage() {
     <div className="p-4 pb-24">
       <ScrollBackdrop />
       {/* Header */}
-      <div className="text-center mb-4">
-        <Shield className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">{t('guilds')}</h1>
-        <p className="text-sm text-gray-400">{t('guildsSubtitle')}</p>
+      <div className="mb-4">
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-purple-500" />
+          <div>
+            <h1 className="text-xl font-bold text-white">{t('guilds')}</h1>
+            <p className="text-sm text-gray-400">{t('guildsSubtitle')}</p>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}

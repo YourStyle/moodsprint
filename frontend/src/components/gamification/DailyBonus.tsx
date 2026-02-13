@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, Sparkles, X, Flame } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,9 +9,17 @@ import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { useLanguage } from '@/lib/i18n';
 
-export function DailyBonus() {
+interface DailyBonusProps {
+  /** When false, the component won't fetch or auto-open (used for modal queue) */
+  enabled?: boolean;
+  /** Called when the modal is dismissed or no bonus is available */
+  onDone?: () => void;
+}
+
+export function DailyBonus({ enabled = true, onDone }: DailyBonusProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const doneCalledRef = useRef(false);
   const queryClient = useQueryClient();
   const { showXPAnimation, isSpotlightActive } = useAppStore();
   const { t } = useLanguage();
@@ -26,10 +34,12 @@ export function DailyBonus() {
     return firstLoginDate === new Date().toDateString();
   })();
 
+  const shouldSkip = isFirstVisit || isFirstDay || isSpotlightActive;
+
   const { data: bonusStatus, isLoading } = useQuery({
     queryKey: ['daily-bonus-status'],
     queryFn: () => gamificationService.getDailyBonusStatus(),
-    enabled: !isFirstVisit && !isFirstDay && !isSpotlightActive, // Don't fetch on first visit/day or during spotlight
+    enabled: enabled && !shouldSkip,
   });
 
   const claimMutation = useMutation({
@@ -46,21 +56,44 @@ export function DailyBonus() {
 
         // Auto close after animation
         setTimeout(() => {
-          setIsOpen(false);
-          setClaimed(false);
+          handleClose();
         }, 2500);
       }
     },
   });
 
-  // Show modal when bonus is available
+  const handleClose = () => {
+    setIsOpen(false);
+    setClaimed(false);
+    if (!doneCalledRef.current) {
+      doneCalledRef.current = true;
+      onDone?.();
+    }
+  };
+
+  // Notify parent immediately if no bonus to show
   useEffect(() => {
-    if (bonusStatus?.data?.can_claim && !isLoading) {
-      // Small delay to let page load
-      const timer = setTimeout(() => setIsOpen(true), 1000);
+    if (!enabled) return;
+    if (shouldSkip) {
+      onDone?.();
+      return;
+    }
+    if (!isLoading && bonusStatus && !bonusStatus.data?.can_claim) {
+      if (!doneCalledRef.current) {
+        doneCalledRef.current = true;
+        onDone?.();
+      }
+    }
+  }, [enabled, shouldSkip, isLoading, bonusStatus]);
+
+  // Show modal when bonus is available and enabled
+  useEffect(() => {
+    if (enabled && bonusStatus?.data?.can_claim && !isLoading) {
+      doneCalledRef.current = false;
+      const timer = setTimeout(() => setIsOpen(true), 500);
       return () => clearTimeout(timer);
     }
-  }, [bonusStatus?.data?.can_claim, isLoading]);
+  }, [enabled, bonusStatus?.data?.can_claim, isLoading]);
 
   const status = bonusStatus?.data;
 
@@ -72,7 +105,7 @@ export function DailyBonus() {
   };
 
   // Skip on first visit, first day, during spotlight onboarding, or if no bonus available
-  if (isFirstVisit || isFirstDay || isSpotlightActive || !status?.can_claim || isLoading) return null;
+  if (shouldSkip || !status?.can_claim || isLoading) return null;
 
   return (
     <AnimatePresence>
@@ -89,7 +122,7 @@ export function DailyBonus() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => !claimMutation.isPending && setIsOpen(false)}
+            onClick={() => !claimMutation.isPending && handleClose()}
           />
 
           {/* Modal */}
@@ -102,7 +135,7 @@ export function DailyBonus() {
           >
             {/* Close button */}
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={() => handleClose()}
               className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
               disabled={claimMutation.isPending}
             >

@@ -337,7 +337,7 @@ export default function FriendsPage() {
   const handleShareInvite = () => {
     if (!user) return;
     hapticFeedback('light');
-    shareInviteLink(user.id, 'Присоединяйся к MoodSprint!');
+    shareInviteLink(user.id, t('joinMoodSprint'));
   };
 
   const renderCardMini = (card: CardType | null, onClick?: () => void, isSelected?: boolean) => {
@@ -505,12 +505,12 @@ export default function FriendsPage() {
           {isGiftMode ? (
             <>
               <Gift className="w-4 h-4 mr-1" />
-              Подарить {selectedMyCards.length > 1 ? `(${selectedMyCards.length})` : ''}
+              {t('giftBtn')} {selectedMyCards.length > 1 ? `(${selectedMyCards.length})` : ''}
             </>
           ) : (
             <>
               <Send className="w-4 h-4 mr-2" />
-              Обмен {selectedMyCards.length}:{selectedFriendCards.length}
+              {t('tradeBtn')} {selectedMyCards.length}:{selectedFriendCards.length}
             </>
           )}
         </Button>
@@ -522,19 +522,22 @@ export default function FriendsPage() {
     <div className="p-4 pb-4">
       <ScrollBackdrop />
       {/* Header */}
-      <div className="text-center mb-4">
-        <Users className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold text-white">{t('friendsTitle')}</h1>
-        <p className="text-sm text-gray-400">{t('friendsSubtitle')}</p>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="mt-3"
-          onClick={handleShareInvite}
-        >
-          <Share2 className="w-4 h-4 mr-2" />
-          {t('inviteFriend')}
-        </Button>
+      <div className="mb-4">
+        <div className="flex items-center gap-3">
+          <Users className="w-8 h-8 text-purple-500" />
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-white">{t('friendsTitle')}</h1>
+            <p className="text-sm text-gray-400">{t('friendsSubtitle')}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleShareInvite}
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            {t('inviteFriend')}
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

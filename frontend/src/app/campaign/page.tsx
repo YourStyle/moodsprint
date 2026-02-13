@@ -222,22 +222,21 @@ export default function CampaignPage() {
     return (
       <div className="p-4 pb-4">
         {/* Header */}
-        <div className="text-center mb-4">
-          <Map className="w-10 h-10 text-purple-500 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-white">{t('campaign')}</h1>
-          <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
-
-          {/* Genre Selector */}
-          <div className="flex justify-center mt-3">
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            <Map className="w-8 h-8 text-purple-500" />
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-white">{t('campaign')}</h1>
+              <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
+            </div>
             <GenreSelector
               currentGenre={profile?.favorite_genre}
               onBeforeSwitch={handleBeforeGenreSwitch}
-              className="mx-auto"
             />
           </div>
 
           {progress && (
-            <div className="flex items-center justify-center gap-3 mt-3">
+            <div className="flex items-center gap-3 mt-3">
               <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                 <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
