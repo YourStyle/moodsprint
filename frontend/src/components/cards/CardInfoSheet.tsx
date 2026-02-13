@@ -249,15 +249,15 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
             {/* Deck button */}
             {isInDeck && onRemoveFromDeck ? (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 text-sm transition-colors"
                 onClick={() => { onRemoveFromDeck(card.id!); onClose(); }}
               >
-                <Minus className="w-4 h-4 text-gray-400" />
+                <Minus className="w-4 h-4 text-red-400" />
                 {t('removeFromDeck')}
               </button>
             ) : !isInDeck && onAddToDeck ? (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-sm transition-colors"
                 onClick={() => { onAddToDeck(card.id!); onClose(); }}
               >
                 <Layers className="w-4 h-4 text-purple-400" />
@@ -268,7 +268,7 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
             {/* Companion button */}
             {card.isCompanion && onRemoveCompanion ? (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 text-sm transition-colors"
                 onClick={() => { onRemoveCompanion(); onClose(); }}
               >
                 <span className="text-sm">🐾</span>
@@ -276,7 +276,7 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
               </button>
             ) : !card.isCompanion && onSetCompanion ? (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 text-sm transition-colors"
                 onClick={() => { onSetCompanion(card.id!); onClose(); }}
               >
                 <span className="text-sm">🐾</span>
@@ -289,20 +289,20 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
               <>
                 {!showSlotPicker ? (
                   <button
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-sm transition-colors"
                     onClick={() => setShowSlotPicker(true)}
                   >
-                    <Star className="w-4 h-4 text-gray-400" />
+                    <Star className="w-4 h-4 text-amber-400" />
                     {t('addToShowcase')}
                   </button>
                 ) : (
-                  <div className="bg-gray-800/60 rounded-xl p-3">
-                    <p className="text-xs text-gray-400 mb-2 text-center">{t('selectSlot')}</p>
+                  <div className="bg-amber-500/15 rounded-xl p-3">
+                    <p className="text-xs text-amber-300/70 mb-2 text-center">{t('selectSlot')}</p>
                     <div className="flex gap-2">
                       {[1, 2, 3].map((slot) => (
                         <button
                           key={slot}
-                          className="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs transition-colors"
+                          className="flex-1 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs transition-colors"
                           onClick={() => {
                             onAddToShowcase(card.id!, slot);
                             setShowSlotPicker(false);
@@ -321,10 +321,10 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
             {/* Remove from Showcase */}
             {showcaseSlot != null && onRemoveFromShowcase && (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 text-sm transition-colors"
                 onClick={() => { onRemoveFromShowcase(showcaseSlot); onClose(); }}
               >
-                <Star className="w-4 h-4 text-gray-400" />
+                <Star className="w-4 h-4 text-red-400" />
                 {t('removeFromShowcase')}
               </button>
             )}
@@ -332,10 +332,10 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
             {/* Sell button */}
             {canSell && (
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-amber-400 text-sm transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-sm transition-colors"
                 onClick={() => setShowSellModal(true)}
               >
-                <DollarSign className="w-4 h-4" />
+                <DollarSign className="w-4 h-4 text-emerald-400" />
                 {t('sellForStars')}
               </button>
             )}
