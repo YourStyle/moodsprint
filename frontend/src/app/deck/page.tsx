@@ -226,6 +226,12 @@ export default function DeckPage() {
   const unlockedGenres = templatesData?.data?.unlocked_genres || [];
   const unlockedGenresSet = useMemo(() => new Set(unlockedGenres), [unlockedGenres]);
 
+  // Genres sorted: unlocked first (in unlock order, primary first), then locked
+  const sortedGenres = useMemo(() => {
+    const locked = ALL_GENRES.filter(g => !unlockedGenresSet.has(g));
+    return [...unlockedGenres, ...locked];
+  }, [unlockedGenres, unlockedGenresSet]);
+
   // Build collection: owned cards + unowned templates (locked, previously owned, or genre-locked)
   const { allCollectionCards } = useMemo(() => {
     const ownedCardTemplateIds = new Set(cards.map((c) => c.template_id).filter(Boolean));
@@ -290,16 +296,12 @@ export default function DeckPage() {
       if (!groups[genre]) groups[genre] = [];
       groups[genre].push(card);
     }
-    // Sort genres: unlocked first, then locked
+    // Sort genres: unlocked first (in unlock order, primary first), then locked
     const sorted = Object.entries(groups).sort(([a], [b]) => {
-      const aUnlocked = unlockedGenresSet.has(a);
-      const bUnlocked = unlockedGenresSet.has(b);
-      if (aUnlocked && !bUnlocked) return -1;
-      if (!aUnlocked && bUnlocked) return 1;
-      return ALL_GENRES.indexOf(a) - ALL_GENRES.indexOf(b);
+      return sortedGenres.indexOf(a) - sortedGenres.indexOf(b);
     });
     return sorted;
-  }, [filteredCards, unlockedGenresSet]);
+  }, [filteredCards, sortedGenres]);
 
   // Check if any card needs healing
   const cardsNeedHealing = cards.some((c) => c.current_hp < c.hp);
@@ -436,7 +438,7 @@ export default function DeckPage() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-800 rounded-xl mb-4">
         <button
-          onClick={() => setActiveTab('collection')}
+          onClick={() => { setActiveTab('collection'); setSelectedCard(null); }}
           className={cn(
             'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'collection'
@@ -448,7 +450,7 @@ export default function DeckPage() {
           <span className="hidden sm:inline">{t('collection')}</span>
         </button>
         <button
-          onClick={() => setActiveTab('deck')}
+          onClick={() => { setActiveTab('deck'); setSelectedCard(null); }}
           className={cn(
             'flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1',
             activeTab === 'deck'
@@ -462,6 +464,7 @@ export default function DeckPage() {
         <button
           onClick={() => {
             setActiveTab('merge');
+            setSelectedCard(null);
             clearMergeSelection();
           }}
           className={cn(
@@ -530,7 +533,7 @@ export default function DeckPage() {
             >
               {t('allGenres')}
             </button>
-            {ALL_GENRES.map((genre) => {
+            {sortedGenres.map((genre) => {
               const isUnlocked = unlockedGenresSet.has(genre);
               return (
                 <button
@@ -703,7 +706,7 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-40">
+                <div className="fixed bottom-[6.5rem] left-4 right-4 max-w-md mx-auto z-40">
                   <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
                     <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}
@@ -812,7 +815,7 @@ export default function DeckPage() {
 
               {/* Selected card actions */}
               {selectedCard && (
-                <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto z-40">
+                <div className="fixed bottom-[6.5rem] left-4 right-4 max-w-md mx-auto z-40">
                   <div className="bg-gray-900/95 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 shadow-lg shadow-purple-500/10 flex items-center gap-3">
                     <span className="text-sm text-white font-medium flex-1 truncate">
                       {selectedCard.name}

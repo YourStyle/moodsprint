@@ -620,6 +620,8 @@ export const translations = {
 
     // Companion hint
     companionEarningXp: 'получает опыт',
+    selectCompanionCard: 'Выберите карту-компаньона',
+    companionHint: 'Получает опыт за задачи и фокус',
   },
 
   en: {
@@ -1243,6 +1245,8 @@ export const translations = {
 
     // Companion hint
     companionEarningXp: 'is earning XP',
+    selectCompanionCard: 'Select companion card',
+    companionHint: 'Earns XP from tasks and focus',
   },
 } as const;
 

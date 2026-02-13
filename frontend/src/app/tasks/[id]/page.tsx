@@ -176,6 +176,7 @@ export default function TaskDetailPage() {
   } | null>(null);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
+  const [showCompanionPicker, setShowCompanionPicker] = useState(false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -219,6 +220,34 @@ export default function TaskDetailPage() {
     staleTime: 5 * 60 * 1000,
   });
   const companion = companionData?.data?.companion;
+
+  // Fetch cards for companion picker
+  const { data: cardsForPicker } = useQuery({
+    queryKey: ['cards'],
+    queryFn: () => cardsService.getCards(),
+    enabled: showCompanionPicker,
+    staleTime: 5 * 60 * 1000,
+  });
+  const ownedCards = cardsForPicker?.data?.cards || [];
+
+  const setCompanionMutation = useMutation({
+    mutationFn: (cardId: number) => cardsService.setCompanion(cardId),
+    onSuccess: () => {
+      hapticFeedback('success');
+      queryClient.invalidateQueries({ queryKey: ['companion'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+      setShowCompanionPicker(false);
+    },
+  });
+
+  const removeCompanionMutation = useMutation({
+    mutationFn: () => cardsService.removeCompanion(),
+    onSuccess: () => {
+      hapticFeedback('light');
+      queryClient.invalidateQueries({ queryKey: ['companion'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+    },
+  });
 
   const [showNoNewStepsMessage, setShowNoNewStepsMessage] = useState(false);
   const [noNewStepsReason, setNoNewStepsReason] = useState('');
@@ -680,12 +709,35 @@ export default function TaskDetailPage() {
         )
       )}
 
-      {/* Companion hint during active session */}
-      {activeSession && companion && (
-        <div className="flex items-center gap-2 text-xs text-pink-400 -mt-2">
-          <span>🐾</span>
-          <span>{companion.name} {t('companionEarningXp')}</span>
-        </div>
+      {/* Companion indicator */}
+      {task.status !== 'completed' && (
+        companion ? (
+          <button
+            onClick={() => setShowCompanionPicker(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-pink-500/10 border border-pink-500/20 text-left -mt-1"
+          >
+            {companion.image_url ? (
+              <img src={companion.image_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+            ) : (
+              <span className="text-lg">{companion.emoji || '🐾'}</span>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-pink-400 truncate">{companion.name}</p>
+              <p className="text-[10px] text-gray-500">{t('companionHint')}</p>
+            </div>
+            {activeSession && (
+              <span className="text-[10px] text-pink-400 animate-pulse">{t('companionGainingXp')}</span>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowCompanionPicker(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800/50 border border-dashed border-gray-600 text-left -mt-1"
+          >
+            <span className="text-sm">🐾</span>
+            <span className="text-xs text-gray-500">{t('setCompanion')}</span>
+          </button>
+        )
       )}
 
       {/* Decompose Button */}
@@ -1260,6 +1312,55 @@ export default function TaskDetailPage() {
               </div>
             </div>
           </button>
+        </div>
+      </Modal>
+
+      {/* Companion Picker Modal */}
+      <Modal
+        isOpen={showCompanionPicker}
+        onClose={() => setShowCompanionPicker(false)}
+        title={t('selectCompanionCard')}
+      >
+        <div className="space-y-3">
+          {companion && (
+            <button
+              onClick={() => { removeCompanionMutation.mutate(); setShowCompanionPicker(false); }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-400 text-sm transition-colors"
+            >
+              <span>🐾</span>
+              {t('removeCompanion')}
+            </button>
+          )}
+          <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto">
+            {ownedCards.map((card) => (
+              <button
+                key={card.id}
+                onClick={() => setCompanionMutation.mutate(card.id)}
+                disabled={setCompanionMutation.isPending}
+                className={`relative rounded-xl overflow-hidden transition-all ${
+                  companion?.id === card.id
+                    ? 'ring-2 ring-pink-500 opacity-60'
+                    : 'hover:scale-105'
+                }`}
+              >
+                <div className="aspect-square bg-gray-800">
+                  {card.image_url ? (
+                    <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-2xl">{card.emoji || '🎴'}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="px-1 py-1 bg-gray-900">
+                  <p className="text-[10px] text-gray-300 truncate text-center">{card.name}</p>
+                </div>
+                {card.is_companion && (
+                  <div className="absolute top-1 right-1 text-xs">🐾</div>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </Modal>
 

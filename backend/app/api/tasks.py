@@ -518,6 +518,8 @@ def update_task(task_id: int):
 
             # Award campaign energy for task completion
             card_service.add_energy(user_id, 1)
+            # Award companion XP for task completion
+            card_service.award_companion_xp(user_id, 5)
         except Exception:
             # Card generation is optional, don't fail task completion
             pass
@@ -877,6 +879,8 @@ def update_subtask(subtask_id: int):
                 generated_card = card_service.generate_card_for_task(
                     user_id, task.id, task.title, difficulty, max_rarity=max_rarity
                 )
+                # Award companion XP for task completion
+                card_service.award_companion_xp(user_id, 5)
             except Exception:
                 # Card generation is optional, don't fail task completion
                 pass

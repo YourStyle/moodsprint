@@ -147,15 +147,21 @@ export function TaskForm({
                   placeholder={t('subtaskPlaceholder')}
                   className="flex-1 px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
-                {subtasks.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setSubtasks(subtasks.filter((_, i) => i !== idx))}
-                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const remaining = subtasks.filter((_, i) => i !== idx);
+                    if (remaining.length === 0) {
+                      setShowSubtasks(false);
+                      setSubtasks(['']);
+                    } else {
+                      setSubtasks(remaining);
+                    }
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             ))}
             <button

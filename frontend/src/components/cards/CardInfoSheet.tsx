@@ -243,92 +243,66 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
           )}
         </div>
 
-        {/* Sell Button */}
-        {canSell && (
-          <Button
-            onClick={() => setShowSellModal(true)}
-            className="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-          >
-            <DollarSign className="w-4 h-4 mr-2" />
-            {t('sellForStars')}
-          </Button>
-        )}
-
-        {/* Remove from Showcase */}
-        {showcaseSlot != null && onRemoveFromShowcase && (
-          <Button
-            variant="secondary"
-            className="w-full mt-4"
-            onClick={() => { onRemoveFromShowcase(showcaseSlot); onClose(); }}
-          >
-            <Star className="w-4 h-4 mr-2" />
-            {t('removeFromShowcase')}
-          </Button>
-        )}
-
-        {/* Deck & Showcase Actions */}
-        {card.id && card.isOwned !== false && (onAddToDeck || onRemoveFromDeck || onAddToShowcase) && (
+        {/* Actions */}
+        {card.id && card.isOwned !== false && (
           <div className="w-full mt-4 space-y-2">
             {/* Deck button */}
             {isInDeck && onRemoveFromDeck ? (
-              <Button
-                variant="secondary"
-                className="w-full"
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
                 onClick={() => { onRemoveFromDeck(card.id!); onClose(); }}
               >
-                <Minus className="w-4 h-4 mr-2" />
+                <Minus className="w-4 h-4 text-gray-400" />
                 {t('removeFromDeck')}
-              </Button>
+              </button>
             ) : !isInDeck && onAddToDeck ? (
-              <Button
-                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
                 onClick={() => { onAddToDeck(card.id!); onClose(); }}
               >
-                <Layers className="w-4 h-4 mr-2" />
+                <Layers className="w-4 h-4 text-purple-400" />
                 {t('addToDeck')}
-              </Button>
+              </button>
             ) : null}
 
             {/* Companion button */}
             {card.isCompanion && onRemoveCompanion ? (
-              <Button
-                variant="secondary"
-                className="w-full"
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
                 onClick={() => { onRemoveCompanion(); onClose(); }}
               >
-                🐾 {t('removeCompanion')}
-              </Button>
+                <span className="text-sm">🐾</span>
+                {t('removeCompanion')}
+              </button>
             ) : !card.isCompanion && onSetCompanion ? (
-              <Button
-                className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
                 onClick={() => { onSetCompanion(card.id!); onClose(); }}
               >
-                🐾 {t('setCompanion')}
-              </Button>
+                <span className="text-sm">🐾</span>
+                {t('setCompanion')}
+              </button>
             ) : null}
 
             {/* Showcase button */}
             {onAddToShowcase && (
               <>
                 {!showSlotPicker ? (
-                  <Button
-                    variant="secondary"
-                    className="w-full"
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
                     onClick={() => setShowSlotPicker(true)}
                   >
-                    <Star className="w-4 h-4 mr-2" />
+                    <Star className="w-4 h-4 text-gray-400" />
                     {t('addToShowcase')}
-                  </Button>
+                  </button>
                 ) : (
                   <div className="bg-gray-800/60 rounded-xl p-3">
                     <p className="text-xs text-gray-400 mb-2 text-center">{t('selectSlot')}</p>
                     <div className="flex gap-2">
                       {[1, 2, 3].map((slot) => (
-                        <Button
+                        <button
                           key={slot}
-                          variant="secondary"
-                          size="sm"
-                          className="flex-1"
+                          className="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs transition-colors"
                           onClick={() => {
                             onAddToShowcase(card.id!, slot);
                             setShowSlotPicker(false);
@@ -336,12 +310,34 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
                           }}
                         >
                           {t('slot')} {slot}
-                        </Button>
+                        </button>
                       ))}
                     </div>
                   </div>
                 )}
               </>
+            )}
+
+            {/* Remove from Showcase */}
+            {showcaseSlot != null && onRemoveFromShowcase && (
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 text-sm transition-colors"
+                onClick={() => { onRemoveFromShowcase(showcaseSlot); onClose(); }}
+              >
+                <Star className="w-4 h-4 text-gray-400" />
+                {t('removeFromShowcase')}
+              </button>
+            )}
+
+            {/* Sell button */}
+            {canSell && (
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800/60 hover:bg-gray-700/60 text-amber-400 text-sm transition-colors"
+                onClick={() => setShowSellModal(true)}
+              >
+                <DollarSign className="w-4 h-4" />
+                {t('sellForStars')}
+              </button>
             )}
           </div>
         )}
