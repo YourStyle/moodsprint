@@ -58,6 +58,9 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
       hapticFeedback('success');
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ['onboarding', 'profile'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign'] });
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+      queryClient.invalidateQueries({ queryKey: ['card-templates'] });
     },
   });
 

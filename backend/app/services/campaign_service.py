@@ -15,7 +15,6 @@ from app.models.campaign import (
 )
 from app.models.card import CardRarity
 from app.models.sparks import SparksTransaction
-from app.models.user_profile import UserProfile
 from app.utils import get_lang
 
 # Sparks rewards per star earned
@@ -37,32 +36,16 @@ class CampaignService:
             db.session.commit()
         return progress
 
-    def get_user_genre(self, user_id: int) -> str:
-        """Get user's preferred genre."""
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
-        if profile and profile.favorite_genre:
-            return profile.favorite_genre
-        return "fantasy"
-
     def get_campaign_overview(self, user_id: int, lang: str = "ru") -> dict[str, Any]:
-        """Get campaign overview for user (filtered by user's genre)."""
+        """Get campaign overview for user."""
         progress = self.get_user_progress(user_id)
-        user_genre = self.get_user_genre(user_id)
 
-        # Get chapters filtered by user's genre
+        # Show all active chapters (campaign is a linear progression through genres)
         chapters = (
-            CampaignChapter.query.filter_by(is_active=True, genre=user_genre)
+            CampaignChapter.query.filter_by(is_active=True)
             .order_by(CampaignChapter.number)
             .all()
         )
-
-        # Still no chapters? Show all (admin likely hasn't created any)
-        if not chapters:
-            chapters = (
-                CampaignChapter.query.filter_by(is_active=True)
-                .order_by(CampaignChapter.number)
-                .all()
-            )
 
         chapters_data = []
         for chapter in chapters:
@@ -117,16 +100,8 @@ class CampaignService:
     ) -> dict[str, Any]:
         """Get detailed info about a chapter."""
         progress = self.get_user_progress(user_id)
-        user_genre = self.get_user_genre(user_id)
 
-        # Filter by user's genre (since chapters are unique per number+genre)
-        chapter = CampaignChapter.query.filter_by(
-            number=chapter_number, genre=user_genre
-        ).first()
-
-        # Fallback: try to find any chapter with this number
-        if not chapter:
-            chapter = CampaignChapter.query.filter_by(number=chapter_number).first()
+        chapter = CampaignChapter.query.filter_by(number=chapter_number).first()
 
         if not chapter:
             return {"error": "chapter_not_found"}
