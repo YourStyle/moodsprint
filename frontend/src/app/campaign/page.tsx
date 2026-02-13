@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   Map,
@@ -14,10 +14,12 @@ import {
   Sparkles,
   Gift,
   Play,
+  Plus,
 } from 'lucide-react';
-import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
+import { Card, Button, Progress, ScrollBackdrop, Modal } from '@/components/ui';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
-import { campaignService } from '@/services';
+import { GenreSelector } from '@/components/GenreSelector';
+import { campaignService, onboardingService, gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
@@ -35,6 +37,9 @@ export default function CampaignPage() {
   const [showIntro, setShowIntro] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<CampaignLevel | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
+  const [showEnergyInfo, setShowEnergyInfo] = useState(false);
+  const [showGenreWarning, setShowGenreWarning] = useState(false);
+  const [pendingGenre, setPendingGenre] = useState<string | null>(null);
 
   useEffect(() => {
     // Only show back button when in sub-views (level select or dialogue),
@@ -61,6 +66,14 @@ export default function CampaignPage() {
     queryFn: () => campaignService.getCampaignOverview(),
     enabled: !!user,
   });
+
+  // Get profile for genre selector
+  const { data: profileData } = useQuery({
+    queryKey: ['onboarding', 'profile'],
+    queryFn: () => onboardingService.getProfile(),
+    enabled: !!user,
+  });
+  const profile = profileData?.data?.profile;
 
   // Get chapter details when selected
   const { data: chapterData, isLoading: chapterLoading } = useQuery({
@@ -180,6 +193,31 @@ export default function CampaignPage() {
     return borders[genre] || 'border-gray-700/50';
   };
 
+  const handleBeforeGenreSwitch = (genre: string): boolean => {
+    const warningShown = localStorage.getItem('genre_switch_warning_shown');
+    if (!warningShown) {
+      setPendingGenre(genre);
+      setShowGenreWarning(true);
+      return false; // Cancel — modal will handle the switch
+    }
+    return true; // Proceed immediately
+  };
+
+  const handleGenreWarningConfirm = () => {
+    localStorage.setItem('genre_switch_warning_shown', 'true');
+    setShowGenreWarning(false);
+    if (pendingGenre) {
+      gamificationService.setGenre(pendingGenre as any).then(() => {
+        hapticFeedback('success');
+        queryClient.invalidateQueries({ queryKey: ['onboarding', 'profile'] });
+        queryClient.invalidateQueries({ queryKey: ['campaign'] });
+        queryClient.invalidateQueries({ queryKey: ['cards'] });
+        queryClient.invalidateQueries({ queryKey: ['card-templates'] });
+      });
+      setPendingGenre(null);
+    }
+  };
+
   if (!showLevelSelect) {
     return (
       <div className="p-4 pb-4">
@@ -188,53 +226,45 @@ export default function CampaignPage() {
           <Map className="w-10 h-10 text-purple-500 mx-auto mb-2" />
           <h1 className="text-2xl font-bold text-white">{t('campaign')}</h1>
           <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
+
+          {/* Genre Selector */}
+          <div className="flex justify-center mt-3">
+            <GenreSelector
+              currentGenre={profile?.favorite_genre}
+              onBeforeSwitch={handleBeforeGenreSwitch}
+              className="mx-auto"
+            />
+          </div>
+
           {progress && (
             <div className="flex items-center justify-center gap-3 mt-3">
               <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                 <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
               </div>
-              <div className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-                energy > 0 ? 'bg-cyan-500/20' : 'bg-red-500/20'
-              )}>
-                <span className="text-base">⚡</span>
-                <span className={cn(
-                  'font-medium',
-                  energy > 0 ? 'text-cyan-400' : 'text-red-400'
+              <div className="flex items-center gap-1">
+                <div className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+                  energy > 0 ? 'bg-cyan-500/20' : 'bg-red-500/20'
                 )}>
-                  {energy}/{maxEnergy}
-                </span>
+                  <span className="text-base">⚡</span>
+                  <span className={cn(
+                    'font-medium',
+                    energy > 0 ? 'text-cyan-400' : 'text-red-400'
+                  )}>
+                    {energy}/{maxEnergy}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowEnergyInfo(true)}
+                  className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center hover:bg-cyan-500/30 transition-colors"
+                >
+                  <Plus className="w-3 h-3 text-cyan-400" />
+                </button>
               </div>
             </div>
           )}
         </div>
-
-        {/* Progress Overview */}
-        {progress && (
-          <Card className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-500/30 mb-4">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <div className="text-sm text-gray-400">{t('progressLabel')}</div>
-                    <div className="text-lg font-bold text-white">
-                      {t('chapter')} {progress.current_chapter}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="text-center">
-                      <div className="text-gray-400">{t('bossesDefeated')}</div>
-                      <div className="text-purple-400 font-bold">{progress.bosses_defeated}</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-gray-400">{t('starsLabel')}</div>
-                      <div className="text-amber-400 font-bold">{progress.total_stars_earned}</div>
-                    </div>
-                  </div>
-                </div>
-            </div>
-          </Card>
-        )}
 
         {/* Arena Banner */}
         <Card
@@ -333,6 +363,42 @@ export default function CampaignPage() {
               ))}
             </div>
           )}
+
+        {/* Energy Info Modal */}
+        <Modal isOpen={showEnergyInfo} onClose={() => setShowEnergyInfo(false)} title={t('energyInfoTitle')}>
+          <div className="space-y-3">
+            {[
+              { emoji: '✅', label: t('energySourceTask'), value: '+1 ⚡' },
+              { emoji: '🎯', label: t('energySourceFocus'), value: '+1 ⚡' },
+              { emoji: '⬆️', label: t('energySourceLevelUp'), value: '+1 ⚡' },
+            ].map((source) => (
+              <div key={source.label} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
+                <span className="text-xl">{source.emoji}</span>
+                <span className="flex-1 text-sm text-gray-300">{source.label}</span>
+                <span className="text-sm font-medium text-cyan-400">{source.value}</span>
+              </div>
+            ))}
+          </div>
+        </Modal>
+
+        {/* Genre Switch Warning Modal */}
+        <Modal isOpen={showGenreWarning} onClose={() => { setShowGenreWarning(false); setPendingGenre(null); }} title={t('genreSwitchTitle')}>
+          <p className="text-sm text-gray-400 mb-4">{t('genreSwitchWarning')}</p>
+          <div className="flex gap-3">
+            <Button
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white"
+              onClick={() => { setShowGenreWarning(false); setPendingGenre(null); }}
+            >
+              {t('cancel')}
+            </Button>
+            <Button
+              className="flex-1 bg-purple-600 hover:bg-purple-500 text-white"
+              onClick={handleGenreWarningConfirm}
+            >
+              {t('confirm')}
+            </Button>
+          </div>
+        </Modal>
       </div>
     );
   }

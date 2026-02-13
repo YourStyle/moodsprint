@@ -31,9 +31,11 @@ const genreOptions: { value: Genre; label: string; emoji: string }[] = [
 interface GenreSelectorProps {
   currentGenre?: string | null;
   className?: string;
+  /** Called before switching genre. Return false to cancel the switch. */
+  onBeforeSwitch?: (genre: string) => boolean;
 }
 
-export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
+export function GenreSelector({ currentGenre, className, onBeforeSwitch }: GenreSelectorProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [unlockedGenres, setUnlockedGenres] = useState<string[]>([]);
@@ -70,6 +72,9 @@ export function GenreSelector({ currentGenre, className }: GenreSelectorProps) {
       return;
     }
     if (genre !== currentGenre) {
+      if (onBeforeSwitch && !onBeforeSwitch(genre)) {
+        return;
+      }
       mutation.mutate(genre);
     } else {
       setIsOpen(false);

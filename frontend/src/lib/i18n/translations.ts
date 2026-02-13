@@ -622,6 +622,17 @@ export const translations = {
     companionEarningXp: 'получает опыт',
     selectCompanionCard: 'Выберите карту-компаньона',
     companionHint: 'Получает опыт за задачи и фокус',
+
+    // Genre switch warning
+    genreSwitchTitle: 'Сменить жанр?',
+    genreSwitchWarning: 'Переключение жанра изменит карты, главы кампании и все выпадающие предметы. Продолжить?',
+    confirm: 'Подтвердить',
+
+    // Energy info
+    energyInfoTitle: 'Как получить энергию?',
+    energySourceTask: 'Выполни задачу',
+    energySourceFocus: 'Фокус-сессия 20+ мин',
+    energySourceLevelUp: 'Повышение уровня',
   },
 
   en: {
@@ -1247,6 +1258,17 @@ export const translations = {
     companionEarningXp: 'is earning XP',
     selectCompanionCard: 'Select companion card',
     companionHint: 'Earns XP from tasks and focus',
+
+    // Genre switch warning
+    genreSwitchTitle: 'Switch genre?',
+    genreSwitchWarning: 'Switching genre changes your cards, campaign chapters, and all drops. Continue?',
+    confirm: 'Confirm',
+
+    // Energy info
+    energyInfoTitle: 'How to earn energy?',
+    energySourceTask: 'Complete a task',
+    energySourceFocus: 'Focus session 20+ min',
+    energySourceLevelUp: 'Level up',
   },
 } as const;
 

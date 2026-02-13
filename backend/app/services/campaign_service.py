@@ -40,9 +40,15 @@ class CampaignService:
         """Get campaign overview for user."""
         progress = self.get_user_progress(user_id)
 
-        # Show all active chapters (campaign is a linear progression through genres)
+        # Get user's favorite genre to filter chapters
+        from app.models.user_profile import UserProfile
+
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        genre = profile.favorite_genre if profile else "fantasy"
+
+        # Show only chapters matching user's selected genre
         chapters = (
-            CampaignChapter.query.filter_by(is_active=True)
+            CampaignChapter.query.filter_by(is_active=True, genre=genre)
             .order_by(CampaignChapter.number)
             .all()
         )
@@ -101,7 +107,15 @@ class CampaignService:
         """Get detailed info about a chapter."""
         progress = self.get_user_progress(user_id)
 
-        chapter = CampaignChapter.query.filter_by(number=chapter_number).first()
+        # Filter by genre to get the correct chapter (number is unique per genre)
+        from app.models.user_profile import UserProfile
+
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        genre = profile.favorite_genre if profile else "fantasy"
+
+        chapter = CampaignChapter.query.filter_by(
+            number=chapter_number, genre=genre
+        ).first()
 
         if not chapter:
             return {"error": "chapter_not_found"}

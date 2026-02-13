@@ -71,6 +71,21 @@ class LevelService:
                 if granted:
                     all_granted.append(granted)
 
+            # Always grant +1 campaign energy per level-up (regardless of config)
+            try:
+                from app.services.card_service import CardService
+
+                CardService().add_energy(user_id, 1)
+            except Exception as e:
+                logger.warning(f"Failed to add level-up energy: {e}")
+            all_granted.append(
+                {
+                    "type": "energy",
+                    "amount": 1,
+                    "description": "Энергия за повышение уровня",
+                }
+            )
+
         profile.last_rewarded_level = new_level
         db.session.commit()
 
