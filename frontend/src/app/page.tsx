@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
-import { DailyBonus, LevelUpModal, type LevelRewardItem } from '@/components/gamification';
+import { DailyBonus, LevelUpModal, EnergyLimitModal, type LevelRewardItem } from '@/components/gamification';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
@@ -439,6 +439,14 @@ export default function HomePage() {
     if (!user || catchUpCheckedRef.current) return;
     catchUpCheckedRef.current = true;
     cardsService.claimLevelCatchUp().then((result) => {
+      // Store energy limit increase if present (will show after level-up modal)
+      if (result.data?.energy_limit_increased) {
+        setEnergyLimitData({
+          old_max: result.data.energy_limit_increased.old_max,
+          new_max: result.data.energy_limit_increased.new_max,
+        });
+      }
+
       if (result.success && result.data?.has_rewards) {
         setLevelUpData({
           newLevel: result.data.new_level || 0,
@@ -447,6 +455,9 @@ export default function HomePage() {
         });
         setShowLevelUpModal(true);
         // Phase advances when level-up modal closes (see onClose handler)
+      } else if (result.data?.energy_limit_increased) {
+        // No regular rewards but energy limit increased — show dedicated modal
+        setShowEnergyLimitModal(true);
       } else {
         // No catch-up rewards — check if user has pending genre unlocks
         cardsService.getUnlockedGenres().then((genreResult) => {
@@ -527,6 +538,8 @@ export default function HomePage() {
     rewards: LevelRewardItem[];
     genreUnlockAvailable?: { can_unlock: boolean; available_genres: string[]; suggested_genres?: string[] } | null;
   } | null>(null);
+  const [showEnergyLimitModal, setShowEnergyLimitModal] = useState(false);
+  const [energyLimitData, setEnergyLimitData] = useState<{ old_max: number; new_max: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1295,6 +1308,11 @@ export default function HomePage() {
             setShowLevelUpModal(false);
             setLevelUpData(null);
             queryClient.invalidateQueries({ queryKey: ['cards'] });
+            // Show energy limit modal if pending
+            if (energyLimitData) {
+              setShowEnergyLimitModal(true);
+              return;
+            }
             // Advance modal queue to next phase
             if (modalPhase === 'catchup') {
               setModalPhase('dailyBonus');
@@ -1309,6 +1327,27 @@ export default function HomePage() {
           onGenreSelect={() => {
             queryClient.invalidateQueries({ queryKey: ['cards'] });
           }}
+        />
+      )}
+
+      {/* Energy Limit Modal */}
+      {energyLimitData && (
+        <EnergyLimitModal
+          isOpen={showEnergyLimitModal}
+          onClose={() => {
+            setShowEnergyLimitModal(false);
+            setEnergyLimitData(null);
+            queryClient.invalidateQueries({ queryKey: ['campaign'] });
+            // Advance modal queue to next phase
+            if (modalPhase === 'catchup') {
+              setModalPhase('dailyBonus');
+            }
+            if (shouldShowCardTutorial()) {
+              setShowCardTutorial(true);
+            }
+          }}
+          oldMax={energyLimitData.old_max}
+          newMax={energyLimitData.new_max}
         />
       )}
 

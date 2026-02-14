@@ -8,7 +8,7 @@ import { cardsService } from '@/services/cards';
 
 // Reward item from backend level_service.grant_level_rewards
 export interface LevelRewardItem {
-  type: 'sparks' | 'energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost';
+  type: 'sparks' | 'energy' | 'max_energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost';
   amount?: number;
   rarity?: string;
   slot?: number;
@@ -57,6 +57,7 @@ const RARITY_KEYS: Record<string, TranslationKey> = {
 const REWARD_ICONS: Record<string, typeof Sparkles> = {
   sparks: Sparkles,
   energy: Zap,
+  max_energy: Zap,
   card: Gift,
   genre_unlock: Crown,
   archetype_tier: Star,
@@ -157,6 +158,11 @@ export function LevelUpModal({
                     {reward.type === 'energy' && (
                       <span className="text-sm text-white">
                         {t('energyReward').replace('{amount}', String(reward.amount || 0))}
+                      </span>
+                    )}
+                    {reward.type === 'max_energy' && (
+                      <span className="text-sm text-white">
+                        {t('maxEnergyReward').replace('{amount}', String(reward.amount || 0))}
                       </span>
                     )}
                     {reward.type === 'card' && (

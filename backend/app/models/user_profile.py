@@ -58,6 +58,7 @@ class UserProfile(db.Model):
     campaign_energy = db.Column(db.Integer, default=3, nullable=False)
     max_campaign_energy = db.Column(db.Integer, default=5, nullable=False)
     last_energy_update = db.Column(db.DateTime, nullable=True)
+    energy_limit_updated_to_level = db.Column(db.Integer, default=0, nullable=False)
 
     # Raw GPT response
     gpt_analysis = db.Column(db.JSON, nullable=True)

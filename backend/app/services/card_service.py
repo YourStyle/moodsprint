@@ -1879,6 +1879,26 @@ class CardService:
             "max_energy": max_e,
         }
 
+    def increase_max_energy(self, user_id: int, amount: int = 1) -> dict:
+        """Increase max campaign energy limit and fill current to new max."""
+        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            return {"success": False, "error": "profile_not_found"}
+
+        old_max = profile.max_campaign_energy or 5
+        new_max = old_max + amount
+        profile.max_campaign_energy = new_max
+        # Also fill current energy to new max
+        profile.campaign_energy = new_max
+        db.session.commit()
+
+        return {
+            "success": True,
+            "old_max": old_max,
+            "new_max": new_max,
+            "energy": new_max,
+        }
+
     def spend_energy(self, user_id: int) -> dict:
         """Spend 1 campaign energy. Returns success/fail."""
         profile = UserProfile.query.filter_by(user_id=user_id).first()

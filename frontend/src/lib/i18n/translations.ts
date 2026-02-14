@@ -690,6 +690,13 @@ export const translations = {
     weakenedCardsWarning: 'У вас есть карты с 0 HP в колоде. Они не смогут участвовать в бою, пока не восстановят здоровье.',
     completeTasks: 'Выполнить задачи',
     dontShowAgain: 'Не показывать снова',
+
+    // Energy limit system
+    maxEnergyReward: 'Лимит энергии +{amount}',
+    energyLimitIncreased: 'Лимит энергии увеличен!',
+    energyLimitFrom: 'Было: {old}',
+    energyLimitTo: 'Стало: {new}',
+    energyLimitExplain: 'Теперь ты можешь играть больше уровней кампании за сессию',
   },
 
   en: {
@@ -1383,6 +1390,13 @@ export const translations = {
     weakenedCardsWarning: 'You have cards with 0 HP in your deck. They cannot participate in battle until they recover health.',
     completeTasks: 'Complete tasks',
     dontShowAgain: "Don't show again",
+
+    // Energy limit system
+    maxEnergyReward: 'Energy limit +{amount}',
+    energyLimitIncreased: 'Energy limit increased!',
+    energyLimitFrom: 'Was: {old}',
+    energyLimitTo: 'Now: {new}',
+    energyLimitExplain: 'You can now play more campaign levels per session',
   },
 } as const;
 

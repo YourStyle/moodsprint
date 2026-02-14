@@ -71,20 +71,21 @@ class LevelService:
                 if granted:
                     all_granted.append(granted)
 
-            # Always grant +1 campaign energy per level-up (regardless of config)
-            try:
-                from app.services.card_service import CardService
+            # Auto +1 max energy every 3 levels (3, 6, 9, 12, 15, ...)
+            if level % 3 == 0:
+                try:
+                    from app.services.card_service import CardService
 
-                CardService().add_energy(user_id, 1)
-            except Exception as e:
-                logger.warning(f"Failed to add level-up energy: {e}")
-            all_granted.append(
-                {
-                    "type": "energy",
-                    "amount": 1,
-                    "description": "Энергия за повышение уровня",
-                }
-            )
+                    CardService().increase_max_energy(user_id, 1)
+                except Exception as e:
+                    logger.warning(f"Failed to increase max energy: {e}")
+                all_granted.append(
+                    {
+                        "type": "max_energy",
+                        "amount": 1,
+                        "description": "Energy limit increase",
+                    }
+                )
 
         profile.last_rewarded_level = new_level
         db.session.commit()
@@ -117,6 +118,20 @@ class LevelService:
                 logger.warning(f"Failed to add energy reward: {e}")
             return {
                 "type": "energy",
+                "amount": amount,
+                "description": reward.description,
+            }
+
+        elif rtype == "max_energy":
+            amount = rval.get("amount", 0)
+            try:
+                from app.services.card_service import CardService
+
+                CardService().increase_max_energy(user.id, amount)
+            except Exception as e:
+                logger.warning(f"Failed to increase max energy: {e}")
+            return {
+                "type": "max_energy",
                 "amount": amount,
                 "description": reward.description,
             }

@@ -529,15 +529,16 @@ export default function FriendsPage() {
             <h1 className="text-xl font-bold text-white">{t('friendsTitle')}</h1>
             <p className="text-sm text-gray-400">{t('friendsSubtitle')}</p>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleShareInvite}
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            {t('inviteFriend')}
-          </Button>
         </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="w-full mt-3"
+          onClick={handleShareInvite}
+        >
+          <Share2 className="w-4 h-4 mr-2" />
+          {t('inviteFriend')}
+        </Button>
       </div>
 
       {/* Tabs */}

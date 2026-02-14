@@ -229,14 +229,14 @@ export default function CampaignPage() {
               <h1 className="text-xl font-bold text-white">{t('campaign')}</h1>
               <p className="text-sm text-gray-400">{t('campaignSubtitle')}</p>
             </div>
-            <GenreSelector
-              currentGenre={profile?.favorite_genre}
-              onBeforeSwitch={handleBeforeGenreSwitch}
-            />
           </div>
 
           {progress && (
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <GenreSelector
+                currentGenre={profile?.favorite_genre}
+                onBeforeSwitch={handleBeforeGenreSwitch}
+              />
               <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                 <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
@@ -369,7 +369,7 @@ export default function CampaignPage() {
             {[
               { emoji: '✅', label: t('energySourceTask'), value: '+1 ⚡' },
               { emoji: '🎯', label: t('energySourceFocus'), value: '+1 ⚡' },
-              { emoji: '⬆️', label: t('energySourceLevelUp'), value: '+1 ⚡' },
+              { emoji: '⬆️', label: t('energySourceLevelUp'), value: '⚡ +max' },
             ].map((source) => (
               <div key={source.label} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
                 <span className="text-xl">{source.emoji}</span>
