@@ -2899,6 +2899,18 @@ def import_level_json(level_id: int):
     if not data:
         return jsonify({"success": False, "error": "No data provided"}), 400
 
+    # Auto-extract text_en from dialogue entries into separate _en fields
+    for field in ("dialogue_before", "dialogue_after"):
+        en_field = f"{field}_en"
+        if field in data and en_field not in data:
+            entries = data[field]
+            if isinstance(entries, list) and any(e.get("text_en") for e in entries):
+                data[en_field] = [
+                    {"speaker": e.get("speaker", "narrator"), "text": e["text_en"]}
+                    for e in entries
+                    if e.get("text_en")
+                ]
+
     try:
         updates = []
         params = {"level_id": level_id}
@@ -2990,6 +3002,23 @@ def bulk_import_levels(chapter_id: int):
             # Extract level_to_fill if present (export format)
             if "level_to_fill" in level_data:
                 level_data = level_data["level_to_fill"]
+
+            # Auto-extract text_en from dialogue entries into separate _en fields
+            for field in ("dialogue_before", "dialogue_after"):
+                en_field = f"{field}_en"
+                if field in level_data and en_field not in level_data:
+                    entries = level_data[field]
+                    if isinstance(entries, list) and any(
+                        e.get("text_en") for e in entries
+                    ):
+                        level_data[en_field] = [
+                            {
+                                "speaker": e.get("speaker", "narrator"),
+                                "text": e["text_en"],
+                            }
+                            for e in entries
+                            if e.get("text_en")
+                        ]
 
             level_number = max_number + idx + 1
 
