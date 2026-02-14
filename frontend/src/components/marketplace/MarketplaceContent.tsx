@@ -20,6 +20,7 @@ import { marketplaceService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 import type { MarketListing } from '@/services/marketplace';
 
 type MarketTab = 'browse' | 'my-listings' | 'balance';
@@ -33,15 +34,16 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: 'text-amber-400 border-amber-500',
 };
 
-const RARITY_LABELS: Record<string, string> = {
-  common: 'Обычная',
-  uncommon: 'Необычная',
-  rare: 'Редкая',
-  epic: 'Эпическая',
-  legendary: 'Легендарная',
+const RARITY_KEYS: Record<string, 'rarityCommon' | 'rarityUncommon' | 'rarityRare' | 'rarityEpic' | 'rarityLegendary'> = {
+  common: 'rarityCommon',
+  uncommon: 'rarityUncommon',
+  rare: 'rarityRare',
+  epic: 'rarityEpic',
+  legendary: 'rarityLegendary',
 };
 
 export function MarketplaceContent() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAppStore();
 
@@ -145,9 +147,9 @@ export function MarketplaceContent() {
                   : 'bg-gray-800 text-gray-400'
               )}
             >
-              Все
+              {t('all')}
             </button>
-            {Object.entries(RARITY_LABELS).map(([key, label]) => (
+            {Object.entries(RARITY_KEYS).map(([key, labelKey]) => (
               <button
                 key={key}
                 onClick={() => setRarityFilter(key)}
@@ -158,7 +160,7 @@ export function MarketplaceContent() {
                     : 'bg-gray-800 text-gray-400'
                 )}
               >
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
@@ -213,7 +215,7 @@ export function MarketplaceContent() {
                       'absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold',
                       RARITY_COLORS[listing.card.rarity]
                     )}>
-                      {RARITY_LABELS[listing.card.rarity]}
+                      {t(RARITY_KEYS[listing.card.rarity] || 'rarityCommon')}
                     </div>
                   </div>
                   <div className="p-2 space-y-1">
@@ -381,7 +383,7 @@ export function MarketplaceContent() {
 
               <div className="flex items-center justify-between">
                 <div className={cn('text-sm font-medium', RARITY_COLORS[selectedListing.card.rarity])}>
-                  {RARITY_LABELS[selectedListing.card.rarity]}
+                  {t(RARITY_KEYS[selectedListing.card.rarity] || 'rarityCommon')}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1 text-orange-400">

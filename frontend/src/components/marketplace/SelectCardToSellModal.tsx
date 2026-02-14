@@ -6,6 +6,7 @@ import { Search, Package, Heart, Swords, Loader2 } from 'lucide-react';
 import { Modal } from '@/components/ui';
 import { cardsService, type Card } from '@/services/cards';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface SelectCardToSellModalProps {
   isOpen: boolean;
@@ -13,15 +14,16 @@ interface SelectCardToSellModalProps {
   onSelectCard: (card: Card) => void;
 }
 
-const RARITY_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  common: { label: 'Обычная', bg: 'bg-slate-600', text: 'text-slate-300' },
-  uncommon: { label: 'Необычная', bg: 'bg-emerald-600', text: 'text-emerald-300' },
-  rare: { label: 'Редкая', bg: 'bg-blue-600', text: 'text-blue-300' },
-  epic: { label: 'Эпическая', bg: 'bg-purple-600', text: 'text-purple-300' },
-  legendary: { label: 'Легендарная', bg: 'bg-gradient-to-r from-amber-500 to-orange-500', text: 'text-amber-300' },
+const RARITY_CONFIG: Record<string, { labelKey: 'rarityCommon' | 'rarityUncommon' | 'rarityRare' | 'rarityEpic' | 'rarityLegendary'; bg: string; text: string }> = {
+  common: { labelKey: 'rarityCommon', bg: 'bg-slate-600', text: 'text-slate-300' },
+  uncommon: { labelKey: 'rarityUncommon', bg: 'bg-emerald-600', text: 'text-emerald-300' },
+  rare: { labelKey: 'rarityRare', bg: 'bg-blue-600', text: 'text-blue-300' },
+  epic: { labelKey: 'rarityEpic', bg: 'bg-purple-600', text: 'text-purple-300' },
+  legendary: { labelKey: 'rarityLegendary', bg: 'bg-gradient-to-r from-amber-500 to-orange-500', text: 'text-amber-300' },
 };
 
 export function SelectCardToSellModal({ isOpen, onClose, onSelectCard }: SelectCardToSellModalProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: cardsData, isLoading } = useQuery({
@@ -93,7 +95,7 @@ export function SelectCardToSellModal({ isOpen, onClose, onSelectCard }: SelectC
                         'absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold text-white',
                         rarityConf.bg
                       )}>
-                        {rarityConf.label}
+                        {t(rarityConf.labelKey)}
                       </div>
                     </div>
 

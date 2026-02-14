@@ -7,6 +7,7 @@ import { Modal, Button } from '@/components/ui';
 import { marketplaceService } from '@/services';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface CardInfo {
   id: number;
@@ -26,15 +27,16 @@ interface SellCardModalProps {
 }
 
 // Must match backend MIN_PRICES in app/models/marketplace.py
-const rarityConfig: Record<string, { min: number; suggested: number; label: string; color: string }> = {
-  common: { min: 1, suggested: 5, label: 'Обычная', color: 'text-slate-400' },
-  uncommon: { min: 5, suggested: 15, label: 'Необычная', color: 'text-emerald-400' },
-  rare: { min: 15, suggested: 40, label: 'Редкая', color: 'text-blue-400' },
-  epic: { min: 50, suggested: 100, label: 'Эпическая', color: 'text-purple-400' },
-  legendary: { min: 200, suggested: 500, label: 'Легендарная', color: 'text-amber-400' },
+const rarityConfig: Record<string, { min: number; suggested: number; labelKey: 'rarityCommon' | 'rarityUncommon' | 'rarityRare' | 'rarityEpic' | 'rarityLegendary'; color: string }> = {
+  common: { min: 1, suggested: 5, labelKey: 'rarityCommon', color: 'text-slate-400' },
+  uncommon: { min: 5, suggested: 15, labelKey: 'rarityUncommon', color: 'text-emerald-400' },
+  rare: { min: 15, suggested: 40, labelKey: 'rarityRare', color: 'text-blue-400' },
+  epic: { min: 50, suggested: 100, labelKey: 'rarityEpic', color: 'text-purple-400' },
+  legendary: { min: 200, suggested: 500, labelKey: 'rarityLegendary', color: 'text-amber-400' },
 };
 
 export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModalProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const [price, setPrice] = useState<string>('');
@@ -84,12 +86,12 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
     const priceNum = parseInt(price, 10);
 
     if (!price || isNaN(priceNum)) {
-      setError('Введите цену');
+      setError(t('enterPrice'));
       return;
     }
 
     if (priceNum < config.min) {
-      setError(`Минимальная цена для ${config.label.toLowerCase()} карты: ${config.min} ✨`);
+      setError(t('minPriceError').replace('{rarity}', t(config.labelKey).toLowerCase()).replace('{min}', String(config.min)));
       return;
     }
 
@@ -128,7 +130,7 @@ export function SellCardModal({ isOpen, onClose, card, onSuccess }: SellCardModa
           </div>
           <div className="flex-1">
             <h3 className="font-bold text-white">{card.name}</h3>
-            <p className={cn('text-sm font-medium', config.color)}>{config.label}</p>
+            <p className={cn('text-sm font-medium', config.color)}>{t(config.labelKey)}</p>
             <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
               <span>⚔️ {card.attack}</span>
               <span>❤️ {card.hp}</span>

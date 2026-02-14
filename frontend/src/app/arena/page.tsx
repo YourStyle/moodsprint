@@ -438,10 +438,14 @@ export default function ArenaPage() {
   };
 
   const handleBackToMonsters = useCallback(() => {
+    if (campaignMode) {
+      router.replace('/campaign');
+      return;
+    }
     setGameState('select');
     setSelectedMonster(null);
     setSelectedCards([]);
-  }, []);
+  }, [campaignMode, router]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);

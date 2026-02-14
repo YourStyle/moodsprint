@@ -381,6 +381,8 @@ export const translations = {
     selectCardToSell: 'Выберите карту для продажи',
     setPrice: 'Укажите цену',
     minPrice: 'Мин. цена',
+    enterPrice: 'Введите цену',
+    minPriceError: 'Минимальная цена для {rarity} карты: {min} ✨',
     sold: 'Продано!',
     cardPurchased: 'Карта успешно куплена!',
     insufficientSparks: 'Недостаточно искр',
@@ -531,6 +533,7 @@ export const translations = {
     genreUnlockTitle: 'Новый жанр доступен!',
     genreUnlockDesc: 'Выбери жанр для разблокировки',
     genreLocked: 'Уровень {level}',
+    selectGenre: 'Выбрать жанр',
     unlockGenre: 'Разблокировать',
     genresAvailable: '{count} из {max} жанров',
 
@@ -1081,6 +1084,8 @@ export const translations = {
     selectCardToSell: 'Select card to sell',
     setPrice: 'Set price',
     minPrice: 'Min price',
+    enterPrice: 'Enter price',
+    minPriceError: 'Minimum price for {rarity} card: {min} ✨',
     sold: 'Sold!',
     cardPurchased: 'Card purchased successfully!',
     insufficientSparks: 'Not enough sparks',
@@ -1231,6 +1236,7 @@ export const translations = {
     genreUnlockTitle: 'New genre available!',
     genreUnlockDesc: 'Choose a genre to unlock',
     genreLocked: 'Level {level}',
+    selectGenre: 'Select genre',
     unlockGenre: 'Unlock',
     genresAvailable: '{count} of {max} genres',
 

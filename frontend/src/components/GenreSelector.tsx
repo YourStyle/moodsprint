@@ -20,12 +20,12 @@ function getNextUnlockLevel(currentGenreCount: number): number | null {
   return null;
 }
 
-const genreOptions: { value: Genre; label: string; emoji: string }[] = [
-  { value: 'magic', label: 'Магия', emoji: '🧙‍♂️' },
-  { value: 'fantasy', label: 'Фэнтези', emoji: '⚔️' },
-  { value: 'scifi', label: 'Sci-Fi', emoji: '🚀' },
-  { value: 'cyberpunk', label: 'Киберпанк', emoji: '🌆' },
-  { value: 'anime', label: 'Аниме', emoji: '🎌' },
+const genreOptions: { value: Genre; labelKey: 'genreMagic' | 'genreFantasy' | 'genreScifi' | 'genreCyberpunk' | 'genreAnime'; emoji: string }[] = [
+  { value: 'magic', labelKey: 'genreMagic', emoji: '🧙‍♂️' },
+  { value: 'fantasy', labelKey: 'genreFantasy', emoji: '⚔️' },
+  { value: 'scifi', labelKey: 'genreScifi', emoji: '🚀' },
+  { value: 'cyberpunk', labelKey: 'genreCyberpunk', emoji: '🌆' },
+  { value: 'anime', labelKey: 'genreAnime', emoji: '🎌' },
 ];
 
 interface GenreSelectorProps {
@@ -95,7 +95,7 @@ export function GenreSelector({ currentGenre, className, onBeforeSwitch }: Genre
         )}
       >
         <span>{currentOption?.emoji || '🎮'}</span>
-        <span>{currentOption?.label || 'Выбрать жанр'}</span>
+        <span>{currentOption ? t(currentOption.labelKey) : t('selectGenre')}</span>
         <ChevronDown className={cn('w-4 h-4 transition-transform', isOpen && 'rotate-180')} />
       </button>
 
@@ -127,7 +127,7 @@ export function GenreSelector({ currentGenre, className, onBeforeSwitch }: Genre
                   )}
                 >
                   <span className={isLocked ? 'grayscale opacity-50' : ''}>{option.emoji}</span>
-                  <span className="flex-1">{option.label}</span>
+                  <span className="flex-1">{t(option.labelKey)}</span>
                   {isLocked ? (
                     <div className="flex items-center gap-1 text-gray-600">
                       <Lock className="w-3 h-3" />

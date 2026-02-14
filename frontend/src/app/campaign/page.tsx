@@ -232,34 +232,36 @@ export default function CampaignPage() {
           </div>
 
           {progress && (
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <div className="mt-3 space-y-2">
               <GenreSelector
                 currentGenre={profile?.favorite_genre}
                 onBeforeSwitch={handleBeforeGenreSwitch}
               />
-              <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-                  energy > 0 ? 'bg-cyan-500/20' : 'bg-red-500/20'
-                )}>
-                  <span className="text-base">⚡</span>
-                  <span className={cn(
-                    'font-medium',
-                    energy > 0 ? 'text-cyan-400' : 'text-red-400'
-                  )}>
-                    {energy}/{maxEnergy}
-                  </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center justify-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span className="text-amber-400 font-medium">{progress.total_stars_earned} {t('stars')}</span>
                 </div>
-                <button
-                  onClick={() => setShowEnergyInfo(true)}
-                  className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center hover:bg-cyan-500/30 transition-colors"
-                >
-                  <Plus className="w-3 h-3 text-cyan-400" />
-                </button>
+                <div className="flex-1 flex items-center justify-center gap-1">
+                  <div className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full flex-1 justify-center',
+                    energy > 0 ? 'bg-cyan-500/20' : 'bg-red-500/20'
+                  )}>
+                    <span className="text-base">⚡</span>
+                    <span className={cn(
+                      'font-medium',
+                      energy > 0 ? 'text-cyan-400' : 'text-red-400'
+                    )}>
+                      {energy}/{maxEnergy}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowEnergyInfo(true)}
+                    className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center hover:bg-cyan-500/30 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3 h-3 text-cyan-400" />
+                  </button>
+                </div>
               </div>
             </div>
           )}

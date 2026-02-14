@@ -40,6 +40,13 @@ body.telegram-env {
   --safe-area-top: var(--tg-safe-area-top, 70px);
 }
 
+/* Reduce top padding on desktop where there's no notch */
+@media (min-width: 768px) {
+  body.telegram-env {
+    --safe-area-top: var(--tg-safe-area-top, 16px);
+  }
+}
+
 html {
   height: 100%;
 }
