@@ -7,7 +7,6 @@ import uuid
 from pathlib import Path
 
 import requests
-from flask import current_app
 
 from app import db
 from app.models import DailyMonster, Monster
@@ -56,14 +55,8 @@ class MonsterGeneratorService:
         self._openai_client = None
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
 
-        # Get static folder from Flask app context
-        try:
-            static_folder = current_app.static_folder or "/app/static"
-        except RuntimeError:
-            static_folder = "/app/static"
-
-        # Ensure monster images directory exists
-        self.images_dir = Path(static_folder) / "monster_images"
+        # Store monster images in media volume (shared with nginx)
+        self.images_dir = Path("/app/media/monster_images")
         self.images_dir.mkdir(parents=True, exist_ok=True)
 
     @property
@@ -206,7 +199,7 @@ Be creative with names - avoid generic names. Each monster should feel unique an
                 image_path.write_bytes(response.content)
 
                 # Return relative URL
-                image_url = f"/static/monster_images/{image_filename}"
+                image_url = f"/media/monster_images/{image_filename}"
                 logger.info(f"Monster image generated: {image_url}")
                 return image_url
 

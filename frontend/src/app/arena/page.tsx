@@ -1498,7 +1498,7 @@ export default function ArenaPage() {
                       {/* Campaign sparks */}
                       {campaignMode && campaignResult?.sparks_earned && campaignResult.sparks_earned > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-gray-400">{t('sparksReward')}</span>
+                          <span className="text-gray-400">{t('sparks')}</span>
                           <span className="text-purple-400">
                             +{campaignResult.sparks_earned} ✨
                           </span>

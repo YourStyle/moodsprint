@@ -657,7 +657,6 @@ export default function HomePage() {
     queryFn: () => tasksService.getTasks({
       due_date_from: weekDates[0],
       due_date_to: weekDates[6],
-      status: 'pending',
       limit: 100,
     }),
     enabled: !!user,

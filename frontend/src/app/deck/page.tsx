@@ -432,10 +432,13 @@ export default function DeckPage() {
       <div className="mb-4">
         <div className="flex items-center gap-3">
           <Layers className="w-8 h-8 text-purple-500" />
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold text-white">{t('deck')}</h1>
             <p className="text-sm text-gray-400">{t('deckSubtitle')}</p>
           </div>
+          <span className="text-sm text-gray-400 bg-gray-800/60 px-2.5 py-1 rounded-lg border border-gray-700/50">
+            {t('deckCapacity').replace('{current}', String(deck.length)).replace('{max}', String(maxDeckSize))}
+          </span>
         </div>
       </div>
 

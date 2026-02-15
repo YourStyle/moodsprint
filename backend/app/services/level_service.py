@@ -71,6 +71,16 @@ class LevelService:
                 if granted:
                     all_granted.append(granted)
 
+            # Deck size increase at levels 10 and 15
+            if level in (10, 15):
+                all_granted.append(
+                    {
+                        "type": "deck_size",
+                        "amount": 1,
+                        "description": "Deck size increase",
+                    }
+                )
+
             # Auto +1 max energy every 3 levels (3, 6, 9, 12, 15, ...)
             if level % 3 == 0:
                 try:

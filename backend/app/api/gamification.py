@@ -477,15 +477,28 @@ def get_productivity_patterns():
 
     # Analyze day of week distribution (0=Monday, 6=Sunday)
     day_stats = {}
-    day_names = [
-        "Понедельник",
-        "Вторник",
-        "Среда",
-        "Четверг",
-        "Пятница",
-        "Суббота",
-        "Воскресенье",
-    ]
+    lang = get_lang()
+    day_names = (
+        [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
+        if lang == "en"
+        else [
+            "Понедельник",
+            "Вторник",
+            "Среда",
+            "Четверг",
+            "Пятница",
+            "Суббота",
+            "Воскресенье",
+        ]
+    )
     for day in range(7):
         day_stats[day] = {"completed": 0, "total": 0, "total_minutes": 0}
 

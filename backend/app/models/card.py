@@ -22,7 +22,7 @@ class CardAbility(str, Enum):
     HEAL = "heal"  # Restore 30% HP to an ally
     DOUBLE_STRIKE = "double_strike"  # Attack twice at 60% damage each
     SHIELD = "shield"  # Block next attack
-    POISON = "poison"  # Deal 10% damage over 3 turns
+    POISON = "poison"  # Deal 15% damage over 4 turns
 
 
 # Ability configuration with localization
@@ -60,13 +60,13 @@ ABILITY_CONFIG = {
     CardAbility.POISON: {
         "name": "Яд",
         "name_en": "Poison",
-        "description": "Отравляет врага: 10% урона каждый ход 3 хода",
-        "description_en": "Poisons enemy: 10% damage per turn for 3 turns",
+        "description": "Отравляет врага: 15% урона каждый ход 4 хода",
+        "description_en": "Poisons enemy: 15% damage per turn for 4 turns",
         "emoji": "☠️",
-        "cooldown": 3,
+        "cooldown": 2,
         "target": "enemy",
-        "effect_value": 0.1,  # 10% of max HP
-        "duration": 3,
+        "effect_value": 0.15,  # 15% of max HP
+        "duration": 4,
     },
 }
 

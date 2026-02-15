@@ -183,15 +183,8 @@ class CardBattleService:
     def __init__(self):
         self.stability_api_key = os.getenv("STABILITY_API_KEY")
 
-        # Get static folder from Flask config or use default
-        from flask import current_app
-
-        try:
-            static_folder = current_app.static_folder or "/app/static"
-        except RuntimeError:
-            static_folder = "/app/static"
-
-        self.images_dir = Path(static_folder) / "monster_images"
+        # Store monster images in media volume (shared with nginx)
+        self.images_dir = Path("/app/media/monster_images")
         self.images_dir.mkdir(parents=True, exist_ok=True)
 
     def get_user_deck(self, user_id: int) -> list[UserCard]:
@@ -359,7 +352,7 @@ class CardBattleService:
                 filepath = self.images_dir / filename
                 filepath.write_bytes(response.content)
 
-                image_url = f"/static/monster_images/{filename}"
+                image_url = f"/media/monster_images/{filename}"
                 logger.info(f"Monster image generated: {image_url}")
                 return image_url
             else:
@@ -1040,8 +1033,33 @@ class CardBattleService:
             else:
                 target_card["hp"] -= damage1
 
-            # Second strike (can't be blocked)
-            target_card["hp"] -= damage2
+            # Check if first hit killed the target — retarget if needed
+            second_target = target_card
+            if target_card["hp"] <= 0:
+                target_card["alive"] = False
+                target_card["hp"] = 0
+                turn_log.append(
+                    {
+                        "actor": "system",
+                        "action": "card_destroyed",
+                        "card_name": target_card["name"],
+                        "message": f"{target_card['name']} побеждена!",
+                    }
+                )
+                # Find next alive enemy for second strike
+                new_target = None
+                for c in state["monster_cards"]:
+                    if c["alive"] and c["id"] != target_card["id"]:
+                        new_target = c
+                        break
+                if new_target:
+                    second_target = new_target
+                else:
+                    damage2 = 0  # No more targets
+
+            # Second strike (can't be blocked by shield)
+            if damage2 > 0:
+                second_target["hp"] -= damage2
 
             total_damage = damage1 + damage2
             state["damage_dealt"] = state.get("damage_dealt", 0) + total_damage
@@ -1058,25 +1076,26 @@ class CardBattleService:
                     "damage": total_damage,
                     "damage1": damage1,
                     "damage2": damage2,
-                    "target_id": target_card["id"],
-                    "target_name": target_card["name"],
+                    "target_id": second_target["id"],
+                    "target_name": second_target["name"],
                     "message": f"{player_card['name']} наносит двойной удар: "
                     f"{damage1} + {damage2} урона!",
                 }
             )
 
-            # Check if target died
-            if target_card["hp"] <= 0:
-                target_card["alive"] = False
-                target_card["hp"] = 0
-                turn_log.append(
-                    {
-                        "actor": "system",
-                        "action": "card_destroyed",
-                        "card_name": target_card["name"],
-                        "message": f"{target_card['name']} побеждена!",
-                    }
-                )
+            # Check if second target died
+            if second_target["hp"] <= 0:
+                second_target["alive"] = False
+                second_target["hp"] = 0
+                if second_target["id"] != target_card["id"]:
+                    turn_log.append(
+                        {
+                            "actor": "system",
+                            "action": "card_destroyed",
+                            "card_name": second_target["name"],
+                            "message": f"{second_target['name']} побеждена!",
+                        }
+                    )
 
         elif ability == "shield":
             # Find target ally card (can be self or another ally)

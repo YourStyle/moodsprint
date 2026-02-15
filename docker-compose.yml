@@ -79,7 +79,6 @@ services:
       TON_DEPOSIT_ADDRESS: ${TON_DEPOSIT_ADDRESS:-UQDNO2S4MTD9avQJIVx_9W7pQgs6vXH7QIKOR-mj98xyT4ct}
     volumes:
       - card_images:/app/static/card_images
-      - monster_images:/app/static/monster_images
       - media:/app/media
     depends_on:
       db:
@@ -109,7 +108,6 @@ services:
       STABILITY_API_KEY: ${STABILITY_API_KEY:-}
     volumes:
       - card_images:/app/static/card_images
-      - monster_images:/app/static/monster_images
       - media:/app/media
     depends_on:
       db:
@@ -177,7 +175,6 @@ services:
       OPENAI_PROXY: ${OPENAI_PROXY:-}
       TON_DEPOSIT_ADDRESS: ${TON_DEPOSIT_ADDRESS:-UQDNO2S4MTD9avQJIVx_9W7pQgs6vXH7QIKOR-mj98xyT4ct}
     volumes:
-      - monster_images:/app/static/monster_images
       - card_images:/app/static/card_images
       - media:/app/media
     depends_on:
@@ -312,8 +309,7 @@ volumes:
   redis_data:
   db_backups:
   card_images:
-  monster_images:
-  media:  # Unified media storage for all images
+  media:  # Unified media storage for all images (including monster_images/)
   loki_data:
   grafana_data:
   prometheus_data:

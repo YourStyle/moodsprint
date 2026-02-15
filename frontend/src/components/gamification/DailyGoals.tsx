@@ -2,6 +2,7 @@
 
 import { Check, Clock, ListTodo, Heart } from 'lucide-react';
 import { Card, Progress } from '@/components/ui';
+import { useTranslation } from '@/lib/i18n';
 import type { DailyGoal } from '@/domain/types';
 
 interface DailyGoalsProps {
@@ -16,13 +17,15 @@ const goalIcons: Record<string, typeof Clock> = {
 };
 
 export function DailyGoals({ goals, allCompleted }: DailyGoalsProps) {
+  const { t } = useTranslation();
+
   return (
     <Card variant="glass">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-white">Ежедневные цели</h3>
+        <h3 className="font-semibold text-white">{t('dailyGoals')}</h3>
         {allCompleted && (
           <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full border border-green-500/30">
-            +30 XP бонус!
+            {t('dailyGoalsBonus')}
           </span>
         )}
       </div>

@@ -95,11 +95,24 @@ def generate_card_image(card_id: int):
 # ============ Deck Management ============
 
 
+def get_max_deck_size(user_level: int) -> int:
+    """Dynamic deck size: base 5, +1 at level 10, +1 at level 15."""
+    base = 5
+    if user_level >= 10:
+        base += 1
+    if user_level >= 15:
+        base += 1
+    return base
+
+
 @api_bp.route("/deck", methods=["GET"])
 @jwt_required()
 def get_deck():
     """Get user's active battle deck."""
     user_id = int(get_jwt_identity())
+
+    user = User.query.get(user_id)
+    max_size = get_max_deck_size(user.level if user else 1)
 
     service = CardService()
     deck = service.get_user_deck(user_id)
@@ -114,7 +127,7 @@ def get_deck():
         {
             "deck": [c.to_dict(lang) for c in deck],
             "size": len(deck),
-            "max_size": 5,
+            "max_size": max_size,
             "stats": {
                 "total_hp": total_hp,
                 "total_attack": total_attack,
@@ -142,15 +155,18 @@ def add_to_deck():
     if not card_id:
         return validation_error({"card_id": "Card ID is required"})
 
+    user = User.query.get(user_id)
+    max_size = get_max_deck_size(user.level if user else 1)
+
     service = CardService()
-    result = service.add_to_deck(user_id, card_id)
+    result = service.add_to_deck(user_id, card_id, max_deck_size=max_size)
 
     if not result["success"]:
         error_messages = {
             "card_not_found": "Карта не найдена",
             "card_destroyed": "Карта уничтожена",
             "already_in_deck": "Карта уже в колоде",
-            "deck_full": f"Колода полная (максимум {result.get('max_size', 5)} карт)",
+            "deck_full": f"Колода полная (максимум {result.get('max_size', max_size)} карт)",
         }
         return validation_error(
             {"error": error_messages.get(result["error"], result["error"])}

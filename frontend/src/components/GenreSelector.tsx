@@ -89,7 +89,7 @@ export function GenreSelector({ currentGenre, className, onBeforeSwitch }: Genre
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-xl',
+          'flex items-center gap-2 px-3 py-2 rounded-xl w-full',
           'bg-gray-800/80 border border-gray-700/50',
           'text-sm text-gray-300 hover:text-white transition-colors'
         )}

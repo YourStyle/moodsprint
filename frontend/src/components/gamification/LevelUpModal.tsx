@@ -8,7 +8,7 @@ import { cardsService } from '@/services/cards';
 
 // Reward item from backend level_service.grant_level_rewards
 export interface LevelRewardItem {
-  type: 'sparks' | 'energy' | 'max_energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost';
+  type: 'sparks' | 'energy' | 'max_energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost' | 'deck_size';
   amount?: number;
   rarity?: string;
   slot?: number;
@@ -62,6 +62,7 @@ const REWARD_ICONS: Record<string, typeof Sparkles> = {
   genre_unlock: Crown,
   archetype_tier: Star,
   xp_boost: Star,
+  deck_size: Gift,
 };
 
 interface LevelUpModalProps {
@@ -190,6 +191,11 @@ export function LevelUpModal({
                         {t('xpBoostReward').replace('{amount}', String(reward.amount || ''))}
                       </span>
                     )}
+                    {reward.type === 'deck_size' && (
+                      <span className="text-sm text-white">
+                        {t('deckSizeIncrease').replace('{amount}', String(reward.amount || 1))}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -204,6 +210,9 @@ export function LevelUpModal({
               <div className="text-center py-4">
                 <span className="text-3xl">{GENRE_INFO[genreUnlocked]?.emoji}</span>
                 <p className="text-sm text-green-400 mt-2">{t('genreUnlocked')}</p>
+                {suggestedGenres.length <= 1 && (
+                  <p className="text-xs text-yellow-400 mt-1 animate-pulse">{t('allGenresUnlocked')}</p>
+                )}
               </div>
             ) : (
               <>
