@@ -4563,5 +4563,73 @@ def broadcast_send():
     })
 
 
+@app.route("/postponement")
+@login_required
+def postponement():
+    """Task postponement monitoring dashboard."""
+    # Recent postpone logs (last 30 days)
+    logs = db.session.execute(
+        text("""
+            SELECT pl.*, u.username, u.first_name
+            FROM postpone_logs pl
+            JOIN users u ON pl.user_id = u.id
+            ORDER BY pl.created_at DESC
+            LIMIT 100
+        """)
+    ).fetchall()
+
+    # Overdue tasks right now
+    overdue = db.session.execute(
+        text("""
+            SELECT t.id, t.title, t.due_date, t.status, t.priority,
+                   u.username, u.first_name
+            FROM tasks t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.due_date < CURRENT_DATE
+              AND t.status NOT IN ('completed', 'cancelled', 'deleted')
+            ORDER BY t.due_date
+        """)
+    ).fetchall()
+
+    # Daily postponement stats (last 14 days)
+    daily_stats = db.session.execute(
+        text("""
+            SELECT date, COUNT(DISTINCT user_id) AS users,
+                   SUM(tasks_postponed) AS tasks
+            FROM postpone_logs
+            WHERE date >= CURRENT_DATE - INTERVAL '14 days'
+            GROUP BY date
+            ORDER BY date
+        """)
+    ).fetchall()
+
+    # Task distribution by due_date (today +/- 3 days)
+    task_dist = db.session.execute(
+        text("""
+            SELECT due_date, status, COUNT(*) AS cnt
+            FROM tasks
+            WHERE due_date BETWEEN CURRENT_DATE - INTERVAL '3 days'
+                                AND CURRENT_DATE + INTERVAL '3 days'
+              AND status NOT IN ('cancelled', 'deleted')
+            GROUP BY due_date, status
+            ORDER BY due_date, status
+        """)
+    ).fetchall()
+
+    # Bot container last restart
+    server_time = db.session.execute(
+        text("SELECT CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow' AS msk_now")
+    ).scalar()
+
+    return render_template(
+        "postponement.html",
+        logs=[dict(row._mapping) for row in logs],
+        overdue=[dict(row._mapping) for row in overdue],
+        daily_stats=[dict(row._mapping) for row in daily_stats],
+        task_dist=[dict(row._mapping) for row in task_dist],
+        server_time=server_time,
+    )
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

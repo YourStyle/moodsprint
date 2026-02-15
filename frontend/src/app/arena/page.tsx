@@ -438,6 +438,15 @@ export default function ArenaPage() {
   };
 
   const handleBackToMonsters = useCallback(() => {
+    if (gameState === 'select') {
+      // Already at top level — leave the arena entirely
+      if (campaignMode) {
+        router.replace('/campaign');
+      } else {
+        router.back();
+      }
+      return;
+    }
     if (campaignMode) {
       router.replace('/campaign');
       return;
@@ -445,7 +454,7 @@ export default function ArenaPage() {
     setGameState('select');
     setSelectedMonster(null);
     setSelectedCards([]);
-  }, [campaignMode, router]);
+  }, [campaignMode, gameState, router]);
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
