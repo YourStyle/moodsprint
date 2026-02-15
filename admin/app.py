@@ -1476,7 +1476,7 @@ def upload_monster_image(monster_id: int):
     try:
         # Generate unique filename
         filename = f"monster_{uuid.uuid4()}.{ext}"
-        filepath = os.path.join("/app/static/monster_images", filename)
+        filepath = os.path.join("/app/media/monster_images", filename)
 
         # Ensure directory exists
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -1485,7 +1485,7 @@ def upload_monster_image(monster_id: int):
         file.save(filepath)
 
         # Update database
-        image_url = f"/static/monster_images/{filename}"
+        image_url = f"/media/monster_images/{filename}"
         db.session.execute(
             text("UPDATE monsters SET sprite_url = :url WHERE id = :id"),
             {"url": image_url, "id": monster_id},

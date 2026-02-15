@@ -96,7 +96,7 @@ export function GenreSelector({ currentGenre, className, onBeforeSwitch }: Genre
       >
         <span>{currentOption?.emoji || '🎮'}</span>
         <span>{currentOption ? t(currentOption.labelKey) : t('selectGenre')}</span>
-        <ChevronDown className={cn('w-4 h-4 transition-transform', isOpen && 'rotate-180')} />
+        <ChevronDown className={cn('w-4 h-4 ml-auto transition-transform', isOpen && 'rotate-180')} />
       </button>
 
       {isOpen && (
@@ -108,7 +108,7 @@ export function GenreSelector({ currentGenre, className, onBeforeSwitch }: Genre
           />
 
           {/* Dropdown */}
-          <div className="absolute top-full left-0 mt-2 z-[101] w-56 py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
+          <div className="absolute top-full left-0 right-0 mt-2 z-[101] py-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
             {genreOptions.map((option) => {
               const isLocked = unlockedGenres.length > 0 && !unlockedGenres.includes(option.value);
 
