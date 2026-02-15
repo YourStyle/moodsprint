@@ -4,26 +4,52 @@
 
 {% block content %}
 <!-- Key Metrics -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <p class="text-sm text-gray-500">D1 Retention</p>
-        <p class="text-3xl font-bold text-gray-900">{{ day1_retention }}%</p>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Total Users</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ total_users }}</p>
     </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <p class="text-sm text-gray-500">Avg Session</p>
-        <p class="text-3xl font-bold text-gray-900">{{ avg_session }} min</p>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">WAU / MAU</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ wau }} / {{ mau }}</p>
+        <p class="text-xs text-gray-400">{{ ((wau / mau * 100) if mau > 0 else 0)|round(0)|int }}% stickiness</p>
     </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <p class="text-sm text-gray-500">Task Completion</p>
-        <p class="text-3xl font-bold text-gray-900">{{ completion_rate }}%</p>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-purple-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">D1 / D7 Retention</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ day1_retention }}% / {{ day7_retention }}%</p>
     </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <p class="text-sm text-gray-500">Avg XP/User</p>
-        <p class="text-3xl font-bold text-gray-900">{{ avg_xp | int }}</p>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-orange-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Task Completion</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ completion_rate }}%</p>
+        <p class="text-xs text-gray-400">excl. deleted/cancelled</p>
     </div>
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <p class="text-sm text-gray-500">Avg Streak</p>
-        <p class="text-3xl font-bold text-gray-900">{{ avg_streak }} days</p>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-teal-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Avg Session</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ avg_session }} min</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Avg XP / User</p>
+        <p class="text-xl font-bold text-gray-900 mt-1">{{ avg_xp | int }}</p>
+        <p class="text-xs text-gray-400">active users only</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Avg Streak</p>
+        <p class="text-xl font-bold text-gray-900 mt-1">{{ avg_streak }} days</p>
+        <p class="text-xs text-gray-400">users with streak &gt; 0</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Today DAU</p>
+        {% set today_dau = daily_metrics[-1].active_users if daily_metrics else 0 %}
+        <p class="text-xl font-bold text-gray-900 mt-1">{{ today_dau }}</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Avg DAU (7d)</p>
+        {% set last7 = daily_metrics[-7:] if daily_metrics|length >= 7 else daily_metrics %}
+        {% set avg_dau = (last7|map(attribute='active_users')|sum / last7|length) if last7|length > 0 else 0 %}
+        <p class="text-xl font-bold text-gray-900 mt-1">{{ avg_dau|round(1) }}</p>
     </div>
 </div>
 
@@ -51,6 +77,47 @@
     </div>
 </div>
 
+<!-- Retention Cohort Table -->
+{% if cohort_data %}
+<div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Retention Cohorts (weekly)</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead>
+                <tr class="border-b-2">
+                    <th class="text-left py-2 px-3 text-gray-500">Signup Week</th>
+                    <th class="text-right py-2 px-3 text-gray-500">Cohort Size</th>
+                    <th class="text-right py-2 px-3 text-gray-500">D1</th>
+                    <th class="text-right py-2 px-3 text-gray-500">D7</th>
+                    <th class="text-right py-2 px-3 text-gray-500">D14</th>
+                    <th class="text-right py-2 px-3 text-gray-500">D30</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in cohort_data %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 px-3 font-mono text-gray-700">{{ c.week }}</td>
+                    <td class="py-2 px-3 text-right font-semibold">{{ c.size }}</td>
+                    {% for key in ['d1', 'd7', 'd14', 'd30'] %}
+                    {% set pct = ((c[key] / c.size * 100) if c.size > 0 else 0)|round(0)|int %}
+                    <td class="py-2 px-3 text-right">
+                        <span class="inline-block min-w-[3rem] px-2 py-0.5 rounded text-xs font-medium
+                            {% if pct >= 50 %}bg-green-100 text-green-700
+                            {% elif pct >= 25 %}bg-yellow-100 text-yellow-700
+                            {% elif pct > 0 %}bg-orange-100 text-orange-700
+                            {% else %}bg-gray-100 text-gray-400{% endif %}">
+                            {{ c[key] }} ({{ pct }}%)
+                        </span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <!-- Distribution Charts -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="bg-white rounded-xl p-6 shadow-sm">
@@ -73,6 +140,33 @@
     const moodLabels = ['Very Low', 'Low', 'Neutral', 'Good', 'Great'];
     const energyLabels = ['Exhausted', 'Tired', 'Normal', 'Energized', 'Peak'];
 
+    // Shared chart defaults
+    const defaultOptions = {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(17,24,39,0.9)',
+                titleFont: { size: 13 },
+                bodyFont: { size: 12 },
+                padding: 10,
+                cornerRadius: 8
+            }
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 10 }, maxRotation: 45 }
+            },
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: { precision: 0 }
+            }
+        }
+    };
+
     // DAU Chart
     new Chart(document.getElementById('dauChart'), {
         type: 'line',
@@ -84,10 +178,24 @@
                 borderColor: 'rgb(59, 130, 246)',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: 'rgb(59, 130, 246)'
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+            ...defaultOptions,
+            plugins: {
+                ...defaultOptions.plugins,
+                tooltip: {
+                    ...defaultOptions.plugins.tooltip,
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.y} active users`
+                    }
+                }
+            }
+        }
     });
 
     // Tasks Chart
@@ -96,15 +204,29 @@
         data: {
             labels: dailyData.map(d => d.date.slice(5)),
             datasets: [{
-                label: 'Tasks',
+                label: 'Tasks Completed',
                 data: dailyData.map(d => d.tasks_completed),
                 borderColor: 'rgb(34, 197, 94)',
                 backgroundColor: 'rgba(34, 197, 94, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: 'rgb(34, 197, 94)'
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+            ...defaultOptions,
+            plugins: {
+                ...defaultOptions.plugins,
+                tooltip: {
+                    ...defaultOptions.plugins.tooltip,
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.y} tasks completed`
+                    }
+                }
+            }
+        }
     });
 
     // Focus Chart
@@ -113,12 +235,25 @@
         data: {
             labels: dailyData.map(d => d.date.slice(5)),
             datasets: [{
-                label: 'Minutes',
+                label: 'Focus Minutes',
                 data: dailyData.map(d => d.focus_minutes),
-                backgroundColor: 'rgb(168, 85, 247)',
+                backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                borderRadius: 4,
+                hoverBackgroundColor: 'rgb(168, 85, 247)'
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+            ...defaultOptions,
+            plugins: {
+                ...defaultOptions.plugins,
+                tooltip: {
+                    ...defaultOptions.plugins.tooltip,
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.y} minutes`
+                    }
+                }
+            }
+        }
     });
 
     // New Users Chart
@@ -129,17 +264,30 @@
             datasets: [{
                 label: 'New Users',
                 data: dailyData.map(d => d.new_users),
-                backgroundColor: 'rgb(249, 115, 22)',
+                backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                borderRadius: 4,
+                hoverBackgroundColor: 'rgb(249, 115, 22)'
             }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: {
+            ...defaultOptions,
+            plugins: {
+                ...defaultOptions.plugins,
+                tooltip: {
+                    ...defaultOptions.plugins.tooltip,
+                    callbacks: {
+                        label: ctx => `${ctx.parsed.y} new users`
+                    }
+                }
+            }
+        }
     });
 
     // Mood Distribution
     new Chart(document.getElementById('moodChart'), {
         type: 'doughnut',
         data: {
-            labels: moodData.map(d => moodLabels[d.mood - 1] || d.mood),
+            labels: moodData.map(d => moodLabels[d.mood - 1] || `Mood ${d.mood}`),
             datasets: [{
                 data: moodData.map(d => d.count),
                 backgroundColor: [
@@ -151,14 +299,27 @@
                 ]
             }]
         },
-        options: { responsive: true }
+        options: {
+            responsive: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
+                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
     });
 
     // Energy Distribution
     new Chart(document.getElementById('energyChart'), {
         type: 'doughnut',
         data: {
-            labels: energyData.map(d => energyLabels[d.energy - 1] || d.energy),
+            labels: energyData.map(d => energyLabels[d.energy - 1] || `Energy ${d.energy}`),
             datasets: [{
                 data: energyData.map(d => d.count),
                 backgroundColor: [
@@ -170,7 +331,20 @@
                 ]
             }]
         },
-        options: { responsive: true }
+        options: {
+            responsive: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
+                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
     });
 </script>
 {% endblock %}

@@ -505,16 +505,65 @@ def activity_log():
 @login_required
 def metrics():
     """Product metrics page."""
-    # Retention metrics
+    # ── Composite activity CTE ──
+    # last_activity_date on users only stores the LATEST date (overwrites),
+    # so we reconstruct DAU from actual event tables.
+    activity_cte = """
+        WITH daily_activity AS (
+            SELECT DATE(created_at) AS d, user_id FROM tasks
+            UNION
+            SELECT DATE(completed_at) AS d, user_id FROM tasks
+                WHERE completed_at IS NOT NULL
+            UNION
+            SELECT DATE(started_at) AS d, user_id FROM focus_sessions
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM mood_checks
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM battle_logs
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM sparks_transactions
+            UNION
+            SELECT DATE(defeated_at) AS d, user_id FROM defeated_monsters
+        )
+    """
+
+    # ── D1 Retention (proper cohort) ──
+    # For users signed up in the last 60 days, check if they had any
+    # activity on signup_date + 1.
     day1_retention = (
         db.session.execute(
             text(
-                """
+                activity_cte
+                + """
         SELECT
-            COUNT(DISTINCT CASE WHEN last_activity_date > DATE(created_at) THEN id END)::float /
-            NULLIF(COUNT(DISTINCT id), 0) * 100 as retention
-        FROM users
-        WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+            COUNT(DISTINCT CASE WHEN a.d = DATE(u.created_at) + 1
+                                THEN u.id END)::float /
+            NULLIF(COUNT(DISTINCT u.id), 0) * 100
+        FROM users u
+        LEFT JOIN daily_activity a ON a.user_id = u.id
+        WHERE u.created_at >= CURRENT_DATE - INTERVAL '60 days'
+          AND DATE(u.created_at) < CURRENT_DATE - 1
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # D7 Retention
+    day7_retention = (
+        db.session.execute(
+            text(
+                activity_cte
+                + """
+        SELECT
+            COUNT(DISTINCT CASE WHEN a.d BETWEEN DATE(u.created_at) + 2
+                                           AND DATE(u.created_at) + 7
+                                THEN u.id END)::float /
+            NULLIF(COUNT(DISTINCT u.id), 0) * 100
+        FROM users u
+        LEFT JOIN daily_activity a ON a.user_id = u.id
+        WHERE u.created_at >= CURRENT_DATE - INTERVAL '60 days'
+          AND DATE(u.created_at) < CURRENT_DATE - 7
     """
             )
         ).scalar()
@@ -535,7 +584,7 @@ def metrics():
         or 0
     )
 
-    # Task completion rate
+    # Task completion rate (exclude deleted/cancelled from denominator)
     completion_rate = (
         db.session.execute(
             text(
@@ -544,18 +593,58 @@ def metrics():
             COUNT(*) FILTER (WHERE status = 'completed')::float /
             NULLIF(COUNT(*), 0) * 100
         FROM tasks
+        WHERE status NOT IN ('deleted', 'cancelled')
     """
             )
         ).scalar()
         or 0
     )
 
-    # Average XP per user
-    avg_xp = db.session.execute(text("SELECT AVG(xp) FROM users")).scalar() or 0
+    # Average XP per active user (exclude inactive accounts)
+    avg_xp = (
+        db.session.execute(
+            text("SELECT AVG(xp) FROM users WHERE last_activity_date IS NOT NULL")
+        ).scalar()
+        or 0
+    )
 
-    # Average streak
+    # Average streak (among users with streak > 0)
     avg_streak = (
-        db.session.execute(text("SELECT AVG(streak_days) FROM users")).scalar() or 0
+        db.session.execute(
+            text("SELECT AVG(streak_days) FROM users WHERE streak_days > 0")
+        ).scalar()
+        or 0
+    )
+
+    # WAU & MAU
+    wau = (
+        db.session.execute(
+            text(
+                activity_cte
+                + """
+        SELECT COUNT(DISTINCT user_id) FROM daily_activity
+        WHERE d >= CURRENT_DATE - INTERVAL '7 days' AND d IS NOT NULL
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    mau = (
+        db.session.execute(
+            text(
+                activity_cte
+                + """
+        SELECT COUNT(DISTINCT user_id) FROM daily_activity
+        WHERE d >= CURRENT_DATE - INTERVAL '30 days' AND d IS NOT NULL
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    total_users = (
+        db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
     )
 
     # Mood distribution
@@ -582,10 +671,11 @@ def metrics():
         )
     ).fetchall()
 
-    # Daily metrics for last 30 days
+    # ── Daily metrics for last 30 days (with composite DAU) ──
     daily_metrics = db.session.execute(
         text(
-            """
+            activity_cte
+            + """
         SELECT
             d.date,
             COALESCE(u.new_users, 0) as new_users,
@@ -602,18 +692,51 @@ def metrics():
             FROM users GROUP BY DATE(created_at)
         ) u ON d.date = u.date
         LEFT JOIN (
-            SELECT last_activity_date as date, COUNT(*) as active_users
-            FROM users GROUP BY last_activity_date
+            SELECT d AS date, COUNT(DISTINCT user_id) as active_users
+            FROM daily_activity
+            WHERE d IS NOT NULL
+            GROUP BY d
         ) a ON d.date = a.date
         LEFT JOIN (
             SELECT DATE(completed_at) as date, COUNT(*) as tasks_completed
-            FROM tasks WHERE status = 'completed' GROUP BY DATE(completed_at)
+            FROM tasks WHERE status = 'completed'
+            GROUP BY DATE(completed_at)
         ) t ON d.date = t.date
         LEFT JOIN (
-            SELECT DATE(started_at) as date, SUM(actual_duration_minutes) as focus_minutes
-            FROM focus_sessions WHERE status = 'completed' GROUP BY DATE(started_at)
+            SELECT DATE(started_at) as date,
+                   SUM(actual_duration_minutes) as focus_minutes
+            FROM focus_sessions WHERE status = 'completed'
+            GROUP BY DATE(started_at)
         ) f ON d.date = f.date
         ORDER BY d.date
+    """
+        )
+    ).fetchall()
+
+    # ── Retention cohort table (weekly cohorts) ──
+    cohort_data = db.session.execute(
+        text(
+            activity_cte
+            + """
+        SELECT
+            DATE_TRUNC('week', u.created_at)::date AS cohort_week,
+            COUNT(DISTINCT u.id) AS cohort_size,
+            COUNT(DISTINCT CASE WHEN a.d = DATE(u.created_at) + 1
+                                THEN u.id END) AS d1,
+            COUNT(DISTINCT CASE WHEN a.d BETWEEN DATE(u.created_at) + 2
+                                           AND DATE(u.created_at) + 7
+                                THEN u.id END) AS d7,
+            COUNT(DISTINCT CASE WHEN a.d BETWEEN DATE(u.created_at) + 8
+                                           AND DATE(u.created_at) + 14
+                                THEN u.id END) AS d14,
+            COUNT(DISTINCT CASE WHEN a.d BETWEEN DATE(u.created_at) + 15
+                                           AND DATE(u.created_at) + 30
+                                THEN u.id END) AS d30
+        FROM users u
+        LEFT JOIN daily_activity a ON a.user_id = u.id
+        WHERE u.created_at >= CURRENT_DATE - INTERVAL '90 days'
+        GROUP BY cohort_week
+        ORDER BY cohort_week
     """
         )
     ).fetchall()
@@ -621,10 +744,14 @@ def metrics():
     return render_template(
         "metrics.html",
         day1_retention=round(day1_retention, 1),
+        day7_retention=round(day7_retention, 1),
         avg_session=round(avg_session, 1),
         completion_rate=round(completion_rate, 1),
         avg_xp=round(avg_xp, 0),
         avg_streak=round(avg_streak, 1),
+        wau=wau,
+        mau=mau,
+        total_users=total_users,
         mood_distribution=[{"mood": r[0], "count": r[1]} for r in mood_dist],
         energy_distribution=[{"energy": r[0], "count": r[1]} for r in energy_dist],
         daily_metrics=[
@@ -636,6 +763,17 @@ def metrics():
                 "focus_minutes": r[4],
             }
             for r in daily_metrics
+        ],
+        cohort_data=[
+            {
+                "week": str(r[0]),
+                "size": r[1],
+                "d1": r[2],
+                "d7": r[3],
+                "d14": r[4],
+                "d30": r[5],
+            }
+            for r in cohort_data
         ],
     )
 
