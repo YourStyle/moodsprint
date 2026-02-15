@@ -8,7 +8,15 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app import db
 from app.api import api_bp
-from app.models import MoodCheck, PostponeLog, Subtask, Task, User, UserProfile
+from app.models import (
+    MoodCheck,
+    PostponeLog,
+    Subtask,
+    Task,
+    User,
+    UserActivityLog,
+    UserProfile,
+)
 from app.models.card import CardRarity
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskPriority, TaskStatus
@@ -356,6 +364,18 @@ def create_task():
 
     db.session.add(task)
     db.session.commit()
+
+    try:
+        UserActivityLog.log(
+            user_id=user_id,
+            action_type="task_create",
+            action_details=f"Created task: {title[:100]}",
+            entity_type="task",
+            entity_id=task.id,
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     # Classify task asynchronously (non-blocking) - only if preferred_time not set by user
     if not preferred_time:
@@ -890,6 +910,24 @@ def update_subtask(subtask_id: int):
 
         checker = AchievementChecker(user)
         achievements_unlocked = checker.check_all()
+
+        try:
+            UserActivityLog.log(
+                user_id=user_id,
+                action_type="subtask_complete",
+                entity_type="subtask",
+                entity_id=subtask.id,
+            )
+            if task_just_completed:
+                UserActivityLog.log(
+                    user_id=user_id,
+                    action_type="task_complete",
+                    action_details=f"Completed task: {task.title[:100]}",
+                    entity_type="task",
+                    entity_id=task.id,
+                )
+        except Exception:
+            pass
 
         db.session.commit()
 

@@ -32,6 +32,7 @@
                     <option value="language">By Language</option>
                     <option value="level">By Level Range</option>
                     <option value="activity">By Recent Activity</option>
+                    <option value="user">Specific User</option>
                 </select>
             </div>
 
@@ -61,22 +62,67 @@
                 <input type="number" name="filter_active_days" placeholder="e.g. 7" min="1" max="365" class="w-full border rounded-lg px-3 py-2">
             </div>
 
-            <!-- Message -->
+            <!-- Specific user filter -->
+            <div id="userFilter" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Username, name, or Telegram ID</label>
+                <input type="text" name="filter_user_search" placeholder="e.g. @username or 123456789" class="w-full border rounded-lg px-3 py-2">
+                <p class="text-xs text-gray-500 mt-1">Searches by username, first name, or exact Telegram ID</p>
+            </div>
+
+            <!-- Message Editor -->
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Message (HTML supported)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+
+                <!-- Toolbar -->
+                <div class="flex items-center gap-1 border border-b-0 rounded-t-lg bg-gray-50 px-2 py-1.5">
+                    <button type="button" onclick="wrapSelection('b')" class="p-1.5 hover:bg-gray-200 rounded text-sm font-bold text-gray-700" title="Bold">
+                        B
+                    </button>
+                    <button type="button" onclick="wrapSelection('i')" class="p-1.5 hover:bg-gray-200 rounded text-sm italic text-gray-700" title="Italic">
+                        I
+                    </button>
+                    <button type="button" onclick="wrapSelection('u')" class="p-1.5 hover:bg-gray-200 rounded text-sm underline text-gray-700" title="Underline">
+                        U
+                    </button>
+                    <button type="button" onclick="wrapSelection('s')" class="p-1.5 hover:bg-gray-200 rounded text-sm line-through text-gray-700" title="Strikethrough">
+                        S
+                    </button>
+                    <div class="w-px h-5 bg-gray-300 mx-1"></div>
+                    <button type="button" onclick="wrapSelection('code')" class="p-1.5 hover:bg-gray-200 rounded text-xs font-mono text-gray-700" title="Inline code">
+                        &lt;/&gt;
+                    </button>
+                    <button type="button" onclick="wrapSelection('pre')" class="p-1.5 hover:bg-gray-200 rounded text-xs font-mono text-gray-700" title="Code block">
+                        PRE
+                    </button>
+                    <div class="w-px h-5 bg-gray-300 mx-1"></div>
+                    <button type="button" onclick="insertLink()" class="p-1.5 hover:bg-gray-200 rounded text-gray-700" title="Insert link">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                    </button>
+                    <div class="flex-1"></div>
+                    <span class="text-xs text-gray-400">Telegram HTML</span>
+                </div>
+
                 <textarea
                     id="messageText"
                     name="message"
-                    rows="6"
-                    class="w-full border rounded-lg px-3 py-2 font-mono text-sm"
-                    placeholder="Enter your message here...&#10;&#10;Supports <b>bold</b>, <i>italic</i>, <a href='url'>links</a>"
+                    rows="8"
+                    class="w-full border border-t-0 rounded-b-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Type your message here..."
                 ></textarea>
+
+                <div class="flex items-center gap-4 mt-1">
+                    <p class="text-xs text-gray-500">
+                        Supported: &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;u&gt;underline&lt;/u&gt;, &lt;s&gt;strikethrough&lt;/s&gt;, &lt;code&gt;code&lt;/code&gt;, &lt;pre&gt;block&lt;/pre&gt;, &lt;a href="url"&gt;link&lt;/a&gt;
+                    </p>
+                </div>
             </div>
 
             <!-- Preview -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                <div id="preview" class="border rounded-lg p-4 bg-gray-50 min-h-[60px] text-sm">
+                <div id="preview" class="border rounded-lg p-4 bg-gray-50 min-h-[60px] text-sm whitespace-pre-wrap">
                     <span class="text-gray-400">Message preview will appear here...</span>
                 </div>
             </div>
@@ -105,13 +151,57 @@ function updateFilterFields() {
     document.getElementById('langFilter').classList.toggle('hidden', filterType !== 'language');
     document.getElementById('levelFilter').classList.toggle('hidden', filterType !== 'level');
     document.getElementById('activityFilter').classList.toggle('hidden', filterType !== 'activity');
+    document.getElementById('userFilter').classList.toggle('hidden', filterType !== 'user');
+}
+
+// Toolbar functions
+function wrapSelection(tag) {
+    const textarea = document.getElementById('messageText');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+
+    if (selected) {
+        textarea.value = before + `<${tag}>` + selected + `</${tag}>` + after;
+        textarea.selectionStart = start;
+        textarea.selectionEnd = end + tag.length * 2 + 5;
+    } else {
+        textarea.value = before + `<${tag}></${tag}>` + after;
+        textarea.selectionStart = start + tag.length + 2;
+        textarea.selectionEnd = start + tag.length + 2;
+    }
+    textarea.focus();
+    textarea.dispatchEvent(new Event('input'));
+}
+
+function insertLink() {
+    const textarea = document.getElementById('messageText');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.substring(start, end);
+    const before = textarea.value.substring(0, start);
+    const after = textarea.value.substring(end);
+
+    const url = prompt('Enter URL:', 'https://');
+    if (!url) return;
+
+    const linkText = selected || prompt('Enter link text:', 'click here') || 'link';
+    textarea.value = before + `<a href="${url}">${linkText}</a>` + after;
+    textarea.focus();
+    textarea.dispatchEvent(new Event('input'));
 }
 
 // Live preview
 document.getElementById('messageText').addEventListener('input', function() {
     const preview = document.getElementById('preview');
     if (this.value.trim()) {
-        preview.innerHTML = this.value.replace(/\n/g, '<br>');
+        // Render allowed HTML tags, escape the rest
+        let html = this.value;
+        // Replace newlines with <br> for display
+        html = html.replace(/\n/g, '<br>');
+        preview.innerHTML = html;
     } else {
         preview.innerHTML = '<span class="text-gray-400">Message preview will appear here...</span>';
     }
@@ -128,7 +218,10 @@ function sendBroadcast() {
         return;
     }
 
-    if (!confirm('Are you sure you want to send this broadcast?')) {
+    const filterType = document.getElementById('filterType').value;
+    const filterLabel = filterType === 'user' ? 'this user' : (filterType === 'all' ? 'ALL users' : 'filtered users');
+
+    if (!confirm(`Send this broadcast to ${filterLabel}?`)) {
         return;
     }
 
@@ -158,5 +251,17 @@ function sendBroadcast() {
         btn.textContent = 'Send Broadcast';
     });
 }
+
+// Keyboard shortcuts in textarea
+document.getElementById('messageText').addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+            case 'b': e.preventDefault(); wrapSelection('b'); break;
+            case 'i': e.preventDefault(); wrapSelection('i'); break;
+            case 'u': e.preventDefault(); wrapSelection('u'); break;
+            case 'k': e.preventDefault(); insertLink(); break;
+        }
+    }
+});
 </script>
 {% endblock %}

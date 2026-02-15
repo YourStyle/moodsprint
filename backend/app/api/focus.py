@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from app import db
 from app.api import api_bp
-from app.models import FocusSession, Subtask, Task, User
+from app.models import FocusSession, Subtask, Task, User, UserActivityLog
 from app.models.card import CardRarity
 from app.models.focus_session import FocusSessionStatus
 from app.models.subtask import SubtaskStatus
@@ -109,6 +109,18 @@ def start_focus_session():
 
     db.session.add(session)
     db.session.commit()
+
+    try:
+        UserActivityLog.log(
+            user_id=user_id,
+            action_type="focus_start",
+            action_details=f"Started {session.planned_duration}min focus",
+            entity_type="focus_session",
+            entity_id=session.id,
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     return success_response({"session": session.to_dict()}, status_code=201)
 
@@ -243,6 +255,18 @@ def complete_focus_session():
             card_service.add_energy(user_id, 1)
             # Award companion XP
             companion_xp_result = card_service.award_companion_xp(user_id, 10)
+    except Exception:
+        pass
+
+    try:
+        actual_min = session.actual_duration_minutes or 0
+        UserActivityLog.log(
+            user_id=user_id,
+            action_type="focus_complete",
+            action_details=f"Completed {actual_min}min focus",
+            entity_type="focus_session",
+            entity_id=session.id,
+        )
     except Exception:
         pass
 

@@ -157,34 +157,42 @@ def users():
     offset = (page - 1) * per_page
 
     search = request.args.get("search", "")
+    sort_by = request.args.get("sort_by", "created_at")
+    sort_order = request.args.get("sort_order", "desc")
+
+    # Whitelist allowed sort columns to prevent SQL injection
+    allowed_sorts = {
+        "created_at": "created_at",
+        "last_activity_date": "last_activity_date",
+        "xp": "xp",
+        "level": "xp",  # level is derived from xp, so sort by xp
+        "streak_days": "streak_days",
+        "username": "username",
+    }
+    sort_col = allowed_sorts.get(sort_by, "created_at")
+    sort_dir = "ASC" if sort_order == "asc" else "DESC"
+    # NULLS LAST so null dates/values don't dominate
+    order_clause = f"ORDER BY {sort_col} {sort_dir} NULLS LAST"
+
+    where_clause = ""
+    params = {"limit": per_page, "offset": offset}
 
     if search:
-        query = text(
-            """
-            SELECT * FROM users
-            WHERE username ILIKE :search OR first_name ILIKE :search
-            ORDER BY created_at DESC
-            LIMIT :limit OFFSET :offset
-        """
-        )
-        users_data = db.session.execute(
-            query, {"search": f"%{search}%", "limit": per_page, "offset": offset}
-        ).fetchall()
+        where_clause = "WHERE username ILIKE :search OR first_name ILIKE :search"
+        params["search"] = f"%{search}%"
 
-        total = db.session.execute(
-            text(
-                "SELECT COUNT(*) FROM users WHERE username ILIKE :search OR first_name ILIKE :search"
-            ),
-            {"search": f"%{search}%"},
-        ).scalar()
-    else:
-        users_data = db.session.execute(
-            text(
-                "SELECT * FROM users ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
-            ),
-            {"limit": per_page, "offset": offset},
-        ).fetchall()
-        total = db.session.execute(text("SELECT COUNT(*) FROM users")).scalar()
+    users_data = db.session.execute(
+        text(f"SELECT * FROM users {where_clause} {order_clause} LIMIT :limit OFFSET :offset"),
+        params,
+    ).fetchall()
+
+    count_params = {}
+    if search:
+        count_params["search"] = f"%{search}%"
+    total = db.session.execute(
+        text(f"SELECT COUNT(*) FROM users {where_clause}"),
+        count_params,
+    ).scalar()
 
     total_pages = (total + per_page - 1) // per_page
 
@@ -194,6 +202,8 @@ def users():
         page=page,
         total_pages=total_pages,
         search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 
@@ -4447,6 +4457,12 @@ def levels():
     levels_data = {}
     for row in rewards_rows:
         r = dict(row._mapping)
+        # Ensure reward_value is parsed from JSON string to dict
+        if isinstance(r.get("reward_value"), str):
+            import json as json_mod
+            r["reward_value"] = json_mod.loads(r["reward_value"])
+        elif r.get("reward_value") is None:
+            r["reward_value"] = {}
         lvl = r["level"]
         if lvl not in levels_data:
             levels_data[lvl] = []
@@ -4459,7 +4475,7 @@ def levels():
         text("""
             SELECT COALESCE(MAX(
                 CAST(FLOOR(SQRT(xp / 100.0)) + 1 AS INTEGER)
-            ), 1) FROM user_profiles WHERE xp > 0
+            ), 1) FROM users WHERE xp > 0
         """)
     ).scalar() or 1
 
@@ -4629,6 +4645,7 @@ def broadcast_send():
     filter_level_min = request.form.get("filter_level_min", "")
     filter_level_max = request.form.get("filter_level_max", "")
     filter_active_days = request.form.get("filter_active_days", "")
+    filter_user_search = request.form.get("filter_user_search", "").strip()
 
     if not message_text:
         return jsonify({"success": False, "error": "Message is empty"}), 400
@@ -4651,17 +4668,20 @@ def broadcast_send():
 
     elif filter_type == "level":
         if filter_level_min:
-            base_query += " AND u.level >= :level_min"
+            base_query += " AND CAST(FLOOR(SQRT(u.xp / 100.0)) + 1 AS INTEGER) >= :level_min"
             params["level_min"] = int(filter_level_min)
         if filter_level_max:
-            base_query += " AND u.level <= :level_max"
+            base_query += " AND CAST(FLOOR(SQRT(u.xp / 100.0)) + 1 AS INTEGER) <= :level_max"
             params["level_max"] = int(filter_level_max)
 
     elif filter_type == "activity" and filter_active_days:
         days = int(filter_active_days)
-        base_query += " AND u.last_activity_at >= NOW() - INTERVAL ':days days'".replace(
-            ":days", str(days)
-        )
+        base_query += f" AND u.last_activity_date >= CURRENT_DATE - INTERVAL '{days} days'"
+
+    elif filter_type == "user" and filter_user_search:
+        base_query += " AND (u.username ILIKE :usearch OR u.first_name ILIKE :usearch OR CAST(u.telegram_id AS TEXT) = :uid_exact)"
+        params["usearch"] = f"%{filter_user_search}%"
+        params["uid_exact"] = filter_user_search
 
     # Fetch user telegram IDs
     with db.engine.connect() as conn:

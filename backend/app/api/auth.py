@@ -9,7 +9,7 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from app import db
 from app.api import api_bp
 from app.extensions import limiter
-from app.models import User
+from app.models import User, UserActivityLog
 from app.models.card import Friendship, PendingReferralReward
 from app.utils import (
     parse_telegram_user,
@@ -206,6 +206,15 @@ def authenticate_telegram():
             )
             db.session.add(friendship)
             friendship_created = True
+
+    try:
+        UserActivityLog.log(
+            user_id=user.id,
+            action_type="login",
+            action_details="New user registration" if is_new_user else "Login",
+        )
+    except Exception:
+        pass
 
     db.session.commit()
 

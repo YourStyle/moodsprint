@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from app import db
 from app.api import api_bp
-from app.models import MoodCheck, User
+from app.models import MoodCheck, User, UserActivityLog
 from app.services import AchievementChecker, XPCalculator
 from app.utils import success_response, validation_error
 
@@ -66,6 +66,17 @@ def create_mood_check():
     # Check achievements
     checker = AchievementChecker(user)
     achievements_unlocked = checker.check_all()
+
+    try:
+        UserActivityLog.log(
+            user_id=user_id,
+            action_type="mood_check",
+            action_details=f"Mood: {mood}, Energy: {energy}",
+            entity_type="mood_check",
+            entity_id=mood_check.id,
+        )
+    except Exception:
+        pass
 
     db.session.commit()
 

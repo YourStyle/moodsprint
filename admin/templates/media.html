@@ -76,14 +76,14 @@
             <div class="group relative" data-path="{{ item.path }}" data-is-dir="{{ item.is_dir|lower }}">
                 {% if item.is_dir %}
                 <!-- Folder -->
-                <a href="{{ url_for('media_browser', path=item.path) }}" class="block p-4 rounded-lg border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-colors">
+                <a href="{{ url_for('media_browser', path=item.path) }}" class="block rounded-lg border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-colors">
                     <div class="flex flex-col items-center">
-                        <div class="w-16 h-16 flex items-center justify-center">
-                            <svg class="w-12 h-12 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                        <div class="aspect-square w-full rounded-lg bg-amber-50 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
                             </svg>
                         </div>
-                        <span class="text-sm text-gray-700 text-center mt-2 truncate max-w-full">{{ item.name }}</span>
+                        <span class="text-sm text-gray-700 text-center mt-1 truncate max-w-full px-1">{{ item.name }}</span>
                         <span class="text-xs text-gray-400">{{ item.items_count }} items</span>
                     </div>
                 </a>
