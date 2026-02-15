@@ -174,6 +174,13 @@ async def main():
 
     scheduler.start()
 
+    # Run postpone check on startup (catches missed midnight cron after restarts)
+    try:
+        await notification_service.postpone_overdue_tasks()
+        logger.info("Startup postpone check completed.")
+    except Exception as e:
+        logger.error(f"Startup postpone check failed: {e}")
+
     # Set bot commands
     from aiogram.types import BotCommand
 
