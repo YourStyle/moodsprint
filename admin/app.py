@@ -698,9 +698,10 @@ def metrics():
             GROUP BY d
         ) a ON d.date = a.date
         LEFT JOIN (
-            SELECT DATE(completed_at) as date, COUNT(*) as tasks_completed
+            SELECT DATE(COALESCE(completed_at, updated_at)) as date,
+                   COUNT(*) as tasks_completed
             FROM tasks WHERE status = 'completed'
-            GROUP BY DATE(completed_at)
+            GROUP BY DATE(COALESCE(completed_at, updated_at))
         ) t ON d.date = t.date
         LEFT JOIN (
             SELECT DATE(started_at) as date,
