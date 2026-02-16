@@ -208,6 +208,10 @@ class GuildsService {
     return api.get(`/guilds/${guildId}/quests`);
   }
 
+  async generateGuildQuests(guildId: number): Promise<ApiResponse<{ quests: GuildQuest[] }>> {
+    return api.post(`/guilds/${guildId}/quests/generate`);
+  }
+
   async getInviteLink(): Promise<ApiResponse<{
     invite_link: string;
     guild_id: number;

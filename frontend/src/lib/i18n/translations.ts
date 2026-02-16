@@ -352,6 +352,9 @@ export const translations = {
     createGuild: 'Создать',
     guildXP: 'Опыт гильдии',
     weeklyQuests: 'Еженедельные квесты',
+    noQuestsYet: 'Квесты ещё не сгенерированы',
+    generateQuests: 'Запустить квесты',
+    questsGenerating: 'Генерация...',
     invite: 'Пригласить',
     leave: 'Выйти',
     members: 'Участники',
@@ -726,6 +729,7 @@ export const translations = {
 
     // Quick task
     quickTaskPlaceholder: 'Быстрая задача...',
+    addingTask: 'Добавляем...',
   },
 
   en: {
@@ -1081,6 +1085,9 @@ export const translations = {
     createGuild: 'Create',
     guildXP: 'Guild XP',
     weeklyQuests: 'Weekly Quests',
+    noQuestsYet: 'No quests generated yet',
+    generateQuests: 'Generate Quests',
+    questsGenerating: 'Generating...',
     invite: 'Invite',
     leave: 'Leave',
     members: 'Members',
@@ -1455,6 +1462,7 @@ export const translations = {
 
     // Quick task
     quickTaskPlaceholder: 'Quick task...',
+    addingTask: 'Adding...',
   },
 } as const;
 

@@ -4,6 +4,7 @@ from flask import current_app, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.api import api_bp
+from app.models.guild import GuildMember
 from app.services.guild_service import GuildService
 from app.utils import not_found, success_response, validation_error
 
@@ -507,6 +508,26 @@ def get_guild_quests(guild_id):
     """Get active weekly quests for a guild."""
     service = GuildService()
     quests = service.get_active_quests(guild_id)
+    return success_response({"quests": quests})
+
+
+@api_bp.route("/guilds/<int:guild_id>/quests/generate", methods=["POST"])
+@jwt_required()
+def generate_guild_quests(guild_id):
+    """Generate weekly quests for a specific guild. Leader/officer only."""
+    user_id = int(get_jwt_identity())
+
+    membership = GuildMember.query.filter_by(user_id=user_id, guild_id=guild_id).first()
+    if not membership or membership.role not in ("leader", "officer"):
+        return {"success": False, "error": "Not authorized"}, 403
+
+    service = GuildService()
+    # Check if quests already exist this week
+    existing = service.get_active_quests(guild_id)
+    if existing:
+        return validation_error({"quests": "Quests already active this week"})
+
+    quests = service.generate_weekly_quests(guild_id)
     return success_response({"quests": quests})
 
 

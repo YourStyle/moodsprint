@@ -13,6 +13,7 @@ import {
   Share2,
   UserMinus,
   Star,
+  Loader2,
 } from 'lucide-react';
 import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
 import { CreateGuildModal } from '@/components/guilds';
@@ -134,11 +135,22 @@ export default function GuildsPage() {
     },
   });
 
+  // Generate quests mutation
+  const generateQuestsMutation = useMutation({
+    mutationFn: () => guildsService.generateGuildQuests(myGuild!.id),
+    onSuccess: () => {
+      hapticFeedback('success');
+      queryClient.invalidateQueries({ queryKey: ['guilds'] });
+    },
+  });
+
   const myGuild = myGuildData?.data?.guild;
   const membership = myGuildData?.data?.membership;
   const members = guildDetailsData?.data?.members || [];
   const userRole = membership?.role;
   const isLeader = userRole === 'leader';
+  const isOfficer = userRole === 'officer';
+  const canManageQuests = isLeader || isOfficer;
 
   const handleShareInvite = () => {
     if (!inviteLinkData?.data?.invite_link || !myGuild) return;
@@ -276,12 +288,12 @@ export default function GuildsPage() {
               </Card>
 
               {/* Weekly Quests */}
-              {quests.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-white mb-3 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-400" />
-                    {t('weeklyQuests')}
-                  </h3>
+              <div>
+                <h3 className="font-medium text-white mb-3 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-400" />
+                  {t('weeklyQuests')}
+                </h3>
+                {quests.length > 0 ? (
                   <div className="space-y-2">
                     {quests.map((quest) => (
                       <Card key={quest.id} className={cn(
@@ -311,8 +323,33 @@ export default function GuildsPage() {
                       </Card>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <Card className="bg-gray-800/50 border-gray-700/50">
+                    <div className="p-4 text-center space-y-3">
+                      <p className="text-sm text-gray-400">{t('noQuestsYet')}</p>
+                      {canManageQuests && (
+                        <Button
+                          size="sm"
+                          onClick={() => generateQuestsMutation.mutate()}
+                          disabled={generateQuestsMutation.isPending}
+                        >
+                          {generateQuestsMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                              {t('questsGenerating')}
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-1" />
+                              {t('generateQuests')}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </div>
 
               {/* Members List */}
               <div>

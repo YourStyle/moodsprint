@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid } from 'lucide-react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
@@ -545,6 +545,7 @@ export default function HomePage() {
   const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
   const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [quickTaskPending, setQuickTaskPending] = useState<string | null>(null);
   const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
@@ -849,8 +850,12 @@ export default function HomePage() {
   const handleQuickTaskCreate = () => {
     const title = quickTaskTitle.trim();
     if (!title) return;
-    createMutation.mutate({ title, description: '', due_date: selectedDateStr });
+    setQuickTaskPending(title);
     setQuickTaskTitle('');
+    createMutation.mutate(
+      { title, description: '', due_date: selectedDateStr },
+      { onSettled: () => setQuickTaskPending(null) }
+    );
   };
 
   // Toggle compact mode
@@ -1117,22 +1122,35 @@ export default function HomePage() {
       />
 
       {/* Quick Task Input */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={quickTaskTitle}
-          onChange={(e) => setQuickTaskTitle(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleQuickTaskCreate(); }}
-          placeholder={t('quickTaskPlaceholder')}
-          className="flex-1 px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-        />
-        <button
-          onClick={handleQuickTaskCreate}
-          disabled={!quickTaskTitle.trim() || createMutation.isPending}
-          className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:hover:bg-primary-500 flex items-center justify-center transition-colors flex-shrink-0"
-        >
-          <ArrowUp className="w-5 h-5 text-white" />
-        </button>
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={quickTaskTitle}
+            onChange={(e) => setQuickTaskTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleQuickTaskCreate(); }}
+            placeholder={t('quickTaskPlaceholder')}
+            disabled={!!quickTaskPending}
+            className="flex-1 px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+          />
+          <button
+            onClick={handleQuickTaskCreate}
+            disabled={!quickTaskTitle.trim() || !!quickTaskPending}
+            className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:hover:bg-primary-500 flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            {quickTaskPending ? (
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            ) : (
+              <ArrowUp className="w-5 h-5 text-white" />
+            )}
+          </button>
+        </div>
+        {quickTaskPending && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary-500/10 border border-primary-500/20 rounded-xl animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 text-primary-400 animate-spin" />
+            <span className="text-xs text-primary-300">{t('addingTask')}: {quickTaskPending}</span>
+          </div>
+        )}
       </div>
 
       {/* Tasks Section */}
