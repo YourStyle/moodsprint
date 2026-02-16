@@ -9,3 +9,5 @@ export { ReferralRewardModal } from './ReferralRewardModal';
 export { DamageNumber } from './DamageNumber';
 export { HealNumber } from './HealNumber';
 export { CardTutorial, shouldShowCardTutorial, markCardTutorialSeen } from './CardTutorial';
+export { CompanionXPToast } from './CompanionXPToast';
+export type { CompanionXPData } from './CompanionXPToast';

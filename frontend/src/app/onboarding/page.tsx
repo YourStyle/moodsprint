@@ -27,7 +27,7 @@ const RARITY_LABELS: Record<string, string> = {
   legendary: 'Легендарная',
 };
 
-type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'result';
+type Step = 'time' | 'tasks' | 'challenges' | 'genre' | 'card' | 'result';
 
 const timeOptions = [
   { value: 'morning', label: 'Утро', emoji: '🌅', desc: '6:00 - 12:00' },
@@ -109,6 +109,7 @@ export default function OnboardingPage() {
     tips: string[];
   } | null>(null);
   const [starterDeck, setStarterDeck] = useState<ReferralRewardCard[]>([]);
+  const [onboardingCard, setOnboardingCard] = useState<ReferralRewardCard | null>(null);
 
   // Check if onboarding is already completed
   const { data: statusData } = useQuery({
@@ -147,8 +148,13 @@ export default function OnboardingPage() {
         if (response.data.referral_rewards?.starter_deck) {
           setStarterDeck(response.data.referral_rewards.starter_deck);
         }
+        // Save onboarding companion card
+        if (response.data.onboarding_card) {
+          setOnboardingCard(response.data.onboarding_card);
+        }
         setOnboardingCompleted(true);
-        setStep('result');
+        // Go to card step if we got a card, otherwise straight to result
+        setStep(response.data.onboarding_card ? 'card' : 'result');
         hapticFeedback('success');
       }
     },
@@ -189,7 +195,7 @@ export default function OnboardingPage() {
     router.push('/');
   };
 
-  const progressSteps = ['time', 'tasks', 'challenges', 'genre'] as const;
+  const progressSteps = ['time', 'tasks', 'challenges', 'genre', 'card'] as const;
   const currentStepIndex = progressSteps.indexOf(step as typeof progressSteps[number]);
 
   return (
@@ -383,6 +389,61 @@ export default function OnboardingPage() {
               isLoading={completeMutation.isPending}
             >
               Завершить
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step: Card (companion reveal) */}
+      {step === 'card' && onboardingCard && (
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto px-4">
+            <div className="text-center mb-6">
+              <span className="text-5xl mb-4 block">{onboardingCard.emoji}</span>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {onboardingCard.name}
+              </h1>
+              {onboardingCard.description && (
+                <p className="text-gray-400 mb-4">{onboardingCard.description}</p>
+              )}
+            </div>
+
+            <div
+              className="mx-auto max-w-xs rounded-2xl p-5 border"
+              style={{
+                borderColor: (RARITY_COLORS[onboardingCard.rarity] || '#9CA3AF') + '50',
+                background: `linear-gradient(135deg, ${RARITY_COLORS[onboardingCard.rarity] || '#9CA3AF'}15, ${RARITY_COLORS[onboardingCard.rarity] || '#9CA3AF'}05)`,
+              }}
+            >
+              <div className="text-center mb-4">
+                <div
+                  className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: RARITY_COLORS[onboardingCard.rarity] || '#9CA3AF' }}
+                >
+                  {RARITY_LABELS[onboardingCard.rarity]}
+                </div>
+              </div>
+              <div className="flex justify-center gap-6 text-sm">
+                <span className="text-red-400 flex items-center gap-1">
+                  <Swords className="w-4 h-4" />
+                  {onboardingCard.attack}
+                </span>
+                <span className="text-green-400 flex items-center gap-1">
+                  <Heart className="w-4 h-4" />
+                  {onboardingCard.hp}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-center text-gray-400 text-sm mt-6 px-4">
+              Это твой компаньон — он будет расти вместе с тобой
+            </p>
+          </div>
+
+          {/* Fixed button */}
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/95 backdrop-blur border-t border-gray-800">
+            <Button className="w-full" onClick={() => setStep('result')}>
+              Начать
             </Button>
           </div>
         </div>

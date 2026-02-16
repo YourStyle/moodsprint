@@ -89,6 +89,14 @@ def complete_onboarding():
 
     db.session.commit()
 
+    # Generate onboarding companion card
+    onboarding_card = None
+    try:
+        card_service = CardService()
+        onboarding_card = card_service.generate_onboarding_card(user_id)
+    except Exception as e:
+        logger.error(f"Failed to generate onboarding card: {e}")
+
     # Handle referral rewards
     referral_rewards = {}
     user = User.query.get(user_id)
@@ -137,6 +145,9 @@ def complete_onboarding():
         },
         "welcome_message": welcome_message,
     }
+
+    if onboarding_card:
+        response_data["onboarding_card"] = onboarding_card.to_dict()
 
     if referral_rewards:
         response_data["referral_rewards"] = referral_rewards

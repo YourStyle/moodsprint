@@ -32,6 +32,13 @@ interface FocusSessionWithXP {
     xp_bonus: number;
     card_earned?: { id: number; name: string; description: string; genre: string; rarity: string; hp: number; attack: number; emoji: string; image_url?: string | null };
   };
+  companion_xp?: {
+    xp_earned: number;
+    card_name: string | null;
+    card_emoji: string | null;
+    level_up: boolean;
+    new_level: number | null;
+  };
 }
 
 // Level-up payload returned with XP-granting responses

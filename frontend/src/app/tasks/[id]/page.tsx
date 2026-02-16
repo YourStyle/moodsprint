@@ -7,7 +7,7 @@ import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, Ch
 import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
-import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
+import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, CompanionXPToast, type EarnedCard, type CompanionXPData } from '@/components/cards';
 import { LevelUpModal, StreakMilestoneModal, type LevelRewardItem } from '@/components/gamification';
 import { tasksService, focusService, moodService } from '@/services';
 import { cardsService } from '@/services/cards';
@@ -179,6 +179,7 @@ export default function TaskDetailPage() {
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
   const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
   const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
+  const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -307,6 +308,10 @@ export default function TaskDetailPage() {
       if (result.data?.streak_milestone) {
         setStreakMilestoneData(result.data.streak_milestone);
         setShowStreakMilestoneModal(true);
+      }
+      // Companion XP toast
+      if (result.data?.companion_xp) {
+        setCompanionXPToast(result.data.companion_xp);
       }
       hapticFeedback('success');
     },
@@ -482,6 +487,10 @@ export default function TaskDetailPage() {
       if (result.data?.streak_milestone) {
         setStreakMilestoneData(result.data.streak_milestone);
         setShowStreakMilestoneModal(true);
+      }
+      // Companion XP toast
+      if (result.data?.companion_xp) {
+        setCompanionXPToast(result.data.companion_xp);
       }
       hapticFeedback('success');
     },
@@ -1449,6 +1458,12 @@ export default function TaskDetailPage() {
       <CardTutorial
         isOpen={showCardTutorial}
         onClose={() => setShowCardTutorial(false)}
+      />
+
+      {/* Companion XP Toast */}
+      <CompanionXPToast
+        data={companionXPToast}
+        onDismiss={() => setCompanionXPToast(null)}
       />
     </div>
   );

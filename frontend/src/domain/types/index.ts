@@ -356,6 +356,7 @@ export interface OnboardingResponse {
     recommended_session_duration: number;
   };
   welcome_message: string;
+  onboarding_card?: ReferralRewardCard;
   referral_rewards?: ReferralRewards;
 }
 

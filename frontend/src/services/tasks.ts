@@ -66,6 +66,13 @@ interface TaskWithXP extends TaskResponse, Partial<XPReward> {
     xp_bonus: number;
     card_earned?: CardEarned;
   };
+  companion_xp?: {
+    xp_earned: number;
+    card_name: string | null;
+    card_emoji: string | null;
+    level_up: boolean;
+    new_level: number | null;
+  };
 }
 
 interface SubtaskResponse {
@@ -84,6 +91,13 @@ interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {
     milestone_days: number;
     xp_bonus: number;
     card_earned?: CardEarned;
+  };
+  companion_xp?: {
+    xp_earned: number;
+    card_name: string | null;
+    card_emoji: string | null;
+    level_up: boolean;
+    new_level: number | null;
   };
 }
 

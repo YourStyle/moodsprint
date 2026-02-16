@@ -750,6 +750,9 @@ export const translations = {
     // Comeback (F5)
     comebackCard: 'С возвращением!',
     comebackCardDesc: 'Мы скучали! Вот карта в подарок.',
+
+    // Quick task
+    quickTaskPlaceholder: 'Быстрая задача...',
   },
 
   en: {
@@ -1503,6 +1506,9 @@ export const translations = {
     // Comeback (F5)
     comebackCard: 'Welcome back!',
     comebackCardDesc: 'We missed you! Here\'s a card for you.',
+
+    // Quick task
+    quickTaskPlaceholder: 'Quick task...',
   },
 } as const;
 

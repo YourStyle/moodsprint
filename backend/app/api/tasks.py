@@ -559,9 +559,10 @@ def update_task(task_id: int):
             # Award campaign energy for task completion
             card_service.add_energy(user_id, 1)
             # Award companion XP for task completion
-            card_service.award_companion_xp(user_id, 5)
+            companion_xp_result = card_service.award_companion_xp(user_id, 5)
         except Exception:
             # Card generation is optional, don't fail task completion
+            companion_xp_result = None
             pass
 
         db.session.commit()
@@ -601,6 +602,18 @@ def update_task(task_id: int):
                 "Задача выполнена слишком быстро. "
                 "Максимальная редкость карты за такую задачу — Необычная."
             )
+    if (
+        task_just_completed
+        and companion_xp_result
+        and companion_xp_result.get("success")
+    ):
+        response_data["companion_xp"] = {
+            "xp_earned": companion_xp_result.get("xp_earned", 5),
+            "card_name": companion_xp_result.get("card_name"),
+            "card_emoji": companion_xp_result.get("card_emoji"),
+            "level_up": companion_xp_result.get("level_up", False),
+            "new_level": companion_xp_result.get("new_level"),
+        }
 
     return success_response(response_data)
 
@@ -920,10 +933,13 @@ def update_subtask(subtask_id: int):
                     user_id, task.id, task.title, difficulty, max_rarity=max_rarity
                 )
                 # Award companion XP based on difficulty
-                companion_xp = COMPANION_XP_BY_DIFFICULTY.get(difficulty, 5)
-                card_service.award_companion_xp(user_id, companion_xp)
+                companion_xp_amount = COMPANION_XP_BY_DIFFICULTY.get(difficulty, 5)
+                companion_xp_result = card_service.award_companion_xp(
+                    user_id, companion_xp_amount
+                )
             except Exception:
                 # Card generation is optional, don't fail task completion
+                companion_xp_result = None
                 pass
 
         xp_info = user.add_xp(xp_earned)
@@ -989,6 +1005,18 @@ def update_subtask(subtask_id: int):
                 "Задача выполнена слишком быстро. "
                 "Максимальная редкость карты за такую задачу — Необычная."
             )
+    if was_completed and task_just_completed:
+        try:
+            if companion_xp_result and companion_xp_result.get("success"):
+                response_data["companion_xp"] = {
+                    "xp_earned": companion_xp_result.get("xp_earned", 5),
+                    "card_name": companion_xp_result.get("card_name"),
+                    "card_emoji": companion_xp_result.get("card_emoji"),
+                    "level_up": companion_xp_result.get("level_up", False),
+                    "new_level": companion_xp_result.get("new_level"),
+                }
+        except NameError:
+            pass
 
     if streak_milestone:
         response_data["streak_milestone"] = streak_milestone

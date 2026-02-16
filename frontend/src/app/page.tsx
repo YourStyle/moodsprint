@@ -10,7 +10,7 @@ import { TaskForm } from '@/components/tasks';
 import { DailyBonus, LevelUpModal, EnergyLimitModal, type LevelRewardItem } from '@/components/gamification';
 import { StreakIndicator } from '@/components/gamification/StreakIndicator';
 import { StreakMilestoneModal } from '@/components/gamification/StreakMilestoneModal';
-import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
+import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, CompanionXPToast, type EarnedCard, type CompanionXPData } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
@@ -544,6 +544,8 @@ export default function HomePage() {
   const [energyLimitData, setEnergyLimitData] = useState<{ old_max: number; new_max: number } | null>(null);
   const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
   const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -780,6 +782,10 @@ export default function HomePage() {
         setStreakMilestoneData(result.data.streak_milestone);
         setShowStreakMilestoneModal(true);
       }
+      // Companion XP toast
+      if (result.data?.companion_xp) {
+        setCompanionXPToast(result.data.companion_xp);
+      }
       hapticFeedback('success');
     },
   });
@@ -823,6 +829,10 @@ export default function HomePage() {
         setStreakMilestoneData(result.data.streak_milestone);
         setShowStreakMilestoneModal(true);
       }
+      // Companion XP toast
+      if (result.data?.companion_xp) {
+        setCompanionXPToast(result.data.companion_xp);
+      }
       hapticFeedback('success');
     },
   });
@@ -834,6 +844,13 @@ export default function HomePage() {
 
   const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => {
     createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt, autoDecompose, subtasks });
+  };
+
+  const handleQuickTaskCreate = () => {
+    const title = quickTaskTitle.trim();
+    if (!title) return;
+    createMutation.mutate({ title, description: '', due_date: selectedDateStr });
+    setQuickTaskTitle('');
   };
 
   // Toggle compact mode
@@ -1098,6 +1115,25 @@ export default function HomePage() {
         language={language}
         taskCounts={taskCounts}
       />
+
+      {/* Quick Task Input */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={quickTaskTitle}
+          onChange={(e) => setQuickTaskTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleQuickTaskCreate(); }}
+          placeholder={t('quickTaskPlaceholder')}
+          className="flex-1 px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+        <button
+          onClick={handleQuickTaskCreate}
+          disabled={!quickTaskTitle.trim() || createMutation.isPending}
+          className="w-10 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:hover:bg-primary-500 flex items-center justify-center transition-colors flex-shrink-0"
+        >
+          <ArrowUp className="w-5 h-5 text-white" />
+        </button>
+      </div>
 
       {/* Tasks Section */}
       <div className="space-y-3 min-h-[180px]">
@@ -1410,6 +1446,12 @@ export default function HomePage() {
       <CardTutorial
         isOpen={showCardTutorial}
         onClose={() => setShowCardTutorial(false)}
+      />
+
+      {/* Companion XP Toast */}
+      <CompanionXPToast
+        data={companionXPToast}
+        onDismiss={() => setCompanionXPToast(null)}
       />
     </div>
     </div>

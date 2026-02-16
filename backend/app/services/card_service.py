@@ -1826,7 +1826,36 @@ class CardService:
         companion = self.get_companion(user_id)
         if not companion:
             return None
-        return self.add_card_xp(companion.id, user_id, xp_amount)
+        result = self.add_card_xp(companion.id, user_id, xp_amount)
+        if result and result.get("success"):
+            result["card_name"] = companion.name
+            result["card_emoji"] = companion.emoji
+            result["xp_earned"] = xp_amount
+        return result
+
+    def generate_onboarding_card(self, user_id: int) -> UserCard | None:
+        """Generate the first companion card during onboarding.
+
+        Creates a guaranteed UNCOMMON card in the user's chosen genre
+        and sets it as their companion.
+        """
+        genre = self.get_user_genre(user_id)
+        card = self.generate_card_for_task(
+            user_id=user_id,
+            task_id=None,
+            task_title="Первый компаньон",
+            difficulty="medium",
+            forced_rarity=CardRarity.UNCOMMON,
+            forced_genre=genre,
+        )
+        if card:
+            card.is_companion = True
+            db.session.commit()
+            logger.info(
+                f"Generated onboarding companion for user {user_id}: "
+                f"{card.name} ({card.rarity})"
+            )
+        return card
 
     # ============ Showcase System ============
 
