@@ -21,7 +21,7 @@ import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, getTelegramWebApp, setupBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
-import type { Guild, GuildMember } from '@/services/guilds';
+import type { Guild, GuildMember, GuildQuest } from '@/services/guilds';
 
 type Tab = 'my-guild' | 'browse' | 'leaderboard';
 
@@ -65,6 +65,15 @@ export default function GuildsPage() {
     queryFn: () => guildsService.getInviteLink(),
     enabled: !!myGuildData?.data?.guild,
   });
+
+  // Get weekly quests
+  const { data: questsData } = useQuery({
+    queryKey: ['guilds', myGuildData?.data?.guild?.id, 'quests'],
+    queryFn: () => guildsService.getGuildQuests(myGuildData!.data!.guild!.id),
+    enabled: !!myGuildData?.data?.guild,
+  });
+
+  const quests: GuildQuest[] = questsData?.data?.quests || [];
 
   // Browse guilds
   const { data: guildsData, isLoading: guildsLoading } = useQuery({
@@ -265,6 +274,45 @@ export default function GuildsPage() {
                   </div>
                 </div>
               </Card>
+
+              {/* Weekly Quests */}
+              {quests.length > 0 && (
+                <div>
+                  <h3 className="font-medium text-white mb-3 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-400" />
+                    {t('weeklyQuests')}
+                  </h3>
+                  <div className="space-y-2">
+                    {quests.map((quest) => (
+                      <Card key={quest.id} className={cn(
+                        'border-gray-700/50',
+                        quest.status === 'completed' ? 'bg-green-900/20 border-green-500/30' : 'bg-gray-800/50'
+                      )}>
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{quest.emoji}</span>
+                              <span className="text-sm font-medium text-white">{quest.title}</span>
+                            </div>
+                            {quest.status === 'completed' && (
+                              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                                {t('completed')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs text-gray-400">
+                              <span>{quest.progress}/{quest.target}</span>
+                              <span className="text-amber-400">+{quest.xp_reward} XP</span>
+                            </div>
+                            <Progress value={quest.percentage} className="h-1.5" />
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Members List */}
               <div>

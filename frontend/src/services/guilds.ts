@@ -64,6 +64,23 @@ export interface RaidContribution {
   attacks_today: number;
 }
 
+export interface GuildQuest {
+  id: number;
+  guild_id: number;
+  quest_type: string;
+  title: string;
+  emoji: string;
+  target: number;
+  progress: number;
+  percentage: number;
+  week_start: string;
+  week_end: string;
+  status: 'active' | 'completed' | 'expired';
+  xp_reward: number;
+  sparks_reward: number;
+  completed_at?: string;
+}
+
 export interface GuildInvite {
   id: number;
   guild_id: number;
@@ -185,6 +202,10 @@ class GuildsService {
     if (params?.page) query.set('page', params.page.toString());
     if (params?.per_page) query.set('per_page', params.per_page.toString());
     return api.get(`/guilds/leaderboard?${query}`);
+  }
+
+  async getGuildQuests(guildId: number): Promise<ApiResponse<{ quests: GuildQuest[] }>> {
+    return api.get(`/guilds/${guildId}/quests`);
   }
 
   async getInviteLink(): Promise<ApiResponse<{

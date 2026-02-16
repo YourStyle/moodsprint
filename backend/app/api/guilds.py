@@ -1,6 +1,6 @@
 """Guild system API endpoints."""
 
-from flask import request
+from flask import current_app, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.api import api_bp
@@ -499,3 +499,41 @@ def get_guild_leaderboard():
     result = service.list_guilds(page=page, per_page=per_page)
 
     return success_response(result)
+
+
+@api_bp.route("/guilds/<int:guild_id>/quests", methods=["GET"])
+@jwt_required()
+def get_guild_quests(guild_id):
+    """Get active weekly quests for a guild."""
+    service = GuildService()
+    quests = service.get_active_quests(guild_id)
+    return success_response({"quests": quests})
+
+
+# ============ Bot-callable endpoints (X-Bot-Secret auth) ============
+
+
+@api_bp.route("/guilds/quests/generate", methods=["POST"])
+def generate_all_guild_quests():
+    """Generate weekly quests for all guilds. Called by bot scheduler."""
+    bot_secret = request.headers.get("X-Bot-Secret")
+    expected_secret = current_app.config.get("BOT_SECRET", "")
+    if not expected_secret or bot_secret != expected_secret:
+        return {"success": False, "error": "Unauthorized"}, 403
+
+    service = GuildService()
+    count = service.generate_quests_for_all_guilds()
+    return success_response({"generated": count})
+
+
+@api_bp.route("/guilds/quests/expire", methods=["POST"])
+def expire_all_guild_quests():
+    """Expire old guild quests. Called by bot scheduler."""
+    bot_secret = request.headers.get("X-Bot-Secret")
+    expected_secret = current_app.config.get("BOT_SECRET", "")
+    if not expected_secret or bot_secret != expected_secret:
+        return {"success": False, "error": "Unauthorized"}, 403
+
+    service = GuildService()
+    count = service.expire_old_quests()
+    return success_response({"expired": count})

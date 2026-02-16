@@ -313,6 +313,24 @@ def complete_focus_session():
                 "Максимальная редкость карты за такую задачу — Необычная."
             )
 
+    # Increment guild quest progress for focus session
+    try:
+        from app.models.guild import GuildMember
+        from app.services.guild_service import GuildService as GS
+
+        membership = GuildMember.query.filter_by(user_id=user_id).first()
+        if membership:
+            gs = GS()
+            actual_min = session.actual_duration_minutes or 0
+            if actual_min > 0:
+                gs.increment_quest_progress(
+                    membership.guild_id, "focus_minutes", actual_min
+                )
+            if generated_card:
+                gs.increment_quest_progress(membership.guild_id, "cards_earned")
+    except Exception:
+        pass
+
     return success_response(response_data)
 
 

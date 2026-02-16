@@ -527,13 +527,6 @@ export default function DeckPage() {
         </button>
       </div>
 
-      {/* Marketplace Banner - only show in Telegram environment */}
-      {isTelegramEnvironment && (
-        <div className="mb-4">
-          <FeatureBanner type="marketplace" />
-        </div>
-      )}
-
       {/* Collection Tab */}
       {activeTab === 'collection' && (
         <>
@@ -1184,7 +1177,6 @@ export default function DeckPage() {
           cardXp: infoCard.card_xp,
           isCompanion: infoCard.is_companion,
         } : null}
-        showSellButton={isTelegramEnvironment}
         isInDeck={infoCard?.is_in_deck}
         onAddToDeck={(id) => addToDeckMutation.mutate(id)}
         onRemoveFromDeck={(id) => removeFromDeckMutation.mutate(id)}

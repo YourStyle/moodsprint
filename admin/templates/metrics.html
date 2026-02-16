@@ -29,6 +29,36 @@
     </div>
 </div>
 
+<!-- Product Health Metrics -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-emerald-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Activation Rate</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ activation_rate }}%</p>
+        <p class="text-xs text-gray-400">users with &ge;1 task done</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-indigo-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Tasks / DAU</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ tasks_per_dau }}</p>
+        <p class="text-xs text-gray-400">avg last 7 days</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-cyan-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Focus Completion</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ focus_completion_rate }}%</p>
+        <p class="text-xs text-gray-400">completed / started</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-pink-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Viral Coefficient</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ viral_coefficient }}</p>
+        <p class="text-xs text-gray-400">referral signups ratio</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-amber-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">ARPU (Sparks)</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ arpu }}</p>
+        <p class="text-xs text-gray-400">avg per transacting user</p>
+    </div>
+</div>
+
+<!-- Secondary Metrics -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
     <div class="bg-white rounded-xl p-5 shadow-sm">
         <p class="text-xs text-gray-500 uppercase tracking-wide">Avg XP / User</p>

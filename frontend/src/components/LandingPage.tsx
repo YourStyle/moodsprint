@@ -64,7 +64,7 @@ const translations = {
     // Trading section
     tradingTitle: 'Trade & Collect',
     tradingSubtitle: 'Complete your collection',
-    tradingDesc: 'Trade cards with friends or sell them on the marketplace. Build the ultimate collection and create the perfect battle deck.',
+    tradingDesc: 'Collect unique cards by completing tasks. Build the ultimate collection and create the perfect battle deck.',
 
     // CTA
     ctaTitle: 'Ready to make productivity fun?',

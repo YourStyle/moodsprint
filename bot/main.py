@@ -13,6 +13,10 @@ from config import config
 from handlers import main_router
 from handlers.notifications import NotificationService
 from services.deposit_service import check_deposits
+from services.guild_quest_service import (
+    expire_guild_quests,
+    generate_guild_weekly_quests,
+)
 
 # Moscow timezone for all scheduled jobs
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
@@ -184,6 +188,20 @@ async def main():
         "interval",
         minutes=5,
         id="resource_monitor",
+    )
+
+    # Guild weekly quests - generate on Monday at 00:15
+    scheduler.add_job(
+        generate_guild_weekly_quests,
+        CronTrigger(day_of_week="mon", hour=0, minute=15, timezone=MOSCOW_TZ),
+        id="guild_weekly_quests",
+    )
+
+    # Expire old guild quests - daily at 00:20
+    scheduler.add_job(
+        expire_guild_quests,
+        CronTrigger(hour=0, minute=20, timezone=MOSCOW_TZ),
+        id="expire_guild_quests",
     )
 
     scheduler.start()

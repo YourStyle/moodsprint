@@ -1,16 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Shield, Store, Map, ChevronRight, Sparkles, Swords, Trophy, Gift } from 'lucide-react';
+import { Shield, Map, ChevronRight, Sparkles, Swords, Trophy } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { useLanguage } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface FeatureBannerProps {
-  type: 'guilds' | 'marketplace' | 'campaign';
+  type: 'guilds' | 'campaign';
   stats?: {
     guilds?: { memberCount?: number; hasGuild?: boolean };
-    marketplace?: { balance?: number; listingsCount?: number };
     campaign?: { currentChapter?: number; starsEarned?: number };
   };
 }
@@ -33,21 +32,6 @@ export function FeatureBanner({ type, stats }: FeatureBannerProps) {
       highlights: [
         { icon: Swords, text: t('raids') },
         { icon: Trophy, text: t('rewards') },
-      ],
-    },
-    marketplace: {
-      icon: Store,
-      title: t('marketplace'),
-      description: t('marketplaceDesc'),
-      href: '/marketplace',
-      gradient: 'from-amber-600/30 via-orange-600/30 to-yellow-600/30',
-      borderColor: 'border-amber-500/40',
-      iconBg: 'bg-amber-500/30',
-      iconColor: 'text-amber-400',
-      buttonGradient: 'from-amber-600 to-orange-600',
-      highlights: [
-        { icon: Store, text: t('cardsLabel') },
-        { icon: Gift, text: t('selling') },
       ],
     },
     campaign: {
@@ -81,9 +65,6 @@ export function FeatureBanner({ type, stats }: FeatureBannerProps) {
         return `${stats.guilds.memberCount || 0} ${t('membersCount')}`;
       }
       return t('joinNow');
-    }
-    if (type === 'marketplace' && stats?.marketplace) {
-      return `${stats.marketplace.listingsCount || 0} ${t('cardsOnSale')}`;
     }
     if (type === 'campaign' && stats?.campaign) {
       return `${t('chapter')} ${stats.campaign.currentChapter || 1} • ${stats.campaign.starsEarned || 0} ⭐`;
@@ -153,11 +134,9 @@ export function FeatureBanner({ type, stats }: FeatureBannerProps) {
 // Combined banners section for deck page
 export function FeatureBannersSection({
   guildStats,
-  marketplaceStats,
   campaignStats
 }: {
   guildStats?: { memberCount?: number; hasGuild?: boolean };
-  marketplaceStats?: { balance?: number; listingsCount?: number };
   campaignStats?: { currentChapter?: number; starsEarned?: number };
 }) {
   return (
@@ -169,10 +148,6 @@ export function FeatureBannersSection({
       <FeatureBanner
         type="guilds"
         stats={{ guilds: guildStats }}
-      />
-      <FeatureBanner
-        type="marketplace"
-        stats={{ marketplace: marketplaceStats }}
       />
     </div>
   );

@@ -1367,6 +1367,20 @@ class CardBattleService:
             except Exception:
                 pass  # Don't fail battle on quest errors
 
+            # Increment guild quest progress
+            try:
+                from app.models.guild import GuildMember
+                from app.services.guild_service import GuildService
+
+                membership = GuildMember.query.filter_by(user_id=battle.user_id).first()
+                if membership:
+                    gs = GuildService()
+                    gs.increment_quest_progress(membership.guild_id, "battles_won")
+                    if new_card:
+                        gs.increment_quest_progress(membership.guild_id, "cards_earned")
+            except Exception:
+                pass
+
         # Log battle
         battle_record = BattleLog(
             user_id=battle.user_id,

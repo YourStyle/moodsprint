@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Swords, Sparkles, Calendar, DollarSign, Zap, Layers, Plus, Minus, Star } from 'lucide-react';
-import { Modal, Button } from '@/components/ui';
+import { Heart, Swords, Sparkles, Calendar, Zap, Layers, Minus, Star } from 'lucide-react';
+import { Modal } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { SellCardModal } from '@/components/marketplace';
 import { useTranslation } from '@/lib/i18n';
 
 interface AbilityInfo {
@@ -37,7 +36,6 @@ interface CardInfoSheetProps {
     cardXp?: number;
     isCompanion?: boolean;
   } | null;
-  showSellButton?: boolean;
   isInDeck?: boolean;
   onAddToDeck?: (id: number) => void;
   onRemoveFromDeck?: (id: number) => void;
@@ -84,15 +82,13 @@ const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | '
   anime: 'genreAnime',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase, onSetCompanion, onRemoveCompanion }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase, onSetCompanion, onRemoveCompanion }: CardInfoSheetProps) {
   const { t } = useTranslation();
-  const [showSellModal, setShowSellModal] = useState(false);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
 
   if (!card) return null;
 
   const config = rarityStyles[card.rarity as keyof typeof rarityStyles] || rarityStyles.common;
-  const canSell = showSellButton && card.id && card.isOwned !== false;
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '';
@@ -329,38 +325,11 @@ export function CardInfoSheet({ isOpen, onClose, card, showSellButton = false, i
               </button>
             )}
 
-            {/* Sell button */}
-            {canSell && (
-              <button
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-sm transition-colors"
-                onClick={() => setShowSellModal(true)}
-              >
-                <DollarSign className="w-4 h-4 text-emerald-400" />
-                {t('sellForStars')}
-              </button>
-            )}
           </div>
         )}
         </div>
       </div>
 
-      {/* Sell Card Modal */}
-      {canSell && (
-        <SellCardModal
-          isOpen={showSellModal}
-          onClose={() => setShowSellModal(false)}
-          card={{
-            id: card.id!,
-            name: card.name,
-            emoji: card.emoji,
-            imageUrl: card.imageUrl ?? undefined,
-            rarity: card.rarity,
-            attack: card.attack,
-            hp: card.hp,
-          }}
-          onSuccess={onClose}
-        />
-      )}
     </Modal>
   );
 }

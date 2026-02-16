@@ -1,4 +1,4 @@
-"""Guild system models for social features and raids."""
+"""Guild system models for social features, raids, and weekly quests."""
 
 from datetime import datetime
 
@@ -291,4 +291,63 @@ class GuildInvite(db.Model):
             "invited_by_id": self.invited_by_id,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class GuildQuest(db.Model):
+    """Weekly quest for a guild."""
+
+    __tablename__ = "guild_quests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    guild_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guilds.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Quest definition
+    quest_type = db.Column(db.String(50), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    emoji = db.Column(db.String(10), default="📋")
+    target = db.Column(db.Integer, nullable=False)
+    progress = db.Column(db.Integer, default=0)
+
+    # Time window
+    week_start = db.Column(db.Date, nullable=False)
+    week_end = db.Column(db.Date, nullable=False)
+
+    # Status: active, completed, expired
+    status = db.Column(db.String(20), default="active")
+
+    # Rewards
+    xp_reward = db.Column(db.Integer, default=200)
+    sparks_reward = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "guild_id": self.guild_id,
+            "quest_type": self.quest_type,
+            "title": self.title,
+            "emoji": self.emoji,
+            "target": self.target,
+            "progress": min(self.progress, self.target),
+            "percentage": (
+                min(100, int(self.progress / self.target * 100))
+                if self.target > 0
+                else 0
+            ),
+            "week_start": str(self.week_start),
+            "week_end": str(self.week_end),
+            "status": self.status,
+            "xp_reward": self.xp_reward,
+            "sparks_reward": self.sparks_reward,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }

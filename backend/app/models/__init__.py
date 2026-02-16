@@ -36,6 +36,7 @@ from app.models.guild import (
     Guild,
     GuildInvite,
     GuildMember,
+    GuildQuest,
     GuildRaid,
     GuildRaidContribution,
 )
@@ -91,6 +92,7 @@ __all__ = [
     "GuildRaid",
     "GuildRaidContribution",
     "GuildInvite",
+    "GuildQuest",
     # Marketplace
     "MarketListing",
     "StarsTransaction",

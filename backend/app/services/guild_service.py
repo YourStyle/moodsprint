@@ -12,6 +12,7 @@ from app.models.guild import (
     Guild,
     GuildInvite,
     GuildMember,
+    GuildQuest,
     GuildRaid,
     GuildRaidContribution,
 )
@@ -689,3 +690,166 @@ class GuildService:
             "guild_name": guild.name,
             "guild_id": guild.id,
         }
+
+    # ── Weekly Quests ──
+
+    QUEST_TEMPLATES = [
+        {
+            "quest_type": "tasks_completed",
+            "title": "Complete {target} tasks",
+            "emoji": "✅",
+            "base_target": 20,
+            "xp_reward": 300,
+            "sparks_reward": 10,
+        },
+        {
+            "quest_type": "focus_minutes",
+            "title": "Focus for {target} minutes",
+            "emoji": "🎯",
+            "base_target": 120,
+            "xp_reward": 250,
+            "sparks_reward": 5,
+        },
+        {
+            "quest_type": "battles_won",
+            "title": "Win {target} battles",
+            "emoji": "⚔️",
+            "base_target": 10,
+            "xp_reward": 350,
+            "sparks_reward": 15,
+        },
+        {
+            "quest_type": "cards_earned",
+            "title": "Earn {target} cards",
+            "emoji": "🃏",
+            "base_target": 5,
+            "xp_reward": 200,
+            "sparks_reward": 5,
+        },
+        {
+            "quest_type": "streaks_maintained",
+            "title": "Maintain {target} member streaks",
+            "emoji": "🔥",
+            "base_target": 3,
+            "xp_reward": 400,
+            "sparks_reward": 20,
+        },
+    ]
+
+    def generate_weekly_quests(self, guild_id: int) -> list[dict]:
+        """Generate 2-3 weekly quests for a guild."""
+        guild = Guild.query.get(guild_id)
+        if not guild:
+            return []
+
+        today = date.today()
+        # Week runs Monday-Sunday
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+
+        # Check if quests already exist for this week
+        existing = GuildQuest.query.filter_by(
+            guild_id=guild_id, week_start=week_start
+        ).first()
+        if existing:
+            return []
+
+        # Pick 2-3 random quest templates
+        member_count = guild.member_count
+        count = 3 if member_count >= 5 else 2
+        templates = random.sample(
+            self.QUEST_TEMPLATES, min(count, len(self.QUEST_TEMPLATES))
+        )
+
+        quests = []
+        for tmpl in templates:
+            # Scale target by member count (more members = higher target)
+            scale = max(1, member_count // 3)
+            target = tmpl["base_target"] * scale
+
+            quest = GuildQuest(
+                guild_id=guild_id,
+                quest_type=tmpl["quest_type"],
+                title=tmpl["title"].replace("{target}", str(target)),
+                emoji=tmpl["emoji"],
+                target=target,
+                week_start=week_start,
+                week_end=week_end,
+                xp_reward=tmpl["xp_reward"],
+                sparks_reward=tmpl["sparks_reward"],
+            )
+            db.session.add(quest)
+            quests.append(quest)
+
+        db.session.commit()
+        return [q.to_dict() for q in quests]
+
+    def generate_quests_for_all_guilds(self) -> int:
+        """Generate weekly quests for all guilds. Called by scheduler."""
+        guilds = Guild.query.all()
+        generated = 0
+        for guild in guilds:
+            try:
+                result = self.generate_weekly_quests(guild.id)
+                if result:
+                    generated += 1
+            except Exception as e:
+                logger.error(f"Failed to generate quests for guild {guild.id}: {e}")
+        return generated
+
+    def get_active_quests(self, guild_id: int) -> list[dict]:
+        """Get active weekly quests for a guild."""
+        today = date.today()
+        quests = (
+            GuildQuest.query.filter(
+                GuildQuest.guild_id == guild_id,
+                GuildQuest.week_start <= today,
+                GuildQuest.week_end >= today,
+            )
+            .order_by(GuildQuest.id)
+            .all()
+        )
+        return [q.to_dict() for q in quests]
+
+    def increment_quest_progress(
+        self, guild_id: int, quest_type: str, amount: int = 1
+    ) -> dict | None:
+        """Increment progress on a guild's active quest of given type."""
+        today = date.today()
+        quest = GuildQuest.query.filter(
+            GuildQuest.guild_id == guild_id,
+            GuildQuest.quest_type == quest_type,
+            GuildQuest.status == "active",
+            GuildQuest.week_start <= today,
+            GuildQuest.week_end >= today,
+        ).first()
+
+        if not quest:
+            return None
+
+        quest.progress += amount
+
+        if quest.progress >= quest.target:
+            quest.status = "completed"
+            quest.completed_at = datetime.utcnow()
+
+            # Award guild XP
+            guild = Guild.query.get(guild_id)
+            if guild:
+                guild.xp += quest.xp_reward
+                self._check_guild_level_up(guild)
+
+        db.session.commit()
+        return quest.to_dict()
+
+    def expire_old_quests(self) -> int:
+        """Expire quests past their week_end. Called by scheduler."""
+        today = date.today()
+        expired = GuildQuest.query.filter(
+            GuildQuest.status == "active",
+            GuildQuest.week_end < today,
+        ).all()
+        for q in expired:
+            q.status = "expired"
+        db.session.commit()
+        return len(expired)

@@ -615,6 +615,21 @@ def update_task(task_id: int):
             "new_level": companion_xp_result.get("new_level"),
         }
 
+    # Increment guild quest progress for task completion
+    if task_just_completed:
+        try:
+            from app.models.guild import GuildMember
+            from app.services.guild_service import GuildService as GS
+
+            membership = GuildMember.query.filter_by(user_id=user_id).first()
+            if membership:
+                gs = GS()
+                gs.increment_quest_progress(membership.guild_id, "tasks_completed")
+                if generated_card:
+                    gs.increment_quest_progress(membership.guild_id, "cards_earned")
+        except Exception:
+            pass
+
     return success_response(response_data)
 
 
@@ -1020,6 +1035,21 @@ def update_subtask(subtask_id: int):
 
     if streak_milestone:
         response_data["streak_milestone"] = streak_milestone
+
+    # Increment guild quest progress for subtask → task completion
+    if task_just_completed:
+        try:
+            from app.models.guild import GuildMember
+            from app.services.guild_service import GuildService as GS
+
+            membership = GuildMember.query.filter_by(user_id=user_id).first()
+            if membership:
+                gs = GS()
+                gs.increment_quest_progress(membership.guild_id, "tasks_completed")
+                if generated_card:
+                    gs.increment_quest_progress(membership.guild_id, "cards_earned")
+        except Exception:
+            pass
 
     return success_response(response_data)
 

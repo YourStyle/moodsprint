@@ -1,8 +1,11 @@
 'use client';
 
-import { Flame, Sparkles, Gift } from 'lucide-react';
+import { useCallback } from 'react';
+import { Flame, Sparkles, Gift, Share2 } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { useTranslation } from '@/lib/i18n';
+import { getTelegramWebApp } from '@/lib/telegram';
+import { useAppStore } from '@/lib/store';
 
 interface StreakMilestoneData {
   milestone_days: number;
@@ -31,6 +34,22 @@ const RARITY_COLORS: Record<string, string> = {
 
 export function StreakMilestoneModal({ isOpen, onClose, milestone }: StreakMilestoneModalProps) {
   const { t } = useTranslation();
+  const { user } = useAppStore();
+
+  const handleShare = useCallback(() => {
+    if (!milestone) return;
+    const webApp = getTelegramWebApp();
+    const inviteParam = user?.id ? `invite_${user.id}` : '';
+    const appUrl = `https://t.me/moodsprint_bot${inviteParam ? `?startapp=${inviteParam}` : ''}`;
+    const shareText = t('shareStreakText').replace('{days}', String(milestone.milestone_days));
+    const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+
+    if (webApp && webApp.openTelegramLink) {
+      webApp.openTelegramLink(telegramShareUrl);
+    } else {
+      window.open(telegramShareUrl, '_blank');
+    }
+  }, [milestone, t, user?.id]);
 
   if (!milestone) return null;
 
@@ -86,9 +105,19 @@ export function StreakMilestoneModal({ isOpen, onClose, milestone }: StreakMiles
           )}
         </div>
 
-        <Button onClick={onClose} className="w-full">
-          {t('great')}
-        </Button>
+        <div className="w-full flex gap-2">
+          <Button
+            onClick={handleShare}
+            variant="secondary"
+            className="flex-1 flex items-center justify-center gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            {t('shareStreak')}
+          </Button>
+          <Button onClick={onClose} className="flex-1">
+            {t('great')}
+          </Button>
+        </div>
       </div>
     </Modal>
   );

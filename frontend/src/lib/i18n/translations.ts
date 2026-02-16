@@ -351,6 +351,7 @@ export const translations = {
     findGuild: 'Найти гильдию',
     createGuild: 'Создать',
     guildXP: 'Опыт гильдии',
+    weeklyQuests: 'Еженедельные квесты',
     invite: 'Пригласить',
     leave: 'Выйти',
     members: 'Участники',
@@ -363,31 +364,11 @@ export const translations = {
     lvl: 'Ур.',
     membersCount: 'участников',
 
-    // Marketplace
-    marketplace: 'Маркетплейс',
-    marketplaceSubtitle: 'Покупай и продавай карты',
+    // Shared
     buy: 'Купить',
     sell: 'Продать',
-    myListings: 'Мои лоты',
     price: 'Цена',
     sparks: 'Искры',
-    buyNow: 'Купить',
-    listForSale: 'Выставить на продажу',
-    removeFromSale: 'Снять',
-    noListings: 'Нет лотов',
-    beFirstToSell: 'Будь первым, кто выставит карту!',
-    yourListings: 'Ваши лоты',
-    noYourListings: 'У вас нет активных лотов',
-    selectCardToSell: 'Выберите карту для продажи',
-    setPrice: 'Укажите цену',
-    minPrice: 'Мин. цена',
-    enterPrice: 'Введите цену',
-    minPriceError: 'Минимальная цена для {rarity} карты: {min} ✨',
-    sold: 'Продано!',
-    cardPurchased: 'Карта успешно куплена!',
-    insufficientSparks: 'Недостаточно искр',
-    confirmPurchase: 'Подтвердить покупку?',
-    confirmRemove: 'Снять с продажи?',
 
     // Onboarding
     welcome: 'Добро пожаловать!',
@@ -428,23 +409,18 @@ export const translations = {
     popular: 'Популярный',
     whatAreSparks: 'Что такое Sparks?',
     sparksDesc1: 'Внутренняя валюта MoodSprint',
-    sparksDesc2: 'Покупайте карточки на маркетплейсе',
-    sparksDesc3: 'Получайте за продажу карточек',
-    sparksDesc4: 'Зарабатывайте за прохождение кампании',
+    sparksDesc2: 'Пропускайте кулдаун карт',
+    sparksDesc3: 'Зарабатывайте за прохождение кампании',
+    sparksDesc4: 'Покупайте бустеры и усиления',
     buySparks: 'Купить Sparks',
     sparksBalance: 'Баланс Sparks',
     howToGetSparks: 'Как получить Sparks?',
-    sparksHint1: 'Продавайте карты другим игрокам на маркетплейсе',
+    sparksHint1: 'Выполняйте задачи и зарабатывайте награды',
     sparksHint2: 'Покупайте Sparks за Telegram Stars в магазине',
     sparksHint3: 'Проходите кампанию и побеждайте монстров',
     transactionHistory: 'История операций',
     noTransactions: 'Нет операций',
 
-    // Marketplace sort
-    sortNewest: 'Новые',
-    sortCheapest: 'Дешевле',
-    sortExpensive: 'Дороже',
-    listings: 'Лоты',
 
     // Profile extra
     tonWallet: 'TON Кошелёк',
@@ -454,14 +430,10 @@ export const translations = {
     guildsDesc: 'Объединяйся с друзьями, побеждай боссов в рейдах',
     raids: 'Рейды',
     rewards: 'Награды',
-    marketplaceDesc: 'Торгуй картами за Telegram Stars',
-    cardsLabel: 'Карты',
-    selling: 'Продажа',
     campaignDesc: 'Проходи главы, побеждай боссов, собирай награды',
     story: 'История',
     lore: 'Лор',
     joinNow: 'Присоединяйся!',
-    cardsOnSale: 'карт на продаже',
 
     // Card tutorial
     tutorialTitle: 'Твоя первая карта!',
@@ -514,7 +486,6 @@ export const translations = {
     recovery: 'Восстановление',
     skipCooldown: 'Пропустить',
     tapToReturn: 'Нажми чтобы вернуться',
-    sellForStars: 'Продать за Stars',
     cooldownReady: 'готово!',
     cooldownLabel: 'перезарядка',
 
@@ -660,7 +631,7 @@ export const translations = {
     // Guilds
     joinGuildInvitePrefix: 'Вступай в гильдию',
 
-    // Marketplace
+    // Store/Purchase
     purchaseComplete: 'Покупка завершена!',
     purchaseError: 'Ошибка при покупке',
     genericError: 'Произошла ошибка',
@@ -734,6 +705,8 @@ export const translations = {
     streakMilestoneDesc: '{days} дней подряд — так держать!',
     streakMilestoneXp: '+{xp} XP',
     streakMilestoneCard: 'Карта в подарок!',
+    shareStreak: 'Поделиться',
+    shareStreakText: 'Я держу серию {days} дней в MoodSprint! 🔥',
 
     // Rarity odds (F6)
     cardOdds: 'Шансы',
@@ -1107,6 +1080,7 @@ export const translations = {
     findGuild: 'Find guild',
     createGuild: 'Create',
     guildXP: 'Guild XP',
+    weeklyQuests: 'Weekly Quests',
     invite: 'Invite',
     leave: 'Leave',
     members: 'Members',
@@ -1119,31 +1093,11 @@ export const translations = {
     lvl: 'Lvl',
     membersCount: 'members',
 
-    // Marketplace
-    marketplace: 'Marketplace',
-    marketplaceSubtitle: 'Buy and sell cards',
+    // Shared
     buy: 'Buy',
     sell: 'Sell',
-    myListings: 'My Listings',
     price: 'Price',
     sparks: 'Sparks',
-    buyNow: 'Buy Now',
-    listForSale: 'List for Sale',
-    removeFromSale: 'Remove',
-    noListings: 'No listings',
-    beFirstToSell: 'Be the first to list a card!',
-    yourListings: 'Your listings',
-    noYourListings: 'You have no active listings',
-    selectCardToSell: 'Select card to sell',
-    setPrice: 'Set price',
-    minPrice: 'Min price',
-    enterPrice: 'Enter price',
-    minPriceError: 'Minimum price for {rarity} card: {min} ✨',
-    sold: 'Sold!',
-    cardPurchased: 'Card purchased successfully!',
-    insufficientSparks: 'Not enough sparks',
-    confirmPurchase: 'Confirm purchase?',
-    confirmRemove: 'Remove from sale?',
 
     // Onboarding
     welcome: 'Welcome!',
@@ -1184,23 +1138,18 @@ export const translations = {
     popular: 'Popular',
     whatAreSparks: 'What are Sparks?',
     sparksDesc1: 'MoodSprint internal currency',
-    sparksDesc2: 'Buy cards on marketplace',
-    sparksDesc3: 'Earn from selling cards',
-    sparksDesc4: 'Earn from campaign progress',
+    sparksDesc2: 'Skip card cooldowns',
+    sparksDesc3: 'Earn from campaign progress',
+    sparksDesc4: 'Buy boosters and power-ups',
     buySparks: 'Buy Sparks',
     sparksBalance: 'Sparks Balance',
     howToGetSparks: 'How to get Sparks?',
-    sparksHint1: 'Sell cards to other players on marketplace',
+    sparksHint1: 'Complete tasks and earn rewards',
     sparksHint2: 'Buy Sparks with Telegram Stars in store',
     sparksHint3: 'Complete campaign and defeat monsters',
     transactionHistory: 'Transaction history',
     noTransactions: 'No transactions',
 
-    // Marketplace sort
-    sortNewest: 'Newest',
-    sortCheapest: 'Cheapest',
-    sortExpensive: 'Expensive',
-    listings: 'Listings',
 
     // Profile extra
     tonWallet: 'TON Wallet',
@@ -1210,14 +1159,10 @@ export const translations = {
     guildsDesc: 'Team up with friends, defeat raid bosses',
     raids: 'Raids',
     rewards: 'Rewards',
-    marketplaceDesc: 'Trade cards for Telegram Stars',
-    cardsLabel: 'Cards',
-    selling: 'Selling',
     campaignDesc: 'Complete chapters, defeat bosses, collect rewards',
     story: 'Story',
     lore: 'Lore',
     joinNow: 'Join now!',
-    cardsOnSale: 'cards on sale',
 
     // Card tutorial
     tutorialTitle: 'Your first card!',
@@ -1270,7 +1215,6 @@ export const translations = {
     recovery: 'Recovery',
     skipCooldown: 'Skip',
     tapToReturn: 'Tap to return',
-    sellForStars: 'Sell for Stars',
     cooldownReady: 'ready!',
     cooldownLabel: 'cooldown',
 
@@ -1416,7 +1360,7 @@ export const translations = {
     // Guilds
     joinGuildInvitePrefix: 'Join the guild',
 
-    // Marketplace
+    // Store/Purchase
     purchaseComplete: 'Purchase complete!',
     purchaseError: 'Purchase error',
     genericError: 'An error occurred',
@@ -1490,6 +1434,8 @@ export const translations = {
     streakMilestoneDesc: '{days} days in a row — keep it up!',
     streakMilestoneXp: '+{xp} XP',
     streakMilestoneCard: 'Bonus card!',
+    shareStreak: 'Share',
+    shareStreakText: "I'm on a {days}-day streak in MoodSprint! 🔥",
 
     // Rarity odds (F6)
     cardOdds: 'Odds',

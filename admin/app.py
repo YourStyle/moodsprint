@@ -752,6 +752,91 @@ def metrics():
         )
     ).fetchall()
 
+    # ── New product metrics ──
+
+    # Activation Rate: % of users who completed at least 1 task
+    activation_rate = (
+        db.session.execute(
+            text(
+                """
+        SELECT
+            COUNT(DISTINCT CASE WHEN t.id IS NOT NULL THEN u.id END)::float /
+            NULLIF(COUNT(DISTINCT u.id), 0) * 100
+        FROM users u
+        LEFT JOIN tasks t ON t.user_id = u.id AND t.status = 'completed'
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # Tasks per DAU (avg tasks completed per active user per day, last 7 days)
+    tasks_per_dau = (
+        db.session.execute(
+            text(
+                activity_cte
+                + """
+        SELECT AVG(tpd.tasks_per_user) FROM (
+            SELECT a.d, COUNT(DISTINCT t.id)::float /
+                NULLIF(COUNT(DISTINCT a.user_id), 0) as tasks_per_user
+            FROM daily_activity a
+            LEFT JOIN tasks t ON t.user_id = a.user_id
+                AND DATE(COALESCE(t.completed_at, t.updated_at)) = a.d
+                AND t.status = 'completed'
+            WHERE a.d >= CURRENT_DATE - INTERVAL '7 days' AND a.d IS NOT NULL
+            GROUP BY a.d
+        ) tpd
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # Focus Completion Rate: completed / (completed + cancelled)
+    focus_completion_rate = (
+        db.session.execute(
+            text(
+                """
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'completed')::float /
+            NULLIF(COUNT(*) FILTER (WHERE status IN ('completed', 'cancelled')), 0) * 100
+        FROM focus_sessions
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # Viral Coefficient: users who signed up via referral / total users
+    viral_coefficient = (
+        db.session.execute(
+            text(
+                """
+        SELECT
+            COUNT(*) FILTER (WHERE referred_by IS NOT NULL)::float /
+            NULLIF(COUNT(*), 0)
+        FROM users
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # ARPU: total Sparks spent / total users with any transaction
+    arpu = (
+        db.session.execute(
+            text(
+                """
+        SELECT
+            COALESCE(SUM(ABS(amount)) FILTER (WHERE type = 'purchase'), 0)::float /
+            NULLIF(COUNT(DISTINCT user_id), 0)
+        FROM sparks_transactions
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
     return render_template(
         "metrics.html",
         day1_retention=round(day1_retention, 1),
@@ -763,6 +848,11 @@ def metrics():
         wau=wau,
         mau=mau,
         total_users=total_users,
+        activation_rate=round(activation_rate, 1),
+        tasks_per_dau=round(tasks_per_dau, 2),
+        focus_completion_rate=round(focus_completion_rate, 1),
+        viral_coefficient=round(viral_coefficient, 3),
+        arpu=round(arpu, 1),
         mood_distribution=[{"mood": r[0], "count": r[1]} for r in mood_dist],
         energy_distribution=[{"energy": r[0], "count": r[1]} for r in energy_dist],
         daily_metrics=[
