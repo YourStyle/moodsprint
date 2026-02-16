@@ -211,9 +211,9 @@ export function DeckCard({
         </div>
       )}
 
-      {/* Duplicate count badge */}
+      {/* Duplicate count badge - positioned below the info button */}
       {duplicateCount && duplicateCount > 1 && (
-        <div className="absolute top-1 right-1 z-20 min-w-[22px] h-[22px] rounded-full bg-blue-500 border-2 border-dark-800 flex items-center justify-center px-1">
+        <div className="absolute top-10 right-1.5 z-20 min-w-[22px] h-[22px] rounded-full bg-blue-500 border-2 border-dark-800 flex items-center justify-center px-1">
           <span className="text-[10px] font-bold text-white">x{duplicateCount}</span>
         </div>
       )}

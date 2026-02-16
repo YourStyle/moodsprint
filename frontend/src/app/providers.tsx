@@ -62,6 +62,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
     setActiveSessions,
     setOnboardingCompleted,
     setTelegramEnvironment,
+    setAuthError,
     isSpotlightActive,
     onboardingCompleted,
     isLoading,
@@ -378,6 +379,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
+        setAuthError(true);
       } finally {
         setLoading(false);
       }
@@ -387,6 +389,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
   }, [
     setUser,
     setLoading,
+    setAuthError,
     setLatestMood,
     setActiveSessions,
     setOnboardingCompleted,

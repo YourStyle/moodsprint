@@ -10,8 +10,10 @@ interface AppState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authError: boolean;
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
+  setAuthError: (error: boolean) => void;
 
   // Telegram environment detection
   isTelegramEnvironment: boolean;
@@ -57,8 +59,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  authError: false,
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setLoading: (isLoading) => set({ isLoading }),
+  setAuthError: (authError) => set({ authError }),
 
   // Telegram environment
   isTelegramEnvironment: true, // Default to true, will be set on init

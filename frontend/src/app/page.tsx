@@ -414,7 +414,7 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t, language, setLanguage } = useLanguage();
-  const { user, isLoading, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
+  const { user, isLoading, authError, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
 
   // Modal phase queue: ensures modals show one at a time
@@ -917,6 +917,36 @@ export default function HomePage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (authError && !user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-6 text-center">
+        <div className="w-32 h-32 mb-6 relative">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 blur-2xl animate-pulse" />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <span className="text-7xl">🔧</span>
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3">
+          {t('maintenanceTitle')}
+        </h1>
+        <p className="text-gray-400 mb-2 max-w-xs leading-relaxed">
+          {t('maintenanceDesc')}
+        </p>
+        <p className="text-gray-500 text-sm mb-8 max-w-xs">
+          {t('maintenanceHint')}
+        </p>
+        <Button
+          variant="gradient"
+          size="lg"
+          className="w-full max-w-xs"
+          onClick={() => window.location.reload()}
+        >
+          {t('tryAgain')}
+        </Button>
       </div>
     );
   }

@@ -642,6 +642,12 @@ export const translations = {
     personalAssistantDesc: 'Это твой личный помощник, который знает, как распределить дела для максимальной эффективности.',
     priorityRaised: 'Приоритет повышен',
 
+    // Maintenance / Error screen
+    maintenanceTitle: 'Технические работы',
+    maintenanceDesc: 'Мы обновляем сервер, чтобы приложение работало ещё лучше.',
+    maintenanceHint: 'Обычно это занимает пару минут',
+    tryAgain: 'Попробовать снова',
+
     // Profile
     loginPrompt: 'Войдите в приложение, чтобы просмотреть свой профиль и статистику',
     goToMain: 'На главную',
@@ -1388,6 +1394,12 @@ export const translations = {
     telegramOnlyHint: 'Please open the app through Telegram to continue.',
     personalAssistantDesc: 'Your personal assistant that knows how to organize tasks for maximum productivity.',
     priorityRaised: 'Priority raised',
+
+    // Maintenance / Error screen
+    maintenanceTitle: 'Under Maintenance',
+    maintenanceDesc: 'We\'re updating the server to make the app even better.',
+    maintenanceHint: 'This usually takes a couple of minutes',
+    tryAgain: 'Try Again',
 
     // Profile
     loginPrompt: 'Log in to view your profile and statistics',
