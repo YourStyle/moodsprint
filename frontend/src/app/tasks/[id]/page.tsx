@@ -8,7 +8,7 @@ import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
-import { LevelUpModal, type LevelRewardItem } from '@/components/gamification';
+import { LevelUpModal, StreakMilestoneModal, type LevelRewardItem } from '@/components/gamification';
 import { tasksService, focusService, moodService } from '@/services';
 import { cardsService } from '@/services/cards';
 import { useAppStore } from '@/lib/store';
@@ -177,6 +177,8 @@ export default function TaskDetailPage() {
   const [showPriorityModal, setShowPriorityModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showCompanionPicker, setShowCompanionPicker] = useState(false);
+  const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
+  const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -300,6 +302,11 @@ export default function TaskDetailPage() {
           genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         if (!result.data?.card_earned) setShowLevelUpModal(true);
+      }
+      // Streak milestone
+      if (result.data?.streak_milestone) {
+        setStreakMilestoneData(result.data.streak_milestone);
+        setShowStreakMilestoneModal(true);
       }
       hapticFeedback('success');
     },
@@ -470,6 +477,11 @@ export default function TaskDetailPage() {
           genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         if (!result.data?.card_earned) setShowLevelUpModal(true);
+      }
+      // Streak milestone
+      if (result.data?.streak_milestone) {
+        setStreakMilestoneData(result.data.streak_milestone);
+        setShowStreakMilestoneModal(true);
       }
       hapticFeedback('success');
     },
@@ -673,6 +685,28 @@ export default function TaskDetailPage() {
         </div>
         <Progress value={task.status === 'completed' ? 100 : task.progress_percent} color={task.status === 'completed' ? 'success' : 'primary'} />
       </Card>
+
+      {/* Rarity Odds Bar */}
+      {task.status !== 'completed' && task.rarity_odds && (
+        <div className="flex items-center gap-1.5 px-1">
+          <span className="text-[10px] text-gray-500 mr-1">{t('cardOdds')}:</span>
+          {Object.entries(task.rarity_odds).map(([rarity, pct]) => {
+            const colors: Record<string, string> = {
+              common: 'bg-gray-500',
+              uncommon: 'bg-green-500',
+              rare: 'bg-blue-500',
+              epic: 'bg-purple-500',
+              legendary: 'bg-yellow-500',
+            };
+            return (
+              <div key={rarity} className="flex items-center gap-0.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${colors[rarity] || 'bg-gray-500'}`} />
+                <span className="text-[10px] text-gray-500">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Action Buttons or Active Session Timer */}
       {task.status !== 'completed' && (
@@ -1400,6 +1434,16 @@ export default function TaskDetailPage() {
           }}
         />
       )}
+
+      {/* Streak Milestone Modal */}
+      <StreakMilestoneModal
+        isOpen={showStreakMilestoneModal}
+        onClose={() => {
+          setShowStreakMilestoneModal(false);
+          setStreakMilestoneData(null);
+        }}
+        milestone={streakMilestoneData}
+      />
 
       {/* Card Tutorial */}
       <CardTutorial

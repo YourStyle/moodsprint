@@ -156,6 +156,20 @@ async def main():
         id="referral_notifications",
     )
 
+    # Friend activity notifications - every hour at :45
+    scheduler.add_job(
+        notification_service.send_friend_activity_notifications,
+        CronTrigger(minute=45, timezone=MOSCOW_TZ),
+        id="friend_activity_notifications",
+    )
+
+    # Comeback messages for inactive users - daily at 14:00
+    scheduler.add_job(
+        notification_service.send_comeback_messages,
+        CronTrigger(hour=14, minute=0, timezone=MOSCOW_TZ),
+        id="comeback_messages",
+    )
+
     # TON deposit monitoring - check every 30 seconds
     scheduler.add_job(
         check_deposits,

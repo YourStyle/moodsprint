@@ -9,6 +9,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app import db
 from app.api import api_bp
 from app.models import (
+    FriendActivityLog,
     MoodCheck,
     PostponeLog,
     Subtask,
@@ -21,7 +22,12 @@ from app.models.card import CardRarity
 from app.models.subtask import SubtaskStatus
 from app.models.task import TaskPriority, TaskStatus
 from app.services import AchievementChecker, AIDecomposer, TaskClassifier, XPCalculator
-from app.services.card_service import CardService
+from app.services.card_service import (
+    COMPANION_XP_BY_DIFFICULTY,
+    CardService,
+    get_rarity_odds,
+)
+from app.services.streak_service import StreakService
 from app.utils import not_found, success_response, validation_error
 
 logger = logging.getLogger(__name__)
@@ -71,7 +77,7 @@ def auto_postpone_overdue_tasks(user_id: int) -> int:
     overdue_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.due_date < today,
-        Task.status != TaskStatus.COMPLETED.value,
+        Task.status.notin_([TaskStatus.COMPLETED.value, TaskStatus.ARCHIVED.value]),
     ).all()
 
     if not overdue_tasks:
@@ -88,6 +94,11 @@ def auto_postpone_overdue_tasks(user_id: int) -> int:
         task.due_date = today
         task.postponed_count = (task.postponed_count or 0) + 1
         postponed_count += 1
+
+        # Auto-archive after 5 postponements
+        if task.postponed_count >= 5:
+            task.status = TaskStatus.ARCHIVED.value
+            continue
 
         # Check if priority should be increased (after 2+ postponements)
         if task.postponed_count >= 3 and task.priority != TaskPriority.HIGH.value:
@@ -189,6 +200,9 @@ def get_tasks():
     status = request.args.get("status")
     if status and status in [s.value for s in TaskStatus]:
         query = query.filter_by(status=status)
+    else:
+        # Exclude archived tasks by default
+        query = query.filter(Task.status != TaskStatus.ARCHIVED.value)
 
     # Filter by due_date (exact match)
     due_date_str = request.args.get("due_date")
@@ -417,7 +431,13 @@ def get_task(task_id: int):
     if not task:
         return not_found("Task not found")
 
-    return success_response({"task": task.to_dict(include_subtasks=True)})
+    task_data = task.to_dict(include_subtasks=True)
+
+    # Include rarity odds for uncompleted tasks
+    if task.status != "completed" and task.difficulty:
+        task_data["rarity_odds"] = get_rarity_odds(task.difficulty)
+
+    return success_response({"task": task_data})
 
 
 @api_bp.route("/tasks/<int:task_id>", methods=["PUT"])
@@ -899,14 +919,22 @@ def update_subtask(subtask_id: int):
                 generated_card = card_service.generate_card_for_task(
                     user_id, task.id, task.title, difficulty, max_rarity=max_rarity
                 )
-                # Award companion XP for task completion
-                card_service.award_companion_xp(user_id, 5)
+                # Award companion XP based on difficulty
+                companion_xp = COMPANION_XP_BY_DIFFICULTY.get(difficulty, 5)
+                card_service.award_companion_xp(user_id, companion_xp)
             except Exception:
                 # Card generation is optional, don't fail task completion
                 pass
 
         xp_info = user.add_xp(xp_earned)
         user.update_streak()
+
+        # Check streak milestones
+        streak_milestone = None
+        try:
+            streak_milestone = StreakService().check_and_grant_milestone(user)
+        except Exception:
+            pass
 
         checker = AchievementChecker(user)
         achievements_unlocked = checker.check_all()
@@ -929,6 +957,21 @@ def update_subtask(subtask_id: int):
         except Exception:
             pass
 
+        # Log friend activities for notifications
+        try:
+            if xp_info and xp_info.get("level_up"):
+                FriendActivityLog.create(
+                    user_id, "level_up", {"level": xp_info["new_level"]}
+                )
+            if streak_milestone:
+                FriendActivityLog.create(
+                    user_id,
+                    "streak_milestone",
+                    {"streak_days": streak_milestone["milestone_days"]},
+                )
+        except Exception:
+            pass
+
         db.session.commit()
 
     response_data = {"subtask": subtask.to_dict()}
@@ -946,6 +989,9 @@ def update_subtask(subtask_id: int):
                 "Задача выполнена слишком быстро. "
                 "Максимальная редкость карты за такую задачу — Необычная."
             )
+
+    if streak_milestone:
+        response_data["streak_milestone"] = streak_milestone
 
     return success_response(response_data)
 

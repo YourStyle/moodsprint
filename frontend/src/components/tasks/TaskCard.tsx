@@ -173,6 +173,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             </h3>
             {!hasActiveSession && (
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                {task.postponed_count > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">
+                    {task.postponed_count}x
+                  </span>
+                )}
                 {task.task_type && (
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${TASK_TYPE_COLORS[task.task_type]}`}

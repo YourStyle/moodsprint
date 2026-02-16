@@ -149,6 +149,21 @@ MoodSprint — умный планировщик с геймификацией.
         # Errors
         "error_not_registered": "Вы не зарегистрированы. Откройте приложение через /app",
         "error_task_not_found": "Задача не найдена",
+        # Personalized morning reminders (F3)
+        "morning_with_tasks": "☀️ Доброе утро, {name}! У тебя {count} задач на сегодня:\n",
+        "morning_no_tasks": (
+            "☀️ Доброе утро, {name}! Сегодня свободный день — "
+            "отдохни или создай новую задачу!"
+        ),
+        "morning_and_more": "...и ещё {count}",
+        # Friend activity (F4)
+        "friend_level_up": "🎉 Твой друг {name} достиг уровня {level}!",
+        "friend_streak_milestone": "🔥 Твой друг {name} держит серию {days} дней!",
+        # Comeback (F5)
+        "comeback_message": (
+            "👋 {name}, мы соскучились! Вернись в MoodSprint — "
+            "тебя ждёт особая карта в подарок! 🎁"
+        ),
     },
     "en": {
         # General
@@ -292,6 +307,20 @@ Just send a voice message with your task, and the bot will create it automatical
         # Errors
         "error_not_registered": "You are not registered. Open the app via /app",
         "error_task_not_found": "Task not found",
+        # Personalized morning reminders (F3)
+        "morning_with_tasks": "☀️ Good morning, {name}! You have {count} tasks today:\n",
+        "morning_no_tasks": (
+            "☀️ Good morning, {name}! No tasks today — " "relax or create a new one!"
+        ),
+        "morning_and_more": "...and {count} more",
+        # Friend activity (F4)
+        "friend_level_up": "🎉 Your friend {name} reached level {level}!",
+        "friend_streak_milestone": "🔥 Your friend {name} has a {days}-day streak!",
+        # Comeback (F5)
+        "comeback_message": (
+            "👋 {name}, we miss you! Come back to MoodSprint — "
+            "a special card awaits you! 🎁"
+        ),
     },
 }
 

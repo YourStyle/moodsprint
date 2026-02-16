@@ -7,6 +7,20 @@ import { cardsService } from '@/services/cards';
 import type { Card } from '@/services/cards';
 import { Modal } from '@/components/ui';
 
+// Group cards by template to stack duplicates
+function groupCards(cards: Card[]): (Card & { _count: number })[] {
+  const groups = new Map<string, Card[]>();
+  for (const card of cards) {
+    const key = card.template_id ? `tmpl_${card.template_id}` : `card_${card.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(card);
+  }
+  return Array.from(groups.values()).map(group => ({
+    ...group[0],
+    _count: group.length,
+  }));
+}
+
 interface ShowcaseSlotsProps {
   userId?: number;
   readOnly?: boolean;
@@ -163,16 +177,21 @@ export function ShowcaseSlots({ readOnly = false, onCardSelect }: ShowcaseSlotsP
           <p className="text-sm text-gray-400 text-center py-8">{t('noCards')}</p>
         ) : (
           <div className="grid grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto">
-            {availableCards.map((card) => (
+            {groupCards(availableCards).map((card) => (
               <button
                 key={card.id}
                 onClick={() => handlePickCard(card)}
                 className={cn(
-                  'rounded-xl border-2 p-2 flex flex-col items-center gap-1 transition-all active:scale-95',
+                  'relative rounded-xl border-2 p-2 flex flex-col items-center gap-1 transition-all active:scale-95',
                   rarityBorders[card.rarity] || 'border-gray-600',
                   rarityBgs[card.rarity] || 'bg-gray-800/50'
                 )}
               >
+                {card._count > 1 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] rounded-full bg-blue-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5 z-10">
+                    x{card._count}
+                  </span>
+                )}
                 {card.image_url ? (
                   <img src={card.image_url} alt={card.name} className="w-12 h-12 rounded-lg object-cover" />
                 ) : (

@@ -14,6 +14,20 @@ interface SelectCardToSellModalProps {
   onSelectCard: (card: Card) => void;
 }
 
+// Group cards by template to stack duplicates
+function groupCards(cards: Card[]): (Card & { _count: number })[] {
+  const groups = new Map<string, Card[]>();
+  for (const card of cards) {
+    const key = card.template_id ? `tmpl_${card.template_id}` : `card_${card.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(card);
+  }
+  return Array.from(groups.values()).map(group => ({
+    ...group[0],
+    _count: group.length,
+  }));
+}
+
 const RARITY_CONFIG: Record<string, { labelKey: 'rarityCommon' | 'rarityUncommon' | 'rarityRare' | 'rarityEpic' | 'rarityLegendary'; bg: string; text: string }> = {
   common: { labelKey: 'rarityCommon', bg: 'bg-slate-600', text: 'text-slate-300' },
   uncommon: { labelKey: 'rarityUncommon', bg: 'bg-emerald-600', text: 'text-emerald-300' },
@@ -68,15 +82,20 @@ export function SelectCardToSellModal({ isOpen, onClose, onSelectCard }: SelectC
             </div>
           ) : availableCards.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
-              {availableCards.map((card) => {
+              {groupCards(availableCards).map((card) => {
                 const rarityConf = RARITY_CONFIG[card.rarity] || RARITY_CONFIG.common;
 
                 return (
                   <button
                     key={card.id}
                     onClick={() => handleSelectCard(card)}
-                    className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden hover:border-amber-500/50 transition-colors text-left"
+                    className="relative bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden hover:border-amber-500/50 transition-colors text-left"
                   >
+                    {card._count > 1 && (
+                      <span className="absolute top-2 right-2 z-10 min-w-[22px] h-[22px] rounded-full bg-blue-500 border-2 border-gray-800 text-[10px] font-bold text-white flex items-center justify-center px-1">
+                        x{card._count}
+                      </span>
+                    )}
                     {/* Card image */}
                     <div className="aspect-square relative">
                       {card.image_url ? (

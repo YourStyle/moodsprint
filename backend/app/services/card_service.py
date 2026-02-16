@@ -130,7 +130,7 @@ GENRE_ARCHETYPE_TIERS = {
     ],
 }
 
-# Probability-based rarity distribution (independent of task difficulty)
+# Probability-based rarity distribution (default, used for medium difficulty)
 # Each tuple is (rarity, cumulative_probability)
 # Common: 58%, Uncommon: 28%, Rare: 11%, Epic: 2.5%, Legendary: 0.5%
 RARITY_PROBABILITIES = [
@@ -140,6 +140,40 @@ RARITY_PROBABILITIES = [
     (CardRarity.EPIC, 0.995),
     (CardRarity.LEGENDARY, 1.00),  # 0.5%
 ]
+
+# Difficulty-specific rarity probabilities
+DIFFICULTY_RARITY_PROBABILITIES = {
+    "easy": [
+        (CardRarity.COMMON, 0.70),
+        (CardRarity.UNCOMMON, 0.93),
+        (CardRarity.RARE, 0.99),
+        (CardRarity.EPIC, 0.999),
+        (CardRarity.LEGENDARY, 1.00),  # 0.1%
+    ],
+    "medium": RARITY_PROBABILITIES,
+    "hard": [
+        (CardRarity.COMMON, 0.40),
+        (CardRarity.UNCOMMON, 0.72),
+        (CardRarity.RARE, 0.92),
+        (CardRarity.EPIC, 0.985),
+        (CardRarity.LEGENDARY, 1.00),  # 1.5%
+    ],
+    "very_hard": [
+        (CardRarity.COMMON, 0.25),
+        (CardRarity.UNCOMMON, 0.55),
+        (CardRarity.RARE, 0.82),
+        (CardRarity.EPIC, 0.96),
+        (CardRarity.LEGENDARY, 1.00),  # 4%
+    ],
+}
+
+# Companion XP by difficulty
+COMPANION_XP_BY_DIFFICULTY = {
+    "easy": 3,
+    "medium": 5,
+    "hard": 8,
+    "very_hard": 12,
+}
 
 # Base number of templates for all genres (before user scaling)
 BASE_TEMPLATES_COUNT = 10
@@ -157,14 +191,19 @@ RARITY_POOL_FACTORS = {
 }
 
 
-def get_random_rarity(max_rarity: CardRarity | None = None) -> CardRarity:
+def get_random_rarity(
+    max_rarity: CardRarity | None = None,
+    difficulty: str = "medium",
+) -> CardRarity:
     """Get a random rarity based on probability distribution.
 
     Args:
         max_rarity: Maximum rarity allowed (e.g., UNCOMMON for quick task completions)
+        difficulty: Task difficulty affecting rarity probabilities
     """
+    probs = DIFFICULTY_RARITY_PROBABILITIES.get(difficulty, RARITY_PROBABILITIES)
     roll = random.random()
-    for rarity, cumulative_prob in RARITY_PROBABILITIES:
+    for rarity, cumulative_prob in probs:
         if roll <= cumulative_prob:
             # If max_rarity is set, cap the result
             if max_rarity:
@@ -179,6 +218,21 @@ def get_random_rarity(max_rarity: CardRarity | None = None) -> CardRarity:
                     return max_rarity
             return rarity
     return CardRarity.COMMON
+
+
+def get_rarity_odds(difficulty: str = "medium") -> dict:
+    """Get display-friendly rarity percentages for a given difficulty.
+
+    Returns dict like {"common": 58, "uncommon": 28, "rare": 11, "epic": 2.5, "legendary": 0.5}
+    """
+    probs = DIFFICULTY_RARITY_PROBABILITIES.get(difficulty, RARITY_PROBABILITIES)
+    odds = {}
+    prev = 0.0
+    for rarity, cumulative_prob in probs:
+        pct = round((cumulative_prob - prev) * 100, 1)
+        odds[rarity.value] = pct
+        prev = cumulative_prob
+    return odds
 
 
 def get_random_ability(rarity: CardRarity) -> CardAbility | None:
@@ -559,6 +613,7 @@ class CardService:
         difficulty: str = "medium",
         forced_rarity: CardRarity | None = None,
         max_rarity: CardRarity | None = None,
+        forced_genre: str | None = None,
     ) -> UserCard | None:
         """
         Generate a card for completing a task.
@@ -571,11 +626,16 @@ class CardService:
         Args:
             forced_rarity: Force a specific rarity (ignores random roll)
             max_rarity: Cap the maximum possible rarity (e.g., for quick completions)
+            forced_genre: Force a specific genre (e.g., for card merges)
 
         Rarity is determined by random probability, unless forced_rarity is specified.
         """
-        genre = self.get_user_genre(user_id)
-        rarity = forced_rarity if forced_rarity else get_random_rarity(max_rarity)
+        genre = forced_genre or self.get_user_genre(user_id)
+        rarity = (
+            forced_rarity
+            if forced_rarity
+            else get_random_rarity(max_rarity, difficulty=difficulty)
+        )
 
         # Check if we should generate new or use existing pool
         should_generate = self._should_generate_new_card(genre, rarity)

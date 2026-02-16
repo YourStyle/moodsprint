@@ -47,6 +47,8 @@ export interface DeckCardProps {
   isPreviouslyOwned?: boolean;
   // Genre not yet unlocked
   isGenreLocked?: boolean;
+  // Duplicate count badge (x2, x3, etc.)
+  duplicateCount?: number;
 }
 
 const rarityStyles = {
@@ -138,6 +140,7 @@ export function DeckCard({
   isLocked = false,
   isPreviouslyOwned = false,
   isGenreLocked = false,
+  duplicateCount,
 }: DeckCardProps) {
   const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -205,6 +208,13 @@ export function DeckCard({
           )}
         >
           {t(config.labelKey)}
+        </div>
+      )}
+
+      {/* Duplicate count badge */}
+      {duplicateCount && duplicateCount > 1 && (
+        <div className="absolute top-1 right-1 z-20 min-w-[22px] h-[22px] rounded-full bg-blue-500 border-2 border-dark-800 flex items-center justify-center px-1">
+          <span className="text-[10px] font-bold text-white">x{duplicateCount}</span>
         </div>
       )}
 

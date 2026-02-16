@@ -27,6 +27,11 @@ interface FocusSessionWithXP {
   new_level?: number;
   level_rewards?: LevelRewardPayload[];
   genre_unlock_available?: GenreUnlockPayload | null;
+  streak_milestone?: {
+    milestone_days: number;
+    xp_bonus: number;
+    card_earned?: { id: number; name: string; description: string; genre: string; rarity: string; hp: number; attack: number; emoji: string; image_url?: string | null };
+  };
 }
 
 // Level-up payload returned with XP-granting responses

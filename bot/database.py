@@ -151,6 +151,43 @@ async def create_task_from_voice(
         return None
 
 
+async def get_users_tasks_for_today() -> dict[int, list[dict]]:
+    """Get today's incomplete tasks for all users with notifications enabled.
+
+    Returns dict grouped by user_id: {user_id: [{task_title, priority}, ...]}
+    Batched query to avoid N+1.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT t.user_id, t.title, t.priority, u.telegram_id,
+                       u.first_name, COALESCE(up.language, 'ru') as language
+                FROM tasks t
+                JOIN users u ON t.user_id = u.id
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE t.due_date = (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow')::date
+                AND t.status NOT IN ('completed', 'archived')
+                AND COALESCE(up.notifications_enabled, true) = true
+                ORDER BY t.user_id,
+                    CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+                    t.created_at ASC
+            """
+            )
+        )
+        rows = result.fetchall()
+
+        users_tasks: dict[int, list[dict]] = {}
+        for row in rows:
+            data = dict(row._mapping)
+            uid = data["user_id"]
+            if uid not in users_tasks:
+                users_tasks[uid] = []
+            users_tasks[uid].append(data)
+
+        return users_tasks
+
+
 async def get_all_users() -> list[dict]:
     """Get all users for broadcast."""
     async with async_session() as session:
@@ -263,7 +300,7 @@ async def get_overdue_tasks_by_user() -> dict[int, list[dict]]:
                 FROM tasks t
                 JOIN users u ON t.user_id = u.id
                 WHERE t.due_date < (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow')::date
-                AND t.status != 'completed'
+                AND t.status NOT IN ('completed', 'archived')
                 ORDER BY t.user_id
             """
             )
@@ -285,6 +322,7 @@ async def get_overdue_tasks_by_user() -> dict[int, list[dict]]:
 async def postpone_task(task_id: int) -> int:
     """
     Postpone a task to today (Moscow time) and increment postponed_count.
+    Auto-archives task after 5 postponements.
 
     Returns new postponed_count.
     """
@@ -310,7 +348,22 @@ async def postpone_task(task_id: int) -> int:
             {"task_id": task_id},
         )
         row = result.fetchone()
-        return row._mapping["postponed_count"] if row else 0
+        new_count = row._mapping["postponed_count"] if row else 0
+
+        # Auto-archive after 5 postponements
+        if new_count >= 5:
+            await session.execute(
+                text(
+                    """
+                    UPDATE tasks SET status = 'archived', updated_at = NOW()
+                    WHERE id = :task_id
+                """
+                ),
+                {"task_id": task_id},
+            )
+            await session.commit()
+
+        return new_count
 
 
 async def update_task_priority(task_id: int, new_priority: str):
@@ -1235,3 +1288,97 @@ async def complete_sparks_purchase(
             "success": True,
             "sparks": sparks_amount,
         }
+
+
+async def get_recent_friend_activities() -> list[dict]:
+    """Get unnotified friend activities from the last 24h, grouped by recipient.
+
+    Returns list of dicts with recipient info and activity details.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT
+                    fal.id as activity_id,
+                    fal.user_id as actor_id,
+                    fal.activity_type,
+                    fal.activity_data,
+                    u_actor.first_name as actor_name,
+                    u_recipient.telegram_id as recipient_telegram_id,
+                    u_recipient.id as recipient_id,
+                    COALESCE(up_recipient.language, 'ru') as recipient_lang
+                FROM friend_activity_logs fal
+                JOIN users u_actor ON fal.user_id = u_actor.id
+                JOIN friendships f ON (
+                    (f.user_id = fal.user_id AND f.status = 'accepted')
+                    OR (f.friend_id = fal.user_id AND f.status = 'accepted')
+                )
+                JOIN users u_recipient ON u_recipient.id = CASE
+                    WHEN f.user_id = fal.user_id THEN f.friend_id
+                    ELSE f.user_id
+                END
+                LEFT JOIN user_profiles up_recipient ON up_recipient.user_id = u_recipient.id
+                WHERE fal.notified = false
+                AND fal.created_at > NOW() - INTERVAL '24 hours'
+                AND COALESCE(up_recipient.notifications_enabled, true) = true
+                ORDER BY u_recipient.id
+            """
+            )
+        )
+        return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def mark_friend_activities_notified(activity_ids: list[int]):
+    """Mark friend activity logs as notified."""
+    if not activity_ids:
+        return
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                UPDATE friend_activity_logs
+                SET notified = true
+                WHERE id = ANY(:ids)
+            """
+            ),
+            {"ids": activity_ids},
+        )
+        await session.commit()
+
+
+async def get_inactive_users(days: int = 2) -> list[dict]:
+    """Get users inactive for N+ days who haven't been sent a comeback message yet."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT u.id, u.telegram_id, u.first_name,
+                       COALESCE(up.language, 'ru') as language
+                FROM users u
+                LEFT JOIN user_profiles up ON up.user_id = u.id
+                WHERE u.last_activity_date < (
+                    CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Moscow'
+                )::date - :days
+                AND u.comeback_card_pending = false
+                AND COALESCE(up.notifications_enabled, true) = true
+            """
+            ),
+            {"days": days},
+        )
+        return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def set_comeback_card_pending(user_id: int):
+    """Set comeback_card_pending flag to true for a user."""
+    async with async_session() as session:
+        await session.execute(
+            text(
+                """
+                UPDATE users SET comeback_card_pending = true
+                WHERE id = :user_id
+            """
+            ),
+            {"user_id": user_id},
+        )
+        await session.commit()

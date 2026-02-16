@@ -21,8 +21,8 @@ import {
 } from '@/lib/telegram';
 import { XPPopup } from '@/components/gamification';
 import { GenreSelectionModal } from '@/components/GenreSelectionModal';
-import { ReferralRewardModal } from '@/components/cards';
-import { LanguageProvider } from '@/lib/i18n';
+import { ReferralRewardModal, CardEarnedModal, type EarnedCard } from '@/components/cards';
+import { LanguageProvider, useLanguage } from '@/lib/i18n';
 import { TonConnectProvider } from '@/components/TonConnectProvider';
 
 const queryClient = new QueryClient({
@@ -67,9 +67,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useAppStore();
 
+  const { t } = useLanguage();
   const [referralRewards, setReferralRewards] = useState<ReferralRewardData[]>([]);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [pendingReferralRewards, setPendingReferralRewards] = useState<ReferralRewardData[]>([]);
+  const [comebackCard, setComebackCard] = useState<EarnedCard | null>(null);
+  const [showComebackModal, setShowComebackModal] = useState(false);
 
   // Show pending referral rewards after BOTH main onboarding AND spotlight complete
   useEffect(() => {
@@ -251,6 +254,12 @@ function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
 
+            // Handle comeback card for returning users
+            if (result.data.comeback_card) {
+              setComebackCard(result.data.comeback_card);
+              setTimeout(() => setShowComebackModal(true), 1000);
+            }
+
             // Check for pending referral rewards in background (non-blocking)
             checkPendingRewardsInBackground();
           }
@@ -421,6 +430,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
           setShowReferralModal(false);
           setReferralRewards([]);
         }}
+      />
+      <CardEarnedModal
+        isOpen={showComebackModal}
+        card={comebackCard}
+        onClose={() => {
+          setShowComebackModal(false);
+          setComebackCard(null);
+        }}
+        t={t}
       />
     </>
   );

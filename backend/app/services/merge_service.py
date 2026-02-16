@@ -193,7 +193,7 @@ class MergeService:
         else:
             result_genre = random.choice([card1.genre, card2.genre])
 
-        # Generate new card
+        # Generate new card with correct genre
         card_service = CardService()
         new_card = card_service.generate_card_for_task(
             user_id=user_id,
@@ -201,13 +201,11 @@ class MergeService:
             task_title=f"Слияние: {card1.name} + {card2.name}",
             difficulty="merge",
             forced_rarity=result_rarity,
+            forced_genre=result_genre,
         )
 
         if not new_card:
             return {"error": "card_generation_failed"}
-
-        # Override genre to match merge result
-        new_card.genre = result_genre
 
         # Create merge log
         merge_log = MergeLog(

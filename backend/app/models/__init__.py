@@ -31,6 +31,7 @@ from app.models.character import (
 )
 from app.models.event import EventMonster, EventType, SeasonalEvent, UserEventProgress
 from app.models.focus_session import FocusSession
+from app.models.friend_activity_log import FriendActivityLog
 from app.models.guild import (
     Guild,
     GuildInvite,
@@ -106,4 +107,6 @@ __all__ = [
     "CampaignLevelCompletion",
     "CampaignReward",
     "UserCampaignProgress",
+    # Friend activity
+    "FriendActivityLog",
 ]

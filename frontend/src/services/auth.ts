@@ -30,6 +30,17 @@ interface AuthResponse {
   is_new_user?: boolean;
   friendship_created?: boolean;
   referral_rewards?: ReferralRewards;
+  comeback_card?: {
+    id: number;
+    name: string;
+    description: string;
+    genre: string;
+    rarity: string;
+    hp: number;
+    attack: number;
+    emoji: string;
+    image_url?: string | null;
+  };
 }
 
 export type { ReferralCard, ReferralRewards, AuthResponse };

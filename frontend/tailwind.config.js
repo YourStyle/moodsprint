@@ -95,6 +95,7 @@ module.exports = {
         'card-attack': 'cardAttack 0.5s ease-out',
         'card-hit': 'cardHit 0.4s ease-out',
         'damage-float': 'damageFloat 1s ease-out forwards',
+        'flicker': 'flicker 0.8s ease-in-out infinite',
       },
       keyframes: {
         float: {
@@ -126,6 +127,12 @@ module.exports = {
         damageFloat: {
           '0%': { transform: 'translateX(-50%) translateY(0)', opacity: '1' },
           '100%': { transform: 'translateX(-50%) translateY(-40px)', opacity: '0' },
+        },
+        flicker: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '25%': { opacity: '0.8', transform: 'scale(1.05)' },
+          '50%': { opacity: '1', transform: 'scale(0.95)' },
+          '75%': { opacity: '0.9', transform: 'scale(1.02)' },
         },
       },
       borderRadius: {

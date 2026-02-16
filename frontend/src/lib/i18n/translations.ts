@@ -722,6 +722,28 @@ export const translations = {
     dailyGoalsBonus: '+30 XP бонус!',
     deckCapacity: 'Карт: {current}/{max}',
     deckSizeIncrease: 'Размер колоды +{amount}',
+
+    // Streak milestones (F2)
+    streakMilestone: 'Награда за серию!',
+    streakMilestoneDesc: '{days} дней подряд — так держать!',
+    streakMilestoneXp: '+{xp} XP',
+    streakMilestoneCard: 'Карта в подарок!',
+
+    // Rarity odds (F6)
+    cardOdds: 'Шансы',
+    cardOddsCommon: 'Обычная',
+    cardOddsUncommon: 'Необычная',
+    cardOddsRare: 'Редкая',
+    cardOddsEpic: 'Эпическая',
+    cardOddsLegendary: 'Легендарная',
+
+    // Auto-archive (F7)
+    postponed: 'Отложено',
+    taskArchived: 'Задача архивирована',
+
+    // Comeback (F5)
+    comebackCard: 'С возвращением!',
+    comebackCardDesc: 'Мы скучали! Вот карта в подарок.',
   },
 
   en: {
@@ -1447,6 +1469,28 @@ export const translations = {
     dailyGoalsBonus: '+30 XP bonus!',
     deckCapacity: 'Cards: {current}/{max}',
     deckSizeIncrease: 'Deck size +{amount}',
+
+    // Streak milestones (F2)
+    streakMilestone: 'Streak Reward!',
+    streakMilestoneDesc: '{days} days in a row — keep it up!',
+    streakMilestoneXp: '+{xp} XP',
+    streakMilestoneCard: 'Bonus card!',
+
+    // Rarity odds (F6)
+    cardOdds: 'Odds',
+    cardOddsCommon: 'Common',
+    cardOddsUncommon: 'Uncommon',
+    cardOddsRare: 'Rare',
+    cardOddsEpic: 'Epic',
+    cardOddsLegendary: 'Legendary',
+
+    // Auto-archive (F7)
+    postponed: 'Postponed',
+    taskArchived: 'Task archived',
+
+    // Comeback (F5)
+    comebackCard: 'Welcome back!',
+    comebackCardDesc: 'We missed you! Here\'s a card for you.',
   },
 } as const;
 

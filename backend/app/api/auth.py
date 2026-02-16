@@ -216,6 +216,20 @@ def authenticate_telegram():
     except Exception:
         pass
 
+    # F5: Grant comeback card if pending
+    comeback_card = None
+    if user and not is_new_user and user.comeback_card_pending:
+        try:
+            from app.models.card import CardRarity
+            from app.services.card_service import CardService
+
+            comeback_card = CardService().generate_card_for_task(
+                user.id, None, "Welcome back!", forced_rarity=CardRarity.UNCOMMON
+            )
+            user.comeback_card_pending = False
+        except Exception as e:
+            logger.error(f"Failed to generate comeback card: {e}")
+
     db.session.commit()
 
     # Create JWT token (identity must be a string for Flask-JWT-Extended)
@@ -232,6 +246,9 @@ def authenticate_telegram():
 
     if referral_rewards:
         response_data["referral_rewards"] = referral_rewards
+
+    if comeback_card:
+        response_data["comeback_card"] = comeback_card.to_dict()
 
     return success_response(response_data)
 

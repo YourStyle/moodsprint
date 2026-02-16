@@ -47,6 +47,22 @@ const GENRE_KEYS: Record<string, string> = {
   anime: 'genreAnime',
 };
 
+// Group cards by template_id, showing count instead of duplicates
+type GroupedCard = CardType & { _duplicateCount: number; _duplicateIds: number[] };
+function groupCardsByTemplate(cards: CardType[]): GroupedCard[] {
+  const groups = new Map<string, CardType[]>();
+  for (const card of cards) {
+    const key = card.template_id ? `tmpl_${card.template_id}` : `card_${card.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(card);
+  }
+  return Array.from(groups.values()).map(group => ({
+    ...group[0],
+    _duplicateCount: group.length,
+    _duplicateIds: group.map(c => c.id),
+  }));
+}
+
 interface MergePreview {
   card1: CardType;
   card2: CardType;
@@ -273,7 +289,9 @@ export default function DeckPage() {
           _isPreviouslyOwned: wasCollected && !genreLocked,
         };
       });
-    return { allCollectionCards: [...cards, ...unownedCards] };
+    // Group owned cards by template to stack duplicates
+    const groupedOwned = groupCardsByTemplate(cards);
+    return { allCollectionCards: [...groupedOwned, ...unownedCards] };
   }, [cards, templates, collectedTemplateIds, unlockedGenresSet]);
 
   // Filter cards by rarity and genre
@@ -306,10 +324,11 @@ export default function DeckPage() {
   // Check if any card needs healing
   const cardsNeedHealing = cards.some((c) => c.current_hp < c.hp);
 
-  // Cards available for merge (not in deck, not legendary, alive)
-  const mergeableCards = cards.filter(
+  // Cards available for merge (not in deck, not legendary, alive), grouped by template
+  const mergeableCardsRaw = cards.filter(
     (c) => !c.is_in_deck && c.rarity !== 'legendary' && c.current_hp > 0
   );
+  const mergeableCards = useMemo(() => groupCardsByTemplate(mergeableCardsRaw), [mergeableCardsRaw]);
 
   // Fetch merge preview when both cards selected
   useEffect(() => {
@@ -324,22 +343,44 @@ export default function DeckPage() {
   const handleMergeCardSelect = (card: CardType) => {
     hapticFeedback('light');
 
-    if (mergeCard1?.id === card.id) {
+    // For grouped cards, find the actual card instances
+    const grouped = card as GroupedCard;
+    const duplicateIds = grouped._duplicateIds || [card.id];
+
+    // Check if any instance from this group is already selected
+    const selectedId1InGroup = mergeCard1 && duplicateIds.includes(mergeCard1.id);
+    const selectedId2InGroup = mergeCard2 && duplicateIds.includes(mergeCard2.id);
+
+    // If both slots from this group, deselect both
+    if (selectedId1InGroup && selectedId2InGroup) {
       setMergeCard1(null);
-      return;
-    }
-    if (mergeCard2?.id === card.id) {
       setMergeCard2(null);
       return;
     }
 
+    // If one slot from this group, deselect it
+    if (selectedId1InGroup && !mergeCard2) {
+      setMergeCard1(null);
+      return;
+    }
+    if (selectedId2InGroup && !mergeCard1) {
+      setMergeCard2(null);
+      return;
+    }
+
+    // Find an unused instance from this group
+    const usedIds = new Set([mergeCard1?.id, mergeCard2?.id].filter(Boolean));
+    const availableId = duplicateIds.find(id => !usedIds.has(id));
+    if (!availableId) return;
+    const actualCard = mergeableCardsRaw.find(c => c.id === availableId) || card;
+
     if (!mergeCard1) {
-      setMergeCard1(card);
+      setMergeCard1(actualCard);
     } else if (!mergeCard2) {
-      setMergeCard2(card);
+      setMergeCard2(actualCard);
     } else {
       // Replace first card
-      setMergeCard1(card);
+      setMergeCard1(actualCard);
       setMergeCard2(null);
     }
   };
@@ -702,6 +743,7 @@ export default function DeckPage() {
                           isLocked={isLocked}
                           isPreviouslyOwned={isPreviouslyOwned}
                           isGenreLocked={isGenreLocked}
+                          duplicateCount={'_duplicateCount' in card ? (card as GroupedCard)._duplicateCount : undefined}
                           onClick={isUnavailable ? undefined : () => handleCardClick(card)}
                           onInfoClick={isUnavailable ? undefined : () => setInfoCard(card)}
                         />
@@ -1031,37 +1073,42 @@ export default function DeckPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {mergeableCards.map((card) => (
-                <div
-                  key={card.id}
-                  onClick={() => handleMergeCardSelect(card)}
-                  className={cn(
-                    'cursor-pointer transition-all rounded-lg overflow-hidden',
-                    (mergeCard1?.id === card.id || mergeCard2?.id === card.id)
-                      ? 'ring-2 ring-orange-500 scale-95 opacity-50'
-                      : 'hover:scale-105'
-                  )}
-                >
-                  <DeckCard
-                    id={card.id}
-                    name={card.name}
-                    description={card.description}
-                    emoji={card.emoji}
-                    imageUrl={card.image_url}
-                    hp={card.hp}
-                    currentHp={card.current_hp}
-                    attack={card.attack}
-                    rarity={card.rarity}
-                    genre={card.genre}
-                    isInDeck={false}
-                    isGenerating={generatingImages.has(card.id)}
-                    createdAt={card.created_at}
-                    ability={card.ability}
-                    abilityInfo={card.ability_info}
-                    compact
-                  />
-                </div>
-              ))}
+              {mergeableCards.map((card) => {
+                const grouped = card as GroupedCard;
+                const isSelected = grouped._duplicateIds?.some(id => id === mergeCard1?.id || id === mergeCard2?.id);
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => handleMergeCardSelect(card)}
+                    className={cn(
+                      'cursor-pointer transition-all rounded-lg overflow-hidden',
+                      isSelected
+                        ? 'ring-2 ring-orange-500 scale-95 opacity-50'
+                        : 'hover:scale-105'
+                    )}
+                  >
+                    <DeckCard
+                      id={card.id}
+                      name={card.name}
+                      description={card.description}
+                      emoji={card.emoji}
+                      imageUrl={card.image_url}
+                      hp={card.hp}
+                      currentHp={card.current_hp}
+                      attack={card.attack}
+                      rarity={card.rarity}
+                      genre={card.genre}
+                      isInDeck={false}
+                      isGenerating={generatingImages.has(card.id)}
+                      createdAt={card.created_at}
+                      ability={card.ability}
+                      abilityInfo={card.ability_info}
+                      duplicateCount={grouped._duplicateCount}
+                      compact
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
 

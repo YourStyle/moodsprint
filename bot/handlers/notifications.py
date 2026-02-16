@@ -16,6 +16,7 @@ from database import (
     get_unnotified_postpone_logs_for_time,
     get_user_stats,
     get_users_for_daily_suggestion,
+    get_users_tasks_for_today,
     get_users_with_notifications_enabled,
     mark_daily_suggestion_sent,
     mark_postpone_log_notified,
@@ -41,39 +42,87 @@ class NotificationService:
         self.bot = bot
 
     async def send_morning_reminder(self):
-        """Send morning motivation reminder."""
-        users = await get_users_with_notifications_enabled()
+        """Send personalized morning reminder with today's tasks."""
+        from translations import get_text
 
-        messages = [
-            "☀️ Доброе утро! Готов к новому дню? Зайди в MoodSprint и отметь своё настроение.",
-            "🌅 Подъём! Начни день с проверки настроения.",
-            "✨ Новый день — новые возможности! Что у тебя на уме сегодня?",
-        ]
+        # Batch query all today's tasks grouped by user
+        users_tasks = await get_users_tasks_for_today()
 
-        import random
+        # Also get users with no tasks but notifications enabled
+        all_users = await get_users_with_notifications_enabled()
+        users_with_tasks_ids = set()
+        if users_tasks:
+            for tasks_list in users_tasks.values():
+                if tasks_list:
+                    users_with_tasks_ids.add(tasks_list[0]["telegram_id"])
 
-        message = random.choice(messages)
         sent = 0
         failed = 0
 
-        for user in users:
+        PRIORITY_EMOJI = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+
+        # Send to users WITH tasks
+        for user_id, tasks in users_tasks.items():
+            if not tasks:
+                continue
+            telegram_id = tasks[0]["telegram_id"]
+            first_name = tasks[0].get("first_name") or ""
+            lang = tasks[0].get("language", "ru")
+            total = len(tasks)
+
+            task_lines = []
+            for t in tasks[:3]:
+                emoji = PRIORITY_EMOJI.get(t["priority"], "🟢")
+                task_lines.append(f"{emoji} {t['title'][:60]}")
+
+            text = get_text("morning_with_tasks", lang).format(
+                name=first_name, count=total
+            )
+            text += "\n" + "\n".join(task_lines)
+            if total > 3:
+                text += "\n" + get_text("morning_and_more", lang).format(
+                    count=total - 3
+                )
+
             try:
                 await self.bot.send_message(
-                    user["telegram_id"],
-                    f"{message}",
+                    telegram_id,
+                    text,
                     reply_markup=get_morning_reminder_keyboard(),
                 )
                 sent += 1
             except (TelegramForbiddenError, TelegramBadRequest):
-                # User blocked bot or chat not found - skip silently
+                failed += 1
+            except Exception as e:
+                logger.error(f"Failed to send morning reminder to {telegram_id}: {e}")
+                failed += 1
+            await asyncio.sleep(0.05)
+
+        # Send to users WITHOUT tasks
+        for user in all_users:
+            if user["telegram_id"] in users_with_tasks_ids:
+                continue
+            from database import get_user_language
+
+            lang = await get_user_language(user["telegram_id"])
+            first_name = user.get("first_name") or ""
+            text = get_text("morning_no_tasks", lang).format(name=first_name)
+
+            try:
+                await self.bot.send_message(
+                    user["telegram_id"],
+                    text,
+                    reply_markup=get_morning_reminder_keyboard(),
+                )
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
                 failed += 1
             except Exception as e:
                 logger.error(
                     f"Failed to send morning reminder to {user['telegram_id']}: {e}"
                 )
                 failed += 1
-
-            await asyncio.sleep(0.05)  # Rate limiting
+            await asyncio.sleep(0.05)
 
         logger.info(f"Morning reminders: {sent} sent, {failed} failed")
 
@@ -725,3 +774,116 @@ class NotificationService:
 
         except Exception as e:
             logger.error(f"Resource check error: {e}")
+
+    async def send_friend_activity_notifications(self):
+        """Send notifications about friend activities (level ups, streak milestones)."""
+        from database import (
+            get_recent_friend_activities,
+            mark_friend_activities_notified,
+        )
+        from translations import get_text
+
+        logger.info("Checking friend activity notifications...")
+
+        activities = await get_recent_friend_activities()
+
+        if not activities:
+            logger.info("No friend activities to notify about.")
+            return
+
+        sent = 0
+        failed = 0
+        notified_ids = []
+
+        # Group by recipient
+        recipients: dict[int, list[dict]] = {}
+        for act in activities:
+            tid = act["recipient_telegram_id"]
+            if tid not in recipients:
+                recipients[tid] = []
+            recipients[tid].append(act)
+
+        for telegram_id, acts in recipients.items():
+            lang = acts[0].get("recipient_lang", "ru")
+            lines = []
+            for act in acts:
+                name = act.get("actor_name") or ""
+                data = act.get("activity_data") or {}
+                if act["activity_type"] == "level_up":
+                    lines.append(
+                        get_text("friend_level_up", lang).format(
+                            name=name, level=data.get("level", "?")
+                        )
+                    )
+                elif act["activity_type"] == "streak_milestone":
+                    lines.append(
+                        get_text("friend_streak_milestone", lang).format(
+                            name=name, days=data.get("streak_days", "?")
+                        )
+                    )
+                notified_ids.append(act["activity_id"])
+
+            if not lines:
+                continue
+
+            message = "\n".join(lines)
+            try:
+                await self.bot.send_message(
+                    telegram_id,
+                    message,
+                    reply_markup=get_webapp_button(),
+                )
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
+                failed += 1
+            except Exception as e:
+                logger.error(f"Failed to send friend activity to {telegram_id}: {e}")
+                failed += 1
+            await asyncio.sleep(0.05)
+
+        # Mark all as notified
+        await mark_friend_activities_notified(notified_ids)
+
+        logger.info(f"Friend activity notifications: {sent} sent, {failed} failed")
+
+    async def send_comeback_messages(self):
+        """Send comeback messages to users inactive for 2+ days."""
+        from database import get_inactive_users, set_comeback_card_pending
+        from translations import get_text
+
+        logger.info("Checking for inactive users for comeback messages...")
+
+        users = await get_inactive_users(days=2)
+
+        if not users:
+            logger.info("No inactive users for comeback messages.")
+            return
+
+        sent = 0
+        failed = 0
+
+        for user in users:
+            telegram_id = user["telegram_id"]
+            first_name = user.get("first_name") or ""
+            lang = user.get("language", "ru")
+
+            message = get_text("comeback_message", lang).format(name=first_name)
+
+            try:
+                await self.bot.send_message(
+                    telegram_id,
+                    message,
+                    reply_markup=get_webapp_button(),
+                )
+                await set_comeback_card_pending(user["id"])
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
+                # User blocked bot — still mark to avoid retrying
+                await set_comeback_card_pending(user["id"])
+                failed += 1
+            except Exception as e:
+                logger.error(f"Failed to send comeback message to {telegram_id}: {e}")
+                failed += 1
+            await asyncio.sleep(0.05)
+
+        logger.info(f"Comeback messages: {sent} sent, {failed} failed")

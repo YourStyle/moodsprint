@@ -61,6 +61,11 @@ interface TaskWithXP extends TaskResponse, Partial<XPReward> {
   new_level?: number;
   level_rewards?: LevelRewardPayload[];
   genre_unlock_available?: GenreUnlockPayload | null;
+  streak_milestone?: {
+    milestone_days: number;
+    xp_bonus: number;
+    card_earned?: CardEarned;
+  };
 }
 
 interface SubtaskResponse {
@@ -75,6 +80,11 @@ interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {
   new_level?: number;
   level_rewards?: LevelRewardPayload[];
   genre_unlock_available?: GenreUnlockPayload | null;
+  streak_milestone?: {
+    milestone_days: number;
+    xp_bonus: number;
+    card_earned?: CardEarned;
+  };
 }
 
 interface DecomposeResponse {

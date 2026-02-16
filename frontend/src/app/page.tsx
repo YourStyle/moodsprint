@@ -8,6 +8,8 @@ import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
 import { DailyBonus, LevelUpModal, EnergyLimitModal, type LevelRewardItem } from '@/components/gamification';
+import { StreakIndicator } from '@/components/gamification/StreakIndicator';
+import { StreakMilestoneModal } from '@/components/gamification/StreakMilestoneModal';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
@@ -540,6 +542,8 @@ export default function HomePage() {
   } | null>(null);
   const [showEnergyLimitModal, setShowEnergyLimitModal] = useState(false);
   const [energyLimitData, setEnergyLimitData] = useState<{ old_max: number; new_max: number } | null>(null);
+  const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
+  const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -771,6 +775,11 @@ export default function HomePage() {
         });
         if (!result.data?.card_earned) setShowLevelUpModal(true);
       }
+      // Streak milestone
+      if (result.data?.streak_milestone) {
+        setStreakMilestoneData(result.data.streak_milestone);
+        setShowStreakMilestoneModal(true);
+      }
       hapticFeedback('success');
     },
   });
@@ -808,6 +817,11 @@ export default function HomePage() {
           genreUnlockAvailable: result.data.genre_unlock_available || null,
         });
         if (!result.data?.card_earned) setShowLevelUpModal(true);
+      }
+      // Streak milestone
+      if (result.data?.streak_milestone) {
+        setStreakMilestoneData(result.data.streak_milestone);
+        setShowStreakMilestoneModal(true);
       }
       hapticFeedback('success');
     },
@@ -1014,6 +1028,8 @@ export default function HomePage() {
           >
             {language === 'ru' ? '🇷🇺' : '🇬🇧'}
           </button>
+          {/* Streak Indicator */}
+          {user.streak_days > 0 && <StreakIndicator days={user.streak_days} />}
           {/* Mood Button */}
           <button
             onClick={() => setShowMoodModal(true)}
@@ -1098,7 +1114,7 @@ export default function HomePage() {
         </div>
 
         {/* Status Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide md:overflow-x-visible md:flex-wrap">
           {([
             { value: 'pending' as const, labelKey: 'statusPending' as const },
             { value: 'in_progress' as const, labelKey: 'statusInProgress' as const },
@@ -1349,6 +1365,16 @@ export default function HomePage() {
           newMax={energyLimitData.new_max}
         />
       )}
+
+      {/* Streak Milestone Modal */}
+      <StreakMilestoneModal
+        isOpen={showStreakMilestoneModal}
+        onClose={() => {
+          setShowStreakMilestoneModal(false);
+          setStreakMilestoneData(null);
+        }}
+        milestone={streakMilestoneData}
+      />
 
       {/* Card Tutorial (first-time onboarding) */}
       <CardTutorial

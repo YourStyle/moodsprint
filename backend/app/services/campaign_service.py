@@ -54,12 +54,23 @@ class CampaignService:
         )
 
         chapters_data = []
+        completed_chapter_ids = set(progress.chapters_completed or [])
         for chapter in chapters:
             chapter_data = chapter.to_dict(lang)
 
-            # Check if unlocked
-            is_unlocked = chapter.number <= progress.current_chapter
-            is_completed = chapter.id in (progress.chapters_completed or [])
+            # Check if unlocked (genre-aware: ch1 always unlocked,
+            # others require previous chapter of same genre completed)
+            if chapter.number == 1:
+                is_unlocked = True
+            else:
+                prev_chapter = CampaignChapter.query.filter_by(
+                    number=chapter.number - 1, genre=genre, is_active=True
+                ).first()
+                is_unlocked = (
+                    prev_chapter is not None
+                    and prev_chapter.id in completed_chapter_ids
+                )
+            is_completed = chapter.id in completed_chapter_ids
 
             # Get level progress for this chapter
             level_completions = (
@@ -120,9 +131,14 @@ class CampaignService:
         if not chapter:
             return {"error": "chapter_not_found"}
 
-        # Check if unlocked
-        if chapter_number > progress.current_chapter:
-            return {"error": "chapter_locked"}
+        # Check if unlocked (genre-aware)
+        if chapter_number > 1:
+            prev_chapter = CampaignChapter.query.filter_by(
+                number=chapter_number - 1, genre=genre, is_active=True
+            ).first()
+            completed_ids = set(progress.chapters_completed or [])
+            if not prev_chapter or prev_chapter.id not in completed_ids:
+                return {"error": "chapter_locked"}
 
         levels = chapter.levels.order_by(CampaignLevel.number).all()
         levels_data = []

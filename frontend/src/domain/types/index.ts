@@ -25,7 +25,7 @@ export interface User {
 
 // ============ Tasks ============
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'archived';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskType =
   | 'creative'
@@ -47,7 +47,9 @@ export interface Task {
   due_date: string | null;
   task_type: TaskType | null;
   preferred_time: string | null;
+  difficulty: string | null;
   scheduled_at: string | null;
+  postponed_count: number;
   subtasks_count: number;
   subtasks_completed: number;
   progress_percent: number;
@@ -55,6 +57,7 @@ export interface Task {
   updated_at: string | null;
   completed_at: string | null;
   subtasks?: Subtask[];
+  rarity_odds?: Record<string, number>;
 }
 
 export type PreferredTime = 'morning' | 'afternoon' | 'evening' | 'night';
