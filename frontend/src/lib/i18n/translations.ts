@@ -751,6 +751,10 @@ export const translations = {
     noSharedTasks: 'Нет задач от друзей',
     sharedByName: 'от {name}',
     pingSuccess: 'Уведомление отправлено!',
+    fromUser: 'От: {name}',
+    subtasksCount: 'Подзадачи',
+    openTask: 'Открыть',
+    taskMessage: 'Сообщение',
   },
 
   en: {
@@ -1505,6 +1509,10 @@ export const translations = {
     noSharedTasks: 'No shared tasks',
     sharedByName: 'from {name}',
     pingSuccess: 'Notification sent!',
+    fromUser: 'From: {name}',
+    subtasksCount: 'Subtasks',
+    openTask: 'Open',
+    taskMessage: 'Message',
   },
 } as const;
 

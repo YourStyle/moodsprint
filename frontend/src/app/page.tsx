@@ -15,6 +15,7 @@ import { SpotlightOnboarding, type OnboardingStep } from '@/components/Spotlight
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
+import type { SharedTaskRecord } from '@/services/tasks';
 import { cardsService } from '@/services/cards';
 import { hapticFeedback, isMobileApp } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
@@ -428,7 +429,7 @@ function TaskCardCompact({
 export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { t, language, setLanguage } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, isLoading, authError, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
 
@@ -562,6 +563,7 @@ export default function HomePage() {
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [quickTaskPending, setQuickTaskPending] = useState<string | null>(null);
   const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
+  const [previewSharedTask, setPreviewSharedTask] = useState<SharedTaskRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1069,15 +1071,6 @@ export default function HomePage() {
     return t('goodEvening');
   };
 
-  // Toggle language
-  const toggleLanguage = () => {
-    const newLang = language === 'ru' ? 'en' : 'ru';
-    setLanguage(newLang);
-    // Invalidate all cached queries to refetch with new language
-    queryClient.invalidateQueries();
-    hapticFeedback('light');
-  };
-
   return (
     <SpotlightOnboarding steps={ONBOARDING_STEPS} storageKey="home">
     <div className="relative">
@@ -1115,23 +1108,11 @@ export default function HomePage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">
-            {getGreeting()},
-          </h1>
-          <p className="text-gray-400">{user.first_name || t('friend')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Language Toggle */}
-          <button
-            onClick={toggleLanguage}
-            className="w-10 h-10 rounded-full bg-dark-700 border border-gray-700 flex items-center justify-center hover:bg-dark-600 transition-colors text-sm font-medium"
-          >
-            {language === 'ru' ? '🇷🇺' : '🇬🇧'}
-          </button>
-          {/* Streak Indicator */}
+        <h1 className="text-lg font-semibold text-white truncate mr-3">
+          {getGreeting()}, {user.first_name || t('friend')}
+        </h1>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {user.streak_days > 0 && <StreakIndicator days={user.streak_days} />}
-          {/* Mood Button */}
           <button
             onClick={() => setShowMoodModal(true)}
             className="w-10 h-10 rounded-full bg-dark-700 border border-gray-700 flex items-center justify-center hover:bg-dark-600 transition-colors"
@@ -1143,20 +1124,6 @@ export default function HomePage() {
               </span>
             ) : (
               <Smile className="w-5 h-5 text-gray-400" />
-            )}
-          </button>
-          {/* Avatar - click to go to profile */}
-          <button onClick={() => router.push('/profile')} className="focus:outline-none">
-            {user.photo_url ? (
-              <img
-                src={user.photo_url}
-                alt={user.first_name || 'User'}
-                className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                {(user.first_name?.[0] || '?').toUpperCase()}
-              </div>
             )}
           </button>
         </div>
@@ -1210,9 +1177,10 @@ export default function HomePage() {
             {t('sharedWithMe')}
           </h2>
           {sharedTasks.map((shared) => (
-            <div
+            <button
               key={shared.id}
-              className="bg-dark-700/50 rounded-xl p-3 border border-primary-500/20"
+              onClick={() => setPreviewSharedTask(shared)}
+              className="w-full text-left bg-dark-700/50 rounded-xl p-3 border border-primary-500/20 hover:bg-dark-700/80 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center flex-shrink-0">
@@ -1227,34 +1195,16 @@ export default function HomePage() {
                   </p>
                 </div>
                 {shared.status === 'pending' && (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      onClick={() => acceptSharedMutation.mutate(shared.id)}
-                      className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium"
-                    >
-                      {t('acceptTask')}
-                    </button>
-                    <button
-                      onClick={() => declineSharedMutation.mutate(shared.id)}
-                      className="px-3 py-1.5 rounded-lg bg-gray-700 text-gray-300 text-xs font-medium"
-                    >
-                      {t('declineTask')}
-                    </button>
-                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex-shrink-0">{t('statusPending')}</span>
                 )}
                 {shared.status === 'accepted' && (
-                  <button
-                    onClick={() => router.push(`/tasks/${shared.task_id}`)}
-                    className="px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 text-xs font-medium flex-shrink-0"
-                  >
-                    {t('viewAll')}
-                  </button>
+                  <span className="px-2 py-0.5 rounded-full bg-primary-500/20 text-primary-400 text-xs flex-shrink-0">{t('statusInProgress')}</span>
                 )}
                 {shared.status === 'completed' && (
-                  <span className="text-xs text-green-400 flex-shrink-0">{t('done')}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs flex-shrink-0">{t('done')}</span>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -1603,6 +1553,117 @@ export default function HomePage() {
         data={companionXPToast}
         onDismiss={() => setCompanionXPToast(null)}
       />
+
+      {/* Shared Task Preview Modal */}
+      <Modal
+        isOpen={!!previewSharedTask}
+        onClose={() => setPreviewSharedTask(null)}
+        title={previewSharedTask?.task?.title || `Task #${previewSharedTask?.task_id}`}
+      >
+        {previewSharedTask && (() => {
+          const task = previewSharedTask.task;
+          const priorityColors: Record<string, string> = {
+            high: 'bg-red-500/20 text-red-400',
+            medium: 'bg-amber-500/20 text-amber-400',
+            low: 'bg-green-500/20 text-green-400',
+          };
+          return (
+            <div className="space-y-4">
+              {/* From user */}
+              <p className="text-sm text-gray-400">
+                {t('fromUser').replace('{name}', previewSharedTask.owner_name || '?')}
+              </p>
+
+              {/* Message */}
+              {previewSharedTask.message && (
+                <div className="bg-dark-700/50 rounded-xl p-3 border border-gray-700/50">
+                  <p className="text-xs text-gray-500 mb-1">{t('taskMessage')}</p>
+                  <p className="text-sm text-gray-300">{previewSharedTask.message}</p>
+                </div>
+              )}
+
+              {/* Priority + Type badges */}
+              {task && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {task.priority && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[task.priority] || 'bg-gray-700 text-gray-300'}`}>
+                      {t(task.priority === 'high' ? 'priorityHigh' : task.priority === 'medium' ? 'priorityMedium' : 'priorityLow')}
+                    </span>
+                  )}
+                  {task.task_type && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary-500/20 text-primary-400">
+                      {task.task_type}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Description */}
+              {task?.description && (
+                <p className="text-sm text-gray-300">{task.description}</p>
+              )}
+
+              {/* Subtasks */}
+              {task?.subtasks && task.subtasks.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    {t('subtasksCount')} ({task.subtasks_completed}/{task.subtasks.length})
+                  </p>
+                  <div className="space-y-1.5">
+                    {task.subtasks.map((sub) => (
+                      <div key={sub.id} className="flex items-center gap-2 text-sm">
+                        <CheckCircle2
+                          className={`w-4 h-4 flex-shrink-0 ${sub.status === 'completed' ? 'text-green-400' : 'text-gray-600'}`}
+                        />
+                        <span className={sub.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-300'}>
+                          {sub.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                {previewSharedTask.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        acceptSharedMutation.mutate(previewSharedTask.id);
+                        setPreviewSharedTask(null);
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-primary-500 text-white font-medium text-sm"
+                    >
+                      {t('acceptTask')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        declineSharedMutation.mutate(previewSharedTask.id);
+                        setPreviewSharedTask(null);
+                      }}
+                      className="flex-1 py-3 rounded-xl bg-gray-700 text-gray-300 font-medium text-sm"
+                    >
+                      {t('declineTask')}
+                    </button>
+                  </>
+                )}
+                {previewSharedTask.status === 'accepted' && (
+                  <button
+                    onClick={() => {
+                      router.push(`/tasks/${previewSharedTask.task_id}`);
+                      setPreviewSharedTask(null);
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-primary-500 text-white font-medium text-sm"
+                  >
+                    {t('openTask')}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
     </div>
     </div>
     </SpotlightOnboarding>

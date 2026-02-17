@@ -15,13 +15,14 @@ import { useAppStore } from '@/lib/store';
 import { gamificationService, onboardingService, cardsService } from '@/services';
 import { authService } from '@/services';
 import { useLanguage } from '@/lib/i18n';
+import { hapticFeedback } from '@/lib/telegram';
 import type { Card as CardType } from '@/services/cards';
 
 export default function ProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, setUser, isTelegramEnvironment } = useAppStore();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const [showcaseSelectedCard, setShowcaseSelectedCard] = useState<CardType | null>(null);
   const [showcaseSelectedSlot, setShowcaseSelectedSlot] = useState<number | null>(null);
 
@@ -119,6 +120,18 @@ export default function ProfilePage() {
         {/* Genre selector and Settings under avatar */}
         <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gray-700/50">
           <GenreSelector currentGenre={profile?.favorite_genre} />
+          <button
+            onClick={() => {
+              const newLang = language === 'ru' ? 'en' : 'ru';
+              setLanguage(newLang);
+              queryClient.invalidateQueries();
+              hapticFeedback('light');
+            }}
+            className="p-2 rounded-xl bg-gray-800/80 border border-gray-700/50 text-sm font-medium text-gray-400 hover:text-white transition-colors"
+            title={t('language')}
+          >
+            {language === 'ru' ? '🇷🇺' : '🇬🇧'}
+          </button>
           <button
             onClick={() => router.push('/settings')}
             className="p-2 rounded-xl bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white transition-colors"
