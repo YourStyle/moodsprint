@@ -900,7 +900,7 @@ export default function DeckPage() {
             {/* Card 1 slot */}
             <div
               className={cn(
-                'aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center',
+                'aspect-[3/4.3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center',
                 mergeCard1
                   ? 'border-orange-500 bg-orange-500/10'
                   : 'border-gray-600 bg-gray-800/50'
@@ -925,6 +925,7 @@ export default function DeckPage() {
                     ability={mergeCard1.ability}
                     abilityInfo={mergeCard1.ability_info}
                     onClick={() => setMergeCard1(null)}
+                    compact
                   />
                   <button
                     onClick={() => setMergeCard1(null)}
@@ -944,7 +945,7 @@ export default function DeckPage() {
             {/* Card 2 slot */}
             <div
               className={cn(
-                'aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center',
+                'aspect-[3/4.3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center',
                 mergeCard2
                   ? 'border-pink-500 bg-pink-500/10'
                   : 'border-gray-600 bg-gray-800/50'
@@ -969,6 +970,7 @@ export default function DeckPage() {
                     ability={mergeCard2.ability}
                     abilityInfo={mergeCard2.ability_info}
                     onClick={() => setMergeCard2(null)}
+                    compact
                   />
                   <button
                     onClick={() => setMergeCard2(null)}
@@ -1068,16 +1070,20 @@ export default function DeckPage() {
             <div className="grid grid-cols-3 gap-2">
               {mergeableCards.map((card) => {
                 const grouped = card as GroupedCard;
-                const isSelected = grouped._duplicateIds?.some(id => id === mergeCard1?.id || id === mergeCard2?.id);
+                const usedCount = grouped._duplicateIds?.filter(id => id === mergeCard1?.id || id === mergeCard2?.id).length || 0;
+                const allUsed = usedCount >= (grouped._duplicateCount || 1);
+                const remainingCount = (grouped._duplicateCount || 1) - usedCount;
                 return (
                   <div
                     key={card.id}
                     onClick={() => handleMergeCardSelect(card)}
                     className={cn(
                       'cursor-pointer transition-all rounded-lg overflow-hidden',
-                      isSelected
+                      allUsed
                         ? 'ring-2 ring-orange-500 scale-95 opacity-50'
-                        : 'hover:scale-105'
+                        : usedCount > 0
+                          ? 'ring-2 ring-orange-500/50'
+                          : 'hover:scale-105'
                     )}
                   >
                     <DeckCard
@@ -1096,7 +1102,7 @@ export default function DeckPage() {
                       createdAt={card.created_at}
                       ability={card.ability}
                       abilityInfo={card.ability_info}
-                      duplicateCount={grouped._duplicateCount}
+                      duplicateCount={remainingCount > 1 ? remainingCount : undefined}
                       compact
                     />
                   </div>

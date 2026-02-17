@@ -1429,6 +1429,13 @@ def get_shared_with_me():
     else:
         # Exclude declined by default
         query = query.filter(SharedTask.status != SharedTaskStatus.DECLINED.value)
+        # Exclude fully done shared tasks (assignee pinged + owner completed the task)
+        query = query.filter(
+            ~db.and_(
+                SharedTask.status == SharedTaskStatus.COMPLETED.value,
+                SharedTask.task.has(Task.status == TaskStatus.COMPLETED.value),
+            )
+        )
 
     shared_tasks = query.order_by(SharedTask.created_at.desc()).all()
     return success_response(
