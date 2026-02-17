@@ -142,6 +142,17 @@ export interface SharedTaskRecord {
   task?: Task;
 }
 
+export interface SharedTaskReward {
+  shared_id: number;
+  card: CardEarned;
+  task_title: string | null;
+  owner_name: string | null;
+}
+
+interface SharedTaskRewardsResponse {
+  rewards: SharedTaskReward[];
+}
+
 interface SharedTasksResponse {
   shared_tasks: SharedTaskRecord[];
 }
@@ -250,5 +261,13 @@ export const tasksService = {
 
   async pingSharedTask(sharedId: number): Promise<ApiResponse<SharedTaskResponse>> {
     return api.post<SharedTaskResponse>(`/tasks/shared/${sharedId}/ping`, {});
+  },
+
+  async getSharedTaskRewards(): Promise<ApiResponse<SharedTaskRewardsResponse>> {
+    return api.get<SharedTaskRewardsResponse>('/tasks/shared/rewards');
+  },
+
+  async markSharedRewardShown(sharedId: number): Promise<ApiResponse<{}>> {
+    return api.post<{}>(`/tasks/shared/${sharedId}/reward-shown`, {});
   },
 };

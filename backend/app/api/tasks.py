@@ -587,6 +587,34 @@ def update_task(task_id: int):
 
         db.session.commit()
 
+        # Award cards to shared assignees who completed the task
+        try:
+            completed_shares = (
+                SharedTask.query.filter_by(
+                    task_id=task.id,
+                    status=SharedTaskStatus.COMPLETED.value,
+                )
+                .filter(SharedTask.reward_card_id.is_(None))
+                .all()
+            )
+
+            for share in completed_shares:
+                try:
+                    card_service = CardService()
+                    difficulty = task.difficulty or "medium"
+                    reward_card = card_service.generate_card_for_task(
+                        share.assignee_id, task.id, task.title, difficulty
+                    )
+                    if reward_card:
+                        share.reward_card_id = reward_card.id
+                except Exception:
+                    pass
+
+            if completed_shares:
+                db.session.commit()
+        except Exception:
+            pass
+
     response_data = {"task": task.to_dict()}
     if xp_info:
         response_data["xp_earned"] = xp_info["xp_earned"]
@@ -1045,6 +1073,35 @@ def update_subtask(subtask_id: int):
 
         db.session.commit()
 
+        # Award cards to shared assignees who completed the task
+        if task_just_completed:
+            try:
+                completed_shares = (
+                    SharedTask.query.filter_by(
+                        task_id=task.id,
+                        status=SharedTaskStatus.COMPLETED.value,
+                    )
+                    .filter(SharedTask.reward_card_id.is_(None))
+                    .all()
+                )
+
+                for share in completed_shares:
+                    try:
+                        cs = CardService()
+                        diff = task.difficulty or "medium"
+                        reward_card = cs.generate_card_for_task(
+                            share.assignee_id, task.id, task.title, diff
+                        )
+                        if reward_card:
+                            share.reward_card_id = reward_card.id
+                    except Exception:
+                        pass
+
+                if completed_shares:
+                    db.session.commit()
+            except Exception:
+                pass
+
     response_data = {"subtask": subtask.to_dict()}
     if xp_info:
         response_data["xp_earned"] = xp_info["xp_earned"]
@@ -1479,3 +1536,45 @@ def ping_shared_task(shared_id: int):
         pass
 
     return success_response({"shared_task": shared.to_dict()})
+
+
+@api_bp.route("/tasks/shared/rewards", methods=["GET"])
+@jwt_required()
+def get_shared_task_rewards():
+    """Get unshown card rewards from completed shared tasks."""
+    user_id = int(get_jwt_identity())
+
+    pending = (
+        SharedTask.query.filter_by(
+            assignee_id=user_id,
+            reward_shown=False,
+        )
+        .filter(SharedTask.reward_card_id.isnot(None))
+        .all()
+    )
+
+    rewards = []
+    for s in pending:
+        if s.reward_card:
+            rewards.append(
+                {
+                    "shared_id": s.id,
+                    "card": s.reward_card.to_dict(),
+                    "task_title": s.task.title if s.task else None,
+                    "owner_name": s.owner.first_name if s.owner else None,
+                }
+            )
+
+    return success_response({"rewards": rewards})
+
+
+@api_bp.route("/tasks/shared/<int:shared_id>/reward-shown", methods=["POST"])
+@jwt_required()
+def mark_shared_reward_shown(shared_id: int):
+    """Mark a shared task reward as shown."""
+    user_id = int(get_jwt_identity())
+    shared = SharedTask.query.filter_by(id=shared_id, assignee_id=user_id).first()
+    if shared:
+        shared.reward_shown = True
+        db.session.commit()
+    return success_response({})

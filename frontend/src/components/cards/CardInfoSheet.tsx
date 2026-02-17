@@ -44,6 +44,8 @@ interface CardInfoSheetProps {
   onRemoveFromShowcase?: (slot: number) => void;
   onSetCompanion?: (id: number) => void;
   onRemoveCompanion?: () => void;
+  isDeckFull?: boolean;
+  onGoToDeck?: () => void;
 }
 
 const rarityStyles = {
@@ -82,7 +84,7 @@ const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | '
   anime: 'genreAnime',
 };
 
-export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase, onSetCompanion, onRemoveCompanion }: CardInfoSheetProps) {
+export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, onRemoveFromDeck, onAddToShowcase, showcaseSlot, onRemoveFromShowcase, onSetCompanion, onRemoveCompanion, isDeckFull, onGoToDeck }: CardInfoSheetProps) {
   const { t } = useTranslation();
   const [showSlotPicker, setShowSlotPicker] = useState(false);
 
@@ -250,6 +252,14 @@ export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, on
               >
                 <Minus className="w-4 h-4 text-red-400" />
                 {t('removeFromDeck')}
+              </button>
+            ) : !isInDeck && isDeckFull && onGoToDeck ? (
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-sm transition-colors"
+                onClick={() => { onGoToDeck(); onClose(); }}
+              >
+                <Layers className="w-4 h-4 text-purple-400" />
+                {t('goToDeck')}
               </button>
             ) : !isInDeck && onAddToDeck ? (
               <button

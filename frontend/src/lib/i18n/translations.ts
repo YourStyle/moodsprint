@@ -756,6 +756,11 @@ export const translations = {
     subtasksCount: 'Подзадачи',
     openTask: 'Открыть',
     taskMessage: 'Сообщение',
+
+    // Shared task rewards
+    sharedTaskReward: 'Награда за совместную задачу',
+    sharedTaskRewardDesc: 'Задача «{title}» выполнена! Вот твоя карта.',
+    goToDeck: 'Перейти в колоду',
   },
 
   en: {
@@ -1515,6 +1520,11 @@ export const translations = {
     subtasksCount: 'Subtasks',
     openTask: 'Open',
     taskMessage: 'Message',
+
+    // Shared task rewards
+    sharedTaskReward: 'Shared task reward',
+    sharedTaskRewardDesc: 'Task "{title}" completed! Here\'s your card.',
+    goToDeck: 'Go to deck',
   },
 } as const;
 

@@ -43,9 +43,10 @@ interface CardEarnedModalProps {
   card: EarnedCard | null;
   onClose: () => void;
   t: (key: TranslationKey) => string;
+  subtitle?: string;
 }
 
-export function CardEarnedModal({ isOpen, card, onClose, t }: CardEarnedModalProps) {
+export function CardEarnedModal({ isOpen, card, onClose, t, subtitle }: CardEarnedModalProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -148,7 +149,7 @@ export function CardEarnedModal({ isOpen, card, onClose, t }: CardEarnedModalPro
         )}
 
         <p className="text-gray-400 text-sm text-center mb-4">
-          {t('cardAddedToCollection')}
+          {subtitle || t('cardAddedToCollection')}
         </p>
 
         <Button onClick={onClose} className="w-full">

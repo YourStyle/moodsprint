@@ -1178,8 +1178,10 @@ export default function DeckPage() {
           isCompanion: infoCard.is_companion,
         } : null}
         isInDeck={infoCard?.is_in_deck}
+        isDeckFull={deck.length >= maxDeckSize}
         onAddToDeck={(id) => addToDeckMutation.mutate(id)}
         onRemoveFromDeck={(id) => removeFromDeckMutation.mutate(id)}
+        onGoToDeck={() => setActiveTab('deck')}
         onAddToShowcase={(id, slot) => setShowcaseMutation.mutate({ cardId: id, slot })}
         onSetCompanion={(id) => setCompanionMutation.mutate(id)}
         onRemoveCompanion={() => removeCompanionMutation.mutate()}

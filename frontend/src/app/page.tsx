@@ -15,7 +15,7 @@ import { SpotlightOnboarding, type OnboardingStep } from '@/components/Spotlight
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
 import { tasksService, moodService, focusService } from '@/services';
-import type { SharedTaskRecord } from '@/services/tasks';
+import type { SharedTaskRecord, SharedTaskReward } from '@/services/tasks';
 import { cardsService } from '@/services/cards';
 import { hapticFeedback, isMobileApp } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
@@ -939,6 +939,25 @@ export default function HomePage() {
   });
   const sharedTasks = sharedWithMeData?.data?.shared_tasks || [];
 
+  // Query pending shared task rewards (cards earned from shared tasks)
+  const { data: sharedRewardsData } = useQuery({
+    queryKey: ['tasks', 'shared-rewards'],
+    queryFn: () => tasksService.getSharedTaskRewards(),
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+  const sharedRewards = sharedRewardsData?.data?.rewards || [];
+  const [sharedRewardIndex, setSharedRewardIndex] = useState(0);
+  const currentSharedReward = sharedRewards[sharedRewardIndex] || null;
+  const [showSharedRewardModal, setShowSharedRewardModal] = useState(false);
+
+  // Show shared reward modal when rewards are available and no other modal is showing
+  useEffect(() => {
+    if (currentSharedReward && !showCardModal && !showLevelUpModal && !showStreakMilestoneModal && modalPhase === 'done') {
+      setShowSharedRewardModal(true);
+    }
+  }, [currentSharedReward, showCardModal, showLevelUpModal, showStreakMilestoneModal, modalPhase]);
+
   const acceptSharedMutation = useMutation({
     mutationFn: (sharedId: number) => tasksService.acceptSharedTask(sharedId),
     onSuccess: () => {
@@ -1108,7 +1127,7 @@ export default function HomePage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white truncate mr-3">
+        <h1 className="text-xl font-bold text-white truncate mr-3">
           {getGreeting()}, {user.first_name || t('friend')}
         </h1>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1480,6 +1499,39 @@ export default function HomePage() {
         }}
         t={t}
       />
+
+      {/* Shared Task Reward Modal */}
+      {currentSharedReward && (
+        <CardEarnedModal
+          isOpen={showSharedRewardModal}
+          card={{
+            id: currentSharedReward.card.id,
+            name: currentSharedReward.card.name,
+            description: currentSharedReward.card.description,
+            genre: currentSharedReward.card.genre,
+            rarity: currentSharedReward.card.rarity,
+            hp: currentSharedReward.card.hp,
+            attack: currentSharedReward.card.attack,
+            emoji: currentSharedReward.card.emoji,
+            image_url: currentSharedReward.card.image_url,
+          } as EarnedCard}
+          onClose={() => {
+            setShowSharedRewardModal(false);
+            // Mark this reward as shown
+            tasksService.markSharedRewardShown(currentSharedReward.shared_id);
+            // Move to next reward or close
+            if (sharedRewardIndex + 1 < sharedRewards.length) {
+              setSharedRewardIndex(sharedRewardIndex + 1);
+              setTimeout(() => setShowSharedRewardModal(true), 300);
+            } else {
+              setSharedRewardIndex(0);
+              queryClient.invalidateQueries({ queryKey: ['tasks', 'shared-rewards'] });
+            }
+          }}
+          t={t}
+          subtitle={t('sharedTaskRewardDesc').replace('{title}', currentSharedReward.task_title || '')}
+        />
+      )}
 
       {/* Level Up Modal */}
       {levelUpData && (

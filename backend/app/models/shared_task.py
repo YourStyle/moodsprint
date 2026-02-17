@@ -48,6 +48,14 @@ class SharedTask(db.Model):
     accepted_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
 
+    # Card reward for assignee (generated when owner completes the task)
+    reward_card_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user_cards.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reward_shown = db.Column(db.Boolean, default=False, nullable=False)
+
     __table_args__ = (
         db.UniqueConstraint("task_id", "assignee_id", name="unique_shared_task"),
     )
@@ -64,6 +72,7 @@ class SharedTask(db.Model):
         foreign_keys=[assignee_id],
         backref=db.backref("shared_tasks_received", lazy="dynamic"),
     )
+    reward_card = db.relationship("UserCard", foreign_keys=[reward_card_id])
 
     def to_dict(self, include_task: bool = False) -> dict:
         """Convert to dictionary."""
@@ -84,4 +93,8 @@ class SharedTask(db.Model):
         }
         if include_task and self.task:
             data["task"] = self.task.to_dict(include_subtasks=True)
+        if self.reward_card_id:
+            data["reward_card_id"] = self.reward_card_id
+            if self.reward_card:
+                data["reward_card"] = self.reward_card.to_dict()
         return data
