@@ -343,13 +343,15 @@ export default function DeckPage() {
   const handleMergeCardSelect = (card: CardType) => {
     hapticFeedback('light');
 
-    // For grouped cards, find the actual card instances
     const grouped = card as GroupedCard;
     const duplicateIds = grouped._duplicateIds || [card.id];
 
-    // Check if any instance from this group is already selected
     const selectedId1InGroup = mergeCard1 && duplicateIds.includes(mergeCard1.id);
     const selectedId2InGroup = mergeCard2 && duplicateIds.includes(mergeCard2.id);
+
+    // Find an unused instance from this group
+    const usedIds = new Set([mergeCard1?.id, mergeCard2?.id].filter(Boolean));
+    const availableId = duplicateIds.find(id => !usedIds.has(id));
 
     // If both slots from this group, deselect both
     if (selectedId1InGroup && selectedId2InGroup) {
@@ -358,19 +360,17 @@ export default function DeckPage() {
       return;
     }
 
-    // If one slot from this group, deselect it
-    if (selectedId1InGroup && !mergeCard2) {
-      setMergeCard1(null);
-      return;
-    }
-    if (selectedId2InGroup && !mergeCard1) {
-      setMergeCard2(null);
+    // If one slot from this group and no more duplicates available, deselect
+    if ((selectedId1InGroup || selectedId2InGroup) && !availableId) {
+      if (selectedId1InGroup && !mergeCard2) {
+        setMergeCard1(null);
+      } else if (selectedId2InGroup && !mergeCard1) {
+        setMergeCard2(null);
+      }
       return;
     }
 
-    // Find an unused instance from this group
-    const usedIds = new Set([mergeCard1?.id, mergeCard2?.id].filter(Boolean));
-    const availableId = duplicateIds.find(id => !usedIds.has(id));
+    // Add an available instance to an empty slot
     if (!availableId) return;
     const actualCard = mergeableCardsRaw.find(c => c.id === availableId) || card;
 
@@ -379,7 +379,6 @@ export default function DeckPage() {
     } else if (!mergeCard2) {
       setMergeCard2(actualCard);
     } else {
-      // Replace first card
       setMergeCard1(actualCard);
       setMergeCard2(null);
     }
