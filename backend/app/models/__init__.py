@@ -45,6 +45,7 @@ from app.models.marketplace import MarketListing, StarsTransaction, UserStarsBal
 from app.models.mood import MoodCheck
 from app.models.postpone_log import PostponeLog
 from app.models.quest import DailyQuest
+from app.models.shared_task import SharedTask, SharedTaskStatus
 from app.models.sparks import SPARKS_PACKS, SparksTransaction, TonDeposit
 from app.models.subtask import Subtask
 from app.models.task import Task
@@ -111,4 +112,7 @@ __all__ = [
     "UserCampaignProgress",
     # Friend activity
     "FriendActivityLog",
+    # Shared tasks
+    "SharedTask",
+    "SharedTaskStatus",
 ]

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell } from 'lucide-react';
+import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2 } from 'lucide-react';
 import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -136,6 +136,7 @@ export default function TaskDetailPage() {
   const { t } = useLanguage();
 
   const {
+    user,
     latestMood,
     setLatestMood,
     setActiveSession,
@@ -180,6 +181,9 @@ export default function TaskDetailPage() {
   const [showStreakMilestoneModal, setShowStreakMilestoneModal] = useState(false);
   const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
   const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareMessage, setShareMessage] = useState('');
+  const [selectedFriendId, setSelectedFriendId] = useState<number | null>(null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -249,6 +253,59 @@ export default function TaskDetailPage() {
       hapticFeedback('light');
       queryClient.invalidateQueries({ queryKey: ['companion'] });
       queryClient.invalidateQueries({ queryKey: ['cards'] });
+    },
+  });
+
+  // Fetch friends for share modal
+  const { data: friendsData } = useQuery({
+    queryKey: ['friends'],
+    queryFn: () => cardsService.getFriends(),
+    enabled: showShareModal,
+    staleTime: 5 * 60 * 1000,
+  });
+  const friendsList = friendsData?.data?.friends || [];
+
+  // Fetch shares for this task (owner only)
+  const { data: sharesData, refetch: refetchShares } = useQuery({
+    queryKey: ['task', taskId, 'shares'],
+    queryFn: () => tasksService.getTaskShares(taskId),
+    enabled: !!taskId,
+    staleTime: 30 * 1000,
+  });
+  const taskShares = sharesData?.data?.shares || [];
+
+  // Find if current user is a shared assignee
+  const sharedRecord = useMemo(() => {
+    // This will be populated from task data's is_shared_assignee flag
+    return null;
+  }, []);
+
+  const shareTaskMutation = useMutation({
+    mutationFn: ({ friendId, message }: { friendId: number; message?: string }) =>
+      tasksService.shareTask(taskId, friendId, message),
+    onSuccess: () => {
+      setShowShareModal(false);
+      setShareMessage('');
+      setSelectedFriendId(null);
+      refetchShares();
+      hapticFeedback('success');
+    },
+  });
+
+  const pingSharedTaskMutation = useMutation({
+    mutationFn: (sharedId: number) => tasksService.pingSharedTask(sharedId),
+    onSuccess: () => {
+      refetch();
+      hapticFeedback('success');
+    },
+  });
+
+  const declineSharedTaskMutation = useMutation({
+    mutationFn: (sharedId: number) => tasksService.declineSharedTask(sharedId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      router.push('/');
+      hapticFeedback('light');
     },
   });
 
@@ -496,6 +553,15 @@ export default function TaskDetailPage() {
     },
   });
 
+  const restoreTaskMutation = useMutation({
+    mutationFn: () => tasksService.updateTask(taskId, { status: 'pending' }),
+    onSuccess: () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      hapticFeedback('success');
+    },
+  });
+
   const updateTypeMutation = useMutation({
     mutationFn: (taskType: TaskType) =>
       tasksService.updateTask(taskId, { task_type: taskType }),
@@ -568,6 +634,21 @@ export default function TaskDetailPage() {
   };
 
   const task = data?.data?.task;
+  const isSharedAssignee = task && user && task.user_id !== user.id;
+
+  // Find shared record for assignee mode (to get shared_id for ping/decline)
+  const { data: sharedWithMeData } = useQuery({
+    queryKey: ['tasks', 'shared'],
+    queryFn: () => tasksService.getSharedWithMe(),
+    enabled: !!isSharedAssignee,
+    staleTime: 30 * 1000,
+  });
+  const mySharedRecord = useMemo(() => {
+    if (!isSharedAssignee || !sharedWithMeData?.data?.shared_tasks) return null;
+    return sharedWithMeData.data.shared_tasks.find(
+      (s) => s.task_id === taskId && s.status === 'accepted'
+    ) || null;
+  }, [isSharedAssignee, sharedWithMeData, taskId]);
 
   if (isLoading) {
     return (
@@ -591,14 +672,28 @@ export default function TaskDetailPage() {
   const subtasks = task.subtasks || [];
 
   return (
-    <div className="p-4 space-y-4 pt-safe">
+    <div className="relative">
       <ScrollBackdrop />
+    <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <h1 className="text-lg font-bold text-white break-words">{task.title}</h1>
+          {isSharedAssignee && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              {t('sharedByName').replace('{name}', taskShares.length > 0 ? (taskShares[0]?.owner_name || '') : '')}
+            </p>
+          )}
         </div>
-        {task.status !== 'completed' && (
+        {!isSharedAssignee && task.status !== 'completed' && task.status !== 'archived' && (
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="p-2 bg-primary-500/20 hover:bg-primary-500/30 rounded-full text-primary-400 hover:text-primary-300 flex-shrink-0 transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+        )}
+        {!isSharedAssignee && task.status !== 'completed' && (
           <button
             onClick={() => {
               setEditTitle(task.title);
@@ -632,12 +727,14 @@ export default function TaskDetailPage() {
             <Pencil className="w-5 h-5" />
           </button>
         )}
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="p-2 hover:bg-red-500/20 rounded-full text-gray-400 hover:text-red-500 flex-shrink-0"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
+        {!isSharedAssignee && (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="p-2 hover:bg-red-500/20 rounded-full text-gray-400 hover:text-red-500 flex-shrink-0"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Task Info */}
@@ -681,11 +778,13 @@ export default function TaskDetailPage() {
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               task.status === 'completed'
                 ? 'bg-green-500/20 text-green-400'
+                : task.status === 'archived'
+                ? 'bg-orange-500/20 text-orange-400'
                 : task.status === 'in_progress'
                 ? 'bg-blue-500/20 text-blue-400'
                 : 'bg-gray-500/20 text-gray-400'
             }`}>
-              {task.status === 'completed' ? t('statusCompleted') : task.status === 'in_progress' ? t('statusInProgress') : t('statusPending')}
+              {task.status === 'completed' ? t('statusCompleted') : task.status === 'archived' ? t('archived') : task.status === 'in_progress' ? t('statusInProgress') : t('statusPending')}
             </span>
           </div>
           <span className="text-sm text-gray-500">
@@ -717,8 +816,67 @@ export default function TaskDetailPage() {
         </div>
       )}
 
+      {/* Restore button for archived tasks */}
+      {task.status === 'archived' && (
+        <Button
+          variant="secondary"
+          onClick={() => restoreTaskMutation.mutate()}
+          isLoading={restoreTaskMutation.isPending}
+          className="w-full h-14 bg-orange-500/20 hover:bg-orange-500/30 border-orange-500/50 text-orange-400"
+        >
+          <RotateCcw className="w-5 h-5 mr-2" />
+          {t('restore')}
+        </Button>
+      )}
+
+      {/* Shared assignee actions */}
+      {isSharedAssignee && mySharedRecord && (
+        <div className="flex gap-2">
+          <Button
+            variant="primary"
+            onClick={() => pingSharedTaskMutation.mutate(mySharedRecord.id)}
+            isLoading={pingSharedTaskMutation.isPending}
+            className="flex-1 h-14"
+          >
+            <Check className="w-5 h-5 mr-2" />
+            {t('notifyOwner')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => declineSharedTaskMutation.mutate(mySharedRecord.id)}
+            isLoading={declineSharedTaskMutation.isPending}
+            className="flex-shrink-0 h-14 px-4"
+          >
+            {t('declineTask')}
+          </Button>
+        </div>
+      )}
+
+      {/* Shared with indicator (for owner) */}
+      {!isSharedAssignee && taskShares.length > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-xs text-gray-500">{t('sharedWith')}:</span>
+          {taskShares
+            .filter((s) => s.status !== 'declined')
+            .map((s) => (
+              <span
+                key={s.id}
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  s.status === 'completed'
+                    ? 'bg-green-500/20 text-green-400'
+                    : s.status === 'accepted'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-gray-500/20 text-gray-400'
+                }`}
+              >
+                {s.assignee_name || '?'}
+              </span>
+            ))}
+        </div>
+      )}
+
       {/* Action Buttons or Active Session Timer */}
-      {task.status !== 'completed' && (
+      {!isSharedAssignee && task.status !== 'completed' && task.status !== 'archived' && (
         activeSession ? (
           <FocusTimer
             session={activeSession}
@@ -1407,6 +1565,72 @@ export default function TaskDetailPage() {
         </div>
       </Modal>
 
+      {/* Share Task Modal */}
+      <Modal
+        isOpen={showShareModal}
+        onClose={() => {
+          setShowShareModal(false);
+          setShareMessage('');
+          setSelectedFriendId(null);
+        }}
+        title={t('shareWithFriend')}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">{t('selectFriend')}</p>
+          <div className="max-h-[40vh] overflow-y-auto space-y-2">
+            {friendsList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">{t('noFriendsYet')}</p>
+            ) : (
+              friendsList.map((friend) => {
+                const alreadyShared = taskShares.some(
+                  (s) => s.assignee_id === friend.friend_id
+                );
+                return (
+                  <button
+                    key={friend.friendship_id}
+                    disabled={alreadyShared}
+                    onClick={() => setSelectedFriendId(friend.friend_id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                      alreadyShared
+                        ? 'opacity-40 cursor-not-allowed bg-gray-800/30'
+                        : selectedFriendId === friend.friend_id
+                        ? 'bg-primary-500/20 border border-primary-500/50'
+                        : 'bg-gray-800/50 hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                      {(friend.first_name?.[0] || '?').toUpperCase()}
+                    </div>
+                    <span className="text-sm text-white">{friend.first_name || friend.username || '?'}</span>
+                    {alreadyShared && <span className="ml-auto text-xs text-gray-500">{t('done')}</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <textarea
+            value={shareMessage}
+            onChange={(e) => setShareMessage(e.target.value)}
+            placeholder={t('optionalMessage')}
+            rows={2}
+            className="w-full p-3 bg-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-sm"
+          />
+          <Button
+            onClick={() => {
+              if (selectedFriendId) {
+                shareTaskMutation.mutate({ friendId: selectedFriendId, message: shareMessage.trim() || undefined });
+              }
+            }}
+            isLoading={shareTaskMutation.isPending}
+            disabled={!selectedFriendId}
+            className="w-full"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            {t('shareTask')}
+          </Button>
+        </div>
+      </Modal>
+
       {/* Card Earned Modal */}
       <CardEarnedModal
         isOpen={showCardModal}
@@ -1465,6 +1689,7 @@ export default function TaskDetailPage() {
         data={companionXPToast}
         onDismiss={() => setCompanionXPToast(null)}
       />
+    </div>
     </div>
   );
 }

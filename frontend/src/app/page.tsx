@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid, Loader2, Archive, RotateCcw, Share2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
@@ -47,7 +47,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   // },
 ];
 
-type FilterStatus = TaskStatus | 'all';
+type FilterStatus = TaskStatus | 'all' | 'archived';
 
 const formatDateForAPI = (date: Date): string => {
   // Use local timezone, not UTC (toISOString converts to UTC which shifts dates)
@@ -322,6 +322,7 @@ function TaskCardCompact({
   onClick,
   onStart,
   onCompleteTask,
+  onRestore,
   activeSession,
   onPause,
   onResume,
@@ -332,6 +333,7 @@ function TaskCardCompact({
   onClick: () => void;
   onStart?: () => void;
   onCompleteTask?: () => void;
+  onRestore?: () => void;
   activeSession?: FocusSession;
   onPause?: () => void;
   onResume?: () => void;
@@ -339,19 +341,22 @@ function TaskCardCompact({
   onStop?: () => void;
 }) {
   const isCompleted = task.status === 'completed';
+  const isArchived = task.status === 'archived';
   const hasSubtasks = task.subtasks_count > 0;
   const hasActiveSession = !!activeSession;
 
   return (
     <div
-      className={`bg-dark-700/50 rounded-xl p-3 border ${hasActiveSession ? 'border-primary-500/50' : 'border-gray-800'} ${isCompleted ? 'opacity-50' : ''}`}
+      className={`bg-dark-700/50 rounded-xl p-3 border ${hasActiveSession ? 'border-primary-500/50' : isArchived ? 'border-orange-500/30' : 'border-gray-800'} ${isCompleted || isArchived ? 'opacity-60' : ''}`}
     >
       <div className="flex items-center gap-3" onClick={onClick}>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          isCompleted ? 'bg-green-500/20' : hasActiveSession ? 'bg-primary-500/30' : 'bg-purple-500/20'
+          isCompleted ? 'bg-green-500/20' : isArchived ? 'bg-orange-500/20' : hasActiveSession ? 'bg-primary-500/30' : 'bg-purple-500/20'
         }`}>
           {isCompleted ? (
             <span className="text-sm text-green-400">✓</span>
+          ) : isArchived ? (
+            <Archive className="w-4 h-4 text-orange-400" />
           ) : hasActiveSession ? (
             <div className="w-3 h-3 rounded-full bg-primary-500 animate-pulse" />
           ) : (
@@ -379,6 +384,16 @@ function TaskCardCompact({
             onComplete={onComplete}
             onStop={onStop}
           />
+        ) : isArchived && onRestore ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRestore();
+            }}
+            className="w-8 h-8 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            <RotateCcw className="w-4 h-4 text-orange-400" />
+          </button>
         ) : !isCompleted && (
           <div className="flex items-center gap-1.5">
             {onCompleteTask && (
@@ -521,7 +536,7 @@ export default function HomePage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>(() => {
     if (typeof window === 'undefined') return 'pending';
     const stored = localStorage.getItem('moodsprint_filter_status');
-    if (stored === 'pending' || stored === 'in_progress' || stored === 'completed' || stored === 'all') {
+    if (stored === 'pending' || stored === 'in_progress' || stored === 'completed' || stored === 'all' || stored === 'archived') {
       return stored as FilterStatus;
     }
     return 'pending';
@@ -629,7 +644,8 @@ export default function HomePage() {
   const { data: tasksData, isLoading: tasksLoading, isFetching } = useQuery({
     queryKey: ['tasks', 'by_date', selectedDateStr, filterStatus],
     queryFn: () => tasksService.getTasks({
-      due_date: selectedDateStr,
+      // Archived tasks aren't date-bound — fetch all of them
+      ...(filterStatus !== 'archived' && { due_date: selectedDateStr }),
       ...(filterStatus !== 'all' && { status: filterStatus }),
       limit: 100,
     }),
@@ -838,6 +854,14 @@ export default function HomePage() {
     },
   });
 
+  const restoreTaskMutation = useMutation({
+    mutationFn: (taskId: number) => tasksService.updateTask(taskId, { status: 'pending' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      hapticFeedback('success');
+    },
+  });
+
   // Helper to get session for a task
   const getSessionForTask = (taskId: number) => {
     return activeSessions.find(s => s.task_id === taskId);
@@ -903,6 +927,31 @@ export default function HomePage() {
       setMoodLoading(false);
     }
   };
+
+  // Query shared tasks
+  const { data: sharedWithMeData } = useQuery({
+    queryKey: ['tasks', 'shared'],
+    queryFn: () => tasksService.getSharedWithMe(),
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+  const sharedTasks = sharedWithMeData?.data?.shared_tasks || [];
+
+  const acceptSharedMutation = useMutation({
+    mutationFn: (sharedId: number) => tasksService.acceptSharedTask(sharedId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'shared'] });
+      hapticFeedback('success');
+    },
+  });
+
+  const declineSharedMutation = useMutation({
+    mutationFn: (sharedId: number) => tasksService.declineSharedTask(sharedId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'shared'] });
+      hapticFeedback('light');
+    },
+  });
 
   const allTasks = tasksData?.data?.tasks || [];
   const postponeStatus = postponeData?.data;
@@ -1153,6 +1202,63 @@ export default function HomePage() {
         )}
       </div>
 
+      {/* Shared with me */}
+      {sharedTasks.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="font-semibold text-white text-sm flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-primary-400" />
+            {t('sharedWithMe')}
+          </h2>
+          {sharedTasks.map((shared) => (
+            <div
+              key={shared.id}
+              className="bg-dark-700/50 rounded-xl p-3 border border-primary-500/20"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                  <Share2 className="w-4 h-4 text-primary-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-medium text-white truncate">
+                    {shared.task?.title || `Task #${shared.task_id}`}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {t('sharedByName').replace('{name}', shared.owner_name || '?')}
+                  </p>
+                </div>
+                {shared.status === 'pending' && (
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => acceptSharedMutation.mutate(shared.id)}
+                      className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-medium"
+                    >
+                      {t('acceptTask')}
+                    </button>
+                    <button
+                      onClick={() => declineSharedMutation.mutate(shared.id)}
+                      className="px-3 py-1.5 rounded-lg bg-gray-700 text-gray-300 text-xs font-medium"
+                    >
+                      {t('declineTask')}
+                    </button>
+                  </div>
+                )}
+                {shared.status === 'accepted' && (
+                  <button
+                    onClick={() => router.push(`/tasks/${shared.task_id}`)}
+                    className="px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 text-xs font-medium flex-shrink-0"
+                  >
+                    {t('viewAll')}
+                  </button>
+                )}
+                {shared.status === 'completed' && (
+                  <span className="text-xs text-green-400 flex-shrink-0">{t('done')}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Tasks Section */}
       <div className="space-y-3 min-h-[180px]">
         <div className="flex items-center justify-between">
@@ -1204,9 +1310,12 @@ export default function HomePage() {
             { value: 'in_progress' as const, labelKey: 'statusInProgress' as const },
             { value: 'completed' as const, labelKey: 'statusCompleted' as const },
             { value: 'all' as const, labelKey: 'all' as const },
+            { value: 'archived' as const, labelKey: 'archived' as const },
           ]).map((filter) => {
-            const count = filter.value !== 'all' ? statusCounts[filter.value] : 0;
-            const showBadge = filter.value !== 'all' && count > 0;
+            const count = filter.value !== 'all' && filter.value !== 'archived'
+              ? statusCounts[filter.value as keyof typeof statusCounts]
+              : 0;
+            const showBadge = filter.value !== 'all' && filter.value !== 'archived' && count > 0;
 
             return (
               <button
@@ -1294,7 +1403,18 @@ export default function HomePage() {
                                   onStop={() => cancelSessionMutation.mutate(session.id)}
                                 />
                               )}
-                              {task.status !== 'completed' && !session && (
+                              {task.status === 'archived' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    restoreTaskMutation.mutate(task.id);
+                                  }}
+                                  className="p-1 rounded bg-orange-500/20 hover:bg-orange-500/30 flex-shrink-0"
+                                >
+                                  <RotateCcw className="w-3 h-3 text-orange-400" />
+                                </button>
+                              )}
+                              {task.status !== 'completed' && task.status !== 'archived' && !session && (
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={(e) => {
@@ -1321,13 +1441,15 @@ export default function HomePage() {
                         }
 
                         // Normal card
+                        const isArchived = task.status === 'archived';
                         return (
                           <TaskCardCompact
                             key={task.id}
                             task={task}
                             onClick={() => router.push(`/tasks/${task.id}`)}
-                            onStart={task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
-                            onCompleteTask={task.status !== 'completed' && !session ? () => completeTaskMutation.mutate(task.id) : undefined}
+                            onStart={!isArchived && task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
+                            onCompleteTask={!isArchived && task.status !== 'completed' && !session ? () => completeTaskMutation.mutate(task.id) : undefined}
+                            onRestore={isArchived ? () => restoreTaskMutation.mutate(task.id) : undefined}
                             activeSession={session}
                             onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
                             onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
@@ -1344,18 +1466,28 @@ export default function HomePage() {
           </div>
         ) : (
           <Card variant="glass" className="text-center py-8">
-            <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-400 mb-4">
-              {searchQuery
-                ? t('noTasksInCategory')
-                : filterStatus === 'all'
-                ? `${t('noTasksForDate')} ${formatDateDisplay(selectedDate, language, t).toLowerCase()}`
-                : t('noTasksInCategory')}
-            </p>
-            <Button variant="gradient" onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4" />
-              {t('createTask')}
-            </Button>
+            {filterStatus === 'archived' ? (
+              <>
+                <Archive className="w-12 h-12 text-orange-400 mx-auto mb-3" />
+                <p className="text-gray-400 mb-1">{t('noArchivedTasks')}</p>
+                <p className="text-gray-500 text-sm">{t('archivedTasksDesc')}</p>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                <p className="text-gray-400 mb-4">
+                  {searchQuery
+                    ? t('noTasksInCategory')
+                    : filterStatus === 'all'
+                    ? `${t('noTasksForDate')} ${formatDateDisplay(selectedDate, language, t).toLowerCase()}`
+                    : t('noTasksInCategory')}
+                </p>
+                <Button variant="gradient" onClick={() => setShowCreateModal(true)}>
+                  <Plus className="w-4 h-4" />
+                  {t('createTask')}
+                </Button>
+              </>
+            )}
           </Card>
         )}
       </div>

@@ -730,6 +730,27 @@ export const translations = {
     // Quick task
     quickTaskPlaceholder: 'Быстрая задача...',
     addingTask: 'Добавляем...',
+
+    // Archive
+    archived: 'Архив',
+    restore: 'Восстановить',
+    noArchivedTasks: 'Нет архивных задач',
+    archivedTasksDesc: 'Задачи, отложенные 5+ раз, попадают сюда',
+
+    // Task sharing
+    shareTask: 'Поделиться',
+    shareWithFriend: 'Поделиться с другом',
+    selectFriend: 'Выбери друга',
+    optionalMessage: 'Сообщение (необязательно)',
+    sharedWithMe: 'Задачи от друзей',
+    sharedWith: 'Поделились',
+    acceptTask: 'Принять',
+    declineTask: 'Отклонить',
+    notifyOwner: 'Задача готова!',
+    taskShared: 'Задача отправлена!',
+    noSharedTasks: 'Нет задач от друзей',
+    sharedByName: 'от {name}',
+    pingSuccess: 'Уведомление отправлено!',
   },
 
   en: {
@@ -1463,6 +1484,27 @@ export const translations = {
     // Quick task
     quickTaskPlaceholder: 'Quick task...',
     addingTask: 'Adding...',
+
+    // Archive
+    archived: 'Archive',
+    restore: 'Restore',
+    noArchivedTasks: 'No archived tasks',
+    archivedTasksDesc: 'Tasks postponed 5+ times end up here',
+
+    // Task sharing
+    shareTask: 'Share',
+    shareWithFriend: 'Share with friend',
+    selectFriend: 'Select friend',
+    optionalMessage: 'Message (optional)',
+    sharedWithMe: 'Shared with me',
+    sharedWith: 'Shared with',
+    acceptTask: 'Accept',
+    declineTask: 'Decline',
+    notifyOwner: 'Task done!',
+    taskShared: 'Task shared!',
+    noSharedTasks: 'No shared tasks',
+    sharedByName: 'from {name}',
+    pingSuccess: 'Notification sent!',
   },
 } as const;
 

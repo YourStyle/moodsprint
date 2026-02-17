@@ -10,8 +10,11 @@ from app import db
 from app.api import api_bp
 from app.models import (
     FriendActivityLog,
+    Friendship,
     MoodCheck,
     PostponeLog,
+    SharedTask,
+    SharedTaskStatus,
     Subtask,
     Task,
     User,
@@ -29,6 +32,7 @@ from app.services.card_service import (
 )
 from app.services.streak_service import StreakService
 from app.utils import not_found, success_response, validation_error
+from app.utils.notifications import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
@@ -424,17 +428,33 @@ def create_task():
 @api_bp.route("/tasks/<int:task_id>", methods=["GET"])
 @jwt_required()
 def get_task(task_id: int):
-    """Get a single task with subtasks."""
+    """Get a single task with subtasks. Also accessible by shared assignees."""
     user_id = int(get_jwt_identity())
 
     task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    is_shared_assignee = False
+
+    # If not owner, check if shared with this user (accepted)
     if not task:
-        return not_found("Task not found")
+        task = Task.query.get(task_id)
+        if task:
+            shared = SharedTask.query.filter_by(
+                task_id=task_id,
+                assignee_id=user_id,
+                status=SharedTaskStatus.ACCEPTED.value,
+            ).first()
+            if shared:
+                is_shared_assignee = True
+            else:
+                return not_found("Task not found")
+        else:
+            return not_found("Task not found")
 
     task_data = task.to_dict(include_subtasks=True)
+    task_data["is_shared_assignee"] = is_shared_assignee
 
-    # Include rarity odds for uncompleted tasks
-    if task.status != "completed" and task.difficulty:
+    # Include rarity odds for uncompleted tasks (owner only)
+    if not is_shared_assignee and task.status != "completed" and task.difficulty:
         task_data["rarity_odds"] = get_rarity_odds(task.difficulty)
 
     return success_response({"task": task_data})
@@ -879,6 +899,21 @@ def update_subtask(subtask_id: int):
         .first()
     )
 
+    is_shared_assignee = False
+    if not subtask:
+        # Check if user is a shared assignee for this subtask's task
+        subtask = Subtask.query.filter_by(id=subtask_id).first()
+        if subtask:
+            shared = SharedTask.query.filter_by(
+                task_id=subtask.task_id,
+                assignee_id=user_id,
+                status=SharedTaskStatus.ACCEPTED.value,
+            ).first()
+            if shared:
+                is_shared_assignee = True
+            else:
+                subtask = None
+
     if not subtask:
         return not_found("Subtask not found")
 
@@ -903,10 +938,15 @@ def update_subtask(subtask_id: int):
             if data["status"] == SubtaskStatus.COMPLETED.value:
                 subtask.complete()
 
-    # Update parent task status
-    subtask.task.update_status_from_subtasks()
+    # Update parent task status (skip auto-completion for shared assignees)
+    if not is_shared_assignee:
+        subtask.task.update_status_from_subtasks()
 
     db.session.commit()
+
+    # Shared assignees don't earn XP or cards
+    if is_shared_assignee:
+        return success_response({"subtask": subtask.to_dict()})
 
     # Calculate XP if completed
     xp_info = None
@@ -1233,3 +1273,209 @@ def reorder_subtasks():
     db.session.commit()
 
     return success_response(message="Subtasks reordered")
+
+
+# --- Task Sharing Endpoints ---
+
+
+@api_bp.route("/tasks/<int:task_id>/share", methods=["POST"])
+@jwt_required()
+def share_task(task_id: int):
+    """
+    Share a task with a friend.
+
+    Request body:
+    {
+        "friend_id": 123,
+        "message": "Optional message"
+    }
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+
+    friend_id = data.get("friend_id")
+    if not friend_id:
+        return validation_error({"friend_id": "Friend ID is required"})
+
+    # Verify task ownership
+    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    if not task:
+        return not_found("Task not found")
+
+    # Verify friendship exists (accepted)
+    friendship = Friendship.query.filter(
+        db.or_(
+            db.and_(
+                Friendship.user_id == user_id,
+                Friendship.friend_id == friend_id,
+            ),
+            db.and_(
+                Friendship.user_id == friend_id,
+                Friendship.friend_id == user_id,
+            ),
+        ),
+        Friendship.status == "accepted",
+    ).first()
+    if not friendship:
+        return validation_error({"friend_id": "Not friends with this user"})
+
+    # Check if already shared
+    existing = SharedTask.query.filter_by(
+        task_id=task_id, assignee_id=friend_id
+    ).first()
+    if existing:
+        return validation_error({"friend_id": "Task already shared with this user"})
+
+    shared = SharedTask(
+        task_id=task_id,
+        owner_id=user_id,
+        assignee_id=friend_id,
+        message=data.get("message", "").strip() or None,
+    )
+    db.session.add(shared)
+    db.session.commit()
+
+    # Send Telegram notification
+    try:
+        owner = User.query.get(user_id)
+        friend = User.query.get(friend_id)
+        if friend and friend.telegram_id:
+            owner_name = owner.first_name or "Друг"
+            text = (
+                f"📋 <b>{owner_name}</b> поделился задачей с тобой!\n\n"
+                f"<b>{task.title}</b>"
+            )
+            if shared.message:
+                text += f"\n\n💬 {shared.message}"
+            send_telegram_message(friend.telegram_id, text)
+    except Exception:
+        pass
+
+    return success_response({"shared_task": shared.to_dict()}, status_code=201)
+
+
+@api_bp.route("/tasks/shared", methods=["GET"])
+@jwt_required()
+def get_shared_with_me():
+    """
+    Get tasks shared with the current user.
+
+    Query params:
+    - status: filter by status (pending, accepted, declined, completed)
+    """
+    user_id = int(get_jwt_identity())
+    status = request.args.get("status")
+
+    query = SharedTask.query.filter_by(assignee_id=user_id)
+    if status and status in [s.value for s in SharedTaskStatus]:
+        query = query.filter_by(status=status)
+    else:
+        # Exclude declined by default
+        query = query.filter(SharedTask.status != SharedTaskStatus.DECLINED.value)
+
+    shared_tasks = query.order_by(SharedTask.created_at.desc()).all()
+    return success_response(
+        {"shared_tasks": [s.to_dict(include_task=True) for s in shared_tasks]}
+    )
+
+
+@api_bp.route("/tasks/<int:task_id>/shared", methods=["GET"])
+@jwt_required()
+def get_task_shares(task_id: int):
+    """Get who a task has been shared with (for the owner)."""
+    user_id = int(get_jwt_identity())
+
+    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+    if not task:
+        return not_found("Task not found")
+
+    shares = SharedTask.query.filter_by(task_id=task_id).all()
+    return success_response({"shares": [s.to_dict() for s in shares]})
+
+
+@api_bp.route("/tasks/shared/<int:shared_id>/accept", methods=["POST"])
+@jwt_required()
+def accept_shared_task(shared_id: int):
+    """Accept a shared task."""
+    user_id = int(get_jwt_identity())
+
+    shared = SharedTask.query.filter_by(
+        id=shared_id,
+        assignee_id=user_id,
+        status=SharedTaskStatus.PENDING.value,
+    ).first()
+    if not shared:
+        return not_found("Shared task not found")
+
+    shared.status = SharedTaskStatus.ACCEPTED.value
+    shared.accepted_at = datetime.utcnow()
+    db.session.commit()
+
+    return success_response({"shared_task": shared.to_dict()})
+
+
+@api_bp.route("/tasks/shared/<int:shared_id>/decline", methods=["POST"])
+@jwt_required()
+def decline_shared_task(shared_id: int):
+    """Decline a shared task."""
+    user_id = int(get_jwt_identity())
+
+    shared = SharedTask.query.filter_by(
+        id=shared_id,
+        assignee_id=user_id,
+        status=SharedTaskStatus.PENDING.value,
+    ).first()
+    if not shared:
+        return not_found("Shared task not found")
+
+    shared.status = SharedTaskStatus.DECLINED.value
+    db.session.commit()
+
+    # Notify owner
+    try:
+        assignee = User.query.get(user_id)
+        owner = User.query.get(shared.owner_id)
+        if owner and owner.telegram_id:
+            name = assignee.first_name or "Друг"
+            send_telegram_message(
+                owner.telegram_id,
+                f"😔 <b>{name}</b> отклонил задачу «{shared.task.title}»",
+            )
+    except Exception:
+        pass
+
+    return success_response({"shared_task": shared.to_dict()})
+
+
+@api_bp.route("/tasks/shared/<int:shared_id>/ping", methods=["POST"])
+@jwt_required()
+def ping_shared_task(shared_id: int):
+    """Notify the task owner that the assignee has finished."""
+    user_id = int(get_jwt_identity())
+
+    shared = SharedTask.query.filter_by(
+        id=shared_id,
+        assignee_id=user_id,
+        status=SharedTaskStatus.ACCEPTED.value,
+    ).first()
+    if not shared:
+        return not_found("Shared task not found")
+
+    shared.status = SharedTaskStatus.COMPLETED.value
+    shared.completed_at = datetime.utcnow()
+    db.session.commit()
+
+    # Notify owner via Telegram
+    try:
+        assignee = User.query.get(user_id)
+        owner = User.query.get(shared.owner_id)
+        if owner and owner.telegram_id:
+            name = assignee.first_name or "Друг"
+            send_telegram_message(
+                owner.telegram_id,
+                f"✅ <b>{name}</b> выполнил задачу «{shared.task.title}»!",
+            )
+    except Exception:
+        pass
+
+    return success_response({"shared_task": shared.to_dict()})

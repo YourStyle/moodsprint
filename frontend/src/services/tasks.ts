@@ -127,6 +127,33 @@ interface SuggestionsResponse {
   suggestions_count: number;
 }
 
+export interface SharedTaskRecord {
+  id: number;
+  task_id: number;
+  owner_id: number;
+  assignee_id: number;
+  status: 'pending' | 'accepted' | 'declined' | 'completed';
+  message: string | null;
+  owner_name: string | null;
+  assignee_name: string | null;
+  created_at: string | null;
+  accepted_at: string | null;
+  completed_at: string | null;
+  task?: Task;
+}
+
+interface SharedTasksResponse {
+  shared_tasks: SharedTaskRecord[];
+}
+
+interface SharedTaskResponse {
+  shared_task: SharedTaskRecord;
+}
+
+interface TaskSharesResponse {
+  shares: SharedTaskRecord[];
+}
+
 export const tasksService = {
   async getPostponeStatus(): Promise<ApiResponse<PostponeStatusResponse>> {
     return api.get<PostponeStatusResponse>('/tasks/postpone-status');
@@ -197,5 +224,31 @@ export const tasksService = {
 
   async getSuggestions(availableMinutes: number): Promise<ApiResponse<SuggestionsResponse>> {
     return api.get<SuggestionsResponse>(`/tasks/suggestions?available_minutes=${availableMinutes}`);
+  },
+
+  // Task sharing
+  async shareTask(taskId: number, friendId: number, message?: string): Promise<ApiResponse<SharedTaskResponse>> {
+    return api.post<SharedTaskResponse>(`/tasks/${taskId}/share`, { friend_id: friendId, message });
+  },
+
+  async getSharedWithMe(status?: string): Promise<ApiResponse<SharedTasksResponse>> {
+    const params = status ? `?status=${status}` : '';
+    return api.get<SharedTasksResponse>(`/tasks/shared${params}`);
+  },
+
+  async getTaskShares(taskId: number): Promise<ApiResponse<TaskSharesResponse>> {
+    return api.get<TaskSharesResponse>(`/tasks/${taskId}/shared`);
+  },
+
+  async acceptSharedTask(sharedId: number): Promise<ApiResponse<SharedTaskResponse>> {
+    return api.post<SharedTaskResponse>(`/tasks/shared/${sharedId}/accept`, {});
+  },
+
+  async declineSharedTask(sharedId: number): Promise<ApiResponse<SharedTaskResponse>> {
+    return api.post<SharedTaskResponse>(`/tasks/shared/${sharedId}/decline`, {});
+  },
+
+  async pingSharedTask(sharedId: number): Promise<ApiResponse<SharedTaskResponse>> {
+    return api.post<SharedTaskResponse>(`/tasks/shared/${sharedId}/ping`, {});
   },
 };
