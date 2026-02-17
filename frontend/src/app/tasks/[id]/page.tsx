@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2 } from 'lucide-react';
+import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX } from 'lucide-react';
 import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -295,8 +295,9 @@ export default function TaskDetailPage() {
   const pingSharedTaskMutation = useMutation({
     mutationFn: (sharedId: number) => tasksService.pingSharedTask(sharedId),
     onSuccess: () => {
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       hapticFeedback('success');
+      router.push('/');
     },
   });
 
@@ -660,10 +661,16 @@ export default function TaskDetailPage() {
 
   if (!task) {
     return (
-      <div className="p-4 text-center">
-        <p className="text-gray-500">{t('taskNotFound')}</p>
-        <Button onClick={() => router.push('/')} className="mt-4">
-          {t('backToTasks')}
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center mb-4">
+          <SearchX className="w-8 h-8 text-gray-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-white mb-1">{t('taskNotFound')}</h2>
+        <p className="text-sm text-gray-500 mb-6 max-w-[260px]">
+          {t('taskNotFoundDesc')}
+        </p>
+        <Button onClick={() => router.push('/')} variant="primary" className="px-8">
+          {t('goToMain')}
         </Button>
       </div>
     );
@@ -854,24 +861,30 @@ export default function TaskDetailPage() {
 
       {/* Shared with indicator (for owner) */}
       {!isSharedAssignee && taskShares.length > 0 && (
-        <div className="flex items-center gap-2 px-1">
-          <span className="text-xs text-gray-500">{t('sharedWith')}:</span>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 px-1">{t('sharedWith')}</p>
           {taskShares
             .filter((s) => s.status !== 'declined')
-            .map((s) => (
-              <span
-                key={s.id}
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  s.status === 'completed'
-                    ? 'bg-green-500/20 text-green-400'
-                    : s.status === 'accepted'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-gray-500/20 text-gray-400'
-                }`}
-              >
-                {s.assignee_name || '?'}
-              </span>
-            ))}
+            .map((s) => {
+              const statusConfig = {
+                completed: { label: t('done'), color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: '✓' },
+                accepted: { label: t('statusInProgress'), color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: '→' },
+                pending: { label: t('statusPending'), color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: '⏳' },
+              };
+              const cfg = statusConfig[s.status as keyof typeof statusConfig] || statusConfig.pending;
+              return (
+                <div
+                  key={s.id}
+                  className={`flex items-center justify-between rounded-xl p-3 border ${cfg.color}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm font-medium">{s.assignee_name || '?'}</span>
+                  </div>
+                  <span className="text-xs font-medium">{cfg.icon} {cfg.label}</span>
+                </div>
+              );
+            })}
         </div>
       )}
 

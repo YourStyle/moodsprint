@@ -266,6 +266,7 @@ export const translations = {
 
     // Task detail page
     taskNotFound: 'Задача не найдена',
+    taskNotFoundDesc: 'Возможно, задача была удалена или у вас нет к ней доступа',
     backToTasks: 'Назад к задачам',
     startFocusButton: 'Начать фокус',
     decomposeWithAI: 'Разбить на шаги с ИИ',
@@ -1024,6 +1025,7 @@ export const translations = {
 
     // Task detail page
     taskNotFound: 'Task not found',
+    taskNotFoundDesc: 'The task may have been deleted or you don\'t have access to it',
     backToTasks: 'Back to tasks',
     startFocusButton: 'Start focus',
     decomposeWithAI: 'Break down with AI',
