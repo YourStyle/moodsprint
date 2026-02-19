@@ -1,31 +1,44 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { useModalContext } from '@/lib/contexts/ModalContext';
 
-const DISMISS_MS = 3500;
+const DISMISS_MS = 2500;
 
 export function XPToastQueue() {
   const { xpToastQueue, shiftXPToast } = useAppStore();
   const { isAnyModalOpen } = useModalContext();
-  const current = xpToastQueue[0] || null;
+  const current = xpToastQueue[0] ?? null;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-dismiss only when no modals are open
   useEffect(() => {
     if (!current || isAnyModalOpen) return;
-    timerRef.current = setTimeout(() => {
-      shiftXPToast();
-    }, DISMISS_MS);
+    timerRef.current = setTimeout(shiftXPToast, DISMISS_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [current?.id, isAnyModalOpen, shiftXPToast]);
 
+  // Pre-compute progress bar values to avoid inline IIFE in render
+  const progress = useMemo(() => {
+    if (!current) return null;
+    const xpNow = current.type === 'companion'
+      ? (current.cardXp ?? 0)
+      : (current.currentXp ?? 0);
+    const xpMax = current.type === 'companion'
+      ? (current.cardXpForNext ?? 100)
+      : (current.xpForNext ?? 100);
+    return {
+      from: Math.min(100, (xpNow / xpMax) * 100),
+      to: Math.min(100, ((xpNow + current.amount) / xpMax) * 100),
+    };
+  }, [current?.id]);
+
   // Don't render while a modal is open — the toast will appear once it closes
-  const showToast = current && !isAnyModalOpen;
+  if (!current || isAnyModalOpen) return null;
 
   return (
     <div
@@ -33,71 +46,58 @@ export function XPToastQueue() {
       style={{ top: 'calc(var(--safe-area-top, 0px) + 16px)' }}
     >
       <AnimatePresence mode="wait">
-        {showToast && (
-          <motion.div
-            key={current.id}
-            initial={{ y: -40, opacity: 0, scale: 0.9 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -20, opacity: 0, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-            className="px-4 w-full"
-          >
-            <div className="bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-2xl px-4 py-3 shadow-2xl">
-              <div className="flex items-center gap-3">
-                {/* Icon */}
-                <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400/20 to-orange-500/20 flex items-center justify-center">
-                  <span className="text-lg">
-                    {current.type === 'companion' && current.cardEmoji
-                      ? current.cardEmoji
-                      : '⭐'}
+        <motion.div
+          key={current.id}
+          initial={{ y: -40, opacity: 0, scale: 0.9 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -20, opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+          className="px-4 w-full"
+        >
+          <div className="bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-2xl px-4 py-3 shadow-2xl">
+            <div className="flex items-center gap-3">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400/20 to-orange-500/20 flex items-center justify-center">
+                <span className="text-lg">
+                  {current.type === 'companion' && current.cardEmoji
+                    ? current.cardEmoji
+                    : '⭐'}
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-yellow-400">
+                    +{current.amount} XP
                   </span>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-yellow-400">
-                      +{current.amount} XP
+                  {current.type === 'companion' && current.cardName && (
+                    <span className="text-[10px] text-gray-400 truncate">
+                      {current.cardName}
                     </span>
-                    {current.type === 'companion' && current.cardName && (
-                      <span className="text-[10px] text-gray-400 truncate">
-                        {current.cardName}
-                      </span>
-                    )}
-                    {current.levelUp && (
-                      <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full font-medium">
-                        Level Up!
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Mini progress bar */}
-                  {(() => {
-                    const xpNow = current.type === 'companion'
-                      ? (current.cardXp ?? 0)
-                      : (current.currentXp ?? 0);
-                    const xpMax = current.type === 'companion'
-                      ? (current.cardXpForNext ?? 100)
-                      : (current.xpForNext ?? 100);
-                    const prevPct = Math.min(100, (xpNow / xpMax) * 100);
-                    const newPct = Math.min(100, ((xpNow + current.amount) / xpMax) * 100);
-
-                    return (
-                      <div className="mt-1.5 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500"
-                          initial={{ width: `${prevPct}%` }}
-                          animate={{ width: `${newPct}%` }}
-                          transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
-                        />
-                      </div>
-                    );
-                  })()}
+                  )}
+                  {current.levelUp && (
+                    <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full font-medium">
+                      Level Up!
+                    </span>
+                  )}
                 </div>
+
+                {/* Mini progress bar */}
+                {progress && (
+                  <div className="mt-1.5 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500"
+                      initial={{ width: `${progress.from}%` }}
+                      animate={{ width: `${progress.to}%` }}
+                      transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
       </AnimatePresence>
     </div>
   );

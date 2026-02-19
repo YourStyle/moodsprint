@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 interface ModalContextValue {
   /** True when at least one modal/sheet is open */
@@ -47,10 +47,16 @@ export function useModalContext() {
  * Registers with ModalContext while `isOpen` is true,
  * so notifications can pause while any modal is visible.
  */
+// SSR-safe: useLayoutEffect on client, useEffect on server
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 export function useRegisterModal(isOpen: boolean) {
   const { register } = useModalContext();
 
-  useEffect(() => {
+  // useLayoutEffect fires synchronously before paint, so any toast
+  // checking isAnyModalOpen will already see the updated value
+  // and won't flash for a single frame.
+  useIsomorphicLayoutEffect(() => {
     if (!isOpen) return;
     const unregister = register();
     return unregister;

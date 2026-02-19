@@ -172,31 +172,32 @@ def create_task():
 
     description = data.get("description")
 
-    # AI determines difficulty if not provided by user
+    # Combined AI call: classify task type, preferred time, AND difficulty
     priority = data.get("priority")
     ai_difficulty = None
+    ai_task_type = None
+    ai_preferred_time = None
+
+    try:
+        classifier = TaskClassifier()
+        classification = classifier.classify_and_rate_task(
+            title, description, user_id=user_id
+        )
+        ai_difficulty = classification["difficulty"]
+        ai_task_type = classification.get("task_type")
+        ai_preferred_time = classification.get("preferred_time")
+    except Exception:
+        ai_difficulty = "medium"
 
     if not priority or priority not in [p.value for p in TaskPriority]:
-        # Use AI to determine difficulty
-        try:
-            card_service = CardService()
-            ai_difficulty = card_service.determine_task_difficulty(
-                title, description or "", user_id=user_id
-            )
-
-            # Map AI difficulty to priority
-            difficulty_to_priority = {
-                "easy": TaskPriority.LOW.value,
-                "medium": TaskPriority.MEDIUM.value,
-                "hard": TaskPriority.HIGH.value,
-                "very_hard": TaskPriority.HIGH.value,
-            }
-            priority = difficulty_to_priority.get(
-                ai_difficulty, TaskPriority.MEDIUM.value
-            )
-        except Exception:
-            priority = TaskPriority.MEDIUM.value
-            ai_difficulty = "medium"
+        # Map AI difficulty to priority
+        difficulty_to_priority = {
+            "easy": TaskPriority.LOW.value,
+            "medium": TaskPriority.MEDIUM.value,
+            "hard": TaskPriority.HIGH.value,
+            "very_hard": TaskPriority.HIGH.value,
+        }
+        priority = difficulty_to_priority.get(ai_difficulty, TaskPriority.MEDIUM.value)
     else:
         # Map user-provided priority to difficulty for card generation
         priority_to_difficulty = {
@@ -233,6 +234,10 @@ def create_task():
         except ValueError:
             pass
 
+    # Use AI-classified preferred_time if user didn't provide one
+    if not preferred_time and ai_preferred_time:
+        preferred_time = ai_preferred_time
+
     task = Task(
         user_id=user_id,
         title=title,
@@ -242,7 +247,8 @@ def create_task():
         original_due_date=due_date_value,
         preferred_time=preferred_time,
         scheduled_at=scheduled_at,
-        difficulty=ai_difficulty,  # Store AI-determined difficulty
+        difficulty=ai_difficulty,
+        task_type=ai_task_type,
     )
 
     db.session.add(task)
@@ -259,31 +265,6 @@ def create_task():
         db.session.commit()
     except Exception:
         db.session.rollback()
-
-    # Classify task asynchronously (non-blocking) - only if preferred_time not set by user
-    if not preferred_time:
-        try:
-            classifier = TaskClassifier()
-            classification = classifier.classify_task(
-                title, description, user_id=user_id
-            )
-            task.task_type = classification.get("task_type")
-            task.preferred_time = classification.get("preferred_time")
-            db.session.commit()
-        except Exception:
-            # Classification is optional, don't fail task creation
-            pass
-    else:
-        # Still classify task_type even if preferred_time is manually set
-        try:
-            classifier = TaskClassifier()
-            classification = classifier.classify_task(
-                title, description, user_id=user_id
-            )
-            task.task_type = classification.get("task_type")
-            db.session.commit()
-        except Exception:
-            pass
 
     return success_response(
         {

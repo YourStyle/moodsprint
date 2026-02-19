@@ -26,6 +26,27 @@ class TaskClassifier:
     # Valid time slots
     TIME_SLOTS = ["morning", "afternoon", "evening", "night"]
 
+    VALID_DIFFICULTIES = ["easy", "medium", "hard", "very_hard"]
+
+    # Urgency keywords — force hard difficulty
+    URGENCY_KEYWORDS = [
+        "срочно",
+        "срочное",
+        "срочная",
+        "срочный",
+        "asap",
+        "urgent",
+        "немедленно",
+        "сейчас",
+        "важно",
+        "важная",
+        "важное",
+        "критично",
+        "дедлайн",
+        "deadline",
+        "горит",
+    ]
+
     # Keywords for fallback classification
     KEYWORDS = {
         "creative": [
@@ -120,77 +141,87 @@ class TaskClassifier:
     def __init__(self):
         self.client = get_openai_client()
 
-    def classify_task(
+    def classify_and_rate_task(
         self,
         task_title: str,
         task_description: str | None = None,
         user_id: int | None = None,
     ) -> dict[str, Any]:
         """
-        Classify a task by type and preferred time.
+        Combined AI call: classify task type, preferred time, AND difficulty
+        in a single gpt-5-nano request with low reasoning effort.
 
         Returns dict with:
+        - difficulty: str (easy|medium|hard|very_hard)
         - task_type: str (one of TASK_TYPES)
         - preferred_time: str (one of TIME_SLOTS)
         """
-        # Try AI classification first
+        text_lower = f"{task_title} {task_description or ''}".lower()
+
+        # Fast pre-check: urgency keywords force hard difficulty
+        forced_difficulty = None
+        for keyword in self.URGENCY_KEYWORDS:
+            if keyword in text_lower:
+                forced_difficulty = "hard"
+                break
+
+        # Try AI classification
         if self.client:
             try:
-                return self._ai_classify(task_title, task_description, user_id=user_id)
+                result = self._ai_classify_and_rate(
+                    task_title, task_description, user_id=user_id
+                )
+                # Override difficulty if urgency keyword detected
+                if forced_difficulty:
+                    result["difficulty"] = forced_difficulty
+                return result
             except Exception as e:
-                current_app.logger.error(f"AI classification failed: {e}")
+                current_app.logger.error(f"AI classify_and_rate failed: {e}")
 
-        # Fallback to keyword-based classification
-        return self._keyword_classify(task_title, task_description)
+        # Fallback to keyword/heuristic classification
+        fallback = self._keyword_classify(task_title, task_description)
+        fallback["difficulty"] = forced_difficulty or self._heuristic_difficulty(
+            text_lower
+        )
+        return fallback
 
-    def _ai_classify(
-        self, task_title: str, task_description: str | None, user_id: int | None = None
+    def _ai_classify_and_rate(
+        self,
+        task_title: str,
+        task_description: str | None,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
-        """Use OpenAI to classify task."""
-        prompt = f"""Определи тип задачи и лучшее время дня для её выполнения.
-
-Задача: {task_title}
+        """Single AI call for difficulty + type + time using gpt-5-nano."""
+        prompt = f"""Задача: {task_title}
 {f'Описание: {task_description}' if task_description else ''}
 
-Типы задач (выбери один):
-- creative: творческие задачи (дизайн, идеи, креатив)
-- analytical: аналитические (отчёты, данные, исследования)
-- communication: коммуникация (звонки, встречи, переписка)
-- physical: физические (спорт, уборка, прогулки)
-- learning: обучение (курсы, чтение, изучение нового)
-- planning: планирование (списки, организация, расписание)
-- coding: программирование (код, баги, разработка)
-- writing: письменные (статьи, документы, тексты)
+Определи:
+1) difficulty (easy|medium|hard|very_hard):
+ - easy: 5-15 мин, рутина
+ - medium: 30-60 мин, концентрация
+ - hard: 1-3 часа, глубокая работа / срочно
+ - very_hard: 3+ часов, комплекс
+2) task_type (creative|analytical|communication|physical|learning|planning|coding|writing)
+3) preferred_time (morning|afternoon|evening|night)
 
-Время дня (выбери одно):
-- morning: утро (6:00-12:00) - для задач требующих концентрации
-- afternoon: день (12:00-18:00) - для рутинных и коммуникационных задач
-- evening: вечер (18:00-22:00) - для отдыха и учёбы
-- night: ночь (22:00-6:00) - для творческих задач в тишине
+JSON: {{"difficulty":"...","task_type":"...","preferred_time":"..."}}"""
 
-Верни ТОЛЬКО JSON:
-{{"task_type": "тип", "preferred_time": "время"}}
-"""
-
-        current_app.logger.info(f"AI classifying task: {task_title}")
         from app.utils.ai_tracker import tracked_openai_call
 
         response = tracked_openai_call(
             self.client,
             user_id=user_id,
-            endpoint="classify_task",
+            endpoint="classify_and_rate",
             model="gpt-5-nano",
+            reasoning_effort="low",
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты классификатор задач. Отвечай только валидным JSON.",
+                    "content": "Классификатор задач. Только JSON.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_completion_tokens=200,
-        )
-        current_app.logger.info(
-            f"AI classification result: {response.choices[0].message.content}"
+            max_completion_tokens=60,
         )
 
         content = response.choices[0].message.content.strip()
@@ -203,7 +234,11 @@ class TaskClassifier:
 
         result = json.loads(content)
 
-        # Validate and normalize
+        # Validate
+        difficulty = result.get("difficulty", "medium")
+        if difficulty not in self.VALID_DIFFICULTIES:
+            difficulty = "medium"
+
         task_type = result.get("task_type", "planning")
         if task_type not in self.TASK_TYPES:
             task_type = "planning"
@@ -213,8 +248,34 @@ class TaskClassifier:
             preferred_time = "morning"
 
         return {
+            "difficulty": difficulty,
             "task_type": task_type,
             "preferred_time": preferred_time,
+        }
+
+    @staticmethod
+    def _heuristic_difficulty(text_lower: str) -> str:
+        """Fallback difficulty based on text length."""
+        if len(text_lower) < 20:
+            return "easy"
+        elif len(text_lower) < 50:
+            return "medium"
+        return "hard"
+
+    def classify_task(
+        self,
+        task_title: str,
+        task_description: str | None = None,
+        user_id: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Classify a task by type and preferred time.
+        Kept for backward compatibility.
+        """
+        result = self.classify_and_rate_task(task_title, task_description, user_id)
+        return {
+            "task_type": result["task_type"],
+            "preferred_time": result["preferred_time"],
         }
 
     def _keyword_classify(
