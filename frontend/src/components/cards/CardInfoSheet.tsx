@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Swords, Sparkles, Calendar, Zap, Layers, Minus, Star } from 'lucide-react';
+import { Heart, Swords, Sparkles, Calendar, Zap, Layers, Minus, Star, ArrowUp } from 'lucide-react';
 import { Modal } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n';
@@ -166,8 +166,8 @@ export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, on
                 </span>
               </div>
               {card.isCompanion && (
-                <span className="px-2 py-0.5 bg-pink-500/30 rounded-full text-[10px] font-bold text-pink-400">
-                  🐾 {t('companion')}
+                <span className="px-2 py-0.5 bg-violet-500/30 border border-violet-400/40 rounded-full text-[10px] font-bold text-violet-300">
+                  ♥ {t('companion')}
                 </span>
               )}
             </div>
@@ -181,6 +181,12 @@ export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, on
               const xpCurrent = card.cardXp || 0;
               const isMaxLevel = card.cardLevel >= maxLevel;
               const progress = isMaxLevel ? 100 : Math.min(100, (xpCurrent / xpNeeded) * 100);
+
+              // Calculate next level stat bonuses
+              const baseAttack = Math.round(card.attack / (1 + ((card.cardLevel || 1) - 1) * 0.05));
+              const baseHp = Math.round(card.hp / (1 + ((card.cardLevel || 1) - 1) * 0.05));
+              const nextAttackBonus = Math.round(baseAttack * 0.05);
+              const nextHpBonus = Math.round(baseHp * 0.05);
 
               return (
                 <div>
@@ -196,6 +202,15 @@ export function CardInfoSheet({ isOpen, onClose, card, isInDeck, onAddToDeck, on
                       style={{ width: `${progress}%` }}
                     />
                   </div>
+                  {!isMaxLevel && (
+                    <div className="text-xs text-cyan-300/70 mt-1.5 flex items-center gap-1">
+                      <ArrowUp className="w-3 h-3" />
+                      {t('nextLevelBonus')
+                        .replace('{level}', String((card.cardLevel || 1) + 1))
+                        .replace('{attack}', String(nextAttackBonus))
+                        .replace('{hp}', String(nextHpBonus))}
+                    </div>
+                  )}
                 </div>
               );
             })()}

@@ -24,6 +24,7 @@ export interface TaskCardCompactProps {
   onResume?: () => void;
   onComplete?: () => void;
   onStop?: () => void;
+  isNew?: boolean;
 }
 
 /**
@@ -55,6 +56,7 @@ export function TaskCardCompact({
   onResume,
   onComplete,
   onStop,
+  isNew,
 }: TaskCardCompactProps) {
   const isCompleted = task.status === 'completed';
   const isArchived = task.status === 'archived';
@@ -97,13 +99,20 @@ export function TaskCardCompact({
 
         {/* Title + progress bar */}
         <div className="flex-1 min-w-0">
-          <h3
-            className={`text-sm font-medium ${
-              isCompleted ? 'text-gray-500 line-through' : 'text-white'
-            }`}
-          >
-            {task.title}
-          </h3>
+          <div className="flex items-center gap-1.5">
+            <h3
+              className={`text-sm font-medium truncate ${
+                isCompleted ? 'text-gray-500 line-through' : 'text-white'
+              }`}
+            >
+              {task.title}
+            </h3>
+            {isNew && (
+              <span className="px-1.5 py-0.5 bg-primary-500/30 text-primary-400 text-[10px] font-bold rounded-full flex-shrink-0">
+                NEW
+              </span>
+            )}
+          </div>
           {!isCompleted && hasSubtasks && !hasActiveSession && (
             <div className="mt-1 h-1 bg-gray-700 rounded-full overflow-hidden">
               <div

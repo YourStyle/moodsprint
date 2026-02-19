@@ -269,18 +269,23 @@ export function DeckCard({
               </button>
             )}
 
-            {/* Card level badge */}
-            {cardLevel && cardLevel > 1 && !compact && (
-              <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-md flex items-center gap-0.5 shadow-lg">
-                <Zap className="w-3 h-3 text-white" />
-                <span className="text-[10px] font-bold text-white">{cardLevel}</span>
+            {/* Card level badge — always shown when cardLevel provided */}
+            {cardLevel != null && (
+              <div className={cn(
+                'absolute z-10 flex items-center gap-0.5 shadow-lg',
+                compact
+                  ? 'top-0.5 left-0.5 px-1 py-0.5 bg-gray-800/90 border border-cyan-500/40 rounded'
+                  : 'top-1.5 left-1.5 px-1.5 py-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-md',
+              )}>
+                <Zap className={cn(compact ? 'w-2 h-2 text-cyan-300' : 'w-3 h-3 text-white')} />
+                <span className={cn('font-bold text-white', compact ? 'text-[8px]' : 'text-[10px]')}>{cardLevel}</span>
               </div>
             )}
 
             {/* Companion indicator */}
             {isCompanion && !compact && (
-              <div className="absolute bottom-1.5 right-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-pink-500 to-rose-600 rounded-md shadow-lg">
-                <span className="text-[10px] font-bold text-white">🐾</span>
+              <div className="absolute bottom-1.5 right-1.5 z-10 px-1.5 py-0.5 bg-gradient-to-r from-violet-500 to-purple-600 rounded-md shadow-lg border border-violet-400/50">
+                <span className="text-[10px] font-bold text-white tracking-wide">♥ C</span>
               </div>
             )}
 
@@ -288,7 +293,7 @@ export function DeckCard({
             {isInDeck && !compact && (
               <div className={cn(
                 'absolute z-10 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center',
-                cardLevel && cardLevel > 1 ? 'top-8 left-1.5' : 'top-1.5 left-1.5'
+                cardLevel != null ? 'top-8 left-1.5' : 'top-1.5 left-1.5'
               )}>
                 <Layers className="w-3 h-3 text-white" />
               </div>

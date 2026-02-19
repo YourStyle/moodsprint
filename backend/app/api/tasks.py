@@ -373,6 +373,15 @@ def update_task(task_id: int):
         if data["status"] in [s.value for s in TaskStatus]:
             task.status = data["status"]
 
+            # Reset counters when restoring from archive
+            if (
+                old_status == TaskStatus.ARCHIVED.value
+                and data["status"] == TaskStatus.PENDING.value
+            ):
+                task.due_date = date.today()
+                task.postponed_count = 0
+                task.original_due_date = None
+
     if "due_date" in data:
         try:
             task.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()

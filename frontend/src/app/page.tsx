@@ -10,7 +10,7 @@ import { TaskForm } from '@/components/tasks';
 import { DailyBonus, LevelUpModal, EnergyLimitModal, EventBanner, type LevelRewardItem } from '@/components/gamification';
 import { StreakIndicator } from '@/components/gamification/StreakIndicator';
 import { StreakMilestoneModal } from '@/components/gamification/StreakMilestoneModal';
-import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, CompanionXPToast, type EarnedCard, type CompanionXPData } from '@/components/cards';
+import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, SharedRewardsModal, type EarnedCard } from '@/components/cards';
 import { SpotlightOnboarding, type OnboardingStep } from '@/components/SpotlightOnboarding';
 import { LandingPage } from '@/components/LandingPage';
 import { useAppStore } from '@/lib/store';
@@ -58,7 +58,7 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t, language } = useLanguage();
-  const { user, isLoading, authError, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
+  const { user, isLoading, authError, latestMood, setLatestMood, showMoodModal, setShowMoodModal, showXPAnimation, pushXPToast, setActiveSession, setActiveSessions, activeSessions, removeActiveSession, updateActiveSession, isTelegramEnvironment, isSpotlightActive } = useAppStore();
   const [moodLoading, setMoodLoading] = useState(false);
 
   // Modal phase queue: ensures modals show one at a time
@@ -190,7 +190,6 @@ export default function HomePage() {
   const [streakMilestoneData, setStreakMilestoneData] = useState<{ milestone_days: number; xp_bonus: number; card_earned?: { id: number; name: string; emoji: string; rarity: string } } | null>(null);
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [quickTaskPending, setQuickTaskPending] = useState<string | null>(null);
-  const [companionXPToast, setCompanionXPToast] = useState<CompanionXPData | null>(null);
   const [previewSharedTask, setPreviewSharedTask] = useState<SharedTaskRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMode, setIsCompactMode] = useState(() => {
@@ -203,6 +202,30 @@ export default function HomePage() {
   });
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // NEW tag: track task IDs created in this session
+  const [newTaskIds, setNewTaskIds] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    const stored = sessionStorage.getItem('moodsprint_new_task_ids');
+    if (stored) {
+      try { return new Set(JSON.parse(stored) as number[]); } catch { return new Set(); }
+    }
+    return new Set();
+  });
+
+  // Persist new task IDs to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('moodsprint_new_task_ids', JSON.stringify(Array.from(newTaskIds)));
+  }, [newTaskIds]);
+
+  const markTaskSeen = useCallback((taskId: number) => {
+    setNewTaskIds(prev => {
+      if (!prev.has(taskId)) return prev;
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  }, []);
   // Track if this is user's first visit (to skip daily bonus & mood on first login)
   const [isFirstVisit, setIsFirstVisit] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -357,10 +380,18 @@ export default function HomePage() {
       }
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setShowCreateModal(false);
       hapticFeedback('success');
+      // Track new task for "NEW" badge
+      if (result.data?.task?.id) {
+        setNewTaskIds(prev => {
+          const next = new Set(prev);
+          next.add(result.data!.task.id);
+          return next;
+        });
+      }
     },
   });
 
@@ -405,7 +436,9 @@ export default function HomePage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['cards'] });
-      if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
+      if (result.data?.xp_earned) {
+        pushXPToast({ type: 'player', amount: result.data.xp_earned, currentXp: user?.xp ?? 0, xpForNext: user?.xp_for_next_level ?? 100, level: user?.level ?? 1 });
+      }
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
         setEarnedCard({
@@ -431,7 +464,8 @@ export default function HomePage() {
       }
       // Companion XP toast
       if (result.data?.companion_xp) {
-        setCompanionXPToast(result.data.companion_xp);
+        const cxp = result.data.companion_xp;
+        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined });
       }
       hapticFeedback('success');
     },
@@ -452,7 +486,9 @@ export default function HomePage() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['cards'] });
-      if (result.data?.xp_earned) showXPAnimation(result.data.xp_earned);
+      if (result.data?.xp_earned) {
+        pushXPToast({ type: 'player', amount: result.data.xp_earned, currentXp: user?.xp ?? 0, xpForNext: user?.xp_for_next_level ?? 100, level: user?.level ?? 1 });
+      }
       // Show card earned modal if card was generated
       if (result.data?.card_earned) {
         setEarnedCard({
@@ -478,7 +514,8 @@ export default function HomePage() {
       }
       // Companion XP toast
       if (result.data?.companion_xp) {
-        setCompanionXPToast(result.data.companion_xp);
+        const cxp = result.data.companion_xp;
+        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined });
       }
       hapticFeedback('success');
     },
@@ -548,7 +585,7 @@ export default function HomePage() {
         setShowMoodModal(false);
         hapticFeedback('success');
         if (result.data.xp_earned) {
-          showXPAnimation(result.data.xp_earned);
+          pushXPToast({ type: 'player', amount: result.data.xp_earned, currentXp: user?.xp ?? 0, xpForNext: user?.xp_for_next_level ?? 100, level: user?.level ?? 1 });
         }
       }
     } catch (error) {
@@ -575,16 +612,14 @@ export default function HomePage() {
     staleTime: 30 * 1000,
   });
   const sharedRewards = sharedRewardsData?.data?.rewards || [];
-  const [sharedRewardIndex, setSharedRewardIndex] = useState(0);
-  const currentSharedReward = sharedRewards[sharedRewardIndex] || null;
   const [showSharedRewardModal, setShowSharedRewardModal] = useState(false);
 
   // Show shared reward modal when rewards are available and no other modal is showing
   useEffect(() => {
-    if (currentSharedReward && !showCardModal && !showLevelUpModal && !showStreakMilestoneModal && modalPhase === 'done') {
+    if (sharedRewards.length > 0 && !showCardModal && !showLevelUpModal && !showStreakMilestoneModal && modalPhase === 'done') {
       setShowSharedRewardModal(true);
     }
-  }, [currentSharedReward, showCardModal, showLevelUpModal, showStreakMilestoneModal, modalPhase]);
+  }, [sharedRewards.length, showCardModal, showLevelUpModal, showStreakMilestoneModal, modalPhase]);
 
   const acceptSharedMutation = useMutation({
     mutationFn: (sharedId: number) => tasksService.acceptSharedTask(sharedId),
@@ -985,15 +1020,20 @@ export default function HomePage() {
                           return (
                             <div
                               key={task.id}
-                              onClick={() => router.push(`/tasks/${task.id}`)}
+                              onClick={() => { markTaskSeen(task.id); router.push(`/tasks/${task.id}`); }}
                               className={`flex items-center gap-2 px-3 py-2 hover:bg-gray-800/50 cursor-pointer ${task.status === 'completed' ? 'opacity-50' : ''}`}
                             >
                               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                 task.status === 'completed' ? 'bg-green-500' : 'bg-purple-500'
                               }`} />
-                              <span className={`text-sm flex-1 min-w-0 ${task.status === 'completed' ? 'text-gray-500 line-through' : 'text-white'}`}>
+                              <span className={`text-sm flex-1 min-w-0 truncate ${task.status === 'completed' ? 'text-gray-500 line-through' : 'text-white'}`}>
                                 {task.title}
                               </span>
+                              {newTaskIds.has(task.id) && (
+                                <span className="px-1.5 py-0.5 bg-primary-500/30 text-primary-400 text-[10px] font-bold rounded-full flex-shrink-0">
+                                  NEW
+                                </span>
+                              )}
                               {task.status !== 'completed' && session && (
                                 <MiniTimer
                                   session={session}
@@ -1019,6 +1059,7 @@ export default function HomePage() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      markTaskSeen(task.id);
                                       completeTaskMutation.mutate(task.id);
                                     }}
                                     className="p-1 rounded bg-green-500/20 hover:bg-green-500/30 flex-shrink-0"
@@ -1028,6 +1069,7 @@ export default function HomePage() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      markTaskSeen(task.id);
                                       startFocusMutation.mutate(task.id);
                                     }}
                                     className="p-1 rounded bg-primary-500/20 hover:bg-primary-500/30 flex-shrink-0"
@@ -1046,9 +1088,10 @@ export default function HomePage() {
                           <TaskCardCompact
                             key={task.id}
                             task={task}
-                            onClick={() => router.push(`/tasks/${task.id}`)}
-                            onStart={!isArchived && task.status !== 'completed' && !session ? () => startFocusMutation.mutate(task.id) : undefined}
-                            onCompleteTask={!isArchived && task.status !== 'completed' && !session ? () => completeTaskMutation.mutate(task.id) : undefined}
+                            isNew={newTaskIds.has(task.id)}
+                            onClick={() => { markTaskSeen(task.id); router.push(`/tasks/${task.id}`); }}
+                            onStart={!isArchived && task.status !== 'completed' && !session ? () => { markTaskSeen(task.id); startFocusMutation.mutate(task.id); } : undefined}
+                            onCompleteTask={!isArchived && task.status !== 'completed' && !session ? () => { markTaskSeen(task.id); completeTaskMutation.mutate(task.id); } : undefined}
                             onRestore={isArchived ? () => restoreTaskMutation.mutate(task.id) : undefined}
                             activeSession={session}
                             onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
@@ -1131,38 +1174,18 @@ export default function HomePage() {
         t={t}
       />
 
-      {/* Shared Task Reward Modal */}
-      {currentSharedReward && (
-        <CardEarnedModal
-          isOpen={showSharedRewardModal}
-          card={{
-            id: currentSharedReward.card.id,
-            name: currentSharedReward.card.name,
-            description: currentSharedReward.card.description,
-            genre: currentSharedReward.card.genre,
-            rarity: currentSharedReward.card.rarity,
-            hp: currentSharedReward.card.hp,
-            attack: currentSharedReward.card.attack,
-            emoji: currentSharedReward.card.emoji,
-            image_url: currentSharedReward.card.image_url,
-          } as EarnedCard}
-          onClose={() => {
-            setShowSharedRewardModal(false);
-            // Mark this reward as shown
-            tasksService.markSharedRewardShown(currentSharedReward.shared_id);
-            // Move to next reward or close
-            if (sharedRewardIndex + 1 < sharedRewards.length) {
-              setSharedRewardIndex(sharedRewardIndex + 1);
-              setTimeout(() => setShowSharedRewardModal(true), 300);
-            } else {
-              setSharedRewardIndex(0);
-              queryClient.invalidateQueries({ queryKey: ['tasks', 'shared-rewards'] });
-            }
-          }}
-          t={t}
-          subtitle={t('sharedTaskRewardDesc').replace('{title}', currentSharedReward.task_title || '')}
-        />
-      )}
+      {/* Shared Task Rewards Modal (combined) */}
+      <SharedRewardsModal
+        isOpen={showSharedRewardModal}
+        rewards={sharedRewards}
+        onClose={() => {
+          setShowSharedRewardModal(false);
+          // Mark all as shown
+          sharedRewards.forEach(r => tasksService.markSharedRewardShown(r.shared_id));
+          queryClient.invalidateQueries({ queryKey: ['tasks', 'shared-rewards'] });
+        }}
+        t={t}
+      />
 
       {/* Level Up Modal */}
       {levelUpData && (
@@ -1229,12 +1252,6 @@ export default function HomePage() {
       <CardTutorial
         isOpen={showCardTutorial}
         onClose={() => setShowCardTutorial(false)}
-      />
-
-      {/* Companion XP Toast */}
-      <CompanionXPToast
-        data={companionXPToast}
-        onDismiss={() => setCompanionXPToast(null)}
       />
 
       {/* Shared Task Preview Modal */}

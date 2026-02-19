@@ -772,6 +772,16 @@ export const translations = {
     sharedTaskReward: 'Награда за совместную задачу',
     sharedTaskRewardDesc: 'Задача «{title}» выполнена! Вот твоя карта.',
     goToDeck: 'Перейти в колоду',
+
+    // Combined shared rewards modal
+    sharedTaskRewards: 'Награды за совместные задачи',
+    collectAll: 'Забрать все',
+
+    // Next level card preview
+    nextLevelBonus: 'Ур.{level}: +{attack} атаки, +{hp} HP',
+
+    // New task tag
+    newTag: 'NEW',
   },
 
   en: {
@@ -1547,6 +1557,16 @@ export const translations = {
     sharedTaskReward: 'Shared task reward',
     sharedTaskRewardDesc: 'Task "{title}" completed! Here\'s your card.',
     goToDeck: 'Go to deck',
+
+    // Combined shared rewards modal
+    sharedTaskRewards: 'Shared Task Rewards',
+    collectAll: 'Collect All',
+
+    // Next level card preview
+    nextLevelBonus: 'Lv.{level}: +{attack} Attack, +{hp} HP',
+
+    // New task tag
+    newTag: 'NEW',
   },
 } as const;
 

@@ -933,6 +933,7 @@ export default function DeckPage() {
                     createdAt={mergeCard1.created_at}
                     ability={mergeCard1.ability}
                     abilityInfo={mergeCard1.ability_info}
+                    cardLevel={mergeCard1.card_level}
                     onClick={() => setMergeCard1(null)}
                     compact
                   />
@@ -978,6 +979,7 @@ export default function DeckPage() {
                     createdAt={mergeCard2.created_at}
                     ability={mergeCard2.ability}
                     abilityInfo={mergeCard2.ability_info}
+                    cardLevel={mergeCard2.card_level}
                     onClick={() => setMergeCard2(null)}
                     compact
                   />

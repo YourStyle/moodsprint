@@ -11,3 +11,4 @@ export { HealNumber } from './HealNumber';
 export { CardTutorial, shouldShowCardTutorial, markCardTutorialSeen } from './CardTutorial';
 export { CompanionXPToast } from './CompanionXPToast';
 export type { CompanionXPData } from './CompanionXPToast';
+export { SharedRewardsModal } from './SharedRewardsModal';

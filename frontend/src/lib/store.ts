@@ -49,7 +49,27 @@ interface AppState {
   isSpotlightActive: boolean;
   setSpotlightActive: (active: boolean) => void;
 
-  // XP animation
+  // XP toast queue (unified player + companion toasts)
+  xpToastQueue: Array<{
+    id: number;
+    type: 'player' | 'companion';
+    amount: number;
+    // player fields
+    currentXp?: number;
+    xpForNext?: number;
+    level?: number;
+    // companion fields
+    cardEmoji?: string;
+    cardName?: string;
+    cardXp?: number;
+    cardXpForNext?: number;
+    cardLevel?: number;
+    levelUp?: boolean;
+  }>;
+  pushXPToast: (toast: Omit<AppState['xpToastQueue'][0], 'id'>) => void;
+  shiftXPToast: () => void;
+
+  // Legacy XP animation (kept for backward compat during migration)
   xpAnimation: { amount: number; show: boolean };
   showXPAnimation: (amount: number) => void;
 }
@@ -134,7 +154,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   isSpotlightActive: false,
   setSpotlightActive: (isSpotlightActive) => set({ isSpotlightActive }),
 
-  // XP animation
+  // XP toast queue
+  xpToastQueue: [],
+  pushXPToast: (toast) => set((state) => ({
+    xpToastQueue: [...state.xpToastQueue, { ...toast, id: Date.now() + Math.random() }],
+  })),
+  shiftXPToast: () => set((state) => ({
+    xpToastQueue: state.xpToastQueue.slice(1),
+  })),
+
+  // Legacy XP animation (still used by focus page)
   xpAnimation: { amount: 0, show: false },
   showXPAnimation: (amount) => {
     set({ xpAnimation: { amount, show: true } });
