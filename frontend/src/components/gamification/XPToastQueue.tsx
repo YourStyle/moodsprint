@@ -29,8 +29,8 @@ export function XPToastQueue() {
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none"
-      style={{ top: 'calc(var(--safe-area-top, 0px) + 12px)' }}
+      className="fixed left-0 right-0 z-50 pointer-events-none"
+      style={{ top: 'calc(var(--safe-area-top, 0px) + 16px)' }}
     >
       <AnimatePresence mode="wait">
         {showToast && (
@@ -40,7 +40,7 @@ export function XPToastQueue() {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -20, opacity: 0, scale: 0.95 }}
             transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-            className="px-4 w-full max-w-xs"
+            className="px-4 w-full"
           >
             <div className="bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-2xl px-4 py-3 shadow-2xl">
               <div className="flex items-center gap-3">
