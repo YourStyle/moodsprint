@@ -14,7 +14,9 @@ class ProfileAnalyzer:
     def __init__(self):
         self.client = get_openai_client()
 
-    def analyze_onboarding(self, responses: dict[str, Any]) -> dict[str, Any]:
+    def analyze_onboarding(
+        self, responses: dict[str, Any], user_id: int | None = None
+    ) -> dict[str, Any]:
         """
         Analyze user's onboarding responses and create a productivity profile.
 
@@ -27,14 +29,16 @@ class ProfileAnalyzer:
         """
         if self.client:
             try:
-                return self._gpt_analyze(responses)
+                return self._gpt_analyze(responses, user_id=user_id)
             except Exception as e:
                 current_app.logger.error(f"GPT analysis failed: {e}")
 
         # Fallback to rule-based analysis
         return self._rule_based_analyze(responses)
 
-    def _gpt_analyze(self, responses: dict[str, Any]) -> dict[str, Any]:
+    def _gpt_analyze(
+        self, responses: dict[str, Any], user_id: int | None = None
+    ) -> dict[str, Any]:
         """Use GPT to analyze responses."""
         prompt = f"""Analyze this user's productivity profile based on their onboarding responses.
 
@@ -61,8 +65,13 @@ Return ONLY valid JSON, no other text.
 """
 
         current_app.logger.info("AI analyzing user profile from onboarding")
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        from app.utils.ai_tracker import tracked_openai_call
+
+        response = tracked_openai_call(
+            self.client,
+            user_id=user_id,
+            endpoint="analyze_onboarding",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "system",

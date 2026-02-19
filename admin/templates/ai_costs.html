@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}AI Costs - MoodSprint Admin{% endblock %}
+{% block header %}AI Usage Costs{% endblock %}
+
+{% block content %}
+{% if not table_exists %}
+<div class="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+    <h3 class="text-lg font-semibold text-red-800">Table Not Found</h3>
+    <p class="text-sm text-red-600 mt-1">The ai_usage_log table does not exist yet. Run the migration to create it.</p>
+</div>
+{% else %}
+
+<!-- Summary Stat Cards -->
+<div class="mb-6">
+    <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Overview</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Today</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">${{ summary.cost_today }}</p>
+            <p class="text-xs text-gray-400">{{ summary.calls_today }} calls &middot; {{ "{:,}".format(summary.tokens_today) }} tokens</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">This Week</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">${{ summary.cost_week }}</p>
+            <p class="text-xs text-gray-400">{{ summary.calls_week }} calls &middot; {{ "{:,}".format(summary.tokens_week) }} tokens</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-purple-500">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">This Month</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">${{ summary.cost_month }}</p>
+            <p class="text-xs text-gray-400">{{ summary.calls_month }} calls &middot; {{ "{:,}".format(summary.tokens_month) }} tokens</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-amber-500">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">All Time</p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">${{ summary.cost_total }}</p>
+            <p class="text-xs text-gray-400">{{ summary.calls_total }} calls &middot; {{ "{:,}".format(summary.tokens_total) }} tokens</p>
+        </div>
+    </div>
+</div>
+
+<!-- Breakdown by Endpoint -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">By Endpoint</h3>
+    </div>
+    {% if by_endpoint %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="text-left py-3 px-4 text-gray-500 font-medium">Endpoint</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Calls</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Avg Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Avg Latency</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in by_endpoint %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-gray-800 font-medium">{{ e.endpoint }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(e.call_count) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(e.avg_tokens) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(e.total_tokens) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(e.avg_latency) }}ms</td>
+                    <td class="py-3 px-4 text-right font-medium text-gray-900">${{ e.total_cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-400">
+        <p class="text-lg">No AI usage data yet</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Breakdown by Model -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">By Model</h3>
+    </div>
+    {% if by_model %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="text-left py-3 px-4 text-gray-500 font-medium">Model</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Calls</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Prompt Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Completion Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in by_model %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                            {{ m.model }}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(m.call_count) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(m.prompt_tokens) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(m.completion_tokens) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(m.total_tokens) }}</td>
+                    <td class="py-3 px-4 text-right font-medium text-gray-900">${{ m.total_cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-400">
+        <p class="text-lg">No AI usage data yet</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Top 10 Users by Cost -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">Top 10 Users by Cost</h3>
+    </div>
+    {% if top_users %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="text-left py-3 px-4 text-gray-500 font-medium">#</th>
+                    <th class="text-left py-3 px-4 text-gray-500 font-medium">User</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Calls</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Tokens</th>
+                    <th class="text-right py-3 px-4 text-gray-500 font-medium">Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in top_users %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-gray-400 font-medium">{{ loop.index }}</td>
+                    <td class="py-3 px-4">
+                        <span class="text-gray-800 font-medium">{{ u.first_name or u.username or 'Unknown' }}</span>
+                        <span class="text-xs text-gray-400 ml-1">ID: {{ u.user_id }}</span>
+                    </td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(u.call_count) }}</td>
+                    <td class="py-3 px-4 text-right text-gray-600">{{ "{:,}".format(u.total_tokens) }}</td>
+                    <td class="py-3 px-4 text-right font-medium text-gray-900">${{ u.total_cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-400">
+        <p class="text-lg">No user-attributed AI usage yet</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

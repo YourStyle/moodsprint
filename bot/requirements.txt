@@ -16,5 +16,9 @@ redis==5.0.1
 httpx==0.27.0
 psutil==5.9.8
 
+# Image generation for weekly digest
+matplotlib==3.9.2
+Pillow==10.4.0
+
 # OpenAI API
 openai==1.12.0

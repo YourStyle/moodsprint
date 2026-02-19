@@ -121,7 +121,10 @@ class TaskClassifier:
         self.client = get_openai_client()
 
     def classify_task(
-        self, task_title: str, task_description: str | None = None
+        self,
+        task_title: str,
+        task_description: str | None = None,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Classify a task by type and preferred time.
@@ -133,7 +136,7 @@ class TaskClassifier:
         # Try AI classification first
         if self.client:
             try:
-                return self._ai_classify(task_title, task_description)
+                return self._ai_classify(task_title, task_description, user_id=user_id)
             except Exception as e:
                 current_app.logger.error(f"AI classification failed: {e}")
 
@@ -141,7 +144,7 @@ class TaskClassifier:
         return self._keyword_classify(task_title, task_description)
 
     def _ai_classify(
-        self, task_title: str, task_description: str | None
+        self, task_title: str, task_description: str | None, user_id: int | None = None
     ) -> dict[str, Any]:
         """Use OpenAI to classify task."""
         prompt = f"""Определи тип задачи и лучшее время дня для её выполнения.
@@ -170,8 +173,13 @@ class TaskClassifier:
 """
 
         current_app.logger.info(f"AI classifying task: {task_title}")
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        from app.utils.ai_tracker import tracked_openai_call
+
+        response = tracked_openai_call(
+            self.client,
+            user_id=user_id,
+            endpoint="classify_task",
+            model="gpt-5-nano",
             messages=[
                 {
                     "role": "system",

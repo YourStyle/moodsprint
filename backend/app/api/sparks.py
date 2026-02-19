@@ -300,3 +300,97 @@ def debit_sparks(
     db.session.commit()
 
     return transaction
+
+
+# ============ Cosmetics ============
+
+
+@api_bp.route("/cosmetics", methods=["GET"])
+@jwt_required()
+def get_cosmetics_catalog():
+    """Get all available cosmetics with ownership info."""
+    from app.services.cosmetics_service import CosmeticsService
+
+    user_id = int(get_jwt_identity())
+    lang = request.args.get("lang", "ru")
+    service = CosmeticsService()
+
+    all_items = service.get_all_cosmetics(lang=lang)
+    user_data = service.get_user_cosmetics(user_id, lang=lang)
+    owned_ids = {c["id"] for c in user_data["owned"]}
+
+    # Mark owned items
+    for item in all_items:
+        item["is_owned"] = item["id"] in owned_ids
+        item["is_equipped"] = (
+            item["id"] == user_data["equipped_card_frame"]
+            or item["id"] == user_data["equipped_profile_frame"]
+        )
+
+    return success_response(
+        {
+            "cosmetics": all_items,
+            "equipped_card_frame": user_data["equipped_card_frame"],
+            "equipped_profile_frame": user_data["equipped_profile_frame"],
+        }
+    )
+
+
+@api_bp.route("/cosmetics/buy", methods=["POST"])
+@jwt_required()
+def buy_cosmetic():
+    """Buy a cosmetic item with Sparks."""
+    from app.services.cosmetics_service import CosmeticsService
+
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    cosmetic_id = data.get("cosmetic_id")
+
+    if not cosmetic_id:
+        return error_response("cosmetic_id is required", 400)
+
+    result = CosmeticsService().buy_cosmetic(user_id, cosmetic_id)
+    if result.get("error"):
+        return error_response(result["error"], 400)
+
+    return success_response(result)
+
+
+@api_bp.route("/cosmetics/equip", methods=["POST"])
+@jwt_required()
+def equip_cosmetic():
+    """Equip a cosmetic item."""
+    from app.services.cosmetics_service import CosmeticsService
+
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    cosmetic_id = data.get("cosmetic_id")
+
+    if not cosmetic_id:
+        return error_response("cosmetic_id is required", 400)
+
+    result = CosmeticsService().equip_cosmetic(user_id, cosmetic_id)
+    if result.get("error"):
+        return error_response(result["error"], 400)
+
+    return success_response(result)
+
+
+@api_bp.route("/cosmetics/unequip", methods=["POST"])
+@jwt_required()
+def unequip_cosmetic():
+    """Unequip a cosmetic by type."""
+    from app.services.cosmetics_service import CosmeticsService
+
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    cosmetic_type = data.get("type")
+
+    if cosmetic_type not in ("card_frame", "profile_frame"):
+        return error_response("type must be card_frame or profile_frame", 400)
+
+    result = CosmeticsService().unequip_cosmetic(user_id, cosmetic_type)
+    if result.get("error"):
+        return error_response(result["error"], 400)
+
+    return success_response(result)

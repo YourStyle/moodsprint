@@ -256,6 +256,14 @@ class UserCard(db.Model):
     is_tradeable = db.Column(db.Boolean, default=True)
     is_destroyed = db.Column(db.Boolean, default=False)  # Lost in battle (legacy)
 
+    # Event exclusive
+    is_event_exclusive = db.Column(db.Boolean, default=False)
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey("seasonal_events.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Cooldown system (replaces permanent death)
     cooldown_until = db.Column(
         db.DateTime, nullable=True
@@ -384,6 +392,8 @@ class UserCard(db.Model):
                 self.cooldown_until.isoformat() if self.cooldown_until else None
             ),
             "rarity_color": self.rarity_color,
+            "is_event_exclusive": self.is_event_exclusive or False,
+            "event_id": self.event_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

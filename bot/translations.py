@@ -164,6 +164,20 @@ MoodSprint — умный планировщик с геймификацией.
             "👋 {name}, мы соскучились! Вернись в MoodSprint — "
             "тебя ждёт особая карта в подарок! 🎁"
         ),
+        "comeback_premium": (
+            "🌟 {name}, давно не виделись! Специально для тебя — "
+            "редкая карта ждёт в MoodSprint! Заходи и забери награду! 💎"
+        ),
+        "event_started": (
+            "{emoji} Новый ивент: {name}!\n\n"
+            "{description}\n\n"
+            "🎯 XP x{xp_multiplier} · {days} дн.\n"
+            "Побеждай монстров и получай эксклюзивные карты!"
+        ),
+        "event_ending_soon": (
+            "⏰ Ивент «{name}» заканчивается через {days} дн.!\n"
+            "Успей получить эксклюзивные награды!"
+        ),
     },
     "en": {
         # General
@@ -320,6 +334,20 @@ Just send a voice message with your task, and the bot will create it automatical
         "comeback_message": (
             "👋 {name}, we miss you! Come back to MoodSprint — "
             "a special card awaits you! 🎁"
+        ),
+        "comeback_premium": (
+            "🌟 {name}, it's been a while! A rare card is waiting "
+            "for you in MoodSprint! Come claim your reward! 💎"
+        ),
+        "event_started": (
+            "{emoji} New event: {name}!\n\n"
+            "{description}\n\n"
+            "🎯 XP x{xp_multiplier} · {days} days\n"
+            "Defeat monsters and earn exclusive cards!"
+        ),
+        "event_ending_soon": (
+            '⏰ Event "{name}" ends in {days} days!\n'
+            "Don't miss your chance to earn exclusive rewards!"
         ),
     },
 }

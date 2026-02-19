@@ -308,6 +308,10 @@ export interface UserProfile {
   favorite_genre: 'magic' | 'fantasy' | 'scifi' | 'cyberpunk' | 'anime' | null;
   // Spotlight reset (set by admin to force re-show)
   spotlight_reset_at: string | null;
+  // Cosmetics
+  owned_cosmetics: string[];
+  equipped_card_frame: string | null;
+  equipped_profile_frame: string | null;
 }
 
 export interface GptAnalysis {
@@ -511,6 +515,17 @@ export interface UserEventProgress {
   bosses_defeated: number;
   exclusive_cards_earned: number;
   milestones: string[];
+  event_points: number;
+}
+
+export interface EventLeaderboardEntry {
+  rank: number;
+  user_id: number;
+  name: string;
+  event_points: number;
+  monsters_defeated: number;
+  bosses_defeated: number;
+  exclusive_cards_earned: number;
 }
 
 export interface EventMilestone {

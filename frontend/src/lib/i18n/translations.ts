@@ -425,6 +425,17 @@ export const translations = {
     transactionHistory: 'История операций',
     noTransactions: 'Нет операций',
 
+    // Cosmetics
+    cosmetics: 'Косметика',
+    cardFrames: 'Рамки карт',
+    profileFrames: 'Рамки профиля',
+    buyCosmetic: 'Купить',
+    equipCosmetic: 'Надеть',
+    unequipCosmetic: 'Снять',
+    equipped: 'Надето',
+    owned: 'В коллекции',
+    levelRequired: 'Нужен уровень {level}',
+    cosmeticPurchased: 'Покупка успешна!',
 
     // Profile extra
     tonWallet: 'TON Кошелёк',
@@ -1189,6 +1200,17 @@ export const translations = {
     transactionHistory: 'Transaction history',
     noTransactions: 'No transactions',
 
+    // Cosmetics
+    cosmetics: 'Cosmetics',
+    cardFrames: 'Card Frames',
+    profileFrames: 'Profile Frames',
+    buyCosmetic: 'Buy',
+    equipCosmetic: 'Equip',
+    unequipCosmetic: 'Unequip',
+    equipped: 'Equipped',
+    owned: 'Owned',
+    levelRequired: 'Level {level} required',
+    cosmeticPurchased: 'Purchase successful!',
 
     // Profile extra
     tonWallet: 'TON Wallet',

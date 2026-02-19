@@ -62,8 +62,10 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Register blueprints
     from app.api import api_bp
+    from app.api.shared_tasks import shared_tasks_bp
 
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+    app.register_blueprint(shared_tasks_bp)
 
     # Health check endpoint with detailed status (exempt from rate limiting)
     @app.route("/health")

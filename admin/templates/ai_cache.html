@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}AI Cache - MoodSprint Admin{% endblock %}
+{% block header %}AI Cache Monitor{% endblock %}
+
+{% block content %}
+{% if not redis_available %}
+<div class="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+    <h3 class="text-lg font-semibold text-red-800">Redis Unavailable</h3>
+    <p class="text-sm text-red-600 mt-1">Cannot connect to Redis. AI cache is not operational.</p>
+</div>
+{% else %}
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Hit Rate</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.hit_rate }}%</p>
+        <p class="text-xs text-gray-400">{{ stats.hits }} hits</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Cache Misses</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.misses }}</p>
+        <p class="text-xs text-gray-400">AI calls made</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-purple-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Cached Entries</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.total_cached }}</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-amber-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Est. Savings</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">${{ (stats.hits * 0.002)|round(3) }}</p>
+        <p class="text-xs text-gray-400">~$0.002 per call</p>
+    </div>
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-teal-500">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">Total Stored</p>
+        <p class="text-2xl font-bold text-gray-900 mt-1">{{ stats.stored }}</p>
+        <p class="text-xs text-gray-400">all-time</p>
+    </div>
+</div>
+
+<!-- Controls -->
+<div class="flex items-center gap-4 mb-6">
+    <!-- TTL Setting -->
+    <form action="{{ url_for('ai_cache_update_ttl') }}" method="POST" class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Default TTL:</label>
+        <select name="ttl_hours" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5">
+            <option value="1">1 hour</option>
+            <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24" selected>24 hours</option>
+            <option value="48">48 hours</option>
+            <option value="168">7 days</option>
+        </select>
+        <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+            Update
+        </button>
+    </form>
+
+    <!-- Clear All -->
+    <form action="{{ url_for('ai_cache_clear_all') }}" method="POST"
+          onsubmit="return confirm('Clear ALL cached AI responses?')">
+        <button type="submit" class="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">
+            Clear All Cache
+        </button>
+    </form>
+</div>
+
+<!-- Cached Entries Table -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">Cached Entries ({{ entries|length }})</h3>
+    </div>
+    {% if entries %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="text-left py-3 px-4 text-gray-500 font-medium">Task Title</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Strategy</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Mood</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Energy</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Result</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Hits</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Created</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Last Hit</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">TTL</th>
+                    <th class="text-center py-3 px-4 text-gray-500 font-medium">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in entries %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 max-w-xs truncate text-gray-800 font-medium" title="{{ e.title }}">
+                        {{ e.title }}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
+                            {% if e.strategy == 'micro' %}bg-red-100 text-red-700
+                            {% elif e.strategy == 'gentle' %}bg-yellow-100 text-yellow-700
+                            {% elif e.strategy == 'careful' %}bg-orange-100 text-orange-700
+                            {% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ e.strategy }}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center text-gray-600">{{ e.mood or '-' }}</td>
+                    <td class="py-3 px-4 text-center text-gray-600">{{ e.energy or '-' }}</td>
+                    <td class="py-3 px-4 text-center">
+                        {% if e.no_new_steps %}
+                        <span class="text-xs text-gray-400">no_new_steps</span>
+                        {% else %}
+                        <span class="text-xs font-medium text-blue-600">{{ e.subtasks_count }} steps</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-block min-w-[2rem] px-2 py-0.5 rounded text-xs font-bold
+                            {% if e.hits >= 10 %}bg-green-100 text-green-700
+                            {% elif e.hits >= 3 %}bg-blue-100 text-blue-700
+                            {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {{ e.hits }}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center text-xs text-gray-500">{{ e.created_at }}</td>
+                    <td class="py-3 px-4 text-center text-xs text-gray-500">{{ e.last_hit_at }}</td>
+                    <td class="py-3 px-4 text-center text-xs text-gray-500">
+                        {% if e.ttl > 3600 %}{{ (e.ttl / 3600)|round(1) }}h
+                        {% elif e.ttl > 0 %}{{ (e.ttl / 60)|round(0)|int }}m
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <form action="{{ url_for('ai_cache_invalidate') }}" method="POST" class="inline">
+                            <input type="hidden" name="key" value="{{ e.key }}">
+                            <button type="submit" class="text-red-500 hover:text-red-700 text-xs"
+                                    title="Delete this entry">
+                                &times; Del
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-400">
+        <p class="text-lg">No cached entries yet</p>
+        <p class="text-sm mt-1">Entries will appear here after users create tasks with AI decomposition</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

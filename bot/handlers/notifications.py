@@ -14,10 +14,10 @@ from database import (
     get_scheduled_tasks_for_reminder,
     get_task_suggestions,
     get_unnotified_postpone_logs_for_time,
-    get_user_stats,
     get_users_for_daily_suggestion,
     get_users_tasks_for_today,
     get_users_with_notifications_enabled,
+    get_weekly_digest_stats,
     mark_daily_suggestion_sent,
     mark_postpone_log_notified,
     mark_reminder_sent,
@@ -127,72 +127,114 @@ class NotificationService:
         logger.info(f"Morning reminders: {sent} sent, {failed} failed")
 
     async def send_streak_reminder(self):
-        """Send reminder to users who might lose their streak."""
+        """Send reminder to users who might lose their streak.
+
+        Urgency tiers based on days inactive:
+        - D1 (today): standard reminder
+        - D2 (1 day missed): urgent warning
+        - D3+ (2+ days missed): critical, streak will reset
+        """
         users = await get_users_with_notifications_enabled()
         sent = 0
         failed = 0
+
+        moscow_tz = timezone(timedelta(hours=3))
+        today = datetime.now(moscow_tz).date()
 
         for user in users:
             streak = user.get("streak_days", 0)
             last_activity = user.get("last_activity_date")
 
             if streak > 0 and last_activity:
-                # Check if they haven't been active today
                 last_date = (
                     datetime.fromisoformat(str(last_activity)).date()
                     if isinstance(last_activity, str)
                     else last_activity
                 )
-                # Use Moscow timezone (UTC+3)
-                moscow_tz = timezone(timedelta(hours=3))
-                today = datetime.now(moscow_tz).date()
 
-                if last_date < today:
-                    try:
-                        await self.bot.send_message(
-                            user["telegram_id"],
-                            f"🔥 Не потеряй свою серию в {streak} дней! "
-                            "Выполни хотя бы один маленький шаг, чтобы сохранить её.",
-                            reply_markup=get_webapp_button(),
-                        )
-                        sent += 1
-                    except (TelegramForbiddenError, TelegramBadRequest):
-                        failed += 1
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to send streak reminder to {user['telegram_id']}: {e}"
-                        )
-                        failed += 1
+                days_missed = (today - last_date).days
+                if days_missed < 1:
+                    continue
 
-                    await asyncio.sleep(0.05)
+                # Tiered urgency messages
+                if days_missed == 1:
+                    text = (
+                        f"🔥 Не потеряй свою серию в {streak} дней! "
+                        "Выполни хотя бы один маленький шаг, чтобы сохранить её."
+                    )
+                elif days_missed == 2:
+                    text = (
+                        f"⚠️ Твоя серия в {streak} дней под угрозой!\n"
+                        "Осталось несколько часов — зайди и отметь хотя бы "
+                        "одну задачу, чтобы не потерять прогресс!"
+                    )
+                else:
+                    # D3+ — streak is already lost, skip reminder
+                    continue
+
+                try:
+                    await self.bot.send_message(
+                        user["telegram_id"],
+                        text,
+                        reply_markup=get_webapp_button(),
+                    )
+                    sent += 1
+                except (TelegramForbiddenError, TelegramBadRequest):
+                    failed += 1
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send streak reminder to {user['telegram_id']}: {e}"
+                    )
+                    failed += 1
+
+                await asyncio.sleep(0.05)
 
         logger.info(f"Streak reminders: {sent} sent, {failed} failed")
 
     async def send_weekly_summary(self):
-        """Send weekly summary to users."""
+        """Send weekly summary as a visual digest image to users."""
+        from aiogram.types import BufferedInputFile
+        from database import get_user_language
+        from services.weekly_digest import generate_weekly_digest_image
+
         users = await get_users_with_notifications_enabled()
         sent = 0
         failed = 0
 
         for user in users:
             try:
-                stats = await get_user_stats(user["telegram_id"], weekly=True)
+                lang = await get_user_language(user["telegram_id"])
+                stats = await get_weekly_digest_stats(user["telegram_id"])
                 if not stats:
                     continue
 
-                u = stats["user"]
-                text = (
-                    f"📅 Твой недельный отчёт MoodSprint\n"
-                    f"{'─' * 25}\n\n"
-                    f"🎯 Уровень: {u.get('level', 1)} | ✨ XP: {u.get('xp', 0)}\n"
-                    f"🔥 Текущая серия: {u.get('streak_days', 0)} дн.\n\n"
-                    f"✅ Задач выполнено: {stats['completed_tasks']}\n"
-                    f"⏱️ Время фокуса: {stats['total_focus_minutes']} мин\n\n"
-                    "Так держать! 💪"
+                # Skip users with zero activity (no noise)
+                if (
+                    stats["tasks_completed"] == 0
+                    and stats["focus_minutes"] == 0
+                    and stats["cards_earned"] == 0
+                ):
+                    continue
+
+                # Generate the digest image
+                image_buf = generate_weekly_digest_image(stats, lang=lang)
+
+                caption = (
+                    "📊 Твой недельный отчёт MoodSprint готов!\n"
+                    "Открой приложение, чтобы продолжить 💪"
+                    if lang == "ru"
+                    else "📊 Your weekly MoodSprint report is ready!\n"
+                    "Open the app to keep going 💪"
                 )
 
-                await self.bot.send_message(
-                    user["telegram_id"], text, reply_markup=get_webapp_button()
+                photo = BufferedInputFile(
+                    image_buf.read(), filename="weekly_digest.png"
+                )
+                await self.bot.send_photo(
+                    user["telegram_id"],
+                    photo=photo,
+                    caption=caption,
+                    reply_markup=get_webapp_button(),
                 )
                 sent += 1
             except (TelegramForbiddenError, TelegramBadRequest):
@@ -203,9 +245,9 @@ class NotificationService:
                 )
                 failed += 1
 
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.1)  # Slightly slower for photo uploads
 
-        logger.info(f"Weekly summaries: {sent} sent, {failed} failed")
+        logger.info(f"Weekly summaries (image): {sent} sent, {failed} failed")
 
     async def send_achievement_notification(
         self, telegram_id: int, achievement_title: str, xp_reward: int
@@ -847,13 +889,18 @@ class NotificationService:
         logger.info(f"Friend activity notifications: {sent} sent, {failed} failed")
 
     async def send_comeback_messages(self):
-        """Send comeback messages to users inactive for 2+ days."""
+        """Send comeback messages to users inactive for 3+ days.
+
+        Tiers:
+        - 3-6 days: standard comeback (Uncommon card on return)
+        - 7+ days: premium comeback (Rare+ card on return)
+        """
         from database import get_inactive_users, set_comeback_card_pending
         from translations import get_text
 
         logger.info("Checking for inactive users for comeback messages...")
 
-        users = await get_inactive_users(days=2)
+        users = await get_inactive_users(days=3)
 
         if not users:
             logger.info("No inactive users for comeback messages.")
@@ -861,13 +908,31 @@ class NotificationService:
 
         sent = 0
         failed = 0
+        moscow_tz = timezone(timedelta(hours=3))
+        today = datetime.now(moscow_tz).date()
 
         for user in users:
             telegram_id = user["telegram_id"]
             first_name = user.get("first_name") or ""
             lang = user.get("language", "ru")
 
-            message = get_text("comeback_message", lang).format(name=first_name)
+            # Calculate days absent
+            last_activity = user.get("last_activity_date")
+            if last_activity:
+                last_date = (
+                    datetime.fromisoformat(str(last_activity)).date()
+                    if isinstance(last_activity, str)
+                    else last_activity
+                )
+                days_absent = (today - last_date).days
+            else:
+                days_absent = 7
+
+            # Tiered messages
+            if days_absent >= 7:
+                message = get_text("comeback_premium", lang).format(name=first_name)
+            else:
+                message = get_text("comeback_message", lang).format(name=first_name)
 
             try:
                 await self.bot.send_message(
@@ -887,3 +952,107 @@ class NotificationService:
             await asyncio.sleep(0.05)
 
         logger.info(f"Comeback messages: {sent} sent, {failed} failed")
+
+    async def send_event_notifications(self):
+        """Send notifications about event start/ending soon.
+
+        Checks the backend API for active events and notifies users:
+        - Event just started (day 1): full announcement
+        - Event ending in 2 days: reminder
+        """
+        import aiohttp
+        from database import get_user_language, get_users_with_notifications_enabled
+        from translations import get_text
+
+        logger.info("Checking for event notifications...")
+
+        if not config.BOT_SECRET:
+            return
+
+        # Fetch active event from backend
+        url = f"{config.API_URL}/events/active"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=10) as response:
+                    if response.status != 200:
+                        return
+                    data = await response.json()
+        except Exception as e:
+            logger.error(f"Failed to fetch active event: {e}")
+            return
+
+        event = data.get("data", {}).get("event")
+        if not event or not event.get("is_currently_active"):
+            return
+
+        days_remaining = event.get("days_remaining", 0)
+        # Only notify on day 1 (start) or when 2 days left
+        # Use Redis to avoid duplicate notifications
+        import redis.asyncio as redis_async
+
+        redis_client = redis_async.from_url(config.REDIS_URL)
+        event_code = event.get("code", "unknown")
+
+        try:
+            if days_remaining >= 5:
+                # Event just started — check if we already sent start notification
+                notif_key = f"bot:event_notif:start:{event_code}"
+                if await redis_client.get(notif_key):
+                    await redis_client.aclose()
+                    return
+                await redis_client.setex(notif_key, 86400 * 30, "1")
+                template = "event_started"
+            elif days_remaining == 2:
+                notif_key = f"bot:event_notif:ending:{event_code}"
+                if await redis_client.get(notif_key):
+                    await redis_client.aclose()
+                    return
+                await redis_client.setex(notif_key, 86400 * 3, "1")
+                template = "event_ending_soon"
+            else:
+                await redis_client.aclose()
+                return
+
+            await redis_client.aclose()
+        except Exception as e:
+            logger.warning(f"Redis error in event notifications: {e}")
+            return
+
+        # Send to all users
+        users = await get_users_with_notifications_enabled()
+        sent = 0
+        failed = 0
+
+        for user in users:
+            telegram_id = user["telegram_id"]
+            lang = await get_user_language(telegram_id)
+
+            if template == "event_started":
+                message = get_text(template, lang).format(
+                    emoji=event.get("emoji", ""),
+                    name=event.get("name", ""),
+                    description=event.get("description", ""),
+                    xp_multiplier=event.get("xp_multiplier", 1.0),
+                    days=days_remaining,
+                )
+            else:
+                message = get_text(template, lang).format(
+                    name=event.get("name", ""),
+                    days=days_remaining,
+                )
+
+            try:
+                await self.bot.send_message(
+                    telegram_id,
+                    message,
+                    reply_markup=get_webapp_button(),
+                )
+                sent += 1
+            except (TelegramForbiddenError, TelegramBadRequest):
+                failed += 1
+            except Exception as e:
+                logger.error(f"Failed to send event notification to {telegram_id}: {e}")
+                failed += 1
+            await asyncio.sleep(0.05)
+
+        logger.info(f"Event notifications ({template}): {sent} sent, {failed} failed")

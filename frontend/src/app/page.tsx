@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Sparkles, Play, Pause, Square, ArrowUp, X, Smile, Timer, CheckCircle2, Search, ChevronDown, ChevronRight, ChevronLeft, List, LayoutGrid, Loader2, Archive, RotateCcw, Share2 } from 'lucide-react';
+import { Plus, Sparkles, Play, ArrowUp, X, Smile, CheckCircle2, Search, ChevronDown, ChevronRight, List, LayoutGrid, Loader2, Archive, RotateCcw, Share2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
 import { MoodSelector } from '@/components/mood';
 import { TaskForm } from '@/components/tasks';
-import { DailyBonus, LevelUpModal, EnergyLimitModal, type LevelRewardItem } from '@/components/gamification';
+import { DailyBonus, LevelUpModal, EnergyLimitModal, EventBanner, type LevelRewardItem } from '@/components/gamification';
 import { StreakIndicator } from '@/components/gamification/StreakIndicator';
 import { StreakMilestoneModal } from '@/components/gamification/StreakMilestoneModal';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, CompanionXPToast, type EarnedCard, type CompanionXPData } from '@/components/cards';
@@ -21,6 +21,10 @@ import { hapticFeedback, isMobileApp } from '@/lib/telegram';
 import { MOOD_EMOJIS } from '@/domain/constants';
 import { useLanguage, TranslationKey } from '@/lib/i18n';
 import type { MoodLevel, EnergyLevel, FocusSession, TaskStatus } from '@/domain/types';
+import { formatDateForAPI, formatDateDisplay } from '@/lib/dateUtils';
+import { WeekCalendar } from '@/components/tasks/WeekCalendar';
+import { MiniTimer } from '@/components/focus/MiniTimer';
+import { TaskCardCompact } from '@/components/tasks/TaskCardCompact';
 
 // TODO: Re-enable spotlight onboarding later
 const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -49,382 +53,6 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
 ];
 
 type FilterStatus = TaskStatus | 'all' | 'archived';
-
-const formatDateForAPI = (date: Date): string => {
-  // Use local timezone, not UTC (toISOString converts to UTC which shifts dates)
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const formatDateDisplay = (date: Date, language: 'ru' | 'en', t: (key: TranslationKey) => string): string => {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (formatDateForAPI(date) === formatDateForAPI(today)) return t('today');
-  if (formatDateForAPI(date) === formatDateForAPI(tomorrow)) return t('tomorrow');
-  if (formatDateForAPI(date) === formatDateForAPI(yesterday)) return t('yesterday');
-
-  const locale = language === 'ru' ? 'ru-RU' : 'en-US';
-  return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
-};
-
-interface WeekCalendarProps {
-  selectedDate: Date;
-  onDateSelect: (date: Date) => void;
-  language: 'ru' | 'en';
-  taskCounts?: Record<string, number>;
-}
-
-const WEEK_DAYS = {
-  ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
-  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-};
-
-const MONTH_NAMES = {
-  ru: ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
-  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-};
-
-function WeekCalendar({ selectedDate, onDateSelect, language, taskCounts = {} }: WeekCalendarProps) {
-  const days = WEEK_DAYS[language];
-  const months = MONTH_NAMES[language];
-  const today = new Date();
-  const selectedDateStr = formatDateForAPI(selectedDate);
-  const todayStr = formatDateForAPI(today);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(true);
-
-  // Generate 38 days: 7 days back + today + 30 days forward
-  const allDays = useMemo(() => {
-    const result: Date[] = [];
-    for (let i = -7; i <= 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      result.push(date);
-    }
-    return result;
-  }, []);
-
-  // Find index of selected date in allDays array
-  const selectedIndex = useMemo(() => {
-    const selectedStr = formatDateForAPI(selectedDate);
-    return allDays.findIndex(d => formatDateForAPI(d) === selectedStr);
-  }, [allDays, selectedDate]);
-
-  // Default to today's index (7) if selected date not found
-  const scrollToIndex = selectedIndex >= 0 ? selectedIndex : 7;
-
-  // Update arrow visibility based on scroll position
-  const updateArrowVisibility = useCallback(() => {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    setShowLeftArrow(scrollLeft > 10);
-    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
-  }, []);
-
-  // Scroll by amount
-  const scrollBy = useCallback((direction: 'left' | 'right') => {
-    if (!scrollRef.current) return;
-    const scrollAmount = 200;
-    scrollRef.current.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth',
-    });
-  }, []);
-
-  // Initial scroll to selected date (or today if not found)
-  useEffect(() => {
-    if (scrollRef.current && !scrollRef.current.dataset.scrolled) {
-      const container = scrollRef.current.querySelector('.flex.gap-1');
-      if (container) {
-        const targetElement = container.children[scrollToIndex] as HTMLElement;
-        if (targetElement) {
-          const scrollLeft = targetElement.offsetLeft - scrollRef.current.clientWidth / 2 + targetElement.clientWidth / 2;
-          scrollRef.current.scrollLeft = Math.max(0, scrollLeft);
-          scrollRef.current.dataset.scrolled = 'true';
-          updateArrowVisibility();
-        }
-      }
-    }
-  }, [scrollToIndex, updateArrowVisibility]);
-
-  return (
-    <div className="flex items-center gap-1 pt-4">
-      {/* Left arrow */}
-      <button
-        onClick={() => scrollBy('left')}
-        disabled={!showLeftArrow}
-        className={`flex-shrink-0 w-8 h-16 flex items-center justify-center transition-opacity ${showLeftArrow ? 'opacity-100' : 'opacity-30'}`}
-      >
-        <ChevronLeft className="w-5 h-5 text-gray-400" />
-      </button>
-
-      {/* Scrollable dates */}
-      <div
-        ref={scrollRef}
-        onScroll={updateArrowVisibility}
-        className="flex-1 overflow-x-auto pb-1 overflow-y-visible"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        <div className="flex gap-1">
-        {allDays.map((date, index) => {
-          const dateStr = formatDateForAPI(date);
-          const isSelected = dateStr === selectedDateStr;
-          const isToday = dateStr === todayStr;
-          const taskCount = taskCounts[dateStr] || 0;
-          const dayOfWeek = days[date.getDay()];
-          const isPast = date < today && !isToday;
-          const isNewMonth = date.getDate() === 1 || index === 0;
-
-          return (
-            <button
-              key={dateStr}
-              onClick={() => {
-                hapticFeedback('light');
-                onDateSelect(date);
-              }}
-              className={`relative flex flex-col items-center py-2 px-3 rounded-xl transition-all flex-shrink-0 min-w-[52px] mt-2 ${
-                isSelected
-                  ? 'bg-primary-500/20 border border-primary-500/50'
-                  : isToday
-                  ? 'bg-dark-600 border border-gray-700'
-                  : isPast
-                  ? 'opacity-40 hover:opacity-60'
-                  : 'opacity-70 hover:opacity-100'
-              }`}
-            >
-              <span className="text-[10px] text-gray-400 mb-0.5">{dayOfWeek}</span>
-              <span className={`text-lg font-semibold ${isSelected ? 'text-primary-400' : isToday ? 'text-white' : 'text-gray-400'}`}>
-                {date.getDate()}
-              </span>
-              {isNewMonth && (
-                <span className="text-[9px] text-gray-500">{months[date.getMonth()]}</span>
-              )}
-              {taskCount > 0 && !isSelected && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-purple-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
-                  {taskCount > 9 ? '9+' : taskCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-        </div>
-      </div>
-
-      {/* Right arrow */}
-      <button
-        onClick={() => scrollBy('right')}
-        disabled={!showRightArrow}
-        className={`flex-shrink-0 w-8 h-16 flex items-center justify-center transition-opacity ${showRightArrow ? 'opacity-100' : 'opacity-30'}`}
-      >
-        <ChevronRight className="w-5 h-5 text-gray-400" />
-      </button>
-
-      <style jsx>{`
-        div::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// Helper to calculate elapsed seconds
-function calculateElapsedSeconds(session: FocusSession): number {
-  const startedAt = new Date(session.started_at).getTime();
-  const now = Date.now();
-  return Math.floor((now - startedAt) / 1000);
-}
-
-// Mini timer component for compact cards
-function MiniTimer({ session, onPause, onResume, onComplete, onStop }: {
-  session: FocusSession;
-  onPause: () => void;
-  onResume: () => void;
-  onComplete: () => void;
-  onStop: () => void;
-}) {
-  const initialElapsed = useMemo(() => {
-    if (session.status === 'paused') {
-      return session.elapsed_minutes * 60;
-    }
-    return calculateElapsedSeconds(session);
-  }, [session.started_at, session.status, session.elapsed_minutes]);
-
-  const [elapsed, setElapsed] = useState(initialElapsed);
-  const isPaused = session.status === 'paused';
-  const planned = session.planned_duration_minutes * 60;
-
-  useEffect(() => {
-    setElapsed(initialElapsed);
-  }, [initialElapsed]);
-
-  useEffect(() => {
-    if (isPaused) return;
-    const interval = setInterval(() => {
-      setElapsed(calculateElapsedSeconds(session));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isPaused, session.started_at]);
-
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(Math.abs(seconds) / 60);
-    const secs = Math.abs(seconds) % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
-  const isNoTimerMode = session.planned_duration_minutes >= 480;
-  const remaining = planned - elapsed;
-  const isOvertime = !isNoTimerMode && remaining < 0;
-
-  return (
-    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono ${
-        isOvertime ? 'bg-red-500/20 text-red-400' : isPaused ? 'bg-yellow-500/20 text-yellow-400' : 'bg-primary-500/20 text-primary-400'
-      }`}>
-        <Timer className="w-3 h-3" />
-        <span className="tabular-nums">
-          {isOvertime && '+'}
-          {isNoTimerMode ? formatTime(elapsed) : formatTime(isOvertime ? -remaining : remaining)}
-        </span>
-      </div>
-      <button
-        onClick={(e) => { e.stopPropagation(); (isPaused ? onResume : onPause)(); }}
-        className={`w-6 h-6 rounded flex items-center justify-center ${
-          isPaused ? 'bg-primary-500/20 text-primary-400' : 'bg-yellow-500/20 text-yellow-400'
-        }`}
-      >
-        {isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onComplete(); }}
-        className="w-6 h-6 rounded bg-green-500/20 text-green-400 flex items-center justify-center"
-      >
-        <CheckCircle2 className="w-3 h-3" />
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onStop(); }}
-        className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 flex items-center justify-center"
-      >
-        <Square className="w-3 h-3" />
-      </button>
-    </div>
-  );
-}
-
-function TaskCardCompact({
-  task,
-  onClick,
-  onStart,
-  onCompleteTask,
-  onRestore,
-  activeSession,
-  onPause,
-  onResume,
-  onComplete,
-  onStop,
-}: {
-  task: { id: number; title: string; progress_percent: number; estimated_minutes?: number; status: string; subtasks_count: number };
-  onClick: () => void;
-  onStart?: () => void;
-  onCompleteTask?: () => void;
-  onRestore?: () => void;
-  activeSession?: FocusSession;
-  onPause?: () => void;
-  onResume?: () => void;
-  onComplete?: () => void;
-  onStop?: () => void;
-}) {
-  const isCompleted = task.status === 'completed';
-  const isArchived = task.status === 'archived';
-  const hasSubtasks = task.subtasks_count > 0;
-  const hasActiveSession = !!activeSession;
-
-  return (
-    <div
-      className={`bg-dark-700/50 rounded-xl p-3 border ${hasActiveSession ? 'border-primary-500/50' : isArchived ? 'border-orange-500/30' : 'border-gray-800'} ${isCompleted || isArchived ? 'opacity-60' : ''}`}
-    >
-      <div className="flex items-center gap-3" onClick={onClick}>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          isCompleted ? 'bg-green-500/20' : isArchived ? 'bg-orange-500/20' : hasActiveSession ? 'bg-primary-500/30' : 'bg-purple-500/20'
-        }`}>
-          {isCompleted ? (
-            <span className="text-sm text-green-400">✓</span>
-          ) : isArchived ? (
-            <Archive className="w-4 h-4 text-orange-400" />
-          ) : hasActiveSession ? (
-            <div className="w-3 h-3 rounded-full bg-primary-500 animate-pulse" />
-          ) : (
-            <Sparkles className="w-4 h-4 text-purple-400" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className={`text-sm font-medium ${isCompleted ? 'text-gray-500 line-through' : 'text-white'}`}>
-            {task.title}
-          </h3>
-          {!isCompleted && hasSubtasks && !hasActiveSession && (
-            <div className="mt-1 h-1 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary-500 rounded-full transition-all"
-                style={{ width: `${task.progress_percent}%` }}
-              />
-            </div>
-          )}
-        </div>
-        {hasActiveSession && activeSession && onPause && onResume && onComplete && onStop ? (
-          <MiniTimer
-            session={activeSession}
-            onPause={onPause}
-            onResume={onResume}
-            onComplete={onComplete}
-            onStop={onStop}
-          />
-        ) : isArchived && onRestore ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRestore();
-            }}
-            className="w-8 h-8 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <RotateCcw className="w-4 h-4 text-orange-400" />
-          </button>
-        ) : !isCompleted && (
-          <div className="flex items-center gap-1.5">
-            {onCompleteTask && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCompleteTask();
-                }}
-                className="w-8 h-8 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center transition-colors flex-shrink-0"
-              >
-                <CheckCircle2 className="w-4 h-4 text-green-400" />
-              </button>
-            )}
-            {onStart && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStart();
-                }}
-                className="w-8 h-8 rounded-lg bg-primary-500 hover:bg-primary-600 flex items-center justify-center transition-colors flex-shrink-0"
-              >
-                <Play className="w-4 h-4 text-white" fill="white" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage() {
   const router = useRouter();
@@ -1124,6 +752,9 @@ export default function HomePage() {
           </button>
         </div>
       )}
+
+      {/* Active Event Banner */}
+      <EventBanner />
 
       {/* Header */}
       <div className="flex items-center justify-between">

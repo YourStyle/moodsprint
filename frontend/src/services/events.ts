@@ -4,6 +4,7 @@
 
 import type {
   ApiResponse,
+  EventLeaderboardEntry,
   EventMonster,
   SeasonalEvent,
   UserEventProgress,
@@ -56,6 +57,21 @@ export const eventsService = {
     }>
   > {
     return api.get(`/events/${eventId}/progress`);
+  },
+
+  /**
+   * Get event leaderboard.
+   */
+  async getEventLeaderboard(
+    eventId: number,
+    limit: number = 50
+  ): Promise<
+    ApiResponse<{
+      event: SeasonalEvent;
+      leaderboard: EventLeaderboardEntry[];
+    }>
+  > {
+    return api.get(`/events/${eventId}/leaderboard?limit=${limit}`);
   },
 
   /**

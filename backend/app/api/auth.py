@@ -216,19 +216,62 @@ def authenticate_telegram():
     except Exception:
         pass
 
-    # F5: Grant comeback card if pending
+    # F5: Grant comeback card if pending (tier by absence duration)
     comeback_card = None
+    companion_leveled = None
     if user and not is_new_user and user.comeback_card_pending:
         try:
+            # Determine absence duration for reward tier
+            from datetime import date
+
             from app.models.card import CardRarity
             from app.services.card_service import CardService
 
+            days_absent = (
+                (date.today() - user.last_activity_date).days
+                if user.last_activity_date
+                else 3
+            )
+            # 7+ days = RARE guaranteed, otherwise UNCOMMON
+            forced_rarity = CardRarity.RARE if days_absent >= 7 else CardRarity.UNCOMMON
             comeback_card = CardService().generate_card_for_task(
-                user.id, None, "Welcome back!", forced_rarity=CardRarity.UNCOMMON
+                user.id, None, "Welcome back!", forced_rarity=forced_rarity
             )
             user.comeback_card_pending = False
         except Exception as e:
             logger.error(f"Failed to generate comeback card: {e}")
+
+    # Level up companion card on return after absence
+    if user and not is_new_user and user.last_activity_date:
+        try:
+            from datetime import date
+
+            days_absent = (date.today() - user.last_activity_date).days
+            if days_absent >= 1:
+                from app.models.card import UserCard
+
+                companion = UserCard.query.filter_by(
+                    user_id=user.id, is_companion=True
+                ).first()
+                if companion:
+                    old_level = companion.card_level
+                    # Grant XP based on absence (capped at 5 levels worth)
+                    xp_grant = min(days_absent, 5) * 50
+                    companion.card_xp = (companion.card_xp or 0) + xp_grant
+                    # Check for level up
+                    xp_needed = companion.card_level * 100
+                    if companion.card_xp >= xp_needed:
+                        companion.card_level += 1
+                        companion.card_xp -= xp_needed
+                    if companion.card_level > old_level:
+                        companion_leveled = {
+                            "card_name": companion.name,
+                            "old_level": old_level,
+                            "new_level": companion.card_level,
+                            "xp_granted": xp_grant,
+                        }
+        except Exception as e:
+            logger.error(f"Failed to level up companion: {e}")
 
     db.session.commit()
 
@@ -249,6 +292,9 @@ def authenticate_telegram():
 
     if comeback_card:
         response_data["comeback_card"] = comeback_card.to_dict()
+
+    if companion_leveled:
+        response_data["companion_leveled"] = companion_leveled
 
     return success_response(response_data)
 

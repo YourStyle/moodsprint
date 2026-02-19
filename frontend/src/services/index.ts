@@ -15,3 +15,4 @@ export { eventsService } from './events';
 export { guildsService } from './guilds';
 export { campaignService } from './campaign';
 export { sparksService } from './sparks';
+export { cosmeticsService } from './cosmetics';

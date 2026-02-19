@@ -204,6 +204,13 @@ async def main():
         id="expire_guild_quests",
     )
 
+    # Event notifications - daily at 12:00 Moscow
+    scheduler.add_job(
+        notification_service.send_event_notifications,
+        CronTrigger(hour=12, minute=0, timezone=MOSCOW_TZ),
+        id="event_notifications",
+    )
+
     scheduler.start()
 
     # Run postpone check on startup (catches missed midnight cron after restarts)

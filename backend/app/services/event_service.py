@@ -119,7 +119,11 @@ class EventService:
     def update_progress_on_monster_defeat(
         self, user_id: int, monster_id: int, is_boss: bool
     ) -> dict[str, Any] | None:
-        """Update user's event progress when they defeat a monster."""
+        """Update user's event progress when they defeat a monster.
+
+        Awards points: 10 per monster, 50 per boss, 25 per milestone.
+        May also award an exclusive event card.
+        """
         event = self.get_active_event()
         if not event:
             return None
@@ -134,22 +138,90 @@ class EventService:
         # Update progress
         progress = self.get_or_create_user_progress(user_id, event.id)
         progress.monsters_defeated += 1
+        points = 10
         if is_boss:
             progress.bosses_defeated += 1
+            points = 50
 
         # Update event monster stats
         event_monster.times_defeated += 1
 
+        # Try to award exclusive card
+        exclusive_card = None
+        if event_monster.guaranteed_rarity:
+            exclusive_card = self._award_event_card(user_id, event, event_monster)
+            if exclusive_card:
+                progress.exclusive_cards_earned += 1
+
         # Check for milestones
         new_milestones = self._check_milestones(progress, event)
+        points += len(new_milestones) * 25
+        progress.event_points = (progress.event_points or 0) + points
 
         db.session.commit()
 
-        return {
+        result = {
             "event": event.to_dict(),
             "progress": progress.to_dict(),
             "new_milestones": new_milestones,
         }
+        if exclusive_card:
+            result["exclusive_card"] = exclusive_card.to_dict()
+        return result
+
+    def _award_event_card(
+        self, user_id: int, event: SeasonalEvent, event_monster: EventMonster
+    ) -> Any:
+        """Award an event-exclusive card from a monster defeat."""
+        try:
+            from app.models.card import CardRarity
+            from app.services.card_service import CardService
+
+            card_service = CardService()
+            rarity = event_monster.guaranteed_rarity or CardRarity.UNCOMMON.value
+
+            card = card_service.generate_card_for_task(
+                user_id,
+                task_id=None,
+                task_title=event_monster.exclusive_reward_name or event.name,
+                forced_rarity=rarity,
+            )
+            if card:
+                card.is_event_exclusive = True
+                card.event_id = event.id
+                card.is_tradeable = False  # Event exclusives can't be traded
+            return card
+        except Exception as e:
+            logger.error(f"Failed to award event card: {e}")
+            return None
+
+    def get_event_leaderboard(self, event_id: int, limit: int = 50) -> list[dict]:
+        """Get event leaderboard sorted by points."""
+        from app.models.user import User
+
+        results = (
+            db.session.query(UserEventProgress, User.first_name, User.username)
+            .join(User, UserEventProgress.user_id == User.id)
+            .filter(UserEventProgress.event_id == event_id)
+            .order_by(UserEventProgress.event_points.desc())
+            .limit(limit)
+            .all()
+        )
+
+        leaderboard = []
+        for rank, (progress, first_name, username) in enumerate(results, 1):
+            leaderboard.append(
+                {
+                    "rank": rank,
+                    "user_id": progress.user_id,
+                    "name": first_name or username or "???",
+                    "event_points": progress.event_points or 0,
+                    "monsters_defeated": progress.monsters_defeated,
+                    "bosses_defeated": progress.bosses_defeated,
+                    "exclusive_cards_earned": progress.exclusive_cards_earned,
+                }
+            )
+        return leaderboard
 
     def create_manual_event(
         self,

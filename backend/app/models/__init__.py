@@ -2,6 +2,7 @@
 
 from app.models.achievement import Achievement, UserAchievement
 from app.models.activity_log import ActivityType, UserActivityLog
+from app.models.ai_usage_log import AIUsageLog
 from app.models.campaign import (
     CampaignChapter,
     CampaignLevel,
@@ -115,4 +116,6 @@ __all__ = [
     # Shared tasks
     "SharedTask",
     "SharedTaskStatus",
+    # AI tracking
+    "AIUsageLog",
 ]

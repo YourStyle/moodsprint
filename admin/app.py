@@ -2,8 +2,11 @@
 
 import json
 import os
+import time
 from datetime import datetime
 from functools import wraps
+
+import redis
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -1072,6 +1075,790 @@ def business_metrics():
             for r in cohort_retention
         ],
     )
+
+
+@app.route("/analytics")
+@login_required
+def analytics():
+    """Advanced analytics: activation funnel, feature adoption, revenue."""
+    total_users = (
+        db.session.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
+    )
+
+    # ── Activation Funnel ──
+    funnel_onboarded = (
+        db.session.execute(
+            text(
+                "SELECT COUNT(*) FROM user_profiles WHERE onboarding_completed = true"
+            )
+        ).scalar()
+        or 0
+    )
+    funnel_first_mood = (
+        db.session.execute(
+            text("SELECT COUNT(DISTINCT user_id) FROM mood_checks")
+        ).scalar()
+        or 0
+    )
+    funnel_first_task = (
+        db.session.execute(
+            text("SELECT COUNT(DISTINCT user_id) FROM tasks")
+        ).scalar()
+        or 0
+    )
+    funnel_first_complete = (
+        db.session.execute(
+            text(
+                "SELECT COUNT(DISTINCT user_id) FROM tasks WHERE status = 'completed'"
+            )
+        ).scalar()
+        or 0
+    )
+    funnel_first_focus = (
+        db.session.execute(
+            text("SELECT COUNT(DISTINCT user_id) FROM focus_sessions")
+        ).scalar()
+        or 0
+    )
+    funnel_first_card = (
+        db.session.execute(
+            text("SELECT COUNT(DISTINCT user_id) FROM user_cards")
+        ).scalar()
+        or 0
+    )
+
+    # D1 return: users who had activity on day after signup
+    activity_cte = """
+        WITH daily_activity AS (
+            SELECT DATE(created_at) AS d, user_id FROM tasks
+            UNION
+            SELECT DATE(completed_at) AS d, user_id FROM tasks
+                WHERE completed_at IS NOT NULL
+            UNION
+            SELECT DATE(started_at) AS d, user_id FROM focus_sessions
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM mood_checks
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM battle_logs
+            UNION
+            SELECT DATE(created_at) AS d, user_id FROM sparks_transactions
+            UNION
+            SELECT DATE(defeated_at) AS d, user_id FROM defeated_monsters
+        )
+    """
+
+    funnel_d1_return = (
+        db.session.execute(
+            text(
+                activity_cte
+                + """
+        SELECT COUNT(DISTINCT u.id)
+        FROM users u
+        JOIN daily_activity a ON a.user_id = u.id
+            AND a.d = DATE(u.created_at) + 1
+        WHERE DATE(u.created_at) < CURRENT_DATE
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    funnel = [
+        {"step": "Registered", "count": total_users},
+        {"step": "Onboarded", "count": funnel_onboarded},
+        {"step": "First Mood Check", "count": funnel_first_mood},
+        {"step": "Created Task", "count": funnel_first_task},
+        {"step": "Completed Task", "count": funnel_first_complete},
+        {"step": "First Focus", "count": funnel_first_focus},
+        {"step": "Earned Card", "count": funnel_first_card},
+        {"step": "D1 Return", "count": funnel_d1_return},
+    ]
+
+    # ── Feature Adoption ──
+    features_query = db.session.execute(
+        text(
+            """
+        SELECT
+            (SELECT COUNT(DISTINCT user_id) FROM tasks) as tasks,
+            (SELECT COUNT(DISTINCT user_id) FROM mood_checks) as mood,
+            (SELECT COUNT(DISTINCT user_id) FROM focus_sessions) as focus,
+            (SELECT COUNT(DISTINCT user_id) FROM user_cards) as cards,
+            (SELECT COUNT(DISTINCT user_id) FROM battle_logs) as arena,
+            (SELECT COUNT(DISTINCT user_id) FROM campaign_level_completions) as campaign,
+            (SELECT COUNT(DISTINCT user_id) FROM daily_quests) as quests,
+            (SELECT COUNT(DISTINCT user_id) FROM defeated_monsters) as monsters,
+            (SELECT COUNT(DISTINCT user_id) FROM merge_logs) as merges,
+            (SELECT COUNT(DISTINCT user_id) FROM friendships
+                WHERE user_id IS NOT NULL) as friends_u,
+            (SELECT COUNT(DISTINCT friend_id) FROM friendships
+                WHERE friend_id IS NOT NULL) as friends_f,
+            (SELECT COUNT(DISTINCT user_id) FROM guild_members) as guilds,
+            (SELECT COUNT(DISTINCT seller_id) FROM market_listings) as marketplace_sellers,
+            (SELECT COUNT(DISTINCT buyer_id) FROM market_listings
+                WHERE buyer_id IS NOT NULL) as marketplace_buyers,
+            (SELECT COUNT(DISTINCT user_id) FROM sparks_transactions
+                WHERE type IN ('stars_purchase', 'ton_deposit')) as paying_users,
+            (SELECT COUNT(DISTINCT user_id) FROM shared_tasks) as shared_tasks,
+            (SELECT COUNT(DISTINCT user_id) FROM user_achievements) as achievements
+    """
+        )
+    ).fetchone()
+
+    friends_total = len(
+        set()  # dedup
+    )
+    # Combine friend initiators + acceptors
+    friends_users = (
+        db.session.execute(
+            text(
+                """
+        SELECT COUNT(DISTINCT u) FROM (
+            SELECT user_id AS u FROM friendships
+            UNION
+            SELECT friend_id AS u FROM friendships
+        ) t
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    adoption = [
+        {"feature": "Tasks", "users": features_query[0], "icon": "clipboard"},
+        {"feature": "Mood Check", "users": features_query[1], "icon": "heart"},
+        {"feature": "Focus Timer", "users": features_query[2], "icon": "clock"},
+        {"feature": "Cards", "users": features_query[3], "icon": "cards"},
+        {"feature": "Arena (Battles)", "users": features_query[4], "icon": "swords"},
+        {"feature": "Campaign", "users": features_query[5], "icon": "map"},
+        {"feature": "Daily Quests", "users": features_query[6], "icon": "scroll"},
+        {"feature": "Monster Kills", "users": features_query[7], "icon": "skull"},
+        {"feature": "Card Merge", "users": features_query[8], "icon": "merge"},
+        {"feature": "Friends", "users": friends_users, "icon": "users"},
+        {"feature": "Guilds", "users": features_query[11], "icon": "shield"},
+        {"feature": "Marketplace (Sell)", "users": features_query[12], "icon": "store"},
+        {"feature": "Marketplace (Buy)", "users": features_query[13], "icon": "cart"},
+        {"feature": "Shared Tasks", "users": features_query[15], "icon": "share"},
+        {"feature": "Achievements", "users": features_query[16], "icon": "trophy"},
+        {"feature": "Paying Users", "users": features_query[14], "icon": "star"},
+    ]
+    # Sort by adoption desc
+    adoption.sort(key=lambda x: x["users"], reverse=True)
+
+    # ── Revenue Dashboard ──
+    # Total sparks sold via Stars
+    total_sparks_sold = (
+        db.session.execute(
+            text(
+                """
+        SELECT COALESCE(SUM(amount), 0)
+        FROM sparks_transactions
+        WHERE type = 'stars_purchase'
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # Total sparks from TON deposits
+    total_sparks_ton = (
+        db.session.execute(
+            text(
+                """
+        SELECT COALESCE(SUM(sparks_credited), 0)
+        FROM ton_deposits
+        WHERE status = 'processed'
+    """
+            )
+        ).scalar()
+        or 0
+    )
+
+    # Paying users count
+    paying_users_count = features_query[14]
+
+    # Conversion rate
+    conversion_rate = (
+        round(paying_users_count / total_users * 100, 2) if total_users > 0 else 0
+    )
+
+    # Stars transactions by type
+    stars_by_type = db.session.execute(
+        text(
+            """
+        SELECT type, COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total
+        FROM stars_transactions
+        GROUP BY type
+        ORDER BY total DESC
+    """
+        )
+    ).fetchall()
+
+    # Marketplace stats
+    marketplace_stats = db.session.execute(
+        text(
+            """
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'active') as active_listings,
+            COUNT(*) FILTER (WHERE status = 'sold') as sold_listings,
+            COALESCE(SUM(price_sparks) FILTER (WHERE status = 'sold'), 0) as total_volume_sparks,
+            COALESCE(SUM(price_stars) FILTER (WHERE status = 'sold'), 0) as total_volume_stars,
+            COUNT(DISTINCT seller_id) as unique_sellers,
+            COUNT(DISTINCT buyer_id) FILTER (WHERE buyer_id IS NOT NULL) as unique_buyers
+        FROM market_listings
+    """
+        )
+    ).fetchone()
+
+    # Revenue by day (last 30 days)
+    revenue_daily = db.session.execute(
+        text(
+            """
+        SELECT
+            d.date,
+            COALESCE(s.sparks_purchased, 0) as sparks_purchased,
+            COALESCE(s.purchase_count, 0) as purchase_count,
+            COALESCE(m.market_volume, 0) as market_volume,
+            COALESCE(m.market_sales, 0) as market_sales
+        FROM generate_series(
+            CURRENT_DATE - INTERVAL '29 days',
+            CURRENT_DATE,
+            '1 day'::interval
+        ) as d(date)
+        LEFT JOIN (
+            SELECT DATE(created_at) as date,
+                   SUM(amount) as sparks_purchased,
+                   COUNT(*) as purchase_count
+            FROM sparks_transactions
+            WHERE type IN ('stars_purchase', 'ton_deposit')
+            GROUP BY DATE(created_at)
+        ) s ON d.date = s.date
+        LEFT JOIN (
+            SELECT DATE(sold_at) as date,
+                   SUM(price_sparks) as market_volume,
+                   COUNT(*) as market_sales
+            FROM market_listings
+            WHERE status = 'sold'
+            GROUP BY DATE(sold_at)
+        ) m ON d.date = m.date
+        ORDER BY d.date
+    """
+        )
+    ).fetchall()
+
+    # Pack distribution (which packs are most popular)
+    pack_distribution = db.session.execute(
+        text(
+            """
+        SELECT
+            COALESCE(description, 'unknown') as pack_name,
+            COUNT(*) as purchases,
+            SUM(amount) as total_sparks
+        FROM sparks_transactions
+        WHERE type = 'stars_purchase'
+        GROUP BY description
+        ORDER BY purchases DESC
+    """
+        )
+    ).fetchall()
+
+    # Sparks economy balance
+    sparks_economy = db.session.execute(
+        text(
+            """
+        SELECT
+            type,
+            COUNT(*) as transactions,
+            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as inflow,
+            SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END) as outflow
+        FROM sparks_transactions
+        GROUP BY type
+        ORDER BY transactions DESC
+    """
+        )
+    ).fetchall()
+
+    return render_template(
+        "analytics.html",
+        total_users=total_users,
+        funnel=funnel,
+        adoption=adoption,
+        total_sparks_sold=total_sparks_sold,
+        total_sparks_ton=total_sparks_ton,
+        paying_users_count=paying_users_count,
+        conversion_rate=conversion_rate,
+        stars_by_type=[
+            {"type": r[0], "count": r[1], "total": r[2]}
+            for r in stars_by_type
+        ],
+        marketplace_stats={
+            "active": marketplace_stats[0],
+            "sold": marketplace_stats[1],
+            "volume_sparks": marketplace_stats[2],
+            "volume_stars": marketplace_stats[3],
+            "sellers": marketplace_stats[4],
+            "buyers": marketplace_stats[5],
+        },
+        revenue_daily=[
+            {
+                "date": str(r[0]),
+                "sparks_purchased": r[1],
+                "purchase_count": r[2],
+                "market_volume": r[3],
+                "market_sales": r[4],
+            }
+            for r in revenue_daily
+        ],
+        pack_distribution=[
+            {
+                "name": r[0],
+                "purchases": r[1],
+                "sparks": r[2],
+            }
+            for r in pack_distribution
+        ],
+        sparks_economy=[
+            {
+                "type": r[0],
+                "transactions": r[1],
+                "inflow": r[2],
+                "outflow": r[3],
+            }
+            for r in sparks_economy
+        ],
+    )
+
+
+# ── Redis client for AI cache admin ──
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+AI_CACHE_PREFIX = "ai_cache:decompose:"
+AI_CACHE_STATS_KEY = "ai_cache:stats"
+
+
+def get_redis():
+    """Get Redis client for admin."""
+    return redis.from_url(REDIS_URL, decode_responses=True)
+
+
+@app.route("/ai-cache")
+@login_required
+def ai_cache():
+    """AI cache monitoring and management."""
+    try:
+        r = get_redis()
+        r.ping()
+        redis_available = True
+    except Exception:
+        redis_available = False
+        return render_template(
+            "ai_cache.html",
+            redis_available=False,
+            entries=[],
+            stats={},
+            ttl_setting=86400,
+        )
+
+    # Get cache stats
+    stats = r.hgetall(AI_CACHE_STATS_KEY)
+    hits = int(stats.get("hits", 0))
+    misses = int(stats.get("misses", 0))
+    stored = int(stats.get("stored", 0))
+    total = hits + misses
+    hit_rate = round(hits / total * 100, 1) if total > 0 else 0
+
+    # Scan for all cached entries
+    entries = []
+    cursor = 0
+    while True:
+        cursor, keys = r.scan(cursor, match=f"{AI_CACHE_PREFIX}*", count=100)
+        for key in keys:
+            raw = r.get(key)
+            if raw:
+                try:
+                    entry = json.loads(raw)
+                    ttl = r.ttl(key)
+                    entries.append({
+                        "key": key,
+                        "title": entry.get("title", "?"),
+                        "strategy": entry.get("strategy", "?"),
+                        "mood": entry.get("mood"),
+                        "energy": entry.get("energy"),
+                        "hits": entry.get("hits", 0),
+                        "created_at": datetime.fromtimestamp(
+                            entry.get("created_at", 0)
+                        ).strftime("%Y-%m-%d %H:%M"),
+                        "last_hit_at": (
+                            datetime.fromtimestamp(entry["last_hit_at"]).strftime(
+                                "%Y-%m-%d %H:%M"
+                            )
+                            if entry.get("last_hit_at")
+                            else "-"
+                        ),
+                        "ttl": ttl,
+                        "subtasks_count": len(
+                            entry.get("result", {}).get("subtasks", [])
+                        ),
+                        "no_new_steps": entry.get("result", {}).get(
+                            "no_new_steps", False
+                        ),
+                    })
+                except (json.JSONDecodeError, KeyError):
+                    pass
+        if cursor == 0:
+            break
+
+    # Sort by hits desc
+    entries.sort(key=lambda x: x["hits"], reverse=True)
+
+    return render_template(
+        "ai_cache.html",
+        redis_available=True,
+        entries=entries,
+        stats={
+            "hits": hits,
+            "misses": misses,
+            "stored": stored,
+            "hit_rate": hit_rate,
+            "total_cached": len(entries),
+        },
+        ttl_setting=86400,
+    )
+
+
+@app.route("/ai-cache/invalidate", methods=["POST"])
+@login_required
+def ai_cache_invalidate():
+    """Invalidate a specific cache entry."""
+    key = request.form.get("key")
+    if key and key.startswith(AI_CACHE_PREFIX):
+        try:
+            r = get_redis()
+            r.delete(key)
+        except Exception:
+            pass
+    return redirect(url_for("ai_cache"))
+
+
+@app.route("/ai-cache/clear-all", methods=["POST"])
+@login_required
+def ai_cache_clear_all():
+    """Clear all AI cache entries."""
+    try:
+        r = get_redis()
+        cursor = 0
+        while True:
+            cursor, keys = r.scan(cursor, match=f"{AI_CACHE_PREFIX}*", count=100)
+            if keys:
+                r.delete(*keys)
+            if cursor == 0:
+                break
+        # Reset stats
+        r.delete(AI_CACHE_STATS_KEY)
+    except Exception:
+        pass
+    return redirect(url_for("ai_cache"))
+
+
+@app.route("/ai-cache/update-ttl", methods=["POST"])
+@login_required
+def ai_cache_update_ttl():
+    """Update default TTL for new cache entries (stored as Redis key)."""
+    ttl_hours = int(request.form.get("ttl_hours", 24))
+    ttl_seconds = ttl_hours * 3600
+    try:
+        r = get_redis()
+        r.set("ai_cache:config:ttl", ttl_seconds)
+    except Exception:
+        pass
+    return redirect(url_for("ai_cache"))
+
+
+# ── AI Costs Dashboard ──
+
+
+@app.route("/ai-costs")
+@login_required
+def ai_costs():
+    """AI usage costs dashboard."""
+    from datetime import timedelta
+
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=now.weekday())
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Check if table exists
+    try:
+        db.session.execute(text("SELECT 1 FROM ai_usage_log LIMIT 1"))
+    except Exception:
+        db.session.rollback()
+        return render_template(
+            "ai_costs.html",
+            table_exists=False,
+            summary={},
+            by_endpoint=[],
+            by_model=[],
+            top_users=[],
+        )
+
+    # Summary stats: today / week / month
+    summary_query = text("""
+        SELECT
+            COALESCE(SUM(CASE WHEN created_at >= :today THEN 1 ELSE 0 END), 0) AS calls_today,
+            COALESCE(SUM(CASE WHEN created_at >= :today THEN total_tokens ELSE 0 END), 0) AS tokens_today,
+            COALESCE(SUM(CASE WHEN created_at >= :today THEN estimated_cost_usd ELSE 0 END), 0) AS cost_today,
+            COALESCE(SUM(CASE WHEN created_at >= :week THEN 1 ELSE 0 END), 0) AS calls_week,
+            COALESCE(SUM(CASE WHEN created_at >= :week THEN total_tokens ELSE 0 END), 0) AS tokens_week,
+            COALESCE(SUM(CASE WHEN created_at >= :week THEN estimated_cost_usd ELSE 0 END), 0) AS cost_week,
+            COALESCE(SUM(CASE WHEN created_at >= :month THEN 1 ELSE 0 END), 0) AS calls_month,
+            COALESCE(SUM(CASE WHEN created_at >= :month THEN total_tokens ELSE 0 END), 0) AS tokens_month,
+            COALESCE(SUM(CASE WHEN created_at >= :month THEN estimated_cost_usd ELSE 0 END), 0) AS cost_month,
+            COUNT(*) AS calls_total,
+            COALESCE(SUM(total_tokens), 0) AS tokens_total,
+            COALESCE(SUM(estimated_cost_usd), 0) AS cost_total
+        FROM ai_usage_log
+    """)
+    row = db.session.execute(
+        summary_query,
+        {"today": today_start, "week": week_start, "month": month_start},
+    ).fetchone()
+
+    summary = {
+        "calls_today": row[0],
+        "tokens_today": row[1],
+        "cost_today": round(row[2], 4),
+        "calls_week": row[3],
+        "tokens_week": row[4],
+        "cost_week": round(row[5], 4),
+        "calls_month": row[6],
+        "tokens_month": row[7],
+        "cost_month": round(row[8], 4),
+        "calls_total": row[9],
+        "tokens_total": row[10],
+        "cost_total": round(row[11], 4),
+    }
+
+    # Breakdown by endpoint
+    endpoint_query = text("""
+        SELECT
+            endpoint,
+            COUNT(*) AS call_count,
+            COALESCE(AVG(total_tokens), 0) AS avg_tokens,
+            COALESCE(SUM(total_tokens), 0) AS total_tokens,
+            COALESCE(SUM(estimated_cost_usd), 0) AS total_cost,
+            COALESCE(AVG(latency_ms), 0) AS avg_latency
+        FROM ai_usage_log
+        GROUP BY endpoint
+        ORDER BY total_cost DESC
+    """)
+    by_endpoint = []
+    for r in db.session.execute(endpoint_query).fetchall():
+        by_endpoint.append({
+            "endpoint": r[0],
+            "call_count": r[1],
+            "avg_tokens": int(r[2]),
+            "total_tokens": r[3],
+            "total_cost": round(r[4], 4),
+            "avg_latency": int(r[5]),
+        })
+
+    # Breakdown by model
+    model_query = text("""
+        SELECT
+            model,
+            COUNT(*) AS call_count,
+            COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
+            COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
+            COALESCE(SUM(total_tokens), 0) AS total_tokens,
+            COALESCE(SUM(estimated_cost_usd), 0) AS total_cost
+        FROM ai_usage_log
+        GROUP BY model
+        ORDER BY total_cost DESC
+    """)
+    by_model = []
+    for r in db.session.execute(model_query).fetchall():
+        by_model.append({
+            "model": r[0],
+            "call_count": r[1],
+            "prompt_tokens": r[2],
+            "completion_tokens": r[3],
+            "total_tokens": r[4],
+            "total_cost": round(r[5], 4),
+        })
+
+    # Top 10 users by cost
+    users_query = text("""
+        SELECT
+            a.user_id,
+            u.username,
+            u.first_name,
+            COUNT(*) AS call_count,
+            COALESCE(SUM(a.total_tokens), 0) AS total_tokens,
+            COALESCE(SUM(a.estimated_cost_usd), 0) AS total_cost
+        FROM ai_usage_log a
+        LEFT JOIN users u ON u.id = a.user_id
+        WHERE a.user_id IS NOT NULL
+        GROUP BY a.user_id, u.username, u.first_name
+        ORDER BY total_cost DESC
+        LIMIT 10
+    """)
+    top_users = []
+    for r in db.session.execute(users_query).fetchall():
+        top_users.append({
+            "user_id": r[0],
+            "username": r[1],
+            "first_name": r[2],
+            "call_count": r[3],
+            "total_tokens": r[4],
+            "total_cost": round(r[5], 4),
+        })
+
+    return render_template(
+        "ai_costs.html",
+        table_exists=True,
+        summary=summary,
+        by_endpoint=by_endpoint,
+        by_model=by_model,
+        top_users=top_users,
+    )
+
+
+# ── Decomposition Templates ──
+
+
+@app.route("/templates")
+@login_required
+def decomposition_templates():
+    """Decomposition template library CRUD."""
+    templates = db.session.execute(
+        text(
+            """
+        SELECT id, title_pattern, category, strategy,
+               mood_min, mood_max, energy_min, energy_max,
+               no_new_steps, usage_count, is_active, created_at,
+               subtasks
+        FROM decomposition_templates
+        ORDER BY usage_count DESC, created_at DESC
+    """
+        )
+    ).fetchall()
+
+    # Top repeated tasks that could become templates
+    top_tasks = db.session.execute(
+        text(
+            """
+        SELECT LOWER(TRIM(title)) as norm_title, COUNT(*) as cnt
+        FROM tasks
+        WHERE status != 'deleted'
+        GROUP BY LOWER(TRIM(title))
+        HAVING COUNT(*) >= 3
+        ORDER BY cnt DESC
+        LIMIT 20
+    """
+        )
+    ).fetchall()
+
+    return render_template(
+        "templates.html",
+        templates=[
+            {
+                "id": r[0],
+                "title_pattern": r[1],
+                "category": r[2],
+                "strategy": r[3],
+                "mood_min": r[4],
+                "mood_max": r[5],
+                "energy_min": r[6],
+                "energy_max": r[7],
+                "no_new_steps": r[8],
+                "usage_count": r[9],
+                "is_active": r[10],
+                "created_at": r[11].strftime("%Y-%m-%d") if r[11] else "-",
+                "subtasks": r[12] or [],
+            }
+            for r in templates
+        ],
+        top_tasks=[
+            {"title": r[0], "count": r[1]} for r in top_tasks
+        ],
+    )
+
+
+@app.route("/templates/create", methods=["POST"])
+@login_required
+def create_template():
+    """Create a new decomposition template."""
+    title_pattern = request.form.get("title_pattern", "").strip()
+    category = request.form.get("category", "").strip() or None
+    strategy = request.form.get("strategy", "standard")
+    no_new_steps = request.form.get("no_new_steps") == "on"
+    mood_min = request.form.get("mood_min") or None
+    mood_max = request.form.get("mood_max") or None
+    energy_min = request.form.get("energy_min") or None
+    energy_max = request.form.get("energy_max") or None
+
+    # Parse subtasks from form
+    subtasks = []
+    if not no_new_steps:
+        titles = request.form.getlist("step_title")
+        minutes = request.form.getlist("step_minutes")
+        for i, (t, m) in enumerate(zip(titles, minutes)):
+            if t.strip():
+                subtasks.append({
+                    "title": t.strip(),
+                    "estimated_minutes": int(m) if m else 15,
+                    "order": i + 1,
+                })
+
+    db.session.execute(
+        text(
+            """
+        INSERT INTO decomposition_templates
+            (title_pattern, category, strategy, mood_min, mood_max,
+             energy_min, energy_max, subtasks, no_new_steps)
+        VALUES (:title_pattern, :category, :strategy, :mood_min, :mood_max,
+                :energy_min, :energy_max, :subtasks, :no_new_steps)
+    """
+        ),
+        {
+            "title_pattern": title_pattern,
+            "category": category,
+            "strategy": strategy,
+            "mood_min": int(mood_min) if mood_min else None,
+            "mood_max": int(mood_max) if mood_max else None,
+            "energy_min": int(energy_min) if energy_min else None,
+            "energy_max": int(energy_max) if energy_max else None,
+            "subtasks": json.dumps(subtasks),
+            "no_new_steps": no_new_steps,
+        },
+    )
+    db.session.commit()
+    return redirect(url_for("decomposition_templates"))
+
+
+@app.route("/templates/<int:template_id>/toggle", methods=["POST"])
+@login_required
+def toggle_template(template_id):
+    """Toggle template active/inactive."""
+    db.session.execute(
+        text(
+            "UPDATE decomposition_templates SET is_active = NOT is_active WHERE id = :id"
+        ),
+        {"id": template_id},
+    )
+    db.session.commit()
+    return redirect(url_for("decomposition_templates"))
+
+
+@app.route("/templates/<int:template_id>/delete", methods=["POST"])
+@login_required
+def delete_template(template_id):
+    """Delete a template."""
+    db.session.execute(
+        text("DELETE FROM decomposition_templates WHERE id = :id"),
+        {"id": template_id},
+    )
+    db.session.commit()
+    return redirect(url_for("decomposition_templates"))
 
 
 @app.route("/users/<int:user_id>/give-card", methods=["POST"])
@@ -2920,7 +3707,7 @@ def generate_chapter_content():
             client = openai.OpenAI(api_key=openai_key)
 
         response = client.responses.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             input=prompt,
         )
 
@@ -3395,7 +4182,7 @@ def generate_level():
             client = openai.OpenAI(api_key=openai_key)
 
         response = client.responses.create(
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             input=prompt,
         )
 

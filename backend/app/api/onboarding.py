@@ -62,7 +62,7 @@ def complete_onboarding():
 
     # Analyze with GPT
     analyzer = ProfileAnalyzer()
-    analysis = analyzer.analyze_onboarding(data)
+    analysis = analyzer.analyze_onboarding(data, user_id=user_id)
 
     # Update profile
     profile.productivity_type = analysis.get("productivity_type")

@@ -20,6 +20,7 @@ class PriorityAdvisor:
         task_description: str | None,
         current_priority: str,
         postponed_count: int,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Determine if task priority should be increased.
@@ -41,7 +42,11 @@ class PriorityAdvisor:
         if self.client:
             try:
                 return self._ai_advise(
-                    task_title, task_description, current_priority, postponed_count
+                    task_title,
+                    task_description,
+                    current_priority,
+                    postponed_count,
+                    user_id=user_id,
                 )
             except Exception as e:
                 current_app.logger.error(f"AI priority advisor failed: {e}")
@@ -55,6 +60,7 @@ class PriorityAdvisor:
         task_description: str | None,
         current_priority: str,
         postponed_count: int,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Use OpenAI to advise on priority."""
         priority_ru = {
@@ -86,8 +92,13 @@ class PriorityAdvisor:
 """
 
         current_app.logger.info(f"AI advising priority for task: {task_title}")
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        from app.utils.ai_tracker import tracked_openai_call
+
+        response = tracked_openai_call(
+            self.client,
+            user_id=user_id,
+            endpoint="priority_advisor",
+            model="gpt-5-nano",
             messages=[
                 {
                     "role": "system",

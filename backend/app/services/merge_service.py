@@ -7,7 +7,6 @@ from typing import Any
 from app import db
 from app.models.card import CardRarity, MergeLog, UserCard
 from app.services.card_service import CardService
-from app.utils import get_lang
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +145,9 @@ class MergeService:
             "can_merge": True,
         }
 
-    def merge_cards(self, user_id: int, card1_id: int, card2_id: int) -> dict[str, Any]:
+    def merge_cards(
+        self, user_id: int, card1_id: int, card2_id: int, lang: str = "en"
+    ) -> dict[str, Any]:
         """
         Merge two cards into a new random card.
 
@@ -244,7 +245,6 @@ class MergeService:
         result_rarity_order = RARITY_ORDER[result_rarity]
         rarity_upgrade = result_rarity_order > max_input_rarity
 
-        lang = get_lang()
         return {
             "success": True,
             "new_card": new_card.to_dict(lang),

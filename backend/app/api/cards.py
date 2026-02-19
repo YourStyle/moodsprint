@@ -19,6 +19,7 @@ from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.services.card_service import CardService
 from app.utils import get_lang, not_found, success_response, validation_error
+from app.utils.auth import admin_required
 from app.utils.notifications import notify_trade_received
 
 # Healing requirements: tasks needed per heal
@@ -159,7 +160,9 @@ def add_to_deck():
     max_size = get_max_deck_size(user.level if user else 1)
 
     service = CardService()
-    result = service.add_to_deck(user_id, card_id, max_deck_size=max_size)
+    result = service.add_to_deck(
+        user_id, card_id, max_deck_size=max_size, lang=get_lang()
+    )
 
     if not result["success"]:
         error_messages = {
@@ -286,7 +289,7 @@ def heal_card(card_id: int):
             )
 
     service = CardService()
-    result = service.heal_card(card_id, user_id)
+    result = service.heal_card(card_id, user_id, lang=get_lang())
 
     if not result["success"]:
         error_messages = {
@@ -1040,7 +1043,7 @@ def add_card_xp(card_id: int):
         return validation_error({"amount": "Amount must be positive"})
 
     service = CardService()
-    result = service.add_card_xp(card_id, user_id, amount)
+    result = service.add_card_xp(card_id, user_id, amount, lang=get_lang())
 
     if not result["success"]:
         return validation_error({"error": result["error"]})
@@ -1058,7 +1061,7 @@ def set_companion(card_id: int):
     user_id = int(get_jwt_identity())
 
     service = CardService()
-    result = service.set_companion(user_id, card_id)
+    result = service.set_companion(user_id, card_id, lang=get_lang())
 
     if not result["success"]:
         error_messages = {
@@ -1121,7 +1124,7 @@ def set_showcase(card_id: int):
         return validation_error({"slot": "Slot must be 1, 2, or 3"})
 
     service = CardService()
-    result = service.set_showcase(user_id, card_id, slot)
+    result = service.set_showcase(user_id, card_id, slot, lang=get_lang())
 
     if not result["success"]:
         return validation_error({"error": result["error"]})
@@ -1136,7 +1139,7 @@ def get_showcase():
     user_id = int(get_jwt_identity())
 
     service = CardService()
-    slots = service.get_showcase_cards(user_id)
+    slots = service.get_showcase_cards(user_id, lang=get_lang())
 
     return success_response({"slots": slots})
 
@@ -1212,9 +1215,8 @@ def get_friend_profile(friend_id: int):
     deck_power = sum(c.hp + c.attack for c in deck)
 
     # Get showcase
-    showcase = service.get_showcase_cards(friend_id)
-
     lang = get_lang()
+    showcase = service.get_showcase_cards(friend_id, lang=lang)
     return success_response(
         {
             "user_id": friend_id,
@@ -1291,13 +1293,12 @@ def get_friends_ranking():
 
 
 @api_bp.route("/admin/remove-friend", methods=["POST"])
-@jwt_required()
+@admin_required
 def admin_remove_friend():
     """
-    Remove a friendship between two users (admin only for testing).
+    Remove a friendship between two users (admin only).
     Required JSON: {"user_id": 1, "friend_id": 2}
     """
-    get_jwt_identity()  # Verify authenticated
     data = request.get_json()
 
     user_id = data.get("user_id")
@@ -1306,7 +1307,6 @@ def admin_remove_friend():
     if not user_id or not friend_id:
         return validation_error("user_id и friend_id обязательны")
 
-    # For testing: allow any authenticated user (in production, add admin check)
     service = CardService()
     result = service.remove_friend(user_id, friend_id)
 

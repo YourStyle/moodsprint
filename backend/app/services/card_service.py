@@ -541,7 +541,7 @@ class CardService:
     ]
 
     def determine_task_difficulty(
-        self, task_title: str, task_description: str = ""
+        self, task_title: str, task_description: str = "", user_id: int | None = None
     ) -> str:
         """
         Use AI to determine task difficulty based on title and description.
@@ -583,8 +583,13 @@ class CardService:
 
 Ответь ТОЛЬКО одним словом: easy, medium, hard или very_hard"""
 
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+            from app.utils.ai_tracker import tracked_openai_call
+
+            response = tracked_openai_call(
+                self.openai_client,
+                user_id=user_id,
+                endpoint="determine_difficulty",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",
@@ -784,7 +789,7 @@ class CardService:
 
         # Generate name and description
         name, description = self._generate_card_text(
-            genre, genre_info, rarity, task_title, user_level
+            genre, genre_info, rarity, task_title, user_level, user_id=user_id
         )
         level_mult = self._get_level_multiplier(user_level)
 
@@ -947,6 +952,7 @@ class CardService:
         rarity: CardRarity,
         task_title: str,
         user_level: int = 1,
+        user_id: int | None = None,
     ) -> tuple[str, str]:
         """Generate card name and description using AI or fallback."""
         # For common/uncommon - use archetypes directly (faster, no API call)
@@ -992,8 +998,13 @@ class CardService:
 ИМЯ: [пародийное имя, 1-3 слова]
 ОПИСАНИЕ: [описание с узнаваемыми деталями, до 80 символов]"""
 
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+            from app.utils.ai_tracker import tracked_openai_call
+
+            response = tracked_openai_call(
+                self.openai_client,
+                user_id=user_id,
+                endpoint="generate_card_text",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",
@@ -1108,7 +1119,9 @@ class CardService:
             user_id=user_id, is_in_deck=True, is_destroyed=False
         ).all()
 
-    def add_to_deck(self, user_id: int, card_id: int, max_deck_size: int = 5) -> dict:
+    def add_to_deck(
+        self, user_id: int, card_id: int, max_deck_size: int = 5, lang: str = "en"
+    ) -> dict:
         """Add a card to user's battle deck."""
         card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
 
@@ -1129,9 +1142,7 @@ class CardService:
         card.is_in_deck = True
         db.session.commit()
 
-        from app.utils import get_lang
-
-        return {"success": True, "card": card.to_dict(get_lang())}
+        return {"success": True, "card": card.to_dict(lang)}
 
     def remove_from_deck(self, user_id: int, card_id: int) -> dict:
         """Remove a card from user's battle deck."""
@@ -1148,7 +1159,7 @@ class CardService:
 
         return {"success": True}
 
-    def heal_card(self, card_id: int, user_id: int) -> dict:
+    def heal_card(self, card_id: int, user_id: int, lang: str = "en") -> dict:
         """Heal a card to full HP."""
         card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
 
@@ -1161,9 +1172,7 @@ class CardService:
         card.heal()
         db.session.commit()
 
-        from app.utils import get_lang
-
-        return {"success": True, "card": card.to_dict(get_lang())}
+        return {"success": True, "card": card.to_dict(lang)}
 
     def heal_all_cards(self, user_id: int) -> int:
         """Heal all user's cards. Returns number of cards healed."""
@@ -1178,233 +1187,69 @@ class CardService:
         db.session.commit()
         return healed
 
-    # Friend system methods
+    # Delegated to FriendService — kept for backward compatibility
     def send_friend_request(self, user_id: int, friend_id: int) -> dict:
-        """Send a friend request."""
-        if user_id == friend_id:
-            return {"success": False, "error": "cannot_friend_self"}
+        from app.services.friend_service import FriendService
 
-        # Check if friendship already exists
-        existing = Friendship.query.filter(
-            ((Friendship.user_id == user_id) & (Friendship.friend_id == friend_id))
-            | ((Friendship.user_id == friend_id) & (Friendship.friend_id == user_id))
-        ).first()
-
-        if existing:
-            if existing.status == "accepted":
-                return {"success": False, "error": "already_friends"}
-            elif existing.status == "pending":
-                return {"success": False, "error": "request_pending"}
-            elif existing.status == "blocked":
-                return {"success": False, "error": "blocked"}
-
-        friendship = Friendship(user_id=user_id, friend_id=friend_id, status="pending")
-        db.session.add(friendship)
-        db.session.commit()
-
-        return {"success": True, "friendship": friendship.to_dict()}
+        return FriendService().send_friend_request(user_id, friend_id)
 
     def accept_friend_request(self, user_id: int, request_id: int) -> dict:
-        """Accept a friend request."""
-        from datetime import datetime
+        from app.services.friend_service import FriendService
 
-        friendship = Friendship.query.filter_by(
-            id=request_id, friend_id=user_id, status="pending"
-        ).first()
-
-        if not friendship:
-            return {"success": False, "error": "request_not_found"}
-
-        friendship.status = "accepted"
-        friendship.accepted_at = datetime.utcnow()
-        db.session.commit()
-
-        return {"success": True, "friendship": friendship.to_dict()}
+        return FriendService().accept_friend_request(user_id, request_id)
 
     def get_friends(self, user_id: int) -> list[dict]:
-        """Get user's friends list."""
-        friendships = Friendship.query.filter(
-            ((Friendship.user_id == user_id) | (Friendship.friend_id == user_id))
-            & (Friendship.status == "accepted")
-        ).all()
+        from app.services.friend_service import FriendService
 
-        friends = []
-        for f in friendships:
-            friend_id = f.friend_id if f.user_id == user_id else f.user_id
-            friends.append(
-                {
-                    "friendship_id": f.id,
-                    "friend_id": friend_id,
-                    "since": f.accepted_at.isoformat() if f.accepted_at else None,
-                }
-            )
-
-        return friends
+        return FriendService().get_friends(user_id)
 
     def get_pending_requests(self, user_id: int) -> list[Friendship]:
-        """Get pending friend requests for user."""
-        return Friendship.query.filter_by(friend_id=user_id, status="pending").all()
+        from app.services.friend_service import FriendService
+
+        return FriendService().get_pending_requests(user_id)
 
     def remove_friend(self, user_id: int, friend_id: int) -> dict:
-        """Remove a friendship between two users (admin only)."""
-        friendship = Friendship.query.filter(
-            ((Friendship.user_id == user_id) & (Friendship.friend_id == friend_id))
-            | ((Friendship.user_id == friend_id) & (Friendship.friend_id == user_id))
-        ).first()
+        from app.services.friend_service import FriendService
 
-        if not friendship:
-            return {"error": "friendship_not_found"}
+        return FriendService().remove_friend(user_id, friend_id)
 
-        db.session.delete(friendship)
-        db.session.commit()
-        return {"success": True}
-
-    # Card trading methods
+    # Delegated to CardTradingService
     def create_trade_offer(
         self,
-        sender_id: int,
-        receiver_id: int,
-        sender_card_id: int | None = None,
-        receiver_card_id: int | None = None,
-        message: str | None = None,
-        sender_card_ids: list[int] | None = None,
-        receiver_card_ids: list[int] | None = None,
+        sender_id,
+        receiver_id,
+        sender_card_id=None,
+        receiver_card_id=None,
+        message=None,
+        sender_card_ids=None,
+        receiver_card_ids=None,
     ) -> dict:
-        """Create a card trade offer (supports single or multiple cards)."""
-        # Verify friendship
-        is_friend = Friendship.query.filter(
-            (
-                (Friendship.user_id == sender_id)
-                & (Friendship.friend_id == receiver_id)
-                | (Friendship.user_id == receiver_id)
-                & (Friendship.friend_id == sender_id)
-            )
-            & (Friendship.status == "accepted")
-        ).first()
+        from app.services.card_trading_service import CardTradingService
 
-        if not is_friend:
-            return {"success": False, "error": "not_friends"}
-
-        # Determine which cards to use (prefer multi-card if provided)
-        actual_sender_ids = sender_card_ids or (
-            [sender_card_id] if sender_card_id else []
+        return CardTradingService().create_trade_offer(
+            sender_id,
+            receiver_id,
+            sender_card_id,
+            receiver_card_id,
+            message,
+            sender_card_ids,
+            receiver_card_ids,
         )
-        actual_receiver_ids = receiver_card_ids or (
-            [receiver_card_id] if receiver_card_id else []
-        )
-
-        if not actual_sender_ids:
-            return {"success": False, "error": "no_sender_cards"}
-
-        # Verify all sender's cards
-        sender_cards = UserCard.query.filter(
-            UserCard.id.in_(actual_sender_ids),
-            UserCard.user_id == sender_id,
-            UserCard.is_tradeable.is_(True),
-            UserCard.is_destroyed.is_(False),
-        ).all()
-
-        if len(sender_cards) != len(actual_sender_ids):
-            return {"success": False, "error": "sender_card_invalid"}
-
-        # Verify all receiver's cards if exchange
-        if actual_receiver_ids:
-            receiver_cards = UserCard.query.filter(
-                UserCard.id.in_(actual_receiver_ids),
-                UserCard.user_id == receiver_id,
-                UserCard.is_tradeable.is_(True),
-                UserCard.is_destroyed.is_(False),
-            ).all()
-
-            if len(receiver_cards) != len(actual_receiver_ids):
-                return {"success": False, "error": "receiver_card_invalid"}
-
-        # Create trade with multi-card support
-        trade = CardTrade(
-            sender_id=sender_id,
-            receiver_id=receiver_id,
-            # Single card for backward compatibility
-            sender_card_id=(
-                actual_sender_ids[0] if len(actual_sender_ids) == 1 else None
-            ),
-            receiver_card_id=(
-                actual_receiver_ids[0] if len(actual_receiver_ids) == 1 else None
-            ),
-            # Multi-card arrays
-            sender_card_ids=actual_sender_ids if len(actual_sender_ids) > 1 else None,
-            receiver_card_ids=(
-                actual_receiver_ids if len(actual_receiver_ids) > 1 else None
-            ),
-            message=message,
-            status="pending",
-        )
-        db.session.add(trade)
-        db.session.commit()
-
-        return {"success": True, "trade": trade.to_dict()}
 
     def accept_trade(self, user_id: int, trade_id: int) -> dict:
-        """Accept a trade offer (supports multi-card trades)."""
-        from datetime import datetime
+        from app.services.card_trading_service import CardTradingService
 
-        trade = CardTrade.query.filter_by(
-            id=trade_id, receiver_id=user_id, status="pending"
-        ).first()
-
-        if not trade:
-            return {"success": False, "error": "trade_not_found"}
-
-        # Get all sender card IDs
-        sender_card_ids = trade.sender_card_ids or (
-            [trade.sender_card_id] if trade.sender_card_id else []
-        )
-        # Get all receiver card IDs
-        receiver_card_ids = trade.receiver_card_ids or (
-            [trade.receiver_card_id] if trade.receiver_card_id else []
-        )
-
-        # Transfer sender cards to receiver
-        if sender_card_ids:
-            sender_cards = UserCard.query.filter(UserCard.id.in_(sender_card_ids)).all()
-            for card in sender_cards:
-                card.user_id = trade.receiver_id
-                card.is_in_deck = False
-
-        # Transfer receiver cards to sender (if exchange)
-        if receiver_card_ids:
-            receiver_cards = UserCard.query.filter(
-                UserCard.id.in_(receiver_card_ids)
-            ).all()
-            for card in receiver_cards:
-                card.user_id = trade.sender_id
-                card.is_in_deck = False
-
-        trade.status = "accepted"
-        trade.completed_at = datetime.utcnow()
-        db.session.commit()
-
-        return {"success": True, "trade": trade.to_dict()}
+        return CardTradingService().accept_trade(user_id, trade_id)
 
     def reject_trade(self, user_id: int, trade_id: int) -> dict:
-        """Reject a trade offer."""
-        trade = CardTrade.query.filter_by(
-            id=trade_id, receiver_id=user_id, status="pending"
-        ).first()
+        from app.services.card_trading_service import CardTradingService
 
-        if not trade:
-            return {"success": False, "error": "trade_not_found"}
-
-        trade.status = "rejected"
-        db.session.commit()
-
-        return {"success": True}
+        return CardTradingService().reject_trade(user_id, trade_id)
 
     def get_pending_trades(self, user_id: int) -> list[CardTrade]:
-        """Get pending trades for user (both sent and received)."""
-        return CardTrade.query.filter(
-            ((CardTrade.sender_id == user_id) | (CardTrade.receiver_id == user_id))
-            & (CardTrade.status == "pending")
-        ).all()
+        from app.services.card_trading_service import CardTradingService
+
+        return CardTradingService().get_pending_trades(user_id)
 
     def generate_starter_deck(self, user_id: int) -> list[UserCard]:
         """
@@ -1482,7 +1327,9 @@ class CardService:
 
         return card
 
-    def merge_cards(self, user_id: int, card1: UserCard, card2: UserCard) -> dict:
+    def merge_cards(
+        self, user_id: int, card1: UserCard, card2: UserCard, lang: str = "en"
+    ) -> dict:
         """
         Merge two cards of the same rarity to create one card of higher rarity.
 
@@ -1513,6 +1360,7 @@ class CardService:
             GENRE_THEMES.get(genre, GENRE_THEMES["fantasy"]),
             new_rarity_enum,
             f"Merged from {card1.name} and {card2.name}",
+            user_id=user_id,
         )
 
         # Calculate stats - take best of both cards and apply new rarity multiplier
@@ -1578,11 +1426,9 @@ class CardService:
 
         rarity_label = rarity_names.get(new_rarity, new_rarity)
 
-        from app.utils import get_lang
-
         return {
             "success": True,
-            "card": new_card.to_dict(get_lang()),
+            "card": new_card.to_dict(lang),
             "message": f"Карты объединены! Получена {rarity_label} карта!",
         }
 
@@ -1727,7 +1573,9 @@ class CardService:
 
     # ============ Card Leveling ============
 
-    def add_card_xp(self, card_id: int, user_id: int, xp_amount: int) -> dict:
+    def add_card_xp(
+        self, card_id: int, user_id: int, xp_amount: int, lang: str = "en"
+    ) -> dict:
         """Add XP to a card and handle level ups.
 
         Returns dict with card info and level up status.
@@ -1769,8 +1617,6 @@ class CardService:
 
         db.session.commit()
 
-        from app.utils import get_lang
-
         return {
             "success": True,
             "level_up": leveled_up,
@@ -1779,47 +1625,25 @@ class CardService:
             "card_xp": card.card_xp,
             "xp_to_next": new_level * CARD_XP_PER_LEVEL if new_level < max_level else 0,
             "max_level": max_level,
-            "card": card.to_dict(get_lang()),
+            "card": card.to_dict(lang),
         }
 
-    # ============ Companion System ============
+    # ============ Companion System (delegated to CompanionService) ============
 
-    def set_companion(self, user_id: int, card_id: int) -> dict:
-        """Set a card as the user's companion."""
-        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
-        if not card:
-            return {"success": False, "error": "card_not_found"}
+    def set_companion(self, user_id: int, card_id: int, lang: str = "en") -> dict:
+        from app.services.companion_service import CompanionService
 
-        if card.is_destroyed:
-            return {"success": False, "error": "card_destroyed"}
-
-        # Remove current companion
-        current_companion = UserCard.query.filter_by(
-            user_id=user_id, is_companion=True
-        ).first()
-        if current_companion:
-            current_companion.is_companion = False
-
-        card.is_companion = True
-        db.session.commit()
-
-        from app.utils import get_lang
-
-        return {"success": True, "card": card.to_dict(get_lang())}
+        return CompanionService().set_companion(user_id, card_id, lang)
 
     def remove_companion(self, user_id: int) -> dict:
-        """Remove the current companion."""
-        current = UserCard.query.filter_by(user_id=user_id, is_companion=True).first()
-        if current:
-            current.is_companion = False
-            db.session.commit()
-        return {"success": True}
+        from app.services.companion_service import CompanionService
+
+        return CompanionService().remove_companion(user_id)
 
     def get_companion(self, user_id: int) -> UserCard | None:
-        """Get user's active companion card."""
-        return UserCard.query.filter_by(
-            user_id=user_id, is_companion=True, is_destroyed=False
-        ).first()
+        from app.services.companion_service import CompanionService
+
+        return CompanionService().get_companion(user_id)
 
     def award_companion_xp(self, user_id: int, xp_amount: int = 10) -> dict | None:
         """Award XP to the user's companion card (e.g., after focus session)."""
@@ -1857,162 +1681,43 @@ class CardService:
             )
         return card
 
-    # ============ Showcase System ============
+    # ============ Showcase System (delegated to ShowcaseService) ============
 
-    def set_showcase(self, user_id: int, card_id: int, slot: int) -> dict:
-        """Set a card in a showcase slot (1-3)."""
-        if slot not in (1, 2, 3):
-            return {"success": False, "error": "invalid_slot"}
+    def set_showcase(
+        self, user_id: int, card_id: int, slot: int, lang: str = "en"
+    ) -> dict:
+        from app.services.showcase_service import ShowcaseService
 
-        card = UserCard.query.filter_by(id=card_id, user_id=user_id).first()
-        if not card:
-            return {"success": False, "error": "card_not_found"}
-
-        if card.is_destroyed:
-            return {"success": False, "error": "card_destroyed"}
-
-        # Remove any card currently in this slot
-        current_in_slot = UserCard.query.filter_by(
-            user_id=user_id, is_showcase=True, showcase_slot=slot
-        ).first()
-        if current_in_slot:
-            current_in_slot.is_showcase = False
-            current_in_slot.showcase_slot = None
-
-        # If this card is already in another slot, clear it
-        if card.is_showcase:
-            card.is_showcase = False
-            card.showcase_slot = None
-
-        card.is_showcase = True
-        card.showcase_slot = slot
-        db.session.commit()
-
-        from app.utils import get_lang
-
-        return {"success": True, "card": card.to_dict(get_lang())}
+        return ShowcaseService().set_showcase(user_id, card_id, slot, lang)
 
     def remove_showcase(self, user_id: int, slot: int) -> dict:
-        """Remove a card from a showcase slot."""
-        if slot not in (1, 2, 3):
-            return {"success": False, "error": "invalid_slot"}
+        from app.services.showcase_service import ShowcaseService
 
-        card = UserCard.query.filter_by(
-            user_id=user_id, is_showcase=True, showcase_slot=slot
-        ).first()
-        if card:
-            card.is_showcase = False
-            card.showcase_slot = None
-            db.session.commit()
+        return ShowcaseService().remove_showcase(user_id, slot)
 
-        return {"success": True}
+    def get_showcase_cards(self, user_id: int, lang: str = "en") -> list[dict]:
+        from app.services.showcase_service import ShowcaseService
 
-    def get_showcase_cards(self, user_id: int) -> list[dict]:
-        """Get user's 3 showcase card slots."""
-        from app.utils import get_lang
+        return ShowcaseService().get_showcase_cards(user_id, lang)
 
-        lang = get_lang()
-        cards = (
-            UserCard.query.filter_by(
-                user_id=user_id, is_showcase=True, is_destroyed=False
-            )
-            .order_by(UserCard.showcase_slot)
-            .all()
-        )
-
-        # Build slots dict (1-3)
-        slots = {1: None, 2: None, 3: None}
-        for card in cards:
-            if card.showcase_slot in slots:
-                slots[card.showcase_slot] = card.to_dict(lang)
-
-        return [slots[1], slots[2], slots[3]]
-
-    # ============ Campaign Energy ============
+    # ============ Campaign Energy (delegated to CampaignEnergyService) ============
 
     def get_energy(self, user_id: int) -> dict:
-        """Get user's campaign energy."""
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            return {"energy": 3, "max_energy": 5}
+        from app.services.campaign_energy_service import CampaignEnergyService
 
-        return {
-            "energy": (
-                profile.campaign_energy if profile.campaign_energy is not None else 3
-            ),
-            "max_energy": (
-                profile.max_campaign_energy
-                if profile.max_campaign_energy is not None
-                else 5
-            ),
-        }
+        return CampaignEnergyService().get_energy(user_id)
 
     def add_energy(self, user_id: int, amount: int = 1) -> dict:
-        """Add campaign energy (capped at max)."""
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            return {"success": False, "error": "profile_not_found"}
+        from app.services.campaign_energy_service import CampaignEnergyService
 
-        current = profile.campaign_energy if profile.campaign_energy is not None else 3
-        max_e = (
-            profile.max_campaign_energy
-            if profile.max_campaign_energy is not None
-            else 5
-        )
-        profile.campaign_energy = min(current + amount, max_e)
-        db.session.commit()
-
-        return {
-            "success": True,
-            "energy": profile.campaign_energy,
-            "max_energy": max_e,
-        }
+        return CampaignEnergyService().add_energy(user_id, amount)
 
     def increase_max_energy(self, user_id: int, amount: int = 1) -> dict:
-        """Increase max campaign energy limit and fill current to new max."""
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            return {"success": False, "error": "profile_not_found"}
+        from app.services.campaign_energy_service import CampaignEnergyService
 
-        old_max = profile.max_campaign_energy or 5
-        new_max = old_max + amount
-        profile.max_campaign_energy = new_max
-        # Also fill current energy to new max
-        profile.campaign_energy = new_max
-        db.session.commit()
-
-        return {
-            "success": True,
-            "old_max": old_max,
-            "new_max": new_max,
-            "energy": new_max,
-        }
+        return CampaignEnergyService().increase_max_energy(user_id, amount)
 
     def spend_energy(self, user_id: int) -> dict:
-        """Spend 1 campaign energy. Returns success/fail."""
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            return {"success": False, "error": "no_energy"}
+        from app.services.campaign_energy_service import CampaignEnergyService
 
-        current = profile.campaign_energy if profile.campaign_energy is not None else 3
-        if current <= 0:
-            max_e = (
-                profile.max_campaign_energy
-                if profile.max_campaign_energy is not None
-                else 5
-            )
-            return {
-                "success": False,
-                "error": "no_energy",
-                "energy": 0,
-                "max_energy": max_e,
-            }
-
-        profile.campaign_energy = current - 1
-        db.session.commit()
-
-        return {
-            "success": True,
-            "energy": profile.campaign_energy,
-            "max_energy": profile.max_campaign_energy or 5,
-        }
+        return CampaignEnergyService().spend_energy(user_id)

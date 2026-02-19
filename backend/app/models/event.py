@@ -157,6 +157,9 @@ class UserEventProgress(db.Model):
     # Milestones achieved (JSON array of milestone codes)
     milestones = db.Column(db.JSON, default=list)
 
+    # Leaderboard points (monsters=10, bosses=50, milestones=25 each)
+    event_points = db.Column(db.Integer, default=0)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -180,4 +183,5 @@ class UserEventProgress(db.Model):
             "bosses_defeated": self.bosses_defeated,
             "exclusive_cards_earned": self.exclusive_cards_earned,
             "milestones": self.milestones or [],
+            "event_points": self.event_points or 0,
         }

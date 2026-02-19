@@ -289,6 +289,195 @@ async def get_user_stats(telegram_id: int, weekly: bool = False) -> dict:
         }
 
 
+async def get_weekly_digest_stats(telegram_id: int) -> dict | None:
+    """Get extended weekly stats for the visual digest image.
+
+    Returns stats for 5 radar chart axes + comparison with previous week:
+    - Productivity: completed tasks ratio
+    - Focus: total focus minutes
+    - Mood: average mood score
+    - Cards: cards earned
+    - Social: friend activities (trades, co-op battles, shared tasks)
+    """
+    async with async_session() as session:
+        # Get user
+        user_result = await session.execute(
+            text("SELECT * FROM users WHERE telegram_id = :tid"), {"tid": telegram_id}
+        )
+        user = user_result.fetchone()
+        if not user:
+            return None
+
+        user_id = user._mapping["id"]
+        user_data = dict(user._mapping)
+
+        # --- THIS WEEK stats ---
+        tw = "AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+        tw_focus = "AND started_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+
+        # Tasks this week
+        tasks_result = await session.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'completed') as completed,
+                    COUNT(*) as total
+                FROM tasks WHERE user_id = :uid {tw}
+            """
+            ),
+            {"uid": user_id},
+        )
+        tasks_tw = dict(tasks_result.fetchone()._mapping)
+
+        # Focus this week
+        focus_result = await session.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) as sessions,
+                    COALESCE(SUM(actual_duration_minutes), 0) as minutes
+                FROM focus_sessions
+                WHERE user_id = :uid AND status = 'completed' {tw_focus}
+            """
+            ),
+            {"uid": user_id},
+        )
+        focus_tw = dict(focus_result.fetchone()._mapping)
+
+        # Mood this week
+        mood_result = await session.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) as checks,
+                    COALESCE(AVG(mood), 0) as avg_mood,
+                    COALESCE(AVG(energy), 0) as avg_energy
+                FROM mood_checks WHERE user_id = :uid {tw}
+            """
+            ),
+            {"uid": user_id},
+        )
+        mood_tw = dict(mood_result.fetchone()._mapping)
+
+        # Cards earned this week
+        cards_result = await session.execute(
+            text(
+                f"""
+                SELECT COUNT(*) as earned
+                FROM user_cards
+                WHERE user_id = :uid AND is_destroyed = false {tw}
+            """
+            ),
+            {"uid": user_id},
+        )
+        cards_tw = dict(cards_result.fetchone()._mapping)
+
+        # Social activity this week (shared tasks + trades + co-op)
+        social_result = await session.execute(
+            text(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM shared_tasks
+                     WHERE (creator_id = :uid OR assignee_id = :uid)
+                     AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days') +
+                    (SELECT COUNT(*) FROM card_trades
+                     WHERE (sender_id = :uid OR receiver_id = :uid)
+                     AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days') +
+                    (SELECT COUNT(*) FROM coop_battle_participants
+                     WHERE user_id = :uid
+                     AND joined_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days')
+                as social_actions
+            """
+            ),
+            {"uid": user_id},
+        )
+        social_tw = social_result.fetchone()._mapping["social_actions"] or 0
+
+        # Daily mood for sparkline (last 7 days)
+        mood_daily_result = await session.execute(
+            text(
+                """
+                SELECT
+                    DATE(created_at) as day,
+                    AVG(mood) as avg_mood
+                FROM mood_checks
+                WHERE user_id = :uid
+                AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'
+                GROUP BY DATE(created_at)
+                ORDER BY day
+            """
+            ),
+            {"uid": user_id},
+        )
+        mood_daily = [
+            {"day": str(r._mapping["day"]), "avg_mood": float(r._mapping["avg_mood"])}
+            for r in mood_daily_result.fetchall()
+        ]
+
+        # --- PREVIOUS WEEK stats (for comparison arrows) ---
+        pw = (
+            "AND created_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '14 days' "
+            "AND created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+        )
+        pw_focus = (
+            "AND started_at >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '14 days' "
+            "AND started_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'"
+        )
+
+        tasks_pw_result = await session.execute(
+            text(
+                f"""
+                SELECT COUNT(*) FILTER (WHERE status = 'completed') as completed
+                FROM tasks WHERE user_id = :uid {pw}
+            """
+            ),
+            {"uid": user_id},
+        )
+        tasks_pw_completed = tasks_pw_result.fetchone()._mapping["completed"] or 0
+
+        focus_pw_result = await session.execute(
+            text(
+                f"""
+                SELECT COALESCE(SUM(actual_duration_minutes), 0) as minutes
+                FROM focus_sessions
+                WHERE user_id = :uid AND status = 'completed' {pw_focus}
+            """
+            ),
+            {"uid": user_id},
+        )
+        focus_pw_minutes = focus_pw_result.fetchone()._mapping["minutes"] or 0
+
+        cards_pw_result = await session.execute(
+            text(
+                f"""
+                SELECT COUNT(*) as earned
+                FROM user_cards WHERE user_id = :uid AND is_destroyed = false {pw}
+            """
+            ),
+            {"uid": user_id},
+        )
+        cards_pw_earned = cards_pw_result.fetchone()._mapping["earned"] or 0
+
+        return {
+            "user": user_data,
+            # This week
+            "tasks_completed": tasks_tw["completed"] or 0,
+            "tasks_total": tasks_tw["total"] or 0,
+            "focus_sessions": focus_tw["sessions"] or 0,
+            "focus_minutes": focus_tw["minutes"] or 0,
+            "avg_mood": float(mood_tw["avg_mood"] or 0),
+            "avg_energy": float(mood_tw["avg_energy"] or 0),
+            "mood_checks": mood_tw["checks"] or 0,
+            "cards_earned": cards_tw["earned"] or 0,
+            "social_actions": social_tw,
+            "mood_daily": mood_daily,
+            # Previous week (for comparison)
+            "prev_tasks_completed": tasks_pw_completed,
+            "prev_focus_minutes": focus_pw_minutes,
+            "prev_cards_earned": cards_pw_earned,
+        }
+
+
 async def get_overdue_tasks_by_user() -> dict[int, list[dict]]:
     """Get all overdue tasks grouped by user_id."""
     async with async_session() as session:

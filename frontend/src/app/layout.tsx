@@ -4,7 +4,7 @@ import Script from 'next/script';
 import './globals.css';
 import { Providers } from './providers';
 import { Navigation } from '@/components/Navigation';
-import { ScrollBackdrop } from '@/components/ScrollBackdrop';
+import { ScrollBackdrop } from '@/components/ui';
 
 const nunitoSans = Nunito_Sans({ subsets: ['latin', 'cyrillic'], weight: ['400', '500', '600', '700', '800'] });
 

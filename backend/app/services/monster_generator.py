@@ -107,8 +107,13 @@ Be creative with names - avoid generic names. Each monster should feel unique an
                 "You are a creative game designer specializing in monster design. "
                 "Always respond with valid JSON only."
             )
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+            from app.utils.ai_tracker import tracked_openai_call
+
+            response = tracked_openai_call(
+                self.openai_client,
+                user_id=None,
+                endpoint="generate_monsters",
+                model="gpt-5-mini",
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": prompt},

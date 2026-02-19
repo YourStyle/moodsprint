@@ -91,6 +91,11 @@ class UserProfile(db.Model):
     # Spotlight onboarding reset (set by admin to force re-show spotlight)
     spotlight_reset_at = db.Column(db.DateTime, nullable=True)
 
+    # Cosmetics
+    owned_cosmetics = db.Column(db.JSON, default=list)  # List of cosmetic IDs
+    equipped_card_frame = db.Column(db.String(50), nullable=True)
+    equipped_profile_frame = db.Column(db.String(50), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -148,6 +153,9 @@ class UserProfile(db.Model):
             "spotlight_reset_at": (
                 self.spotlight_reset_at.isoformat() if self.spotlight_reset_at else None
             ),
+            "owned_cosmetics": self.owned_cosmetics or [],
+            "equipped_card_frame": self.equipped_card_frame,
+            "equipped_profile_frame": self.equipped_profile_frame,
         }
 
     def __repr__(self) -> str:

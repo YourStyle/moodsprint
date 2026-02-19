@@ -20,7 +20,7 @@ import {
 import { Card, Button, Modal, ScrollBackdrop } from '@/components/ui';
 import { DeckCard, CardInfoSheet } from '@/components/cards';
 import { FeatureBanner } from '@/components/features';
-import { cardsService, mergeService } from '@/services';
+import { cardsService, mergeService, onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
@@ -127,6 +127,14 @@ export default function DeckPage() {
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
   });
+
+  // Fetch profile for equipped card frame
+  const { data: profileData } = useQuery({
+    queryKey: ['onboarding', 'profile'],
+    queryFn: () => onboardingService.getProfile(),
+    enabled: !!user,
+  });
+  const equippedCardFrame = profileData?.data?.profile?.equipped_card_frame || null;
 
   // Fetch card templates (for locked cards in collection)
   const { data: templatesData } = useQuery({
@@ -736,6 +744,7 @@ export default function DeckPage() {
                           isPreviouslyOwned={isPreviouslyOwned}
                           isGenreLocked={isGenreLocked}
                           duplicateCount={'_duplicateCount' in card ? (card as GroupedCard)._duplicateCount : undefined}
+                          cardFrameId={isUnavailable ? undefined : equippedCardFrame}
                           onClick={isUnavailable ? undefined : () => handleCardClick(card)}
                           onInfoClick={isUnavailable ? undefined : () => setInfoCard(card)}
                         />
@@ -848,6 +857,7 @@ export default function DeckPage() {
                     createdAt={card.created_at}
                     ability={card.ability}
                     abilityInfo={card.ability_info}
+                    cardFrameId={equippedCardFrame}
                     onClick={() => handleCardClick(card)}
                     onInfoClick={() => setInfoCard(card)}
                   />

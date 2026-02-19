@@ -1,21 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Star } from 'lucide-react';
+import { Sparkles, Star, Palette, Lock, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, Button, ScrollBackdrop } from '@/components/ui';
 import { SparksBalance } from '@/components/sparks';
 import { sparksService, SparksPack } from '@/services/sparks';
+import { cosmeticsService, CosmeticItem } from '@/services/cosmetics';
 import { useAppStore } from '@/lib/store';
 import { useLanguage } from '@/lib/i18n';
 import { openInvoice, hapticFeedback, setupBackButton } from '@/lib/telegram';
+
+type CosmeticTab = 'card_frame' | 'profile_frame';
 
 export default function StorePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isTelegramEnvironment } = useAppStore();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const [cosmeticTab, setCosmeticTab] = useState<CosmeticTab>('card_frame');
 
   // Redirect to home if not in Telegram environment (store requires Telegram Stars)
   useEffect(() => {
@@ -32,6 +36,12 @@ export default function StorePage() {
   const { data: packsData, isLoading: packsLoading } = useQuery({
     queryKey: ['sparks', 'packs'],
     queryFn: () => sparksService.getPacks(),
+    enabled: !!user,
+  });
+
+  const { data: cosmeticsData, isLoading: cosmeticsLoading } = useQuery({
+    queryKey: ['cosmetics', 'catalog', language],
+    queryFn: () => cosmeticsService.getCatalog(language),
     enabled: !!user,
   });
 
@@ -55,11 +65,104 @@ export default function StorePage() {
     },
   });
 
+  const buyCosmeticMutation = useMutation({
+    mutationFn: (cosmeticId: string) => cosmeticsService.buy(cosmeticId),
+    onSuccess: (result) => {
+      if (result.success) {
+        hapticFeedback('success');
+        queryClient.invalidateQueries({ queryKey: ['cosmetics'] });
+        queryClient.invalidateQueries({ queryKey: ['sparks', 'balance'] });
+        queryClient.invalidateQueries({ queryKey: ['onboarding', 'profile'] });
+      }
+    },
+    onError: () => hapticFeedback('error'),
+  });
+
+  const equipCosmeticMutation = useMutation({
+    mutationFn: (cosmeticId: string) => cosmeticsService.equip(cosmeticId),
+    onSuccess: (result) => {
+      if (result.success) {
+        hapticFeedback('light');
+        queryClient.invalidateQueries({ queryKey: ['cosmetics'] });
+        queryClient.invalidateQueries({ queryKey: ['onboarding', 'profile'] });
+      }
+    },
+    onError: () => hapticFeedback('error'),
+  });
+
+  const unequipCosmeticMutation = useMutation({
+    mutationFn: (type: 'card_frame' | 'profile_frame') => cosmeticsService.unequip(type),
+    onSuccess: (result) => {
+      if (result.success) {
+        hapticFeedback('light');
+        queryClient.invalidateQueries({ queryKey: ['cosmetics'] });
+        queryClient.invalidateQueries({ queryKey: ['onboarding', 'profile'] });
+      }
+    },
+    onError: () => hapticFeedback('error'),
+  });
+
   const packs: SparksPack[] = packsData?.data?.packs || [];
+  const allCosmetics: CosmeticItem[] = cosmeticsData?.data?.cosmetics || [];
+  const filteredCosmetics = allCosmetics.filter((c) => c.type === cosmeticTab);
 
   const handleBuyPack = (packId: string) => {
     if (buyPackMutation.isPending) return;
     buyPackMutation.mutate(packId);
+  };
+
+  const isMutating = buyCosmeticMutation.isPending || equipCosmeticMutation.isPending || unequipCosmeticMutation.isPending;
+
+  const renderCosmeticAction = (item: CosmeticItem) => {
+    const levelTooLow = (user?.level || 0) < item.min_level;
+
+    if (levelTooLow && !item.is_owned) {
+      return (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <Lock className="w-3 h-3" />
+          {t('levelRequired').replace('{level}', String(item.min_level))}
+        </div>
+      );
+    }
+
+    if (item.is_equipped) {
+      return (
+        <Button
+          size="sm"
+          onClick={() => unequipCosmeticMutation.mutate(item.type)}
+          disabled={isMutating}
+          className="w-full bg-green-600/20 border border-green-500/30 text-green-400 text-xs"
+        >
+          <Check className="w-3 h-3 mr-1" />
+          {t('equipped')}
+        </Button>
+      );
+    }
+
+    if (item.is_owned) {
+      return (
+        <Button
+          size="sm"
+          onClick={() => equipCosmeticMutation.mutate(item.id)}
+          disabled={isMutating}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs"
+        >
+          {t('equipCosmetic')}
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        onClick={() => buyCosmeticMutation.mutate(item.id)}
+        disabled={isMutating}
+        className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black text-xs font-medium"
+      >
+        <Sparkles className="w-3 h-3 mr-1" />
+        {item.price_sparks}
+      </Button>
+    );
   };
 
   return (
@@ -123,6 +226,68 @@ export default function StorePage() {
                     {pack.price_stars} Stars
                   </Button>
                 </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Cosmetics Section */}
+      <div>
+        <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+          <Palette className="w-5 h-5 text-purple-400" />
+          {t('cosmetics')}
+        </h2>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-3">
+          {(['card_frame', 'profile_frame'] as CosmeticTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setCosmeticTab(tab)}
+              className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all ${
+                cosmeticTab === tab
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-800/60 text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab === 'card_frame' ? t('cardFrames') : t('profileFrames')}
+            </button>
+          ))}
+        </div>
+
+        {/* Items Grid */}
+        {cosmeticsLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="h-36 bg-gray-700/50 rounded-lg" />
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredCosmetics.map((item) => (
+              <Card
+                key={item.id}
+                className={`relative overflow-hidden ${
+                  item.is_equipped ? 'border-purple-500/50' : ''
+                }`}
+              >
+                {/* Preview */}
+                <div
+                  className="w-full h-16 rounded-lg mb-2"
+                  style={{ background: item.preview_gradient }}
+                />
+
+                {/* Name & description */}
+                <h3 className="text-sm font-semibold text-white truncate">{item.name}</h3>
+                <p className="text-xs text-gray-400 line-clamp-2 mb-2 min-h-[2rem]">
+                  {item.description}
+                </p>
+
+                {/* Action */}
+                {renderCosmeticAction(item)}
               </Card>
             ))}
           </div>

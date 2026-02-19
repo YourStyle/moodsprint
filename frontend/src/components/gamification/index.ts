@@ -9,3 +9,4 @@ export { LevelUpModal, type LevelRewardItem } from './LevelUpModal';
 export { EnergyLimitModal } from './EnergyLimitModal';
 export { StreakIndicator } from './StreakIndicator';
 export { StreakMilestoneModal } from './StreakMilestoneModal';
+export { EventBanner } from './EventBanner';

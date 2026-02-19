@@ -18,6 +18,17 @@ import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback } from '@/lib/telegram';
 import type { Card as CardType } from '@/services/cards';
 
+const PROFILE_FRAME_COLORS: Record<string, string> = {
+  profile_frame_silver: '#d1d5db',
+  profile_frame_emerald: '#34d399',
+  profile_frame_ruby: '#fb7185',
+  profile_frame_diamond: '#7dd3fc',
+};
+
+function getProfileFrameColor(frameId: string): string {
+  return PROFILE_FRAME_COLORS[frameId] || '#d1d5db';
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -103,10 +114,13 @@ export default function ProfilePage() {
           <img
             src={user.photo_url}
             alt={user.first_name || user.username || t('profile')}
-            className="w-20 h-20 mx-auto rounded-full object-cover mb-3"
+            className={`w-20 h-20 mx-auto rounded-full object-cover mb-3 ${profile?.equipped_profile_frame ? 'ring-2 ring-offset-2 ring-offset-gray-900' : ''}`}
+            style={profile?.equipped_profile_frame ? { '--tw-ring-color': getProfileFrameColor(profile.equipped_profile_frame) } as React.CSSProperties : undefined}
           />
         ) : (
-          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3">
+          <div className={`w-20 h-20 mx-auto bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3 ${profile?.equipped_profile_frame ? 'ring-2 ring-offset-2 ring-offset-gray-900' : ''}`}
+            style={profile?.equipped_profile_frame ? { '--tw-ring-color': getProfileFrameColor(profile.equipped_profile_frame) } as React.CSSProperties : undefined}
+          >
             {user.first_name?.[0] || user.username?.[0] || '?'}
           </div>
         )}

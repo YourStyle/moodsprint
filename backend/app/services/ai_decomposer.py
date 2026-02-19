@@ -1,11 +1,36 @@
 """AI-powered task decomposition service."""
 
+import hashlib
 import json
+import re as _re
+import time
 from typing import Any
 
 from flask import current_app
 
 from app.services.openai_client import get_openai_client
+
+# Cache key prefix
+AI_CACHE_PREFIX = "ai_cache:decompose:"
+AI_CACHE_STATS_KEY = "ai_cache:stats"
+AI_CACHE_DEFAULT_TTL = 86400  # 24 hours
+
+
+def _normalize_title(title: str) -> str:
+    """Normalize task title for cache key generation."""
+    t = title.lower().strip()
+    t = _re.sub(r"\s+", " ", t)
+    return t
+
+
+def _make_cache_key(
+    title: str, strategy: str, mood: int | None, energy: int | None
+) -> str:
+    """Create a deterministic cache key from decomposition inputs."""
+    normalized = _normalize_title(title)
+    raw = f"{normalized}|{strategy}|{mood or 0}|{energy or 0}"
+    h = hashlib.sha256(raw.encode()).hexdigest()[:16]
+    return f"{AI_CACHE_PREFIX}{h}"
 
 
 class AIDecomposer:
@@ -97,6 +122,7 @@ class AIDecomposer:
         mood: int | None = None,
         energy: int | None = None,
         existing_subtasks_count: int = 0,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Decompose a task into subtasks based on strategy, task type, and user state.
@@ -108,10 +134,28 @@ class AIDecomposer:
         strategy_config = self.STRATEGIES.get(strategy, self.STRATEGIES["standard"])
         type_context = self.TASK_TYPE_CONTEXT.get(task_type) if task_type else None
 
+        # ── Check Template Library first ──
+        if not task_description and existing_subtasks_count == 0:
+            template_result = self._match_template(task_title, strategy, mood, energy)
+            if template_result is not None:
+                current_app.logger.info(f"Template match for: {task_title}")
+                return template_result
+
+        # Check Redis cache (skip for tasks with descriptions)
+        use_cache = not task_description and existing_subtasks_count == 0
+        cache_key = None
+
+        if use_cache:
+            cache_key = _make_cache_key(task_title, strategy, mood, energy)
+            cached = self._get_from_cache(cache_key)
+            if cached is not None:
+                current_app.logger.info(f"AI cache HIT for: {task_title}")
+                return cached
+
         # Try AI decomposition first
         if self.client:
             try:
-                return self._ai_decompose(
+                result = self._ai_decompose(
                     task_title,
                     task_description,
                     strategy_config,
@@ -120,7 +164,14 @@ class AIDecomposer:
                     mood,
                     energy,
                     existing_subtasks_count,
+                    user_id=user_id,
                 )
+                # Store in cache
+                if use_cache and cache_key:
+                    self._store_in_cache(
+                        cache_key, result, task_title, strategy, mood, energy
+                    )
+                return result
             except Exception as e:
                 current_app.logger.error(f"AI decomposition failed: {e}")
 
@@ -129,6 +180,122 @@ class AIDecomposer:
             task_title, task_description, strategy_config, task_type
         )
         return {"subtasks": subtasks, "no_new_steps": False}
+
+    def _get_from_cache(self, key: str) -> dict | None:
+        """Try to get a cached decomposition result from Redis."""
+        try:
+            from app.extensions import get_redis_client
+
+            r = get_redis_client()
+            data = r.get(key)
+            if data:
+                entry = json.loads(data)
+                # Update hit stats
+                r.hincrby(AI_CACHE_STATS_KEY, "hits", 1)
+                entry["hits"] = entry.get("hits", 0) + 1
+                entry["last_hit_at"] = time.time()
+                r.set(key, json.dumps(entry), keepttl=True)
+                return entry["result"]
+        except Exception as e:
+            current_app.logger.warning(f"AI cache read error: {e}")
+        return None
+
+    def _store_in_cache(
+        self,
+        key: str,
+        result: dict,
+        title: str,
+        strategy: str,
+        mood: int | None,
+        energy: int | None,
+    ) -> None:
+        """Store a decomposition result in Redis cache."""
+        try:
+            from app.extensions import get_redis_client
+
+            r = get_redis_client()
+            entry = {
+                "result": result,
+                "title": title,
+                "strategy": strategy,
+                "mood": mood,
+                "energy": energy,
+                "created_at": time.time(),
+                "hits": 0,
+                "last_hit_at": None,
+            }
+            # Read TTL from Redis config (set via admin), fallback to app config
+            config_ttl = r.get("ai_cache:config:ttl")
+            ttl = (
+                int(config_ttl)
+                if config_ttl
+                else int(current_app.config.get("AI_CACHE_TTL", AI_CACHE_DEFAULT_TTL))
+            )
+            r.set(key, json.dumps(entry), ex=ttl)
+            r.hincrby(AI_CACHE_STATS_KEY, "misses", 1)
+            r.hincrby(AI_CACHE_STATS_KEY, "stored", 1)
+        except Exception as e:
+            current_app.logger.warning(f"AI cache write error: {e}")
+
+    def _match_template(
+        self,
+        task_title: str,
+        strategy: str,
+        mood: int | None,
+        energy: int | None,
+    ) -> dict | None:
+        """Try to match a decomposition template from the database."""
+        try:
+            from sqlalchemy import text
+
+            from app import db
+
+            normalized = _normalize_title(task_title)
+
+            # Find matching templates: title pattern match + strategy + mood/energy range
+            rows = db.session.execute(
+                text(
+                    """
+                SELECT id, subtasks, no_new_steps
+                FROM decomposition_templates
+                WHERE is_active = true
+                  AND strategy = :strategy
+                  AND LOWER(:title) LIKE LOWER(title_pattern)
+                  AND (mood_min IS NULL OR :mood >= mood_min)
+                  AND (mood_max IS NULL OR :mood <= mood_max)
+                  AND (energy_min IS NULL OR :energy >= energy_min)
+                  AND (energy_max IS NULL OR :energy <= energy_max)
+                ORDER BY LENGTH(title_pattern) DESC
+                LIMIT 1
+            """
+                ),
+                {
+                    "title": normalized,
+                    "strategy": strategy,
+                    "mood": mood or 3,
+                    "energy": energy or 3,
+                },
+            ).fetchone()
+
+            if rows:
+                template_id, subtasks_data, no_new_steps = rows
+                # Increment usage count
+                db.session.execute(
+                    text(
+                        "UPDATE decomposition_templates "
+                        "SET usage_count = usage_count + 1 WHERE id = :id"
+                    ),
+                    {"id": template_id},
+                )
+                db.session.commit()
+
+                if no_new_steps:
+                    return {"subtasks": [], "no_new_steps": True}
+
+                return {"subtasks": subtasks_data, "no_new_steps": False}
+        except Exception as e:
+            current_app.logger.warning(f"Template match error: {e}")
+        return None
 
     # Mood/energy labels for AI context
     MOOD_LABELS_RU = {
@@ -156,6 +323,7 @@ class AIDecomposer:
         mood: int | None = None,
         energy: int | None = None,
         existing_subtasks_count: int = 0,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Use OpenAI to decompose task."""
         min_minutes, max_minutes = strategy_config["step_range"]
@@ -308,8 +476,13 @@ class AIDecomposer:
 """
 
         current_app.logger.info(f"AI decomposing task: {task_title}")
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        from app.utils.ai_tracker import tracked_openai_call
+
+        response = tracked_openai_call(
+            self.client,
+            user_id=user_id,
+            endpoint="decompose_task",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "system",

@@ -1,165 +1,140 @@
 # MoodSprint
 
-Adaptive task management app that adjusts task breakdown based on your mood and energy level.
+Adaptive task management Telegram Mini App that adjusts task breakdown based on your mood and energy level, with a full gamification layer including collectible cards, campaigns, and social features.
 
 ## Features
 
 - **Mood-aware task decomposition**: AI breaks down tasks into smaller steps based on your current state
 - **Focus sessions**: Pomodoro-style timer with task tracking
-- **Gamification**: XP, levels, streaks, and achievements
-- **Telegram Mini App**: Optimized for use inside Telegram
-- **PWA support**: Installable as mobile app
+- **Collectible card system**: Earn cards by completing tasks, 5 genres, 5 rarities
+- **Card merging & trading**: Combine cards for upgrades, trade with friends
+- **Campaign mode**: PvE battles against genre-themed monsters
+- **Gamification**: XP, levels, streaks, achievements, daily quests
+- **Telegram Bot**: Voice task creation, reminders, weekly digest
+- **Admin panel**: User management, analytics, AI cost tracking
+- **i18n**: Russian and English
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, React Query, Zustand
-- **Backend**: Flask, SQLAlchemy, PostgreSQL
-- **Infrastructure**: Docker, Nginx
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, React Query, Zustand
+- **Backend**: Flask, SQLAlchemy, PostgreSQL, Redis
+- **Bot**: aiogram 3.x, APScheduler
+- **Admin**: Flask, Jinja2, Tailwind CDN
+- **AI**: OpenAI GPT (task decomposition, classification, card generation)
+- **Infrastructure**: Docker Compose, Nginx
 
 ## Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- (Optional) Telegram Bot Token from @BotFather
-- (Optional) OpenAI API Key for AI task decomposition
+- Telegram Bot Token from @BotFather
+- OpenAI API Key
 
 ### Development
 
-1. Clone the repository:
 ```bash
 git clone <repo-url>
 cd moodsprint
-```
-
-2. Copy environment file:
-```bash
 cp .env.example .env
-```
+# Edit .env with your Telegram token, OpenAI key, etc.
 
-3. Edit `.env` with your settings (Telegram token, OpenAI key, etc.)
-
-4. Start the development environment:
-```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-5. Access the app:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000/api/v1
-   - Full app via nginx: http://localhost:8080
+Services:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000/api/v1
+- Full app via nginx: http://localhost:8080
 
 ### Production
 
-1. Configure production environment:
-```bash
-cp .env.example .env
-# Edit .env with production values
-```
-
-2. Build and start:
 ```bash
 docker-compose up -d --build
 ```
 
-3. Access the app on port 80 (or configured PORT)
+### Local Development (without Docker)
+
+```bash
+# Frontend
+cd frontend && npm install && npm run dev
+
+# Backend
+cd backend && pip install -r requirements.txt && python wsgi.py
+
+# Bot
+cd bot && pip install -r requirements.txt && python main.py
+```
 
 ## Project Structure
 
 ```
 moodsprint/
-├── backend/                 # Flask API
+├── backend/                 # Flask REST API
 │   ├── app/
-│   │   ├── api/            # API endpoints
-│   │   ├── models/         # Database models
-│   │   ├── services/       # Business logic
-│   │   └── utils/          # Utilities
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │   ├── api/            # Route blueprints (tasks, cards, gamification, etc.)
+│   │   ├── models/         # 30+ SQLAlchemy models
+│   │   ├── services/       # Business logic (15+ service classes)
+│   │   └── utils/          # Auth, response helpers, AI tracker
+│   └── migrations/         # Alembic migrations
 │
-├── frontend/               # Next.js App
+├── frontend/               # Next.js 14 App
 │   ├── src/
 │   │   ├── app/           # Pages (App Router)
-│   │   ├── components/    # React components
+│   │   ├── components/    # React components (ui, tasks, cards, etc.)
 │   │   ├── domain/        # Types & constants
 │   │   ├── services/      # API clients
-│   │   ├── hooks/         # Custom hooks
-│   │   └── lib/           # Utilities
-│   ├── Dockerfile
+│   │   └── lib/           # i18n, store, utilities
 │   └── package.json
 │
-├── nginx/                  # Reverse proxy
-│   ├── nginx.conf
-│   └── Dockerfile
+├── bot/                    # Telegram Bot (aiogram)
+│   ├── handlers/          # Message & callback handlers
+│   ├── services/          # Voice, digest, AI tracker
+│   └── translations.py
 │
-├── docker-compose.yml      # Production compose
-├── docker-compose.dev.yml  # Development override
-└── .env.example
+├── admin/                  # Admin Panel (Flask + Jinja2)
+│   ├── app.py
+│   └── templates/
+│
+├── nginx/                  # Reverse proxy config
+├── ARCHITECTURE.md         # Detailed architecture docs
+├── CLAUDE.md              # AI assistant instructions
+└── docker-compose.yml
 ```
 
-## API Documentation
-
-See [API.md](./API.md) for full API specification.
-
-### Key Endpoints
-
-- `POST /api/v1/auth/telegram` - Authenticate via Telegram
-- `GET/POST /api/v1/tasks` - Task management
-- `POST /api/v1/tasks/:id/decompose` - AI task decomposition
-- `POST /api/v1/mood` - Log mood check
-- `POST /api/v1/focus/start` - Start focus session
-- `GET /api/v1/user/stats` - User statistics
-
-## Telegram Mini App Setup
-
-1. Create a bot with @BotFather
-2. Enable Mini App for the bot
-3. Set the Mini App URL to your deployed frontend
-4. Add the bot token to `.env`
-
-## Development Setup
-
-### Pre-commit Hooks
-
-This project uses [pre-commit](https://pre-commit.com/) for code quality checks. **This is required for all developers.**
+## Key Commands
 
 ```bash
-# Install pre-commit
-pip install pre-commit
+# Frontend
+cd frontend
+npm run dev          # Dev server
+npm run build        # Production build
+npm run type-check   # TypeScript check
 
-# Install hooks (run once after cloning)
-pre-commit install
-
-# (Optional) Run on all files
-pre-commit run --all-files
-```
-
-The hooks will automatically:
-- Format Python code with `black`
-- Sort imports with `isort`
-- Check for lint errors with `flake8`
-
-### Manual Linting
-
-```bash
 # Backend
 cd backend
-python -m black app
+flask db migrate -m "description"  # Create migration
+flask db upgrade                   # Apply migrations
+python -m black app                # Format
 python -m flake8 app --max-line-length=100
 
 # Bot
 cd bot
-python -m black .
-python -m flake8 . --max-line-length=100
+python main.py
 ```
 
-## Contributing
+## Architecture
 
-1. Fork the repository
-2. **Set up pre-commit hooks** (see above)
-3. Create a feature branch
-4. Make your changes
-5. Submit a pull request
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation including service layer, AI tracking, card system, and gamification rules.
+
+## Pre-commit Hooks
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Runs black, isort, and flake8 on Python files automatically.
 
 ## License
 

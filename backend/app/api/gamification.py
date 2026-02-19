@@ -1290,6 +1290,29 @@ def get_event_progress(event_id: int):
     )
 
 
+@api_bp.route("/events/<int:event_id>/leaderboard", methods=["GET"])
+@jwt_required(optional=True)
+def get_event_leaderboard(event_id: int):
+    """Get event leaderboard ranked by points."""
+    from app.services.event_service import EventService
+
+    service = EventService()
+    event = service.get_event_by_id(event_id)
+
+    if not event:
+        return not_found("Event not found")
+
+    limit = request.args.get("limit", 50, type=int)
+    leaderboard = service.get_event_leaderboard(event_id, limit=min(limit, 100))
+
+    return success_response(
+        {
+            "event": event.to_dict(),
+            "leaderboard": leaderboard,
+        }
+    )
+
+
 # Admin endpoint for creating manual events
 @api_bp.route("/admin/events", methods=["POST"])
 @jwt_required()
@@ -1432,7 +1455,7 @@ def merge_cards():
     from app.services.merge_service import MergeService
 
     service = MergeService()
-    result = service.merge_cards(user_id, card1_id, card2_id)
+    result = service.merge_cards(user_id, card1_id, card2_id, lang=get_lang())
 
     if "error" in result:
         return validation_error(result)

@@ -10,7 +10,6 @@ from app import db
 from app.api import api_bp
 from app.models import (
     FriendActivityLog,
-    Friendship,
     MoodCheck,
     PostponeLog,
     SharedTask,
@@ -31,150 +30,16 @@ from app.services.card_service import (
     get_rarity_odds,
 )
 from app.services.streak_service import StreakService
+from app.services.task_service import (
+    MIN_TASK_TIME_FOR_CARD,
+    auto_postpone_overdue_tasks,
+    calculate_task_score,
+    get_current_time_slot,
+    should_skip_time_check_for_card,
+)
 from app.utils import not_found, success_response, validation_error
-from app.utils.notifications import send_telegram_message
 
 logger = logging.getLogger(__name__)
-
-# Minimum time (in minutes) after task creation before a card can be earned
-MIN_TASK_TIME_FOR_CARD = 10
-
-# Number of first tasks that bypass the time restriction (onboarding experience)
-FIRST_TASKS_WITHOUT_TIME_LIMIT = 5
-
-
-def should_skip_time_check_for_card(user_id: int) -> bool:
-    """Check if user should skip the time restriction for cards.
-
-    First N tasks created by user get cards immediately regardless of time.
-    This improves onboarding experience.
-    """
-    completed_tasks_count = Task.query.filter_by(
-        user_id=user_id, status=TaskStatus.COMPLETED.value
-    ).count()
-    return completed_tasks_count < FIRST_TASKS_WITHOUT_TIME_LIMIT
-
-
-def get_current_time_slot() -> str:
-    """Get current time slot based on hour (Moscow time, UTC+3)."""
-    # Server is UTC, Moscow is UTC+3
-    hour = (datetime.utcnow().hour + 3) % 24
-    if 6 <= hour < 12:
-        return "morning"
-    elif 12 <= hour < 18:
-        return "afternoon"
-    elif 18 <= hour < 22:
-        return "evening"
-    else:
-        return "night"
-
-
-def auto_postpone_overdue_tasks(user_id: int) -> int:
-    """
-    Auto-postpone overdue tasks to today (fallback if bot cron didn't run).
-
-    Returns count of postponed tasks.
-    """
-    today = date.today()
-
-    # Find overdue incomplete tasks for this user
-    overdue_tasks = Task.query.filter(
-        Task.user_id == user_id,
-        Task.due_date < today,
-        Task.status.notin_([TaskStatus.COMPLETED.value, TaskStatus.ARCHIVED.value]),
-    ).all()
-
-    if not overdue_tasks:
-        return 0
-
-    postponed_count = 0
-    priority_changes = []
-
-    for task in overdue_tasks:
-        # Save original due_date if not already saved
-        if not task.original_due_date:
-            task.original_due_date = task.due_date
-
-        task.due_date = today
-        task.postponed_count = (task.postponed_count or 0) + 1
-        postponed_count += 1
-
-        # Auto-archive after 5 postponements
-        if task.postponed_count >= 5:
-            task.status = TaskStatus.ARCHIVED.value
-            continue
-
-        # Check if priority should be increased (after 2+ postponements)
-        if task.postponed_count >= 3 and task.priority != TaskPriority.HIGH.value:
-            old_priority = task.priority
-            if task.priority == TaskPriority.MEDIUM.value:
-                task.priority = TaskPriority.HIGH.value
-            elif task.priority == TaskPriority.LOW.value:
-                task.priority = TaskPriority.MEDIUM.value
-
-            if old_priority != task.priority:
-                priority_changes.append(
-                    {
-                        "task_id": task.id,
-                        "task_title": task.title[:50],
-                        "old_priority": old_priority,
-                        "new_priority": task.priority,
-                        "postponed_count": task.postponed_count,
-                    }
-                )
-
-    if postponed_count > 0:
-        # Create or update postpone log for today
-        existing_log = PostponeLog.query.filter_by(user_id=user_id, date=today).first()
-        if not existing_log:
-            log = PostponeLog(
-                user_id=user_id,
-                date=today,
-                tasks_postponed=postponed_count,
-                priority_changes=priority_changes if priority_changes else None,
-                notified=False,
-            )
-            db.session.add(log)
-
-        db.session.commit()
-        logger.info(f"Auto-postponed {postponed_count} tasks for user {user_id}")
-
-    return postponed_count
-
-
-def calculate_task_score(
-    task: Task,
-    current_time_slot: str,
-    user_favorite_types: list[str] | None,
-    today: date,
-) -> int:
-    """Calculate sorting score for a task."""
-    score = 0
-
-    # Priority weight (HIGH=100, MEDIUM=50, LOW=0)
-    priority_weights = {"high": 100, "medium": 50, "low": 0}
-    score += priority_weights.get(task.priority, 50)
-
-    # Time match (+30 if preferred time matches current time slot)
-    if task.preferred_time and task.preferred_time == current_time_slot:
-        score += 30
-
-    # Type match (+20 if task type is in user's favorites)
-    if user_favorite_types and task.task_type in user_favorite_types:
-        score += 20
-
-    # Postponed count (+15 per postponement)
-    score += (task.postponed_count or 0) * 15
-
-    # Overdue bonus (+50 if task is overdue)
-    if (
-        task.due_date
-        and task.due_date < today
-        and task.status != TaskStatus.COMPLETED.value
-    ):
-        score += 50
-
-    return score
 
 
 @api_bp.route("/tasks", methods=["GET"])
@@ -316,7 +181,7 @@ def create_task():
         try:
             card_service = CardService()
             ai_difficulty = card_service.determine_task_difficulty(
-                title, description or ""
+                title, description or "", user_id=user_id
             )
 
             # Map AI difficulty to priority
@@ -399,7 +264,9 @@ def create_task():
     if not preferred_time:
         try:
             classifier = TaskClassifier()
-            classification = classifier.classify_task(title, description)
+            classification = classifier.classify_task(
+                title, description, user_id=user_id
+            )
             task.task_type = classification.get("task_type")
             task.preferred_time = classification.get("preferred_time")
             db.session.commit()
@@ -410,7 +277,9 @@ def create_task():
         # Still classify task_type even if preferred_time is manually set
         try:
             classifier = TaskClassifier()
-            classification = classifier.classify_task(title, description)
+            classification = classifier.classify_task(
+                title, description, user_id=user_id
+            )
             task.task_type = classification.get("task_type")
             db.session.commit()
         except Exception:
@@ -751,6 +620,7 @@ def decompose_task(task_id: int):
         mood=mood_value,
         energy=energy_value,
         existing_subtasks_count=existing_count,
+        user_id=user_id,
     )
 
     # Handle no_new_steps response
@@ -1330,258 +1200,3 @@ def reorder_subtasks():
     db.session.commit()
 
     return success_response(message="Subtasks reordered")
-
-
-# --- Task Sharing Endpoints ---
-
-
-@api_bp.route("/tasks/<int:task_id>/share", methods=["POST"])
-@jwt_required()
-def share_task(task_id: int):
-    """
-    Share a task with a friend.
-
-    Request body:
-    {
-        "friend_id": 123,
-        "message": "Optional message"
-    }
-    """
-    user_id = int(get_jwt_identity())
-    data = request.get_json() or {}
-
-    friend_id = data.get("friend_id")
-    if not friend_id:
-        return validation_error({"friend_id": "Friend ID is required"})
-
-    # Verify task ownership
-    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
-    if not task:
-        return not_found("Task not found")
-
-    # Verify friendship exists (accepted)
-    friendship = Friendship.query.filter(
-        db.or_(
-            db.and_(
-                Friendship.user_id == user_id,
-                Friendship.friend_id == friend_id,
-            ),
-            db.and_(
-                Friendship.user_id == friend_id,
-                Friendship.friend_id == user_id,
-            ),
-        ),
-        Friendship.status == "accepted",
-    ).first()
-    if not friendship:
-        return validation_error({"friend_id": "Not friends with this user"})
-
-    # Check if already shared
-    existing = SharedTask.query.filter_by(
-        task_id=task_id, assignee_id=friend_id
-    ).first()
-    if existing:
-        return validation_error({"friend_id": "Task already shared with this user"})
-
-    shared = SharedTask(
-        task_id=task_id,
-        owner_id=user_id,
-        assignee_id=friend_id,
-        message=data.get("message", "").strip() or None,
-    )
-    db.session.add(shared)
-    db.session.commit()
-
-    # Send Telegram notification
-    try:
-        owner = User.query.get(user_id)
-        friend = User.query.get(friend_id)
-        if friend and friend.telegram_id:
-            owner_name = owner.first_name or "Друг"
-            text = (
-                f"📋 <b>{owner_name}</b> поделился задачей с тобой!\n\n"
-                f"<b>{task.title}</b>"
-            )
-            if shared.message:
-                text += f"\n\n💬 {shared.message}"
-            send_telegram_message(friend.telegram_id, text)
-    except Exception:
-        pass
-
-    return success_response({"shared_task": shared.to_dict()}, status_code=201)
-
-
-@api_bp.route("/tasks/shared", methods=["GET"])
-@jwt_required()
-def get_shared_with_me():
-    """
-    Get tasks shared with the current user.
-
-    Query params:
-    - status: filter by status (pending, accepted, declined, completed)
-    """
-    user_id = int(get_jwt_identity())
-    status = request.args.get("status")
-
-    query = SharedTask.query.filter_by(assignee_id=user_id)
-    if status and status in [s.value for s in SharedTaskStatus]:
-        query = query.filter_by(status=status)
-    else:
-        # Exclude declined by default
-        query = query.filter(SharedTask.status != SharedTaskStatus.DECLINED.value)
-        # Exclude fully done shared tasks (assignee pinged + owner completed the task)
-        query = query.filter(
-            ~db.and_(
-                SharedTask.status == SharedTaskStatus.COMPLETED.value,
-                SharedTask.task.has(Task.status == TaskStatus.COMPLETED.value),
-            )
-        )
-
-    shared_tasks = query.order_by(SharedTask.created_at.desc()).all()
-    return success_response(
-        {"shared_tasks": [s.to_dict(include_task=True) for s in shared_tasks]}
-    )
-
-
-@api_bp.route("/tasks/<int:task_id>/shared", methods=["GET"])
-@jwt_required()
-def get_task_shares(task_id: int):
-    """Get who a task has been shared with (for the owner)."""
-    user_id = int(get_jwt_identity())
-
-    task = Task.query.filter_by(id=task_id, user_id=user_id).first()
-    if not task:
-        return not_found("Task not found")
-
-    shares = SharedTask.query.filter_by(task_id=task_id).all()
-    return success_response({"shares": [s.to_dict() for s in shares]})
-
-
-@api_bp.route("/tasks/shared/<int:shared_id>/accept", methods=["POST"])
-@jwt_required()
-def accept_shared_task(shared_id: int):
-    """Accept a shared task."""
-    user_id = int(get_jwt_identity())
-
-    shared = SharedTask.query.filter_by(
-        id=shared_id,
-        assignee_id=user_id,
-        status=SharedTaskStatus.PENDING.value,
-    ).first()
-    if not shared:
-        return not_found("Shared task not found")
-
-    shared.status = SharedTaskStatus.ACCEPTED.value
-    shared.accepted_at = datetime.utcnow()
-    db.session.commit()
-
-    return success_response({"shared_task": shared.to_dict()})
-
-
-@api_bp.route("/tasks/shared/<int:shared_id>/decline", methods=["POST"])
-@jwt_required()
-def decline_shared_task(shared_id: int):
-    """Decline a shared task."""
-    user_id = int(get_jwt_identity())
-
-    shared = SharedTask.query.filter_by(
-        id=shared_id,
-        assignee_id=user_id,
-        status=SharedTaskStatus.PENDING.value,
-    ).first()
-    if not shared:
-        return not_found("Shared task not found")
-
-    shared.status = SharedTaskStatus.DECLINED.value
-    db.session.commit()
-
-    # Notify owner
-    try:
-        assignee = User.query.get(user_id)
-        owner = User.query.get(shared.owner_id)
-        if owner and owner.telegram_id:
-            name = assignee.first_name or "Друг"
-            send_telegram_message(
-                owner.telegram_id,
-                f"😔 <b>{name}</b> отклонил задачу «{shared.task.title}»",
-            )
-    except Exception:
-        pass
-
-    return success_response({"shared_task": shared.to_dict()})
-
-
-@api_bp.route("/tasks/shared/<int:shared_id>/ping", methods=["POST"])
-@jwt_required()
-def ping_shared_task(shared_id: int):
-    """Notify the task owner that the assignee has finished."""
-    user_id = int(get_jwt_identity())
-
-    shared = SharedTask.query.filter_by(
-        id=shared_id,
-        assignee_id=user_id,
-        status=SharedTaskStatus.ACCEPTED.value,
-    ).first()
-    if not shared:
-        return not_found("Shared task not found")
-
-    shared.status = SharedTaskStatus.COMPLETED.value
-    shared.completed_at = datetime.utcnow()
-    db.session.commit()
-
-    # Notify owner via Telegram
-    try:
-        assignee = User.query.get(user_id)
-        owner = User.query.get(shared.owner_id)
-        if owner and owner.telegram_id:
-            name = assignee.first_name or "Друг"
-            send_telegram_message(
-                owner.telegram_id,
-                f"✅ <b>{name}</b> выполнил задачу «{shared.task.title}»!",
-            )
-    except Exception:
-        pass
-
-    return success_response({"shared_task": shared.to_dict()})
-
-
-@api_bp.route("/tasks/shared/rewards", methods=["GET"])
-@jwt_required()
-def get_shared_task_rewards():
-    """Get unshown card rewards from completed shared tasks."""
-    user_id = int(get_jwt_identity())
-
-    pending = (
-        SharedTask.query.filter_by(
-            assignee_id=user_id,
-            reward_shown=False,
-        )
-        .filter(SharedTask.reward_card_id.isnot(None))
-        .all()
-    )
-
-    rewards = []
-    for s in pending:
-        if s.reward_card:
-            rewards.append(
-                {
-                    "shared_id": s.id,
-                    "card": s.reward_card.to_dict(),
-                    "task_title": s.task.title if s.task else None,
-                    "owner_name": s.owner.first_name if s.owner else None,
-                }
-            )
-
-    return success_response({"rewards": rewards})
-
-
-@api_bp.route("/tasks/shared/<int:shared_id>/reward-shown", methods=["POST"])
-@jwt_required()
-def mark_shared_reward_shown(shared_id: int):
-    """Mark a shared task reward as shown."""
-    user_id = int(get_jwt_identity())
-    shared = SharedTask.query.filter_by(id=shared_id, assignee_id=user_id).first()
-    if shared:
-        shared.reward_shown = True
-        db.session.commit()
-    return success_response({})

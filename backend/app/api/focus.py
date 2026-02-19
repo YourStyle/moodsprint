@@ -214,7 +214,7 @@ def complete_focus_session():
 
             # Generate card for task completion
             # Check if task was completed too quickly (anti-cheat)
-            from app.api.tasks import (
+            from app.services.task_service import (
                 MIN_TASK_TIME_FOR_CARD,
                 should_skip_time_check_for_card,
             )

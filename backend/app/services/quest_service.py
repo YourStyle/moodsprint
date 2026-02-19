@@ -20,7 +20,7 @@ class QuestService:
         self.client = get_openai_client()
 
     def generate_themed_quest_name(
-        self, quest_type: str, genre: str, description: str
+        self, quest_type: str, genre: str, description: str, user_id: int | None = None
     ) -> tuple[str, str]:
         """
         Generate a themed quest name using AI.
@@ -49,8 +49,13 @@ class QuestService:
 Ответь в формате JSON:
 {{"title": "Название квеста", "description": "Тематическое описание"}}"""
 
-                response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                from app.utils.ai_tracker import tracked_openai_call
+
+                response = tracked_openai_call(
+                    self.client,
+                    user_id=user_id,
+                    endpoint="generate_quest_name",
+                    model="gpt-5-mini",
                     messages=[
                         {
                             "role": "system",
@@ -113,7 +118,7 @@ class QuestService:
 
             # Generate themed name
             title, themed_desc = self.generate_themed_quest_name(
-                quest_type, genre, template["description"]
+                quest_type, genre, template["description"], user_id=user_id
             )
 
             quest = DailyQuest(

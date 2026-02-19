@@ -63,7 +63,9 @@ async def transcribe_voice(voice_file_path: str) -> str | None:
         return None
 
 
-async def extract_task_from_text(text: str, lang: str = "ru") -> TaskFromVoice | None:
+async def extract_task_from_text(
+    text: str, lang: str = "ru", user_id: int | None = None
+) -> TaskFromVoice | None:
     """
     Extract task information from transcribed text using GPT.
 
@@ -141,8 +143,13 @@ async def extract_task_from_text(text: str, lang: str = "ru") -> TaskFromVoice |
             "Return ONLY valid JSON, no markdown or explanations."
         )
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        from services.ai_tracker import tracked_openai_call
+
+        response = await tracked_openai_call(
+            client,
+            user_id=user_id,
+            endpoint="extract_task_from_voice",
+            model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text},
