@@ -141,6 +141,62 @@
             </div>
         </form>
     </div>
+    <!-- Broadcast History -->
+    {% if history %}
+    <div class="bg-white rounded-lg shadow p-6 mt-6">
+        <h3 class="text-lg font-semibold mb-4">Broadcast History</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-gray-500">
+                        <th class="pb-2 pr-4">Date</th>
+                        <th class="pb-2 pr-4">Message</th>
+                        <th class="pb-2 pr-4">Filter</th>
+                        <th class="pb-2 pr-4 text-right">Sent</th>
+                        <th class="pb-2 text-right">Failed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in history %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-3 pr-4 text-gray-500 whitespace-nowrap">
+                            {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}
+                        </td>
+                        <td class="py-3 pr-4">
+                            <div class="max-w-md truncate text-gray-900" title="{{ item.message }}">
+                                {{ item.message[:120] }}{% if item.message|length > 120 %}…{% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 pr-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                {% if item.filter_type == 'all' %}bg-blue-100 text-blue-800
+                                {% elif item.filter_type == 'language' %}bg-green-100 text-green-800
+                                {% elif item.filter_type == 'user' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ item.filter_type }}
+                            </span>
+                            {% if item.filter_details %}
+                            <span class="text-xs text-gray-500 ml-1">{{ item.filter_details }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 pr-4 text-right">
+                            <span class="text-green-600 font-medium">{{ item.sent }}</span>
+                            <span class="text-gray-400">/{{ item.total }}</span>
+                        </td>
+                        <td class="py-3 text-right">
+                            {% if item.failed > 0 %}
+                            <span class="text-red-500 font-medium">{{ item.failed }}</span>
+                            {% else %}
+                            <span class="text-gray-400">0</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

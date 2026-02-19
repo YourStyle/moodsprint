@@ -1184,7 +1184,8 @@ def analytics():
             (SELECT COUNT(DISTINCT user_id) FROM focus_sessions) as focus,
             (SELECT COUNT(DISTINCT user_id) FROM user_cards) as cards,
             (SELECT COUNT(DISTINCT user_id) FROM battle_logs) as arena,
-            (SELECT COUNT(DISTINCT user_id) FROM campaign_level_completions) as campaign,
+            (SELECT COUNT(DISTINCT ucp.user_id) FROM campaign_level_completions clc
+                JOIN user_campaign_progress ucp ON ucp.id = clc.progress_id) as campaign,
             (SELECT COUNT(DISTINCT user_id) FROM daily_quests) as quests,
             (SELECT COUNT(DISTINCT user_id) FROM defeated_monsters) as monsters,
             (SELECT COUNT(DISTINCT user_id) FROM merge_logs) as merges,
@@ -1198,7 +1199,7 @@ def analytics():
                 WHERE buyer_id IS NOT NULL) as marketplace_buyers,
             (SELECT COUNT(DISTINCT user_id) FROM sparks_transactions
                 WHERE type IN ('stars_purchase', 'ton_deposit')) as paying_users,
-            (SELECT COUNT(DISTINCT user_id) FROM shared_tasks) as shared_tasks,
+            (SELECT COUNT(DISTINCT owner_id) FROM shared_tasks) as shared_tasks,
             (SELECT COUNT(DISTINCT user_id) FROM user_achievements) as achievements
     """
         )
@@ -5482,12 +5483,29 @@ def levels_reward_delete(reward_id):
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
+# Ensure broadcast_logs table exists
+with app.app_context():
+    with db.engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS broadcast_logs (
+                id SERIAL PRIMARY KEY,
+                message TEXT NOT NULL,
+                filter_type VARCHAR(50) NOT NULL DEFAULT 'all',
+                filter_details TEXT,
+                total_recipients INTEGER NOT NULL DEFAULT 0,
+                sent_count INTEGER NOT NULL DEFAULT 0,
+                failed_count INTEGER NOT NULL DEFAULT 0,
+                sent_by VARCHAR(100),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """))
+        conn.commit()
+
 
 @app.route("/broadcast")
 @login_required
 def broadcast():
-    """Broadcast message form."""
-    # Get user counts for filter preview
+    """Broadcast message form with history."""
     with db.engine.connect() as conn:
         total_users = conn.execute(
             text("SELECT COUNT(*) FROM users WHERE telegram_id IS NOT NULL")
@@ -5503,10 +5521,37 @@ def broadcast():
         ).fetchall()
         lang_stats = {row[0]: row[1] for row in lang_counts}
 
+        # Load broadcast history (last 50)
+        history_rows = conn.execute(
+            text("""
+                SELECT id, message, filter_type, filter_details,
+                       total_recipients, sent_count, failed_count,
+                       sent_by, created_at
+                FROM broadcast_logs
+                ORDER BY created_at DESC
+                LIMIT 50
+            """)
+        ).fetchall()
+        history = [
+            {
+                "id": r[0],
+                "message": r[1],
+                "filter_type": r[2],
+                "filter_details": r[3],
+                "total": r[4],
+                "sent": r[5],
+                "failed": r[6],
+                "sent_by": r[7],
+                "created_at": r[8],
+            }
+            for r in history_rows
+        ]
+
     return render_template(
         "broadcast.html",
         total_users=total_users,
         lang_stats=lang_stats,
+        history=history,
     )
 
 
@@ -5590,6 +5635,40 @@ def broadcast_send():
                 fail_count += 1
         except Exception:
             fail_count += 1
+
+    # Save broadcast log
+    filter_details = ""
+    if filter_type == "language":
+        filter_details = f"lang={filter_language}"
+    elif filter_type == "level":
+        filter_details = f"level {filter_level_min or '?'}-{filter_level_max or '?'}"
+    elif filter_type == "activity":
+        filter_details = f"active last {filter_active_days} days"
+    elif filter_type == "user":
+        filter_details = f"user: {filter_user_search}"
+
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO broadcast_logs
+                        (message, filter_type, filter_details,
+                         total_recipients, sent_count, failed_count, sent_by)
+                    VALUES (:msg, :ft, :fd, :total, :sent, :failed, :by)
+                """),
+                {
+                    "msg": message_text,
+                    "ft": filter_type,
+                    "fd": filter_details or None,
+                    "total": len(telegram_ids),
+                    "sent": success_count,
+                    "failed": fail_count,
+                    "by": session.get("user", "admin"),
+                },
+            )
+            conn.commit()
+    except Exception:
+        pass
 
     return jsonify({
         "success": True,
