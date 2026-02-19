@@ -49,7 +49,7 @@ services:
       - db_backups:/backups
       - ./scripts/backup.sh:/backup.sh:ro
       - ./scripts/crontab:/etc/crontabs/root:ro
-    entrypoint: ["/bin/sh", "-c", "chmod +x /backup.sh && crond -f -l 2"]
+    entrypoint: ["/bin/sh", "-c", "crond -f -l 2"]
     depends_on:
       db:
         condition: service_healthy
