@@ -48,10 +48,10 @@ export function XPToastQueue() {
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ y: -40, opacity: 0, scale: 0.9 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: -20, opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+          initial={{ y: -60, scale: 0.95 }}
+          animate={{ y: 0, scale: 1 }}
+          exit={{ y: -60, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 24, stiffness: 300 }}
           className="px-4 w-full"
         >
           <div className="bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-2xl px-4 py-3 shadow-2xl">
