@@ -6,6 +6,7 @@ import { Providers } from './providers';
 import { Navigation } from '@/components/Navigation';
 import { ScrollBackdrop } from '@/components/ui';
 import { XPToastQueue } from '@/components/gamification/XPToastQueue';
+import { ModalProvider } from '@/lib/contexts/ModalContext';
 
 const nunitoSans = Nunito_Sans({ subsets: ['latin', 'cyrillic'], weight: ['400', '500', '600', '700', '800'] });
 
@@ -43,12 +44,14 @@ export default function RootLayout({
       </head>
       <body className={nunitoSans.className}>
         <Providers>
-          <ScrollBackdrop />
-          <XPToastQueue />
-          <div className="min-h-screen flex flex-col pt-safe">
-            <main className="flex-1 pb-20">{children}</main>
-            <Navigation />
-          </div>
+          <ModalProvider>
+            <ScrollBackdrop />
+            <XPToastQueue />
+            <div className="min-h-screen flex flex-col pt-safe">
+              <main className="flex-1 pb-20">{children}</main>
+              <Navigation />
+            </div>
+          </ModalProvider>
         </Providers>
       </body>
     </html>

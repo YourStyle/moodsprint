@@ -103,3 +103,7 @@ pre-commit install
 ```
 
 Hooks run black, isort, and flake8 on Python files.
+
+## Deploy
+
+When the user says "задеплой", "и задеплой", "deploy", "запуши и задеплой" or similar — immediately run the `/deploy` slash command without asking questions.

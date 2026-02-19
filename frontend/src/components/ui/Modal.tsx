@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
+import { useRegisterModal } from '@/lib/contexts/ModalContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -25,6 +26,9 @@ export function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const scrollYRef = useRef(0);
+
+  // Register with modal context so notifications can pause
+  useRegisterModal(isOpen);
 
   // Lock body scroll when modal is open
   useEffect(() => {

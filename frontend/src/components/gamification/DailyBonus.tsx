@@ -6,6 +6,7 @@ import { Gift, Sparkles, X, Flame } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gamificationService } from '@/services';
 import { useAppStore } from '@/lib/store';
+import { useRegisterModal } from '@/lib/contexts/ModalContext';
 import { hapticFeedback } from '@/lib/telegram';
 import { useLanguage } from '@/lib/i18n';
 
@@ -18,6 +19,7 @@ interface DailyBonusProps {
 
 export function DailyBonus({ enabled = true, onDone }: DailyBonusProps) {
   const [isOpen, setIsOpen] = useState(false);
+  useRegisterModal(isOpen);
   const [claimed, setClaimed] = useState(false);
   const doneCalledRef = useRef(false);
   const queryClient = useQueryClient();

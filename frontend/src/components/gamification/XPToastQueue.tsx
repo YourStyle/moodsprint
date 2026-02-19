@@ -3,27 +3,37 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useModalContext } from '@/lib/contexts/ModalContext';
+
+const DISMISS_MS = 3500;
 
 export function XPToastQueue() {
   const { xpToastQueue, shiftXPToast } = useAppStore();
+  const { isAnyModalOpen } = useModalContext();
   const current = xpToastQueue[0] || null;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-dismiss after 2.5s, then shift to next
+  // Auto-dismiss only when no modals are open
   useEffect(() => {
-    if (!current) return;
+    if (!current || isAnyModalOpen) return;
     timerRef.current = setTimeout(() => {
       shiftXPToast();
-    }, 2500);
+    }, DISMISS_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [current?.id, shiftXPToast]);
+  }, [current?.id, isAnyModalOpen, shiftXPToast]);
+
+  // Don't render while a modal is open — the toast will appear once it closes
+  const showToast = current && !isAnyModalOpen;
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-50 flex justify-center pointer-events-none">
+    <div
+      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none"
+      style={{ top: 'calc(var(--safe-area-top, 0px) + 12px)' }}
+    >
       <AnimatePresence mode="wait">
-        {current && (
+        {showToast && (
           <motion.div
             key={current.id}
             initial={{ y: -40, opacity: 0, scale: 0.9 }}
