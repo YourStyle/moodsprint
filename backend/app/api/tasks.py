@@ -364,10 +364,13 @@ def update_task(task_id: int):
                 task.original_due_date = None
 
     if "due_date" in data:
-        try:
-            task.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()
-        except (ValueError, TypeError):
-            pass
+        if data["due_date"] is None:
+            task.due_date = None
+        else:
+            try:
+                task.due_date = datetime.strptime(data["due_date"], "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                pass
 
     # Update task_type if provided
     valid_task_types = [

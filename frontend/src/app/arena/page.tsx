@@ -755,6 +755,17 @@ export default function ArenaPage() {
 
     const initCampaignBattle = async () => {
       try {
+        // Call startLevel first to handle energy gate and prerequisite checks
+        const startResult = await campaignService.startLevel(Number(campaignLevelId));
+        if (!startResult.success) {
+          console.error('Failed to start campaign level:', startResult);
+          hapticFeedback('error');
+          setCampaignLoading(false);
+          setCampaignMode(false);
+          router.replace('/campaign');
+          return;
+        }
+
         // Get battle config for this campaign level
         const configResponse = await campaignService.getLevelBattleConfig(Number(campaignLevelId));
         if (!configResponse.success || !configResponse.data) {

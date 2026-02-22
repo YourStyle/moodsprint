@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX } from 'lucide-react';
+import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX, CalendarDays } from 'lucide-react';
 import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
@@ -162,6 +162,7 @@ export default function TaskDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editTaskType, setEditTaskType] = useState<TaskType | null>(null);
+  const [editDueDate, setEditDueDate] = useState('');
   const [editReminderEnabled, setEditReminderEnabled] = useState(false);
   const [editReminderDate, setEditReminderDate] = useState('');
   const [editReminderTime, setEditReminderTime] = useState('');
@@ -709,6 +710,7 @@ export default function TaskDetailPage() {
               setEditDescription(task.description || '');
               setEditPriority(task.priority as 'low' | 'medium' | 'high');
               setEditTaskType(task.task_type as TaskType | null);
+              setEditDueDate(task.due_date || '');
               // Initialize reminder state
               if (task.scheduled_at) {
                 const scheduledDate = new Date(task.scheduled_at);
@@ -1189,6 +1191,32 @@ export default function TaskDetailPage() {
               ))}
             </div>
           </div>
+          {/* Deadline */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <span className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-primary-400" />
+                {t('deadline')}
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              {editDueDate && (
+                <button
+                  type="button"
+                  onClick={() => setEditDueDate('')}
+                  className="px-3 py-2 rounded-xl bg-gray-700 text-gray-400 hover:text-red-400 hover:bg-gray-600 transition-colors text-sm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
           {/* Reminder */}
           <div>
             <label className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-gray-800/50 border border-gray-700">
@@ -1253,6 +1281,7 @@ export default function TaskDetailPage() {
                   description: editDescription.trim() || undefined,
                   priority: editPriority,
                   task_type: editTaskType || undefined,
+                  due_date: editDueDate || null,
                   scheduled_at: scheduledAt,
                 });
               }}

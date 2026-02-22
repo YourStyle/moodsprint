@@ -784,6 +784,7 @@ export const translations = {
     newTag: 'NEW',
 
     // Deadline display
+    deadline: 'Дедлайн',
     overdue: 'Просрочено',
     daysShort: 'д',
 
@@ -1587,6 +1588,7 @@ export const translations = {
     newTag: 'NEW',
 
     // Deadline display
+    deadline: 'Deadline',
     overdue: 'Overdue',
     daysShort: 'd',
 

@@ -77,7 +77,7 @@ export interface UpdateTaskInput {
   description?: string;
   priority?: TaskPriority;
   status?: TaskStatus;
-  due_date?: string;
+  due_date?: string | null;
   task_type?: TaskType;
   scheduled_at?: string | null;
 }
