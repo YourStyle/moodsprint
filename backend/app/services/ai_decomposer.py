@@ -66,6 +66,13 @@ class AIDecomposer:
 
     def __init__(self):
         self.client = get_openai_client()
+        if self.client:
+            current_app.logger.info("AIDecomposer: OpenAI client initialized")
+        else:
+            current_app.logger.warning(
+                "AIDecomposer: OpenAI client NOT initialized — "
+                "will use fallback decomposition"
+            )
 
     # Task type context for better decomposition
     TASK_TYPE_CONTEXT = {
@@ -173,9 +180,15 @@ class AIDecomposer:
                     )
                 return result
             except Exception as e:
-                current_app.logger.error(f"AI decomposition failed: {e}")
+                current_app.logger.error(
+                    f"AI decomposition failed for '{task_title}': {e}",
+                    exc_info=True,
+                )
 
         # Fallback to simple decomposition
+        current_app.logger.warning(
+            f"AI decomposition falling back to simple for: '{task_title}'"
+        )
         subtasks = self._simple_decompose(
             task_title, task_description, strategy_config, task_type
         )

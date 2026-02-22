@@ -531,6 +531,58 @@ def generate_guild_quests(guild_id):
     return success_response({"quests": quests})
 
 
+# ============ Quest Preferences ============
+
+
+@api_bp.route("/guilds/<int:guild_id>/quest-preferences", methods=["PUT"])
+@jwt_required()
+def set_quest_preferences(guild_id: int):
+    """
+    Set preferred quest types for a guild (leader/officer only).
+
+    Request body:
+    {
+        "quest_types": ["tasks_completed", "focus_minutes"]
+    }
+
+    Valid types: tasks_completed, focus_minutes, battles_won, cards_earned,
+                 streaks_maintained
+    """
+    user_id = int(get_jwt_identity())
+
+    membership = GuildMember.query.filter_by(user_id=user_id, guild_id=guild_id).first()
+    if not membership or membership.role not in ("leader", "officer"):
+        return validation_error({"error": "Недостаточно прав"})
+
+    data = request.get_json() or {}
+    quest_types = data.get("quest_types")
+
+    if quest_types is not None and not isinstance(quest_types, list):
+        return validation_error({"quest_types": "Должен быть массивом"})
+
+    valid_types = {
+        "tasks_completed",
+        "focus_minutes",
+        "battles_won",
+        "cards_earned",
+        "streaks_maintained",
+    }
+    if quest_types:
+        invalid = [t for t in quest_types if t not in valid_types]
+        if invalid:
+            return validation_error(
+                {"quest_types": f"Неизвестные типы: {', '.join(invalid)}"}
+            )
+
+    service = GuildService()
+    result = service.set_quest_preferences(guild_id, quest_types)
+
+    if "error" in result:
+        return validation_error({"error": result["error"]})
+
+    return success_response(result)
+
+
 # ============ Bot-callable endpoints (X-Bot-Secret auth) ============
 
 

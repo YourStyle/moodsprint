@@ -13,6 +13,7 @@ from app.models.guild import (
     GuildInvite,
     GuildMember,
     GuildQuest,
+    GuildQuestContribution,
     GuildRaid,
     GuildRaidContribution,
 )
@@ -736,6 +737,23 @@ class GuildService:
         },
     ]
 
+    def set_quest_preferences(
+        self, guild_id: int, quest_types: list[str]
+    ) -> dict[str, Any]:
+        """Set preferred quest types for a guild (leader/officer only)."""
+        valid_types = {t["quest_type"] for t in self.QUEST_TEMPLATES}
+        filtered = [qt for qt in quest_types if qt in valid_types]
+
+        guild = Guild.query.get(guild_id)
+        if not guild:
+            return {"error": "guild_not_found"}
+
+        guild.preferred_quest_types = filtered if filtered else None
+        db.session.commit()
+
+        logger.info(f"Guild {guild_id} quest preferences set to: {filtered}")
+        return {"success": True, "quest_types": filtered}
+
     def generate_weekly_quests(self, guild_id: int) -> list[dict]:
         """Generate 2-3 weekly quests for a guild."""
         guild = Guild.query.get(guild_id)
@@ -754,16 +772,27 @@ class GuildService:
         if existing:
             return []
 
+        # Respect guild's preferred quest types if set
+        available_templates = self.QUEST_TEMPLATES
+        if guild.preferred_quest_types:
+            preferred = [
+                t
+                for t in self.QUEST_TEMPLATES
+                if t["quest_type"] in guild.preferred_quest_types
+            ]
+            if preferred:
+                available_templates = preferred
+
         # Pick 2-3 random quest templates
         member_count = guild.member_count
         count = 3 if member_count >= 5 else 2
         templates = random.sample(
-            self.QUEST_TEMPLATES, min(count, len(self.QUEST_TEMPLATES))
+            available_templates, min(count, len(available_templates))
         )
 
         quests = []
         for tmpl in templates:
-            # Scale target by member count (more members = higher target)
+            # Dynamic target: scale by member count
             scale = max(1, member_count // 3)
             target = tmpl["base_target"] * scale
 
@@ -812,7 +841,11 @@ class GuildService:
         return [q.to_dict() for q in quests]
 
     def increment_quest_progress(
-        self, guild_id: int, quest_type: str, amount: int = 1
+        self,
+        guild_id: int,
+        quest_type: str,
+        amount: int = 1,
+        user_id: int | None = None,
     ) -> dict | None:
         """Increment progress on a guild's active quest of given type."""
         today = date.today()
@@ -828,6 +861,17 @@ class GuildService:
             return None
 
         quest.progress += amount
+
+        # Track per-member contribution
+        if user_id is not None:
+            contrib = GuildQuestContribution.query.filter_by(
+                quest_id=quest.id, user_id=user_id
+            ).first()
+            if not contrib:
+                contrib = GuildQuestContribution(quest_id=quest.id, user_id=user_id)
+                db.session.add(contrib)
+            contrib.amount += amount
+            contrib.last_contributed_at = datetime.utcnow()
 
         if quest.progress >= quest.target:
             quest.status = "completed"

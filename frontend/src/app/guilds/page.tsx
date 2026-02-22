@@ -14,6 +14,8 @@ import {
   UserMinus,
   Star,
   Loader2,
+  Settings,
+  Check,
 } from 'lucide-react';
 import { Card, Button, Progress, ScrollBackdrop } from '@/components/ui';
 import { CreateGuildModal } from '@/components/guilds';
@@ -36,6 +38,8 @@ export default function GuildsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('my-guild');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQuestPrefs, setShowQuestPrefs] = useState(false);
+  const [selectedQuestTypes, setSelectedQuestTypes] = useState<string[]>([]);
   const inviteGuildHandled = useRef(false);
 
   // Setup native back button
@@ -140,6 +144,17 @@ export default function GuildsPage() {
     mutationFn: () => guildsService.generateGuildQuests(myGuild!.id),
     onSuccess: () => {
       hapticFeedback('success');
+      queryClient.invalidateQueries({ queryKey: ['guilds'] });
+    },
+  });
+
+  // Quest preferences mutation
+  const questPrefsMutation = useMutation({
+    mutationFn: (types: string[]) =>
+      guildsService.setQuestPreferences(myGuild!.id, types.length > 0 ? types : null),
+    onSuccess: () => {
+      hapticFeedback('success');
+      setShowQuestPrefs(false);
       queryClient.invalidateQueries({ queryKey: ['guilds'] });
     },
   });
@@ -289,10 +304,75 @@ export default function GuildsPage() {
 
               {/* Weekly Quests */}
               <div>
-                <h3 className="font-medium text-white mb-3 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-amber-400" />
-                  {t('weeklyQuests')}
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-white flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-400" />
+                    {t('weeklyQuests')}
+                  </h3>
+                  {canManageQuests && (
+                    <button
+                      onClick={() => {
+                        setShowQuestPrefs(!showQuestPrefs);
+                        hapticFeedback('light');
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quest Type Preferences (collapsible) */}
+                {showQuestPrefs && canManageQuests && (
+                  <Card className="bg-gray-800/50 border-purple-500/30 mb-3">
+                    <div className="p-3 space-y-3">
+                      <p className="text-xs text-gray-400">{t('questTypeSelection')}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { type: 'tasks_completed', label: t('questTasksCompleted') },
+                          { type: 'focus_minutes', label: t('questFocusMinutes') },
+                          { type: 'battles_won', label: t('questBattlesWon') },
+                          { type: 'cards_earned', label: t('questCardsEarned') },
+                          { type: 'streaks_maintained', label: t('questStreaks') },
+                        ].map(({ type, label }) => {
+                          const selected = selectedQuestTypes.includes(type);
+                          return (
+                            <button
+                              key={type}
+                              onClick={() => {
+                                setSelectedQuestTypes(prev =>
+                                  selected ? prev.filter(t => t !== type) : [...prev, type]
+                                );
+                                hapticFeedback('light');
+                              }}
+                              className={cn(
+                                'text-xs px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1',
+                                selected
+                                  ? 'bg-purple-600/30 border-purple-500/50 text-purple-300'
+                                  : 'bg-gray-700/30 border-gray-600/50 text-gray-400'
+                              )}
+                            >
+                              {selected && <Check className="w-3 h-3" />}
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => questPrefsMutation.mutate(selectedQuestTypes)}
+                        disabled={questPrefsMutation.isPending}
+                        className="w-full"
+                      >
+                        {questPrefsMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : null}
+                        {t('questPreferences')}
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+
                 {quests.length > 0 ? (
                   <div className="space-y-2">
                     {quests.map((quest) => (
@@ -319,6 +399,20 @@ export default function GuildsPage() {
                             </div>
                             <Progress value={quest.percentage} className="h-1.5" />
                           </div>
+                          {/* Top Contributors */}
+                          {quest.top_contributors && quest.top_contributors.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-700/30">
+                              <p className="text-[10px] text-gray-500 mb-1">{t('questContributions')}</p>
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                {quest.top_contributors.map((c) => (
+                                  <span key={c.user_id} className="text-[11px] text-gray-400">
+                                    {c.first_name || c.username || `#${c.user_id}`}{' '}
+                                    <span className="text-purple-400">{c.amount}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </Card>
                     ))}

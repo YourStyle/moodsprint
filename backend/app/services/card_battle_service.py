@@ -1375,9 +1375,13 @@ class CardBattleService:
                 membership = GuildMember.query.filter_by(user_id=battle.user_id).first()
                 if membership:
                     gs = GuildService()
-                    gs.increment_quest_progress(membership.guild_id, "battles_won")
+                    gs.increment_quest_progress(
+                        membership.guild_id, "battles_won", user_id=battle.user_id
+                    )
                     if new_card:
-                        gs.increment_quest_progress(membership.guild_id, "cards_earned")
+                        gs.increment_quest_progress(
+                            membership.guild_id, "cards_earned", user_id=battle.user_id
+                        )
             except Exception:
                 pass
 

@@ -218,20 +218,8 @@ class CampaignService:
         if level.chapter.number > progress.current_chapter:
             return {"error": "chapter_locked"}
 
-        # Energy gate: chapter 1 is free, rest costs 1 energy
-        if level.chapter.number > 1:
-            from app.services.card_service import CardService
-
-            card_service = CardService()
-            energy_result = card_service.spend_energy(user_id)
-            if not energy_result["success"]:
-                return {
-                    "error": "no_energy",
-                    "energy": energy_result.get("energy", 0),
-                    "max_energy": energy_result.get("max_energy", 5),
-                }
-
         # Check if previous level is completed (except first level)
+        # Must check BEFORE spending energy to avoid wasting it on invalid requests
         if level.number > 1:
             prev_completion = (
                 CampaignLevelCompletion.query.filter_by(progress_id=progress.id)
@@ -245,6 +233,26 @@ class CampaignService:
 
             if not prev_completion:
                 return {"error": "previous_level_not_completed"}
+
+        # Energy gate: chapter 1 is free, rest costs 1 energy
+        energy_spent = False
+        if level.chapter.number > 1:
+            from app.services.card_service import CardService
+
+            card_service = CardService()
+            energy_result = card_service.spend_energy(user_id)
+            if not energy_result["success"]:
+                return {
+                    "error": "no_energy",
+                    "energy": energy_result.get("energy", 0),
+                    "max_energy": energy_result.get("max_energy", 5),
+                }
+            energy_spent = True
+            logger.info(
+                f"Campaign start_level: user={user_id}, "
+                f"chapter={level.chapter.number}, level={level.number}, "
+                f"energy_spent={energy_spent}"
+            )
 
         # Get localized dialogue_before
         dialogue_before = (
@@ -266,6 +274,7 @@ class CampaignService:
             "monster_id": level.monster_id,
             "difficulty_multiplier": difficulty,
             "is_hard_mode": hard_mode,
+            "energy_spent": energy_spent,
         }
 
     def process_dialogue_choice(

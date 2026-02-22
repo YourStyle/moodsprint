@@ -89,6 +89,11 @@ class CampaignEnergyService:
         profile.campaign_energy = current - 1
         db.session.commit()
 
+        logger.info(
+            f"Energy spent: user={user_id}, "
+            f"energy={profile.campaign_energy}/{profile.max_campaign_energy or 5}"
+        )
+
         return {
             "success": True,
             "energy": profile.campaign_energy,

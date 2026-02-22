@@ -324,10 +324,12 @@ def complete_focus_session():
             actual_min = session.actual_duration_minutes or 0
             if actual_min > 0:
                 gs.increment_quest_progress(
-                    membership.guild_id, "focus_minutes", actual_min
+                    membership.guild_id, "focus_minutes", actual_min, user_id=user_id
                 )
             if generated_card:
-                gs.increment_quest_progress(membership.guild_id, "cards_earned")
+                gs.increment_quest_progress(
+                    membership.guild_id, "cards_earned", user_id=user_id
+                )
     except Exception:
         pass
 

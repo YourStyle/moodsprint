@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Plus, Sparkles, Play, ArrowUp, X, Smile, CheckCircle2, Search, ChevronDown, ChevronRight, List, LayoutGrid, Loader2, Archive, RotateCcw, Share2 } from 'lucide-react';
+import { Plus, Sparkles, Play, ArrowUp, X, Smile, CheckCircle2, Search, ChevronDown, ChevronRight, List, LayoutGrid, Loader2, Archive, RotateCcw, Share2, Flame, Users } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Modal, ScrollBackdrop } from '@/components/ui';
@@ -51,6 +51,21 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   //   position: 'top',
   // },
 ];
+
+function getDeadlineInfo(dueDate: string | null | undefined, t: (key: TranslationKey) => string) {
+  if (!dueDate) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T00:00:00');
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return { label: t('overdue'), color: 'text-red-400', bg: 'bg-red-500/20' };
+  if (diffDays <= 1) return { label: diffDays === 0 ? t('today') : `1${t('daysShort')}`, color: 'text-red-400', bg: 'bg-red-500/20' };
+  if (diffDays <= 3) return { label: `${diffDays}${t('daysShort')}`, color: 'text-orange-400', bg: 'bg-orange-500/20' };
+  if (diffDays <= 7) return { label: `${diffDays}${t('daysShort')}`, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+  return { label: `${diffDays}${t('daysShort')}`, color: 'text-gray-400', bg: 'bg-gray-700/50' };
+}
 
 type FilterStatus = TaskStatus | 'all' | 'archived';
 
@@ -1032,6 +1047,21 @@ export default function HomePage() {
                               {newTaskIds.has(task.id) && (
                                 <span className="px-1.5 py-0.5 bg-primary-500/30 text-primary-400 text-[10px] font-bold rounded-full flex-shrink-0">
                                   NEW
+                                </span>
+                              )}
+                              {task.status !== 'completed' && task.status !== 'archived' && (() => {
+                                const dl = getDeadlineInfo(task.due_date, t);
+                                return dl ? (
+                                  <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${dl.bg} ${dl.color}`}>
+                                    <Flame className="w-2.5 h-2.5" />
+                                    {dl.label}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {(task.shared_with_count ?? 0) > 0 && (
+                                <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 bg-primary-500/20 text-primary-400">
+                                  <Users className="w-2.5 h-2.5" />
+                                  {task.shared_with_count}
                                 </span>
                               )}
                               {task.status !== 'completed' && session && (

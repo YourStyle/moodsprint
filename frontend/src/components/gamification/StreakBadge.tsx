@@ -24,7 +24,7 @@ export function StreakBadge({ days, longestStreak }: StreakBadgeProps) {
       {longestStreak > days && (
         <div className="ml-auto text-right">
           <p className="text-sm font-medium text-gray-400">{t('record')}</p>
-          <p className="text-sm text-purple-300">{t('daysShort').replace('{count}', String(longestStreak))}</p>
+          <p className="text-sm text-purple-300">{t('daysCount').replace('{count}', String(longestStreak))}</p>
         </div>
       )}
     </Card>

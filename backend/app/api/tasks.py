@@ -531,9 +531,13 @@ def update_task(task_id: int):
             membership = GuildMember.query.filter_by(user_id=user_id).first()
             if membership:
                 gs = GS()
-                gs.increment_quest_progress(membership.guild_id, "tasks_completed")
+                gs.increment_quest_progress(
+                    membership.guild_id, "tasks_completed", user_id=user_id
+                )
                 if generated_card:
-                    gs.increment_quest_progress(membership.guild_id, "cards_earned")
+                    gs.increment_quest_progress(
+                        membership.guild_id, "cards_earned", user_id=user_id
+                    )
         except Exception:
             pass
 
@@ -1002,9 +1006,13 @@ def update_subtask(subtask_id: int):
             membership = GuildMember.query.filter_by(user_id=user_id).first()
             if membership:
                 gs = GS()
-                gs.increment_quest_progress(membership.guild_id, "tasks_completed")
+                gs.increment_quest_progress(
+                    membership.guild_id, "tasks_completed", user_id=user_id
+                )
                 if generated_card:
-                    gs.increment_quest_progress(membership.guild_id, "cards_earned")
+                    gs.increment_quest_progress(
+                        membership.guild_id, "cards_earned", user_id=user_id
+                    )
         except Exception:
             pass
 

@@ -143,6 +143,9 @@ class Task(db.Model):
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at else None
             ),
+            "shared_with_count": (
+                self.shared_with.count() if hasattr(self, "shared_with") else 0
+            ),
         }
 
         if include_subtasks:

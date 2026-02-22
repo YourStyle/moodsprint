@@ -1655,6 +1655,10 @@ class CardService:
             result["card_name"] = companion.name
             result["card_emoji"] = companion.emoji
             result["xp_earned"] = xp_amount
+            # Invalidate companion cache since XP/level may have changed
+            from app.services.companion_service import _invalidate_companion_cache
+
+            _invalidate_companion_cache(user_id)
         return result
 
     def generate_onboarding_card(self, user_id: int) -> UserCard | None:

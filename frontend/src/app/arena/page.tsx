@@ -288,6 +288,8 @@ export default function ArenaPage() {
 
                 if (completionResponse.success && completionResponse.data) {
                   setCampaignResult(completionResponse.data);
+                  // Invalidate campaign data so energy display refreshes
+                  queryClient.invalidateQueries({ queryKey: ['campaign'] });
 
                   // Show dialogue_after first, then story_outro
                   if (completionResponse.data.dialogue_after?.length) {
@@ -419,6 +421,7 @@ export default function ArenaPage() {
     // In campaign mode, go back to campaign page
     // Use replace to avoid keeping arena in history (prevents back button returning to battle)
     if (campaignMode) {
+      queryClient.invalidateQueries({ queryKey: ['campaign'] });
       router.replace('/campaign');
       return;
     }

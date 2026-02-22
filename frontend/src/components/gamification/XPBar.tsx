@@ -7,12 +7,16 @@ interface XPBarProps {
   xp: number;
   level: number;
   levelName?: string;
+  xpForCurrentLevel: number;
   xpForNextLevel: number;
   progressPercent: number;
 }
 
-export function XPBar({ xp, level, levelName, xpForNextLevel, progressPercent }: XPBarProps) {
+export function XPBar({ xp, level, levelName, xpForCurrentLevel, xpForNextLevel, progressPercent }: XPBarProps) {
   const { t } = useTranslation();
+
+  const currentLevelXp = xp - xpForCurrentLevel;
+  const levelRange = xpForNextLevel - xpForCurrentLevel;
 
   return (
     <div className="glass-card p-4">
@@ -26,7 +30,7 @@ export function XPBar({ xp, level, levelName, xpForNextLevel, progressPercent }:
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-gray-400">{t('level')} {level}</span>
-            <span className="text-sm text-purple-300">{xp} / {xpForNextLevel} XP</span>
+            <span className="text-sm text-purple-300">{currentLevelXp} / {levelRange} XP</span>
           </div>
           {levelName && (
             <p className="text-lg font-semibold text-white">{levelName}</p>

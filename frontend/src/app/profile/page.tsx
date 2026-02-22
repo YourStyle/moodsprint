@@ -177,6 +177,7 @@ export default function ProfilePage() {
         <XPBar
           xp={stats.xp}
           level={stats.level}
+          xpForCurrentLevel={stats.xp_for_current_level}
           xpForNextLevel={stats.xp_for_next_level}
           progressPercent={stats.xp_progress_percent}
         />

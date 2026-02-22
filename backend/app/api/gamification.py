@@ -103,6 +103,7 @@ def get_user_stats():
             "xp": user.xp,
             "level": user.level,
             "level_name": get_level_name(user.level, lang),
+            "xp_for_current_level": user.xp_for_current_level,
             "xp_for_next_level": user.xp_for_next_level,
             "xp_progress_percent": user.xp_progress_percent,
             "streak_days": user.streak_days,

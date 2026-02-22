@@ -1,7 +1,9 @@
 'use client';
 
-import { Archive, Sparkles, CheckCircle2, Play, RotateCcw } from 'lucide-react';
+import { Archive, Sparkles, CheckCircle2, Play, RotateCcw, Flame, Users } from 'lucide-react';
 import { MiniTimer } from '@/components/focus/MiniTimer';
+import { useTranslation } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import type { FocusSession } from '@/domain/types';
 
 export interface TaskCardCompactTask {
@@ -11,6 +13,8 @@ export interface TaskCardCompactTask {
   estimated_minutes?: number;
   status: string;
   subtasks_count: number;
+  due_date?: string | null;
+  shared_with_count?: number;
 }
 
 export interface TaskCardCompactProps {
@@ -27,24 +31,21 @@ export interface TaskCardCompactProps {
   isNew?: boolean;
 }
 
-/**
- * Compact task card used in the main task list (non-ultra-compact mode).
- * Shows task status icon, title, optional progress bar, and inline action buttons.
- * Renders a MiniTimer when a focus session is active for this task.
- *
- * Usage:
- *   <TaskCardCompact
- *     task={task}
- *     onClick={() => router.push(`/tasks/${task.id}`)}
- *     onStart={() => startFocus(task.id)}
- *     onCompleteTask={() => completeTask(task.id)}
- *     activeSession={session}
- *     onPause={() => pauseSession(session.id)}
- *     onResume={() => resumeSession(session.id)}
- *     onComplete={() => completeTask(task.id)}
- *     onStop={() => cancelSession(session.id)}
- *   />
- */
+function getDeadlineInfo(dueDate: string | null | undefined, t: (key: TranslationKey) => string) {
+  if (!dueDate) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T00:00:00');
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return { label: t('overdue'), color: 'text-red-400', bg: 'bg-red-500/20' };
+  if (diffDays <= 1) return { label: diffDays === 0 ? t('today') : `1${t('daysShort')}`, color: 'text-red-400', bg: 'bg-red-500/20' };
+  if (diffDays <= 3) return { label: `${diffDays}${t('daysShort')}`, color: 'text-orange-400', bg: 'bg-orange-500/20' };
+  if (diffDays <= 7) return { label: `${diffDays}${t('daysShort')}`, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+  return { label: `${diffDays}${t('daysShort')}`, color: 'text-gray-400', bg: 'bg-gray-700/50' };
+}
+
 export function TaskCardCompact({
   task,
   onClick,
@@ -58,10 +59,12 @@ export function TaskCardCompact({
   onStop,
   isNew,
 }: TaskCardCompactProps) {
+  const { t } = useTranslation();
   const isCompleted = task.status === 'completed';
   const isArchived = task.status === 'archived';
   const hasSubtasks = task.subtasks_count > 0;
   const hasActiveSession = !!activeSession;
+  const deadline = !isCompleted && !isArchived ? getDeadlineInfo(task.due_date, t) : null;
 
   return (
     <div
@@ -97,7 +100,7 @@ export function TaskCardCompact({
           )}
         </div>
 
-        {/* Title + progress bar */}
+        {/* Title + badges + progress bar */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <h3
@@ -110,6 +113,18 @@ export function TaskCardCompact({
             {isNew && (
               <span className="px-1.5 py-0.5 bg-primary-500/30 text-primary-400 text-[10px] font-bold rounded-full flex-shrink-0">
                 NEW
+              </span>
+            )}
+            {deadline && (
+              <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${deadline.bg} ${deadline.color}`}>
+                <Flame className="w-2.5 h-2.5" />
+                {deadline.label}
+              </span>
+            )}
+            {(task.shared_with_count ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 bg-primary-500/20 text-primary-400">
+                <Users className="w-2.5 h-2.5" />
+                {task.shared_with_count}
               </span>
             )}
           </div>

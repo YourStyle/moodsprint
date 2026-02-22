@@ -696,7 +696,7 @@ export const translations = {
     // Profile / Character stats
     allGenresUnlocked: 'Все жанры открыты!',
     record: 'Рекорд',
-    daysShort: '{count} дн.',
+    daysCount: '{count} дн.',
     streakDaysInRow: '{count} дней подряд',
     characteristics: 'Характеристики',
     statPoints: '+{count} очков',
@@ -782,6 +782,24 @@ export const translations = {
 
     // New task tag
     newTag: 'NEW',
+
+    // Deadline display
+    overdue: 'Просрочено',
+    daysShort: 'д',
+
+    // Task sharing indicator
+    sharedTask: 'Общая',
+
+    // Guild quest contributions
+    questContributions: 'Вклад участников',
+    questTypeSelection: 'Выберите типы квестов',
+    questTasksCompleted: 'Выполнить задачи',
+    questFocusMinutes: 'Минуты фокуса',
+    questBattlesWon: 'Победы в боях',
+    questCardsEarned: 'Получить карты',
+    questStreaks: 'Серии активности',
+    questPreferences: 'Настройки квестов',
+    questPreferencesSaved: 'Настройки квестов сохранены',
   },
 
   en: {
@@ -1481,7 +1499,7 @@ export const translations = {
     // Profile / Character stats
     allGenresUnlocked: 'All genres unlocked!',
     record: 'Record',
-    daysShort: '{count}d',
+    daysCount: '{count}d',
     streakDaysInRow: '{count} day streak',
     characteristics: 'Characteristics',
     statPoints: '+{count} points',
@@ -1567,6 +1585,24 @@ export const translations = {
 
     // New task tag
     newTag: 'NEW',
+
+    // Deadline display
+    overdue: 'Overdue',
+    daysShort: 'd',
+
+    // Task sharing indicator
+    sharedTask: 'Shared',
+
+    // Guild quest contributions
+    questContributions: 'Contributions',
+    questTypeSelection: 'Select quest types',
+    questTasksCompleted: 'Complete tasks',
+    questFocusMinutes: 'Focus minutes',
+    questBattlesWon: 'Battles won',
+    questCardsEarned: 'Cards earned',
+    questStreaks: 'Streaks maintained',
+    questPreferences: 'Quest preferences',
+    questPreferencesSaved: 'Quest preferences saved',
   },
 } as const;
 

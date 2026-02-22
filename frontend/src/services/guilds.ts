@@ -64,6 +64,13 @@ export interface RaidContribution {
   attacks_today: number;
 }
 
+export interface QuestContributor {
+  user_id: number;
+  username?: string;
+  first_name?: string;
+  amount: number;
+}
+
 export interface GuildQuest {
   id: number;
   guild_id: number;
@@ -79,6 +86,7 @@ export interface GuildQuest {
   xp_reward: number;
   sparks_reward: number;
   completed_at?: string;
+  top_contributors?: QuestContributor[];
 }
 
 export interface GuildInvite {
@@ -226,6 +234,13 @@ class GuildsService {
 
   async promoteMember(guildId: number, memberId: number, role: string): Promise<ApiResponse<void>> {
     return api.post(`/guilds/${guildId}/promote/${memberId}`, { role });
+  }
+
+  async setQuestPreferences(
+    guildId: number,
+    questTypes: string[] | null,
+  ): Promise<ApiResponse<{ preferred_quest_types: string[] | null }>> {
+    return api.put(`/guilds/${guildId}/quest-preferences`, { quest_types: questTypes });
   }
 }
 

@@ -30,6 +30,9 @@ class Guild(db.Model):
     is_public = db.Column(db.Boolean, default=True)  # Anyone can join
     max_members = db.Column(db.Integer, default=30)
 
+    # Quest preferences (JSON array of quest_type strings)
+    preferred_quest_types = db.Column(db.JSON, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -61,7 +64,7 @@ class Guild(db.Model):
             "xp": self.xp,
             "is_public": self.is_public,
             "max_members": self.max_members,
-            "member_count": self.member_count,
+            "members_count": self.member_count,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -328,7 +331,36 @@ class GuildQuest(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
 
+    # Relationships
+    contributions = db.relationship(
+        "GuildQuestContribution",
+        backref="quest",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
     def to_dict(self) -> dict:
+        # Get top 5 contributors
+        top_contributors = []
+        try:
+            contribs = (
+                self.contributions.order_by(GuildQuestContribution.amount.desc())
+                .limit(5)
+                .all()
+            )
+            for c in contribs:
+                user = c.user
+                top_contributors.append(
+                    {
+                        "user_id": c.user_id,
+                        "username": user.username if user else None,
+                        "first_name": user.first_name if user else None,
+                        "amount": c.amount,
+                    }
+                )
+        except Exception:
+            pass
+
         return {
             "id": self.id,
             "guild_id": self.guild_id,
@@ -350,4 +382,34 @@ class GuildQuest(db.Model):
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at else None
             ),
+            "top_contributors": top_contributors,
         }
+
+
+class GuildQuestContribution(db.Model):
+    """Per-member contribution to a guild quest."""
+
+    __tablename__ = "guild_quest_contributions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    quest_id = db.Column(
+        db.Integer,
+        db.ForeignKey("guild_quests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    amount = db.Column(db.Integer, default=0, nullable=False)
+    last_contributed_at = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("quest_id", "user_id", name="unique_quest_contribution"),
+    )
+
+    # Relationships
+    user = db.relationship("User")

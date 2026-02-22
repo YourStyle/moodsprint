@@ -57,6 +57,7 @@ export interface Task {
   updated_at: string | null;
   completed_at: string | null;
   subtasks?: Subtask[];
+  shared_with_count?: number;
   rarity_odds?: Record<string, number>;
 }
 
@@ -222,6 +223,7 @@ export interface UserStats {
   xp: number;
   level: number;
   level_name: string;
+  xp_for_current_level: number;
   xp_for_next_level: number;
   xp_progress_percent: number;
   streak_days: number;
