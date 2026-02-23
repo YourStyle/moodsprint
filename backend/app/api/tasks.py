@@ -557,6 +557,11 @@ def delete_task(task_id: int):
     if not task:
         return not_found("Task not found")
 
+    # Delete related shared_tasks first (ORM doesn't cascade automatically)
+    from app.models.shared_task import SharedTask
+
+    SharedTask.query.filter_by(task_id=task_id).delete()
+
     db.session.delete(task)
     db.session.commit()
 

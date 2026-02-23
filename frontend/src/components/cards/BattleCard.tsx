@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Heart, Swords, Skull, Shield, Sparkles, Plus, Droplets, Zap } from 'lucide-react';
 import { DamageNumber } from './DamageNumber';
 import { HealNumber } from './HealNumber';
+import { FrameEffect } from '@/components/ui';
 import type { AbilityInfo, StatusEffect } from '@/domain/types';
 import { useTranslation } from '@/lib/i18n';
 
@@ -39,6 +40,8 @@ export interface BattleCardProps {
   isShieldTarget?: boolean;
   healReceived?: number | null;
   onHealClick?: () => void;
+  // Cosmetic card frame
+  cardFrameId?: string | null;
 }
 
 const rarityConfig = {
@@ -116,6 +119,7 @@ export function BattleCard({
   isShieldTarget = false,
   healReceived = null,
   onHealClick,
+  cardFrameId,
 }: BattleCardProps) {
   const { t } = useTranslation();
   const hasPoisonEffect = statusEffects.some(e => e.type === 'poison');
@@ -135,6 +139,7 @@ export function BattleCard({
   };
 
   return (
+    <FrameEffect frameId={cardFrameId} type="card">
     <div
       onClick={selectable && alive ? onClick : undefined}
       className={cn(
@@ -474,6 +479,7 @@ export function BattleCard({
         );
       })()}
     </div>
+    </FrameEffect>
   );
 }
 

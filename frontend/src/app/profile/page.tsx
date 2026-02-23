@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Settings, BarChart3, Sun, Moon, Sunrise, Sunset, Clock, Wallet } from 'lucide-react';
-import { Card, ScrollBackdrop } from '@/components/ui';
+import { Card, ScrollBackdrop, FrameEffect } from '@/components/ui';
 import { TonConnectButton } from '@/components/ui/TonConnectButton';
 import { XPBar, StreakBadge } from '@/components/gamification';
 import { SparksBalance } from '@/components/sparks';
@@ -17,17 +17,6 @@ import { authService } from '@/services';
 import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback } from '@/lib/telegram';
 import type { Card as CardType } from '@/services/cards';
-
-const PROFILE_FRAME_COLORS: Record<string, string> = {
-  profile_frame_silver: '#d1d5db',
-  profile_frame_emerald: '#34d399',
-  profile_frame_ruby: '#fb7185',
-  profile_frame_diamond: '#7dd3fc',
-};
-
-function getProfileFrameColor(frameId: string): string {
-  return PROFILE_FRAME_COLORS[frameId] || '#d1d5db';
-}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -110,20 +99,19 @@ export default function ProfilePage() {
       <ScrollBackdrop />
       {/* User Info */}
       <Card className="text-center relative z-10">
-        {user.photo_url ? (
-          <img
-            src={user.photo_url}
-            alt={user.first_name || user.username || t('profile')}
-            className={`w-20 h-20 mx-auto rounded-full object-cover mb-3 ${profile?.equipped_profile_frame ? 'ring-2 ring-offset-2 ring-offset-gray-900' : ''}`}
-            style={profile?.equipped_profile_frame ? { '--tw-ring-color': getProfileFrameColor(profile.equipped_profile_frame) } as React.CSSProperties : undefined}
-          />
-        ) : (
-          <div className={`w-20 h-20 mx-auto bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3 ${profile?.equipped_profile_frame ? 'ring-2 ring-offset-2 ring-offset-gray-900' : ''}`}
-            style={profile?.equipped_profile_frame ? { '--tw-ring-color': getProfileFrameColor(profile.equipped_profile_frame) } as React.CSSProperties : undefined}
-          >
-            {user.first_name?.[0] || user.username?.[0] || '?'}
-          </div>
-        )}
+        <FrameEffect frameId={profile?.equipped_profile_frame} type="avatar" className="mx-auto mb-3">
+          {user.photo_url ? (
+            <img
+              src={user.photo_url}
+              alt={user.first_name || user.username || t('profile')}
+              className="w-20 h-20 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+              {user.first_name?.[0] || user.username?.[0] || '?'}
+            </div>
+          )}
+        </FrameEffect>
         <h1 className="text-xl font-bold text-white">
           {user.first_name || user.username}
         </h1>

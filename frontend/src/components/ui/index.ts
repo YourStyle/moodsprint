@@ -4,3 +4,4 @@ export { Modal } from './Modal';
 export { Progress } from './Progress';
 export { Input, Textarea } from './Input';
 export { ScrollBackdrop } from './ScrollBackdrop';
+export { FrameEffect } from './FrameEffect';

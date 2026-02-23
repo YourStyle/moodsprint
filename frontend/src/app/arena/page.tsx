@@ -26,7 +26,7 @@ import { BattleCard } from '@/components/cards';
 import { BattleEvent } from '@/components/battle/BattleEvent';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
 import { FeatureBanner } from '@/components/features';
-import { gamificationService, eventsService, campaignService } from '@/services';
+import { gamificationService, eventsService, campaignService, onboardingService } from '@/services';
 import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
@@ -154,6 +154,15 @@ export default function ArenaPage() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // User profile for equipped card frame
+  const { data: profileData } = useQuery({
+    queryKey: ['onboarding', 'profile'],
+    queryFn: () => onboardingService.getProfile(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const equippedCardFrame = profileData?.data?.profile?.equipped_card_frame || null;
 
   // Resume active battle if exists and is still active
   useEffect(() => {
@@ -1358,6 +1367,7 @@ export default function ArenaPage() {
                         isShieldTarget={canBeTargeted && isShieldMode}
                         healReceived={healNumbers[String(card.id)] || null}
                         onHealClick={() => canBeTargeted && handleHealTarget(card.id as number)}
+                        cardFrameId={equippedCardFrame}
                       />
                     );
                   })}

@@ -30,6 +30,7 @@ export interface GuildMember {
   raids_participated: number;
   total_damage_dealt: number;
   joined_at: string;
+  equipped_profile_frame?: string;
 }
 
 export interface GuildRaid {

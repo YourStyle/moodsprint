@@ -1974,6 +1974,61 @@ def give_card_to_user(user_id: int):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/users/<int:user_id>/grant-sparks", methods=["POST"])
+@login_required
+def grant_sparks(user_id: int):
+    """Grant sparks to a user."""
+    data = request.json or {}
+    amount = data.get("amount")
+    reason = data.get("reason", "Admin grant")
+
+    if not amount or not isinstance(amount, int) or amount <= 0:
+        return jsonify({"success": False, "error": "amount must be a positive integer"}), 400
+
+    # Check if user exists
+    user = db.session.execute(
+        text("SELECT id, first_name, username, sparks FROM users WHERE id = :id"),
+        {"id": user_id},
+    ).fetchone()
+
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+
+    try:
+        # Add sparks to user
+        db.session.execute(
+            text("UPDATE users SET sparks = COALESCE(sparks, 0) + :amount WHERE id = :id"),
+            {"amount": amount, "id": user_id},
+        )
+
+        # Create transaction record
+        db.session.execute(
+            text("""
+                INSERT INTO sparks_transactions (user_id, amount, type, description, created_at)
+                VALUES (:user_id, :amount, 'admin_grant', :description, NOW())
+            """),
+            {
+                "user_id": user_id,
+                "amount": amount,
+                "description": reason,
+            },
+        )
+
+        db.session.commit()
+
+        new_balance = (user[3] or 0) + amount
+        display_name = user[1] or user[2] or str(user_id)
+
+        return jsonify({
+            "success": True,
+            "message": f"Granted {amount} sparks to {display_name}. New balance: {new_balance}",
+            "new_balance": new_balance,
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/users/<int:user_id>/reset-onboarding", methods=["POST"])
 @login_required
 def reset_onboarding(user_id: int):

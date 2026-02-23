@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Heart, Swords, Info, Layers, Calendar, Sparkles, Clock, Zap, Lock } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { FrameEffect } from '@/components/ui';
 
 interface SimpleAbilityInfo {
   type: string;
@@ -96,14 +97,6 @@ const rarityStyles = {
   },
 };
 
-// Cosmetic card frame styles (runtime-safe inline styles, not Tailwind classes)
-const CARD_FRAME_STYLES: Record<string, { borderColor: string; boxShadow: string }> = {
-  card_frame_golden: { borderColor: '#facc15', boxShadow: '0 0 12px rgba(250,204,21,0.4)' },
-  card_frame_neon: { borderColor: '#22d3ee', boxShadow: '0 0 16px rgba(34,211,238,0.5)' },
-  card_frame_fire: { borderColor: '#f97316', boxShadow: '0 0 20px rgba(249,115,22,0.5)' },
-  card_frame_cosmic: { borderColor: '#c084fc', boxShadow: '0 0 24px rgba(192,132,252,0.5)' },
-};
-
 const genreKeys: Record<string, 'genreMagic' | 'genreFantasy' | 'genreScifi' | 'genreCyberpunk' | 'genreAnime'> = {
   magic: 'genreMagic',
   fantasy: 'genreFantasy',
@@ -158,7 +151,6 @@ export function DeckCard({
   const [displayCooldown, setDisplayCooldown] = useState(cooldownRemaining || 0);
   const [imageError, setImageError] = useState(false);
   const config = rarityStyles[rarity as keyof typeof rarityStyles] || rarityStyles.common;
-  const frameStyle = cardFrameId ? CARD_FRAME_STYLES[cardFrameId] : null;
 
   // Update cooldown timer every second
   useEffect(() => {
@@ -202,6 +194,7 @@ export function DeckCard({
   };
 
   return (
+    <FrameEffect frameId={cardFrameId} type="card">
     <div
       className={cn(
         'relative w-full aspect-[3/4.3] perspective-1000',
@@ -244,10 +237,9 @@ export function DeckCard({
           className={cn(
             'absolute inset-0 backface-hidden rounded-xl overflow-hidden',
             'border-2',
-            !frameStyle && config.border,
-            !frameStyle && config.glow
+            config.border,
+            config.glow
           )}
-          style={frameStyle ? { borderColor: frameStyle.borderColor, boxShadow: frameStyle.boxShadow } : undefined}
         >
           <div className={cn('absolute inset-0 bg-gradient-to-br', config.gradient)} />
 
@@ -438,10 +430,9 @@ export function DeckCard({
           className={cn(
             'absolute inset-0 backface-hidden rotate-y-180 rounded-xl overflow-hidden',
             'border-2',
-            !frameStyle && config.border,
-            !frameStyle && config.glow
+            config.border,
+            config.glow
           )}
-          style={frameStyle ? { borderColor: frameStyle.borderColor, boxShadow: frameStyle.boxShadow } : undefined}
         >
           <div className={cn('absolute inset-0 bg-gradient-to-br', config.gradient)} />
 
@@ -518,6 +509,7 @@ export function DeckCard({
         </div>
       </div>
     </div>
+    </FrameEffect>
   );
 }
 

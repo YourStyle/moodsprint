@@ -20,7 +20,7 @@
             <p class="text-gray-500">@{{ user.username or 'No username' }}</p>
             <p class="text-sm text-gray-400 mt-1">Telegram ID: {{ user.telegram_id }}</p>
         </div>
-        <div class="ml-auto grid grid-cols-4 gap-8 text-center">
+        <div class="ml-auto grid grid-cols-5 gap-6 text-center">
             <div>
                 <p class="text-3xl font-bold text-blue-600">{{ user.level or 1 }}</p>
                 <p class="text-sm text-gray-500">Level</p>
@@ -32,6 +32,10 @@
             <div>
                 <p class="text-3xl font-bold text-orange-600">{{ user.streak_days or 0 }}</p>
                 <p class="text-sm text-gray-500">Streak</p>
+            </div>
+            <div>
+                <p class="text-3xl font-bold text-amber-500">{{ user.sparks or 0 }}</p>
+                <p class="text-sm text-gray-500">Sparks</p>
             </div>
             <div>
                 <p class="text-3xl font-bold text-pink-600">{{ user_genre or '-' }}</p>
@@ -177,13 +181,19 @@ function resetSpotlight(userId) {
     </div>
 </div>
 
-<!-- Give Card Button -->
-<div class="mb-6">
+<!-- Admin Actions -->
+<div class="mb-6 flex gap-3 flex-wrap">
     <button onclick="openGiveCardModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
         </svg>
         Give Card to User
+    </button>
+    <button onclick="openGrantSparksModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Grant Sparks
     </button>
 </div>
 
@@ -889,7 +899,100 @@ async function giveCard() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeGiveCardModal();
+        closeGrantSparksModal();
     }
 });
+</script>
+
+<!-- Grant Sparks Modal -->
+<div id="grantSparksModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="p-5 border-b border-gray-100">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">Grant Sparks</h3>
+                <button onclick="closeGrantSparksModal()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                <input type="number" id="grantSparksAmount" min="1" value="100" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                <div class="flex gap-2 mt-2">
+                    <button onclick="document.getElementById('grantSparksAmount').value=100" class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">100</button>
+                    <button onclick="document.getElementById('grantSparksAmount').value=500" class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">500</button>
+                    <button onclick="document.getElementById('grantSparksAmount').value=1000" class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">1000</button>
+                    <button onclick="document.getElementById('grantSparksAmount').value=5000" class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">5000</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                <textarea id="grantSparksReason" rows="2" placeholder="e.g. Bug compensation, testing, reward..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"></textarea>
+            </div>
+            <div id="grantSparksStatus" class="hidden"></div>
+            <div class="flex gap-3 pt-3">
+                <button onclick="grantSparks()" class="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium">
+                    Grant Sparks
+                </button>
+                <button onclick="closeGrantSparksModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openGrantSparksModal() {
+    document.getElementById('grantSparksAmount').value = '100';
+    document.getElementById('grantSparksReason').value = '';
+    document.getElementById('grantSparksStatus').classList.add('hidden');
+    document.getElementById('grantSparksModal').classList.remove('hidden');
+}
+
+function closeGrantSparksModal() {
+    document.getElementById('grantSparksModal').classList.add('hidden');
+}
+
+async function grantSparks() {
+    const amount = parseInt(document.getElementById('grantSparksAmount').value);
+    const reason = document.getElementById('grantSparksReason').value.trim();
+    const status = document.getElementById('grantSparksStatus');
+
+    if (!amount || amount <= 0) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Please enter a valid positive amount';
+        status.classList.remove('hidden');
+        return;
+    }
+
+    status.className = 'p-3 bg-blue-50 text-blue-700 rounded-lg text-sm';
+    status.textContent = 'Granting sparks...';
+    status.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${BASE_URL}/users/${userId}/grant-sparks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount, reason: reason || 'Admin grant' })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            status.className = 'p-3 bg-green-50 text-green-700 rounded-lg text-sm';
+            status.textContent = data.message;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+            status.textContent = 'Error: ' + data.error;
+        }
+    } catch (e) {
+        status.className = 'p-3 bg-red-50 text-red-700 rounded-lg text-sm';
+        status.textContent = 'Error: ' + e.message;
+    }
+}
 </script>
 {% endblock %}

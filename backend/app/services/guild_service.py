@@ -163,11 +163,22 @@ class GuildService:
 
     def get_members(self, guild_id: int) -> list[dict]:
         """Get guild members sorted by contribution."""
+        from app.models.user_profile import UserProfile
+
         members = (
             GuildMember.query.filter_by(guild_id=guild_id)
             .order_by(GuildMember.contribution_xp.desc())
             .all()
         )
+        # Batch-load profile frames for all member user_ids
+        member_user_ids = [m.user_id for m in members]
+        profiles = (
+            UserProfile.query.filter(UserProfile.user_id.in_(member_user_ids)).all()
+            if member_user_ids
+            else []
+        )
+        frame_map = {p.user_id: p.equipped_profile_frame for p in profiles}
+
         result = []
         for m in members:
             user = m.user
@@ -183,6 +194,7 @@ class GuildService:
                     "raids_participated": m.raids_participated,
                     "total_damage_dealt": m.total_damage_dealt,
                     "joined_at": m.joined_at.isoformat() if m.joined_at else None,
+                    "equipped_profile_frame": frame_map.get(m.user_id),
                 }
             )
         return result
