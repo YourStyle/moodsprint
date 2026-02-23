@@ -133,7 +133,7 @@ export default function TaskDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const taskId = Number(params.id);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const {
     user,
@@ -803,6 +803,40 @@ export default function TaskDetailPage() {
           </span>
         </div>
         <Progress value={task.status === 'completed' ? 100 : task.progress_percent} color={task.status === 'completed' ? 'success' : 'primary'} />
+
+        {/* Deadline & Reminder */}
+        {(task.due_date || task.scheduled_at) && (
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-700/50 text-sm">
+            {task.due_date && (
+              <div className="flex items-center gap-1.5 text-gray-300">
+                <CalendarDays className="w-4 h-4 text-primary-400" />
+                <span>{t('deadline')}:</span>
+                <span className={`font-medium ${
+                  new Date(task.due_date) < new Date() && task.status !== 'completed'
+                    ? 'text-red-400'
+                    : 'text-white'
+                }`}>
+                  {new Date(task.due_date).toLocaleDateString(
+                    language === 'ru' ? 'ru-RU' : 'en-US',
+                    { day: 'numeric', month: 'short', year: 'numeric' }
+                  )}
+                </span>
+              </div>
+            )}
+            {task.scheduled_at && (
+              <div className="flex items-center gap-1.5 text-gray-300">
+                <Bell className="w-4 h-4 text-yellow-400" />
+                <span>{t('reminderTime')}:</span>
+                <span className="font-medium text-white">
+                  {new Date(task.scheduled_at).toLocaleString(
+                    language === 'ru' ? 'ru-RU' : 'en-US',
+                    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Rarity Odds Bar */}
