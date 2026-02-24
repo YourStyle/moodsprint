@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX, CalendarDays } from 'lucide-react';
@@ -15,6 +15,7 @@ import { useAppStore } from '@/lib/store';
 import { hapticFeedback, showBackButton, hideBackButton } from '@/lib/telegram';
 import { useLanguage, type TranslationKey } from '@/lib/i18n';
 import { PRIORITY_COLORS, TASK_TYPE_EMOJIS, TASK_TYPE_LABELS, TASK_TYPE_COLORS, DEFAULT_FOCUS_DURATION } from '@/domain/constants';
+import { playFocusCompleteSound } from '@/lib/sounds';
 import type { MoodLevel, EnergyLevel, TaskType, UpdateTaskInput } from '@/domain/types';
 
 const TASK_TYPES: TaskType[] = [
@@ -64,6 +65,7 @@ function FocusTimer({
   }, [session.started_at, session.status, session.elapsed_minutes, isPaused]);
 
   const [elapsed, setElapsed] = useState(initialElapsed);
+  const soundPlayedRef = useRef(false);
 
   useEffect(() => {
     setElapsed(initialElapsed);
@@ -77,9 +79,23 @@ function FocusTimer({
     return () => clearInterval(interval);
   }, [isPaused, session.started_at, session]);
 
+  // Reset sound flag when session changes
+  useEffect(() => {
+    soundPlayedRef.current = false;
+  }, [session.started_at]);
+
   const planned = session.planned_duration_minutes * 60;
   const remaining = planned - elapsed;
   const isOvertime = !isNoTimerMode && remaining < 0;
+
+  // Play sound when timer reaches zero
+  useEffect(() => {
+    if (isNoTimerMode) return;
+    if (remaining <= 0 && !soundPlayedRef.current) {
+      soundPlayedRef.current = true;
+      playFocusCompleteSound();
+    }
+  }, [remaining, isNoTimerMode]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(Math.abs(seconds) / 60);
@@ -154,7 +170,17 @@ export default function TaskDetailPage() {
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [showDurationModal, setShowDurationModal] = useState(false);
   const [pendingFocusSubtaskId, setPendingFocusSubtaskId] = useState<number | null>(null);
-  const [selectedDuration, setSelectedDuration] = useState<number | null>(DEFAULT_FOCUS_DURATION);
+  const [selectedDuration, setSelectedDuration] = useState<number | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('moodsprint_focus_duration');
+      if (saved) {
+        const num = parseInt(saved);
+        if (num >= 5 && num <= 120) return num;
+      }
+    }
+    return DEFAULT_FOCUS_DURATION;
+  });
+  const [customDurationInput, setCustomDurationInput] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [moodLoading, setMoodLoading] = useState(false);
   const [showEditTask, setShowEditTask] = useState(false);
@@ -492,7 +518,10 @@ export default function TaskDetailPage() {
   // Open duration modal before starting focus
   const handleStartFocus = (subtaskId?: number) => {
     setPendingFocusSubtaskId(subtaskId ?? null);
-    setSelectedDuration(DEFAULT_FOCUS_DURATION);
+    const saved = localStorage.getItem('moodsprint_focus_duration');
+    const defaultDur = saved ? parseInt(saved) : DEFAULT_FOCUS_DURATION;
+    setSelectedDuration(defaultDur >= 5 && defaultDur <= 120 ? defaultDur : DEFAULT_FOCUS_DURATION);
+    setCustomDurationInput('');
     setShowDurationModal(true);
   };
 
@@ -1479,9 +1508,12 @@ export default function TaskDetailPage() {
             {[15, 25, 45, 60].map((d) => (
               <button
                 key={d}
-                onClick={() => setSelectedDuration(d)}
+                onClick={() => {
+                  setSelectedDuration(d);
+                  setCustomDurationInput('');
+                }}
                 className={`p-3 rounded-xl text-center transition-all ${
-                  selectedDuration === d
+                  selectedDuration === d && !customDurationInput
                     ? 'bg-primary-500 text-white ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-900'
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                 }`}
@@ -1492,8 +1524,36 @@ export default function TaskDetailPage() {
             ))}
           </div>
 
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={5}
+              max={120}
+              value={customDurationInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCustomDurationInput(val);
+                const num = parseInt(val);
+                if (num >= 5 && num <= 120) {
+                  setSelectedDuration(num);
+                }
+              }}
+              onFocus={() => {
+                if (!customDurationInput && selectedDuration && selectedDuration !== null) {
+                  setCustomDurationInput(String(selectedDuration));
+                }
+              }}
+              placeholder={t('orCustom')}
+              className="flex-1 px-3 py-2.5 bg-gray-800 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <span className="text-sm text-gray-500 whitespace-nowrap">{t('customMinutes')}</span>
+          </div>
+
           <button
-            onClick={() => setSelectedDuration(null)}
+            onClick={() => {
+              setSelectedDuration(null);
+              setCustomDurationInput('');
+            }}
             className={`w-full p-3 rounded-xl text-center transition-all ${
               selectedDuration === null
                 ? 'bg-primary-500 text-white ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-900'

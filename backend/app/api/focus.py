@@ -84,10 +84,11 @@ def start_focus_session():
         if not task:
             return not_found("Task not found")
 
-    # Validate duration
+    # Validate duration (480 = "no timer" mode)
     try:
         duration = int(data.get("planned_duration_minutes", 25))
-        duration = max(5, min(120, duration))
+        if duration != 480:
+            duration = max(5, min(120, duration))
     except (ValueError, TypeError):
         duration = 25
 
@@ -271,6 +272,21 @@ def complete_focus_session():
         pass
 
     db.session.commit()
+
+    # Send Telegram notification about focus completion
+    try:
+        from app.utils.notifications import send_telegram_message
+
+        actual_min = session.actual_duration_minutes or 0
+        if user and user.telegram_id and actual_min > 0:
+            msg = (
+                f"🎯 <b>Фокус-сессия завершена!</b>\n\n"
+                f"⏱ Длительность: {actual_min} мин\n"
+                f"✨ +{xp_info['xp_earned']} XP"
+            )
+            send_telegram_message(user.telegram_id, msg)
+    except Exception:
+        pass  # Never break completion flow
 
     response_data = {
         "session": session.to_dict(),

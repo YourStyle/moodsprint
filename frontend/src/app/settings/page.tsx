@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [workEndTime, setWorkEndTime] = useState('18:00');
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [sessionDuration, setSessionDuration] = useState(25);
+  const [customDuration, setCustomDuration] = useState('');
   const [reminderTime, setReminderTime] = useState('09:00');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -61,7 +62,10 @@ export default function SettingsPage() {
       setWorkStartTime(profile.work_start_time || '09:00');
       setWorkEndTime(profile.work_end_time || '18:00');
       setWorkDays(profile.work_days || [1, 2, 3, 4, 5]);
-      setSessionDuration(profile.preferred_session_duration || 25);
+      const dur = profile.preferred_session_duration || 25;
+      setSessionDuration(dur);
+      setCustomDuration('');
+      localStorage.setItem('moodsprint_focus_duration', String(dur));
       setReminderTime(profile.daily_reminder_time || '09:00');
       setNotificationsEnabled(profile.notifications_enabled ?? true);
     }
@@ -97,7 +101,19 @@ export default function SettingsPage() {
 
   const handleSessionDurationChange = (duration: number) => {
     setSessionDuration(duration);
+    setCustomDuration('');
+    localStorage.setItem('moodsprint_focus_duration', String(duration));
     updateMutation.mutate({ preferred_session_duration: duration });
+  };
+
+  const handleCustomDurationChange = (value: string) => {
+    setCustomDuration(value);
+    const num = parseInt(value);
+    if (num >= 5 && num <= 120) {
+      setSessionDuration(num);
+      localStorage.setItem('moodsprint_focus_duration', String(num));
+      updateMutation.mutate({ preferred_session_duration: num });
+    }
   };
 
   const handleReminderTimeChange = (time: string) => {
@@ -198,7 +214,7 @@ export default function SettingsPage() {
               key={d}
               onClick={() => handleSessionDurationChange(d)}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                sessionDuration === d
+                sessionDuration === d && !customDuration
                   ? 'bg-accent-500 text-white'
                   : 'bg-gray-700 text-gray-400'
               }`}
@@ -206,6 +222,19 @@ export default function SettingsPage() {
               {d} мин
             </button>
           ))}
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="number"
+            min={5}
+            max={120}
+            value={customDuration}
+            onChange={(e) => handleCustomDurationChange(e.target.value)}
+            onFocus={() => setCustomDuration(customDuration || String(sessionDuration))}
+            placeholder={t('orCustom')}
+            className="flex-1 px-3 py-2 bg-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-500"
+          />
+          <span className="text-sm text-gray-500">{t('customMinutes')}</span>
         </div>
       </Card>
 

@@ -234,9 +234,9 @@ class CampaignService:
             if not prev_completion:
                 return {"error": "previous_level_not_completed"}
 
-        # Energy gate: chapter 1 is free, rest costs 1 energy
+        # Energy gate: first level of any chapter is free, levels 2+ cost 1 energy
         energy_spent = False
-        if level.chapter.number > 1:
+        if level.number > 1:
             from app.services.card_service import CardService
 
             card_service = CardService()

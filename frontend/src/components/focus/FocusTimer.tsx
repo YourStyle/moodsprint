@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Pause, Play, X, Check } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
+import { playFocusCompleteSound } from '@/lib/sounds';
 import type { FocusSession } from '@/domain/types';
 
 interface FocusTimerProps {
@@ -42,6 +43,7 @@ export function FocusTimer({
   }, [session.started_at, session.status, session.elapsed_minutes]);
 
   const [elapsed, setElapsed] = useState(initialElapsed);
+  const soundPlayedRef = useRef(false);
   const isPaused = session.status === 'paused';
   const planned = session.planned_duration_minutes * 60;
 
@@ -59,6 +61,21 @@ export function FocusTimer({
 
     return () => clearInterval(interval);
   }, [isPaused, session.started_at]);
+
+  // Reset sound flag when session changes
+  useEffect(() => {
+    soundPlayedRef.current = false;
+  }, [session.started_at]);
+
+  // Play sound when timer reaches zero
+  useEffect(() => {
+    if (session.planned_duration_minutes >= 480) return; // no-timer mode
+    const remaining = planned - elapsed;
+    if (remaining <= 0 && !soundPlayedRef.current) {
+      soundPlayedRef.current = true;
+      playFocusCompleteSound();
+    }
+  }, [elapsed, planned, session.planned_duration_minutes]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(Math.abs(seconds) / 60);
