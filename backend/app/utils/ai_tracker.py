@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 # Pricing per 1M tokens (input/output) — update when OpenAI changes prices
 MODEL_PRICING = {
-    "gpt-5-mini": {"input": 0.40, "output": 1.60},
-    "gpt-5-nano": {"input": 0.10, "output": 0.40},
+    "gpt-5-mini": {"input": 0.30, "output": 1.25},
+    "gpt-5-nano": {"input": 0.05, "output": 0.40},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "whisper-1": {"input": 0.006, "output": 0.0},  # per minute, approximated
@@ -73,7 +73,7 @@ def tracked_openai_call(client, user_id, endpoint: str, **kwargs):
     Usage:
         response = tracked_openai_call(
             client, user_id=123, endpoint="decompose_task",
-            model="gpt-5-mini", messages=[...], max_tokens=1000
+            model="gpt-5-mini", messages=[...], max_completion_tokens=1000
         )
     """
     model = kwargs.get("model", "unknown")

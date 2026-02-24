@@ -149,7 +149,7 @@ class TaskClassifier:
     ) -> dict[str, Any]:
         """
         Combined AI call: classify task type, preferred time, AND difficulty
-        in a single gpt-5-nano request with low reasoning effort.
+        in a single gpt-5-nano request.
 
         Returns dict with:
         - difficulty: str (easy|medium|hard|very_hard)
@@ -191,7 +191,10 @@ class TaskClassifier:
         task_description: str | None,
         user_id: int | None = None,
     ) -> dict[str, Any]:
-        """Single AI call for difficulty + type + time using gpt-5-nano."""
+        """Single AI call for difficulty + type + time using gpt-5-nano.
+
+        Note: gpt-5-nano does NOT support reasoning_effort in Chat Completions API.
+        """
         prompt = f"""Задача: {task_title}
 {f'Описание: {task_description}' if task_description else ''}
 
@@ -213,7 +216,6 @@ JSON: {{"difficulty":"...","task_type":"...","preferred_time":"..."}}"""
             user_id=user_id,
             endpoint="classify_and_rate",
             model="gpt-5-nano",
-            reasoning_effort="low",
             messages=[
                 {
                     "role": "system",
@@ -224,7 +226,11 @@ JSON: {{"difficulty":"...","task_type":"...","preferred_time":"..."}}"""
             max_completion_tokens=60,
         )
 
-        content = response.choices[0].message.content.strip()
+        raw = response.choices[0].message.content
+        if not raw:
+            raise ValueError("Empty response from AI classifier")
+
+        content = raw.strip()
 
         # Handle markdown code blocks
         if content.startswith("```"):
