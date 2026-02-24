@@ -223,12 +223,16 @@ JSON: {{"difficulty":"...","task_type":"...","preferred_time":"..."}}"""
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_completion_tokens=60,
+            max_completion_tokens=150,
         )
 
         raw = response.choices[0].message.content
         if not raw:
-            raise ValueError("Empty response from AI classifier")
+            finish = response.choices[0].finish_reason
+            current_app.logger.error(
+                f"AI classifier empty response, finish_reason={finish}"
+            )
+            raise ValueError(f"Empty response from AI classifier ({finish})")
 
         content = raw.strip()
 
