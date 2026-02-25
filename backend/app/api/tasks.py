@@ -417,6 +417,12 @@ def update_task(task_id: int):
     )
 
     if task_just_completed:
+        # Auto-complete all pending subtasks when task is directly completed
+        for st in task.subtasks.filter(
+            ~Subtask.status.in_([SubtaskStatus.COMPLETED.value])
+        ).all():
+            st.complete()
+
         user = User.query.get(user_id)
         xp_info = user.add_xp(XPCalculator.task_completed())
         user.update_streak()
