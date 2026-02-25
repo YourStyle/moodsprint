@@ -466,37 +466,55 @@ class AIDecomposer:
 - Шаги должны быть КОНКРЕТНЫМИ и ПОЛЕЗНЫМИ
 - Начинай каждый шаг с глагола
 
-Верни ТОЛЬКО JSON:
-Либо массив шагов: [{{"title": "описание", "estimated_minutes": число}}]
-Либо отказ: {{"no_new_steps": true, "reason": "причина"}}
+Верни ТОЛЬКО JSON-объект:
+Шаги: {{"steps": [{{"title": "описание", "estimated_minutes": число}}]}}
+Отказ: {{"no_new_steps": true, "reason": "причина"}}
 """
 
         current_app.logger.info(f"AI decomposing task: {task_title}")
         from app.utils.ai_tracker import tracked_openai_call
 
-        response = tracked_openai_call(
-            self.client,
-            user_id=user_id,
-            endpoint="decompose_task",
-            model="gpt-5-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Ты умный помощник-планировщик. Разбиваешь задачи на шаги, "
-                        "обогащая их своими знаниями: предлагаешь конкретные места, "
-                        "ресурсы, идеи. Отвечай только валидным JSON на русском."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            max_completion_tokens=1000,
-        )
-        current_app.logger.info(
-            f"AI decomposition result: {response.choices[0].message.content}"
-        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Ты умный помощник-планировщик. Разбиваешь задачи на шаги, "
+                    "обогащая их своими знаниями: предлагаешь конкретные места, "
+                    "ресурсы, идеи. Отвечай только валидным JSON на русском."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
 
-        content = response.choices[0].message.content.strip()
+        # Try up to 2 times — first with gpt-5-mini, retry with gpt-4.1-mini on empty
+        models_to_try = ["gpt-5-mini", "gpt-4.1-mini"]
+        content = ""
+
+        for model_name in models_to_try:
+            response = tracked_openai_call(
+                self.client,
+                user_id=user_id,
+                endpoint="decompose_task",
+                model=model_name,
+                messages=messages,
+                max_completion_tokens=1000,
+                response_format={"type": "json_object"},
+            )
+            choice = response.choices[0]
+            current_app.logger.info(
+                f"AI decomposition model={model_name} "
+                f"finish_reason={choice.finish_reason}, "
+                f"refusal={getattr(choice.message, 'refusal', None)}, "
+                f"content_len={len(choice.message.content or '')}, "
+                f"content={choice.message.content!r}"
+            )
+            content = (choice.message.content or "").strip()
+            if content:
+                break
+            current_app.logger.warning(
+                f"AI decomposition empty from {model_name}, trying next model"
+            )
+
         current_app.logger.info(f"AI raw response: {content[:500]}")
 
         # Parse JSON response
