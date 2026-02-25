@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 class LevelService:
     """Handles level-up reward logic."""
 
+    # Free cosmetic rewards at specific levels
+    COSMETIC_REWARDS = {
+        5: "card_frame_golden",
+        8: "profile_frame_silver",
+    }
+
     RARITY_MAP = {
         "common": CardRarity.COMMON,
         "uncommon": CardRarity.UNCOMMON,
@@ -94,6 +100,21 @@ class LevelService:
                         "type": "max_energy",
                         "amount": 1,
                         "description": "Energy limit increase",
+                    }
+                )
+
+            # Free cosmetic rewards at specific levels
+            if level in self.COSMETIC_REWARDS:
+                cosmetic_id = self.COSMETIC_REWARDS[level]
+                owned = profile.owned_cosmetics or []
+                if cosmetic_id not in owned:
+                    owned.append(cosmetic_id)
+                    profile.owned_cosmetics = owned
+                all_granted.append(
+                    {
+                        "type": "cosmetic",
+                        "cosmetic_id": cosmetic_id,
+                        "description": f"Free cosmetic: {cosmetic_id}",
                     }
                 )
 

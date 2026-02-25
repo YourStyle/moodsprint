@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar, Bell, Sparkles, ListPlus, X, Plus } from 'lucide-react';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input, Textarea, TimePicker, roundToFiveMinutes } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
 interface TaskFormProps {
-  onSubmit: (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => void;
+  onSubmit: (title: string, description: string, dueDate: string | null, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => void;
   isLoading?: boolean;
   initialTitle?: string;
   initialDescription?: string;
@@ -39,16 +39,46 @@ export function TaskForm({
   const { t, language } = useLanguage();
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
+
+  // Deadline toggle (ON by default only when editing a task with existing due date)
+  const [enableDeadline, setEnableDeadline] = useState(!!initialDueDate);
   const [dueDate, setDueDate] = useState(initialDueDate || formatDateForInput(new Date()));
 
   // Reminder state
   const [enableReminder, setEnableReminder] = useState(!!initialScheduledAt);
-  const [reminderDate, setReminderDate] = useState(
-    initialScheduledAt ? initialScheduledAt.split('T')[0] : formatDateForInput(new Date())
-  );
-  const [reminderTime, setReminderTime] = useState(
-    initialScheduledAt ? initialScheduledAt.split('T')[1]?.slice(0, 5) : formatTimeForInput(new Date(Date.now() + 3600000))
-  );
+  const manualReminderDate = useRef(false);
+  const [reminderDate, setReminderDate] = useState(() => {
+    if (initialScheduledAt) return initialScheduledAt.split('T')[0];
+    // Default to dueDate if future, otherwise today
+    const dd = initialDueDate || formatDateForInput(new Date());
+    return dd >= formatDateForInput(new Date()) ? dd : formatDateForInput(new Date());
+  });
+  const [reminderTime, setReminderTime] = useState(() => {
+    if (initialScheduledAt) return roundToFiveMinutes(initialScheduledAt.split('T')[1]?.slice(0, 5) || '12:00');
+    return roundToFiveMinutes(formatTimeForInput(new Date(Date.now() + 3600000)));
+  });
+
+  // Sync reminderDate with dueDate when dueDate changes (unless user manually edited reminder date)
+  useEffect(() => {
+    if (!manualReminderDate.current && enableDeadline) {
+      const today = formatDateForInput(new Date());
+      if (dueDate >= today) {
+        setReminderDate(dueDate);
+      }
+    }
+  }, [dueDate, enableDeadline]);
+
+  // When reminder is toggled ON, set reminderDate to dueDate if future
+  const handleReminderToggle = (checked: boolean) => {
+    setEnableReminder(checked);
+    if (checked && enableDeadline) {
+      const today = formatDateForInput(new Date());
+      if (dueDate >= today) {
+        setReminderDate(dueDate);
+        manualReminderDate.current = false;
+      }
+    }
+  };
 
   // Auto-decompose state
   const [autoDecompose, setAutoDecompose] = useState(false);
@@ -68,7 +98,8 @@ export function TaskForm({
         scheduledAt = localDate.toISOString();
       }
       const validSubtasks = subtasks.filter(s => s.trim());
-      onSubmit(title.trim(), description.trim(), dueDate, scheduledAt, showAutoDecompose && autoDecompose, validSubtasks.length > 0 ? validSubtasks : undefined);
+      const finalDueDate = enableDeadline ? dueDate : null;
+      onSubmit(title.trim(), description.trim(), finalDueDate, scheduledAt, showAutoDecompose && autoDecompose, validSubtasks.length > 0 ? validSubtasks : undefined);
     }
   };
 
@@ -176,51 +207,69 @@ export function TaskForm({
         )}
       </div>
 
+      {/* Deadline toggle */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          {t('whenToComplete')}
-        </label>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDueDate(today)}
-            className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
-              dueDate === today
-                ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            {t('today')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setDueDate(tomorrow)}
-            className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
-              dueDate === tomorrow
-                ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            {t('tomorrow')}
-          </button>
-          <label
-            className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-              dueDate !== today && dueDate !== tomorrow
-                ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            {dueDate !== today && dueDate !== tomorrow ? formatDateDisplay(dueDate) : t('other')}
+        <label className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-gray-800/50 border border-gray-700">
+          <span className="flex items-center gap-2 text-sm font-medium text-gray-300">
+            <Calendar className="w-4 h-4 text-primary-400" />
+            {t('setDeadline')}
+          </span>
+          <div className="relative">
             <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              type="checkbox"
+              checked={enableDeadline}
+              onChange={(e) => setEnableDeadline(e.target.checked)}
               className="sr-only"
-              min={today}
             />
-          </label>
-        </div>
+            <div className={`w-10 h-5 rounded-full transition-colors ${enableDeadline ? 'bg-primary-500' : 'bg-gray-600'}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enableDeadline ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+          </div>
+        </label>
+
+        {enableDeadline && (
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setDueDate(today)}
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
+                dueDate === today
+                  ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {t('today')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDueDate(tomorrow)}
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all ${
+                dueDate === tomorrow
+                  ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {t('tomorrow')}
+            </button>
+            <label
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                dueDate !== today && dueDate !== tomorrow
+                  ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              {dueDate !== today && dueDate !== tomorrow ? formatDateDisplay(dueDate) : t('other')}
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="sr-only"
+                min={today}
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Reminder section */}
@@ -234,7 +283,7 @@ export function TaskForm({
             <input
               type="checkbox"
               checked={enableReminder}
-              onChange={(e) => setEnableReminder(e.target.checked)}
+              onChange={(e) => handleReminderToggle(e.target.checked)}
               className="sr-only"
             />
             <div className={`w-10 h-5 rounded-full transition-colors ${enableReminder ? 'bg-primary-500' : 'bg-gray-600'}`}>
@@ -252,7 +301,10 @@ export function TaskForm({
               <input
                 type="date"
                 value={reminderDate}
-                onChange={(e) => setReminderDate(e.target.value)}
+                onChange={(e) => {
+                  manualReminderDate.current = true;
+                  setReminderDate(e.target.value);
+                }}
                 min={today}
                 className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
@@ -261,11 +313,9 @@ export function TaskForm({
               <label className="block text-xs text-gray-500 mb-1">
                 {t('time')}
               </label>
-              <input
-                type="time"
+              <TimePicker
                 value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                onChange={setReminderTime}
               />
             </div>
           </div>

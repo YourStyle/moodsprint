@@ -25,6 +25,15 @@ import { useLanguage } from '@/lib/i18n';
 import { hapticFeedback, getTelegramWebApp, setupBackButton } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
 import type { Guild, GuildMember, GuildQuest } from '@/services/guilds';
+import type { TranslationKey } from '@/lib/i18n';
+
+const QUEST_TYPE_LABELS: Record<string, TranslationKey> = {
+  tasks_completed: 'questTypeTasksCompleted',
+  focus_minutes: 'questTypeFocusMinutes',
+  battles_won: 'questTypeBattlesWon',
+  cards_earned: 'questTypeCardsEarned',
+  streaks_maintained: 'questTypeStreaks',
+};
 
 type Tab = 'my-guild' | 'browse' | 'leaderboard';
 
@@ -384,7 +393,11 @@ export default function GuildsPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{quest.emoji}</span>
-                              <span className="text-sm font-medium text-white">{quest.title}</span>
+                              <span className="text-sm font-medium text-white">
+                                {QUEST_TYPE_LABELS[quest.quest_type]
+                                  ? t(QUEST_TYPE_LABELS[quest.quest_type]).replace('{target}', String(quest.target))
+                                  : quest.title}
+                              </span>
                             </div>
                             {quest.status === 'completed' && (
                               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">

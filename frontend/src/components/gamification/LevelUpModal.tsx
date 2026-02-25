@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Zap, Crown, Star, Gift } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, Zap, Crown, Star, Gift, ShoppingBag, Frame } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { useTranslation, type TranslationKey } from '@/lib/i18n';
 import { cardsService } from '@/services/cards';
 
 // Reward item from backend level_service.grant_level_rewards
 export interface LevelRewardItem {
-  type: 'sparks' | 'energy' | 'max_energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost' | 'deck_size';
+  type: 'sparks' | 'energy' | 'max_energy' | 'card' | 'genre_unlock' | 'archetype_tier' | 'xp_boost' | 'deck_size' | 'cosmetic';
   amount?: number;
   rarity?: string;
   slot?: number;
   tier?: string;
+  cosmetic_id?: string;
   card?: {
     id: number;
     name: string;
@@ -63,6 +65,7 @@ const REWARD_ICONS: Record<string, typeof Sparkles> = {
   archetype_tier: Star,
   xp_boost: Star,
   deck_size: Gift,
+  cosmetic: Frame,
 };
 
 interface LevelUpModalProps {
@@ -87,6 +90,7 @@ export function LevelUpModal({
   onGenreSelect,
 }: LevelUpModalProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [genreUnlocked, setGenreUnlocked] = useState<string | null>(null);
@@ -196,10 +200,26 @@ export function LevelUpModal({
                         {t('deckSizeIncrease').replace('{amount}', String(reward.amount || 1))}
                       </span>
                     )}
+                    {reward.type === 'cosmetic' && (
+                      <span className="text-sm text-white">
+                        {t('cosmeticReward').replace('{name}', reward.cosmetic_id || '')}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
             })}
+            {/* Go to Store button when sparks were rewarded */}
+            {rewards.some(r => r.type === 'sparks') && (
+              <button
+                type="button"
+                onClick={() => { handleClose(); router.push('/store'); }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/15 text-amber-400 text-sm font-medium hover:bg-amber-500/25 transition-colors"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                {t('goToStore')}
+              </button>
+            )}
           </div>
         )}
 

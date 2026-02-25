@@ -549,8 +549,8 @@ export default function HomePage() {
     return activeSessions.find(s => s.task_id === taskId);
   };
 
-  const handleCreateTask = (title: string, description: string, dueDate: string, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => {
-    createMutation.mutate({ title, description, due_date: dueDate, scheduled_at: scheduledAt, autoDecompose, subtasks });
+  const handleCreateTask = (title: string, description: string, dueDate: string | null, scheduledAt?: string, autoDecompose?: boolean, subtasks?: string[]) => {
+    createMutation.mutate({ title, description, due_date: dueDate || selectedDateStr, scheduled_at: scheduledAt, autoDecompose, subtasks });
   };
 
   const handleQuickTaskCreate = () => {

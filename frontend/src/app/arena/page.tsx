@@ -20,6 +20,7 @@ import {
   Zap,
   Plus,
   Map,
+  ShoppingBag,
 } from 'lucide-react';
 import { Card, Button, ScrollBackdrop } from '@/components/ui';
 import { BattleCard } from '@/components/cards';
@@ -1536,6 +1537,16 @@ export default function ArenaPage() {
                             +{campaignResult.sparks_earned} ✨
                           </span>
                         </div>
+                      )}
+                      {campaignMode && campaignResult?.sparks_earned && campaignResult.sparks_earned > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => router.push('/store')}
+                          className="flex items-center gap-1 text-xs text-amber-400/70 hover:text-amber-400 transition-colors mt-1"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          {t('goToStore')}
+                        </button>
                       )}
                       {battleResult.level_up && (
                         <div className="text-center pt-2 text-amber-400 font-medium">

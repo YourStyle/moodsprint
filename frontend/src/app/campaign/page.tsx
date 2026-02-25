@@ -15,6 +15,7 @@ import {
   Gift,
   Play,
   Plus,
+  ShoppingBag,
 } from 'lucide-react';
 import { Card, Button, Progress, ScrollBackdrop, Modal } from '@/components/ui';
 import { LoreSheet, DialogueSheet } from '@/components/campaign';
@@ -595,6 +596,17 @@ export default function CampaignPage() {
                   </div>
                 ))}
               </div>
+              {/* Go to Store if sparks reward present */}
+              {chapterData.data.rewards.some((r: { reward_type: string }) => r.reward_type === 'sparks') && (
+                <button
+                  type="button"
+                  onClick={() => router.push('/store')}
+                  className="w-full flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-amber-500/15 text-amber-400 text-sm font-medium hover:bg-amber-500/25 transition-colors"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  {t('goToStore')}
+                </button>
+              )}
             </div>
           </Card>
         )}

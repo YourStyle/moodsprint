@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX, CalendarDays } from 'lucide-react';
-import { Button, Card, Modal, Progress, ScrollBackdrop } from '@/components/ui';
+import { Button, Card, Modal, Progress, ScrollBackdrop, TimePicker, roundToFiveMinutes } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
@@ -752,13 +752,19 @@ export default function TaskDetailPage() {
                 setEditReminderTime(scheduledDate.toTimeString().slice(0, 5));
               } else {
                 setEditReminderEnabled(false);
-                const now = new Date();
-                now.setHours(now.getHours() + 1);
-                const y = now.getFullYear();
-                const m = String(now.getMonth() + 1).padStart(2, '0');
-                const d = String(now.getDate()).padStart(2, '0');
+                // Default reminder date to task due date if it's in the future
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const taskDue = task.due_date ? new Date(task.due_date + 'T00:00:00') : null;
+                const useTaskDate = taskDue && taskDue >= today;
+                const defaultDate = useTaskDate ? taskDue : new Date();
+                if (!useTaskDate) defaultDate.setHours(defaultDate.getHours() + 1);
+                const y = defaultDate.getFullYear();
+                const m = String(defaultDate.getMonth() + 1).padStart(2, '0');
+                const d = String(defaultDate.getDate()).padStart(2, '0');
                 setEditReminderDate(`${y}-${m}-${d}`);
-                setEditReminderTime(now.toTimeString().slice(0, 5));
+                const timeDate = useTaskDate ? new Date(Date.now() + 3600000) : defaultDate;
+                setEditReminderTime(timeDate.toTimeString().slice(0, 5));
               }
               setShowEditTask(true);
             }}
@@ -835,7 +841,7 @@ export default function TaskDetailPage() {
 
         {/* Deadline & Reminder */}
         {(task.due_date || task.scheduled_at) && (
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-700/50 text-sm">
+          <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-gray-700/50 text-sm">
             {task.due_date && (
               <div className="flex items-center gap-1.5 text-gray-300">
                 <CalendarDays className="w-4 h-4 text-primary-400" />
@@ -1312,11 +1318,9 @@ export default function TaskDetailPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">{t('time')}</label>
-                  <input
-                    type="time"
-                    value={editReminderTime}
-                    onChange={(e) => setEditReminderTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  <TimePicker
+                    value={roundToFiveMinutes(editReminderTime)}
+                    onChange={setEditReminderTime}
                   />
                 </div>
               </div>

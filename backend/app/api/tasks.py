@@ -207,14 +207,17 @@ def create_task():
         }
         ai_difficulty = priority_to_difficulty.get(priority, "medium")
 
-    # Parse due_date
-    due_date_value = date.today()
+    # Parse due_date (allow null for tasks without deadline)
+    due_date_value = None
     due_date_str = data.get("due_date")
     if due_date_str:
         try:
             due_date_value = datetime.strptime(due_date_str, "%Y-%m-%d").date()
         except ValueError:
-            pass
+            due_date_value = date.today()
+    elif "due_date" not in data:
+        # Only default to today if the field wasn't explicitly sent
+        due_date_value = date.today()
 
     preferred_time = data.get("preferred_time")
 

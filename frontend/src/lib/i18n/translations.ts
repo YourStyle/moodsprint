@@ -803,6 +803,22 @@ export const translations = {
     questStreaks: 'Серии активности',
     questPreferences: 'Настройки квестов',
     questPreferencesSaved: 'Настройки квестов сохранены',
+
+    // Shop CTA
+    goToStore: 'В магазин',
+
+    // Deadline toggle
+    setDeadline: 'Дедлайн',
+
+    // Cosmetic rewards
+    cosmeticReward: 'Косметика: {name}',
+
+    // Guild quest type display labels
+    questTypeTasksCompleted: 'Выполнить {target} задач',
+    questTypeFocusMinutes: 'Фокус {target} мин',
+    questTypeBattlesWon: 'Победить {target} раз',
+    questTypeCardsEarned: 'Получить {target} карт',
+    questTypeStreaks: 'Серия {target} дн.',
   },
 
   en: {
@@ -1609,6 +1625,22 @@ export const translations = {
     questStreaks: 'Streaks maintained',
     questPreferences: 'Quest preferences',
     questPreferencesSaved: 'Quest preferences saved',
+
+    // Shop CTA
+    goToStore: 'Go to Store',
+
+    // Deadline toggle
+    setDeadline: 'Deadline',
+
+    // Cosmetic rewards
+    cosmeticReward: 'Cosmetic: {name}',
+
+    // Guild quest type display labels
+    questTypeTasksCompleted: 'Complete {target} tasks',
+    questTypeFocusMinutes: 'Focus {target} min',
+    questTypeBattlesWon: 'Win {target} battles',
+    questTypeCardsEarned: 'Earn {target} cards',
+    questTypeStreaks: '{target} day streak',
   },
 } as const;
 
