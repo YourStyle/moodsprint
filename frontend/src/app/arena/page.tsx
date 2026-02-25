@@ -1541,8 +1541,8 @@ export default function ArenaPage() {
                       {campaignMode && campaignResult?.sparks_earned && campaignResult.sparks_earned > 0 && (
                         <button
                           type="button"
-                          onClick={() => router.push('/store')}
-                          className="flex items-center gap-1 text-xs text-amber-400/70 hover:text-amber-400 transition-colors mt-1"
+                          onClick={() => router.replace('/store')}
+                          className="flex items-center gap-1 text-xs text-amber-400 border border-amber-500/40 rounded-lg px-2 py-1 hover:bg-amber-500/20 hover:border-amber-500/60 transition-all mt-1"
                         >
                           <ShoppingBag className="w-3 h-3" />
                           {t('goToStore')}

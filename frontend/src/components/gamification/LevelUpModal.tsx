@@ -214,7 +214,7 @@ export function LevelUpModal({
               <button
                 type="button"
                 onClick={() => { handleClose(); router.push('/store'); }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/15 text-amber-400 text-sm font-medium hover:bg-amber-500/25 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-400 text-sm font-medium hover:bg-amber-500/20 hover:border-amber-500/60 transition-all"
               >
                 <ShoppingBag className="w-4 h-4" />
                 {t('goToStore')}
