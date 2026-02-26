@@ -25,15 +25,29 @@ export function XPToastQueue() {
   // Pre-compute progress bar values to avoid inline IIFE in render
   const progress = useMemo(() => {
     if (!current) return null;
-    const xpNow = current.type === 'companion'
-      ? (current.cardXp ?? 0)
-      : (current.currentXp ?? 0);
-    const xpMax = current.type === 'companion'
-      ? (current.cardXpForNext ?? 100)
-      : (current.xpForNext ?? 100);
+
+    if (current.type === 'companion') {
+      // Companion: card_xp is relative to current level (resets on level up)
+      const xpAfter = current.cardXp ?? 0;
+      const xpMax = current.cardXpForNext ?? 100;
+      if (xpMax <= 0) return { from: 100, to: 100 };
+      return {
+        from: Math.min(100, Math.max(0, ((xpAfter - current.amount) / xpMax) * 100)),
+        to: Math.min(100, (xpAfter / xpMax) * 100),
+      };
+    }
+
+    // Player: xp is total, need to compute progress within current level
+    const level = current.level ?? 1;
+    const xpForCurrent = ((level - 1) ** 2) * 100; // XP threshold for current level
+    const xpForNext = current.xpForNext ?? (level ** 2) * 100;
+    const range = xpForNext - xpForCurrent;
+    if (range <= 0) return { from: 100, to: 100 };
+
+    const totalXp = current.currentXp ?? 0;
     return {
-      from: Math.min(100, (xpNow / xpMax) * 100),
-      to: Math.min(100, ((xpNow + current.amount) / xpMax) * 100),
+      from: Math.min(100, Math.max(0, ((totalXp - xpForCurrent) / range) * 100)),
+      to: Math.min(100, ((totalXp + current.amount - xpForCurrent) / range) * 100),
     };
   }, [current?.id]);
 

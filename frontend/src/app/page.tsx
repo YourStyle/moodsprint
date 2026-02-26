@@ -481,7 +481,7 @@ export default function HomePage() {
       // Companion XP toast
       if (result.data?.companion_xp) {
         const cxp = result.data.companion_xp;
-        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined });
+        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined, cardXp: cxp.card_xp ?? 0, cardXpForNext: cxp.xp_to_next ?? 100 });
       }
       hapticFeedback('success');
     },
@@ -532,7 +532,7 @@ export default function HomePage() {
       // Companion XP toast
       if (result.data?.companion_xp) {
         const cxp = result.data.companion_xp;
-        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined });
+        pushXPToast({ type: 'companion', amount: cxp.xp_earned, cardEmoji: cxp.card_emoji ?? undefined, cardName: cxp.card_name ?? undefined, levelUp: cxp.level_up, cardLevel: cxp.new_level ?? undefined, cardXp: cxp.card_xp ?? 0, cardXpForNext: cxp.xp_to_next ?? 100 });
       }
       hapticFeedback('success');
     },

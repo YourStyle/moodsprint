@@ -72,6 +72,8 @@ interface TaskWithXP extends TaskResponse, Partial<XPReward> {
     card_emoji: string | null;
     level_up: boolean;
     new_level: number | null;
+    card_xp?: number;
+    xp_to_next?: number;
   };
 }
 
@@ -98,6 +100,8 @@ interface SubtaskWithXP extends SubtaskResponse, Partial<XPReward> {
     card_emoji: string | null;
     level_up: boolean;
     new_level: number | null;
+    card_xp?: number;
+    xp_to_next?: number;
   };
 }
 
