@@ -1571,3 +1571,60 @@ async def set_comeback_card_pending(user_id: int):
             {"user_id": user_id},
         )
         await session.commit()
+
+
+async def get_expired_focus_sessions():
+    """Get active focus sessions that have exceeded their planned duration."""
+    async with async_session() as session:
+        result = await session.execute(
+            text(
+                """
+                SELECT fs.id, fs.user_id, fs.planned_duration_minutes,
+                       fs.started_at, fs.total_pause_seconds,
+                       u.telegram_id
+                FROM focus_sessions fs
+                JOIN users u ON u.id = fs.user_id
+                WHERE fs.status = 'active'
+                  AND fs.planned_duration_minutes < 480
+                  AND (
+                    EXTRACT(EPOCH FROM (NOW() - fs.started_at))
+                    - fs.total_pause_seconds
+                  ) / 60 > fs.planned_duration_minutes
+            """
+            )
+        )
+        rows = result.fetchall()
+        return [dict(r._mapping) for r in rows]
+
+
+async def auto_complete_focus_session(session_id: int, actual_minutes: int):
+    """Mark a focus session as completed and award XP to the user."""
+    async with async_session() as session:
+        # Complete the session
+        await session.execute(
+            text(
+                """
+                UPDATE focus_sessions
+                SET status = 'completed',
+                    ended_at = NOW(),
+                    actual_duration_minutes = :actual_minutes
+                WHERE id = :session_id AND status = 'active'
+            """
+            ),
+            {"session_id": session_id, "actual_minutes": actual_minutes},
+        )
+        # Award XP (1 XP per minute of focus)
+        xp = max(1, actual_minutes)
+        await session.execute(
+            text(
+                """
+                UPDATE users SET xp = xp + :xp
+                WHERE id = (
+                    SELECT user_id FROM focus_sessions WHERE id = :session_id
+                )
+            """
+            ),
+            {"session_id": session_id, "xp": xp},
+        )
+        await session.commit()
+        return xp

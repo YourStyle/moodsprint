@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Timer, Play, Pause, CheckCircle2, Square } from 'lucide-react';
 import { calculateElapsedSeconds } from '@/lib/dateUtils';
 import type { FocusSession } from '@/domain/types';
@@ -59,6 +59,16 @@ export function MiniTimer({ session, onPause, onResume, onComplete, onStop }: Mi
   const isNoTimerMode = session.planned_duration_minutes >= 480;
   const remaining = planned - elapsed;
   const isOvertime = !isNoTimerMode && remaining < 0;
+
+  // Auto-complete when timer expires
+  const autoCompletedRef = useRef(false);
+  useEffect(() => {
+    if (isNoTimerMode || isPaused) return;
+    if (remaining <= 0 && !autoCompletedRef.current) {
+      autoCompletedRef.current = true;
+      onComplete();
+    }
+  }, [remaining, isNoTimerMode, isPaused, onComplete]);
 
   return (
     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>

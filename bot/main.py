@@ -146,6 +146,14 @@ async def main():
         id="scheduled_task_reminders",
     )
 
+    # Auto-complete expired focus sessions - check every minute
+    scheduler.add_job(
+        notification_service.auto_complete_expired_focus_sessions,
+        "interval",
+        minutes=1,
+        id="auto_complete_focus",
+    )
+
     # Monster rotation - run daily at 00:10, actual generation happens on period start days
     scheduler.add_job(
         notification_service.rotate_monsters,

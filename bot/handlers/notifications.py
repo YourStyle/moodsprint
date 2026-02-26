@@ -303,6 +303,41 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Failed to send focus notification to {telegram_id}: {e}")
 
+    async def auto_complete_expired_focus_sessions(self):
+        """Auto-complete focus sessions that have exceeded their planned duration."""
+        from database import auto_complete_focus_session, get_expired_focus_sessions
+
+        try:
+            expired = await get_expired_focus_sessions()
+            if not expired:
+                return
+
+            logger.info(f"Found {len(expired)} expired focus sessions to auto-complete")
+
+            for sess in expired:
+                try:
+                    planned = sess["planned_duration_minutes"]
+                    xp = await auto_complete_focus_session(sess["id"], planned)
+
+                    telegram_id = sess.get("telegram_id")
+                    if telegram_id:
+                        await self.bot.send_message(
+                            telegram_id,
+                            f"✅ Фокус-сессия завершена!\n\n"
+                            f"⏱️ Длительность: {planned} мин\n"
+                            f"✨ +{xp} XP\n\n"
+                            "Отличная работа! Сделай перерыв. ☕",
+                            reply_markup=get_webapp_button(),
+                        )
+                except (TelegramForbiddenError, TelegramBadRequest):
+                    pass
+                except Exception as e:
+                    logger.error(
+                        f"Failed to auto-complete focus session {sess['id']}: {e}"
+                    )
+        except Exception as e:
+            logger.error(f"Error in auto_complete_expired_focus_sessions: {e}")
+
     async def postpone_overdue_tasks(self):
         """
         Postpone all overdue tasks to today (without sending notifications).

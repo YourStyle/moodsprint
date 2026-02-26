@@ -88,14 +88,15 @@ function FocusTimer({
   const remaining = planned - elapsed;
   const isOvertime = !isNoTimerMode && remaining < 0;
 
-  // Play sound when timer reaches zero
+  // Auto-complete and play sound when timer reaches zero
   useEffect(() => {
-    if (isNoTimerMode) return;
+    if (isNoTimerMode || isPaused) return;
     if (remaining <= 0 && !soundPlayedRef.current) {
       soundPlayedRef.current = true;
       playFocusCompleteSound();
+      onCancel(); // Auto-complete the session
     }
-  }, [remaining, isNoTimerMode]);
+  }, [remaining, isNoTimerMode, isPaused, onCancel]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(Math.abs(seconds) / 60);
