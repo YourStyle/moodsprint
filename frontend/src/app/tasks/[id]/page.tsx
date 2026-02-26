@@ -459,7 +459,7 @@ export default function TaskDetailPage() {
 
   // Focus session control mutations
   const pauseSessionMutation = useMutation({
-    mutationFn: () => focusService.pauseSession(),
+    mutationFn: (sessionId: number) => focusService.pauseSession(sessionId),
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
@@ -474,7 +474,7 @@ export default function TaskDetailPage() {
   });
 
   const resumeSessionMutation = useMutation({
-    mutationFn: () => focusService.resumeSession(),
+    mutationFn: (sessionId: number) => focusService.resumeSession(sessionId),
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
@@ -966,8 +966,8 @@ export default function TaskDetailPage() {
         activeSession ? (
           <FocusTimer
             session={activeSession}
-            onPause={() => pauseSessionMutation.mutate()}
-            onResume={() => resumeSessionMutation.mutate()}
+            onPause={() => pauseSessionMutation.mutate(activeSession.id)}
+            onResume={() => resumeSessionMutation.mutate(activeSession.id)}
             onCancel={() => completeSessionMutation.mutate(activeSession.id)}
             isPauseLoading={pauseSessionMutation.isPending}
             isResumeLoading={resumeSessionMutation.isPending}

@@ -96,12 +96,16 @@ export const focusService = {
     });
   },
 
-  async pauseSession(): Promise<ApiResponse<FocusSessionResponse>> {
-    return api.post<FocusSessionResponse>('/focus/pause');
+  async pauseSession(sessionId?: number): Promise<ApiResponse<FocusSessionResponse>> {
+    return api.post<FocusSessionResponse>('/focus/pause', {
+      session_id: sessionId,
+    });
   },
 
-  async resumeSession(): Promise<ApiResponse<FocusSessionResponse>> {
-    return api.post<FocusSessionResponse>('/focus/resume');
+  async resumeSession(sessionId?: number): Promise<ApiResponse<FocusSessionResponse>> {
+    return api.post<FocusSessionResponse>('/focus/resume', {
+      session_id: sessionId,
+    });
   },
 
   async getHistory(params?: {

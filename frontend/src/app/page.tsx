@@ -419,13 +419,14 @@ export default function HomePage() {
     onSuccess: (result) => {
       if (result.success && result.data) {
         setActiveSession(result.data.session);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
         hapticFeedback('success');
       }
     },
   });
 
   const pauseSessionMutation = useMutation({
-    mutationFn: (sessionId: number) => focusService.pauseSession(),
+    mutationFn: (sessionId: number) => focusService.pauseSession(sessionId),
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
@@ -435,7 +436,7 @@ export default function HomePage() {
   });
 
   const resumeSessionMutation = useMutation({
-    mutationFn: (sessionId: number) => focusService.resumeSession(),
+    mutationFn: (sessionId: number) => focusService.resumeSession(sessionId),
     onSuccess: (result) => {
       if (result.success && result.data?.session) {
         updateActiveSession(result.data.session);
@@ -490,6 +491,7 @@ export default function HomePage() {
     mutationFn: (sessionId: number) => focusService.cancelSession(sessionId),
     onSuccess: (result, sessionId) => {
       removeActiveSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['focus'] });
       hapticFeedback('light');
     },
@@ -1069,7 +1071,7 @@ export default function HomePage() {
                                   session={session}
                                   onPause={() => pauseSessionMutation.mutate(session.id)}
                                   onResume={() => resumeSessionMutation.mutate(session.id)}
-                                  onComplete={() => completeTaskMutation.mutate(task.id)}
+                                  onComplete={() => completeSessionMutation.mutate(session.id)}
                                   onStop={() => cancelSessionMutation.mutate(session.id)}
                                 />
                               )}
@@ -1126,7 +1128,7 @@ export default function HomePage() {
                             activeSession={session}
                             onPause={session ? () => pauseSessionMutation.mutate(session.id) : undefined}
                             onResume={session ? () => resumeSessionMutation.mutate(session.id) : undefined}
-                            onComplete={session ? () => completeTaskMutation.mutate(task.id) : undefined}
+                            onComplete={session ? () => completeSessionMutation.mutate(session.id) : undefined}
                             onStop={session ? () => cancelSessionMutation.mutate(session.id) : undefined}
                           />
                         );

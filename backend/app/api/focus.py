@@ -383,6 +383,20 @@ def cancel_focus_session():
         return not_found("No active session found")
 
     session.cancel()
+
+    # Revert task to pending if no other active/paused sessions remain
+    task = session.task if session.task_id else None
+    if task and task.status == TaskStatus.IN_PROGRESS.value:
+        other_active = FocusSession.query.filter(
+            FocusSession.task_id == task.id,
+            FocusSession.id != session.id,
+            FocusSession.status.in_(
+                [FocusSessionStatus.ACTIVE.value, FocusSessionStatus.PAUSED.value]
+            ),
+        ).first()
+        if not other_active:
+            task.status = TaskStatus.PENDING.value
+
     db.session.commit()
 
     return success_response({"session": session.to_dict()})
@@ -393,10 +407,17 @@ def cancel_focus_session():
 def pause_focus_session():
     """Pause the active focus session."""
     user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    session_id = data.get("session_id")
 
-    session = FocusSession.query.filter_by(
-        user_id=user_id, status=FocusSessionStatus.ACTIVE.value
-    ).first()
+    if session_id:
+        session = FocusSession.query.filter_by(
+            id=session_id, user_id=user_id, status=FocusSessionStatus.ACTIVE.value
+        ).first()
+    else:
+        session = FocusSession.query.filter_by(
+            user_id=user_id, status=FocusSessionStatus.ACTIVE.value
+        ).first()
 
     if not session:
         return not_found("No active session found")
@@ -412,10 +433,17 @@ def pause_focus_session():
 def resume_focus_session():
     """Resume a paused focus session."""
     user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    session_id = data.get("session_id")
 
-    session = FocusSession.query.filter_by(
-        user_id=user_id, status=FocusSessionStatus.PAUSED.value
-    ).first()
+    if session_id:
+        session = FocusSession.query.filter_by(
+            id=session_id, user_id=user_id, status=FocusSessionStatus.PAUSED.value
+        ).first()
+    else:
+        session = FocusSession.query.filter_by(
+            user_id=user_id, status=FocusSessionStatus.PAUSED.value
+        ).first()
 
     if not session:
         return not_found("No paused session found")
