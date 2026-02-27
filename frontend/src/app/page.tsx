@@ -258,17 +258,14 @@ export default function HomePage() {
 
   const selectedDateStr = formatDateForAPI(selectedDate);
 
-  // Calculate week date range for task counts
-  const weekDates = useMemo(() => {
+  // Calculate date range for calendar task count badges (must match WeekCalendar's range: -7..+30)
+  const calendarDateRange = useMemo(() => {
     const today = new Date();
-    const currentDay = today.getDay();
-    const dates: string[] = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - currentDay + i);
-      dates.push(formatDateForAPI(date));
-    }
-    return dates;
+    const from = new Date(today);
+    from.setDate(today.getDate() - 7);
+    const to = new Date(today);
+    to.setDate(today.getDate() + 30);
+    return { from: formatDateForAPI(from), to: formatDateForAPI(to) };
   }, []);
 
   // Check if we should show mood modal — only when modal queue reaches 'mood' phase
@@ -342,16 +339,16 @@ export default function HomePage() {
     };
   }, [allTasksForCounts]);
 
-  // Query week tasks for calendar badges (reuse main query data when possible)
+  // Query tasks for full calendar range badges (-7..+30 days)
   const { data: weekTasksData } = useQuery({
-    queryKey: ['tasks', 'week', weekDates[0], weekDates[6]],
+    queryKey: ['tasks', 'calendar', calendarDateRange.from, calendarDateRange.to],
     queryFn: () => tasksService.getTasks({
-      due_date_from: weekDates[0],
-      due_date_to: weekDates[6],
-      limit: 100,
+      due_date_from: calendarDateRange.from,
+      due_date_to: calendarDateRange.to,
+      limit: 200,
     }),
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes - less frequent refresh
+    staleTime: 1000 * 60 * 5,
   });
 
   // Calculate task counts per day for the week
