@@ -54,7 +54,7 @@ def content(dry_run):
                     },
                     {"role": "user", "content": text},
                 ],
-                max_tokens=500,
+                max_completion_tokens=500,
                 temperature=0.3,
             )
             return response.choices[0].message.content.strip()

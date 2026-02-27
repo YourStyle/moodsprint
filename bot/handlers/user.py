@@ -892,6 +892,13 @@ async def process_custom_reminder_time(message: Message, state: FSMContext):
         await message.answer(get_text("error", lang))
         return
 
+    if not message.text:
+        await message.answer(
+            get_text("reminder_enter_time", lang),
+            reply_markup=get_cancel_keyboard(lang),
+        )
+        return
+
     import re
 
     time_match = re.match(r"^(\d{1,2})[:\.](\d{2})$", message.text.strip())
@@ -922,7 +929,7 @@ async def process_custom_reminder_time(message: Message, state: FSMContext):
     utc_hour = (hour - 3) % 24
     scheduled_at = datetime(
         reminder_date.year, reminder_date.month, reminder_date.day, utc_hour, minute
-    ).isoformat()
+    )
 
     await update_task_scheduled_at(task_id, scheduled_at)
     await state.clear()

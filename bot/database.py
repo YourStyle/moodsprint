@@ -999,8 +999,14 @@ async def reschedule_task_to_days(task_id: int, days: int):
         await session.commit()
 
 
-async def update_task_scheduled_at(task_id: int, scheduled_at: str):
+async def update_task_scheduled_at(task_id: int, scheduled_at):
     """Update task scheduled_at time for reminder."""
+    from datetime import datetime as dt
+
+    # Ensure scheduled_at is a datetime object (asyncpg requires it)
+    if isinstance(scheduled_at, str):
+        scheduled_at = dt.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+
     async with async_session() as session:
         await session.execute(
             text(
