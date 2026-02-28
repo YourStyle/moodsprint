@@ -6,3 +6,4 @@ export { Input, Textarea } from './Input';
 export { ScrollBackdrop } from './ScrollBackdrop';
 export { FrameEffect } from './FrameEffect';
 export { TimePicker, roundToFiveMinutes } from './TimePicker';
+export { DatePicker } from './DatePicker';

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wand2, Trash2, Plus, Play, Check, Timer, Infinity, Pencil, Sparkles, ChevronUp, ChevronDown, Pause, Square, Bell, RotateCcw, Share2, SearchX, CalendarDays } from 'lucide-react';
-import { Button, Card, Modal, Progress, ScrollBackdrop, TimePicker, roundToFiveMinutes } from '@/components/ui';
+import { Button, Card, Modal, Progress, ScrollBackdrop, TimePicker, roundToFiveMinutes, DatePicker } from '@/components/ui';
 import { SubtaskItem } from '@/components/tasks';
 import { MoodSelector } from '@/components/mood';
 import { CardEarnedModal, CardTutorial, shouldShowCardTutorial, type EarnedCard } from '@/components/cards';
@@ -1270,11 +1270,10 @@ export default function TaskDetailPage() {
               </span>
             </label>
             <div className="flex gap-2">
-              <input
-                type="date"
-                value={editDueDate}
-                onChange={(e) => setEditDueDate(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              <DatePicker
+                value={editDueDate || new Date().toISOString().split('T')[0]}
+                onChange={setEditDueDate}
+                className="flex-1"
               />
               {editDueDate && (
                 <button
@@ -1310,11 +1309,9 @@ export default function TaskDetailPage() {
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">{t('date')}</label>
-                  <input
-                    type="date"
-                    value={editReminderDate}
-                    onChange={(e) => setEditReminderDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  <DatePicker
+                    value={editReminderDate || new Date().toISOString().split('T')[0]}
+                    onChange={setEditReminderDate}
                   />
                 </div>
                 <div>

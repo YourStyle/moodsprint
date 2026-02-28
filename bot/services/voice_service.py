@@ -1,6 +1,7 @@
 """Voice message processing service using OpenAI Whisper and GPT."""
 
 import json
+import re
 import tempfile
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -8,6 +9,48 @@ from datetime import date, timedelta
 import httpx
 from config import config
 from openai import OpenAI
+
+# Russian date words for fallback detection when GPT misses has_explicit_date
+_DATE_WORDS_RU = {
+    "сегодня",
+    "завтра",
+    "послезавтра",
+    "понедельник",
+    "вторник",
+    "среда",
+    "четверг",
+    "пятница",
+    "суббота",
+    "воскресенье",
+    "через неделю",
+    "через день",
+    "через два дня",
+    "через три дня",
+    "на следующей неделе",
+    "в понедельник",
+    "во вторник",
+    "в среду",
+    "в четверг",
+    "в пятницу",
+    "в субботу",
+    "в воскресенье",
+}
+_DATE_PATTERN_RU = re.compile(
+    r"\b(?:сегодня|завтра|послезавтра|через\s+(?:неделю|день|два\s+дня|три\s+дня)"
+    r"|на\s+следующей\s+неделе"
+    r"|(?:в|во)\s+(?:понедельник|вторник|среду|четверг|пятницу|субботу|воскресенье)"
+    r"|понедельник|вторник|сред[уа]|четверг|пятниц[уа]|суббот[уа]|воскресенье"
+    r"|\d{1,2}\s+(?:январ[яь]|феврал[яь]|март[а]?|апрел[яь]"
+    r"|ма[яй]|июн[яь]|июл[яь]|август[а]?|сентябр[яь]"
+    r"|октябр[яь]|ноябр[яь]|декабр[яь])"
+    r"|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)\b",
+    re.IGNORECASE,
+)
+
+
+def _text_has_date_words(text: str) -> bool:
+    """Check if text contains Russian date words or patterns."""
+    return bool(_DATE_PATTERN_RU.search(text))
 
 
 @dataclass
@@ -166,21 +209,44 @@ async def extract_task_from_text(
 
         data = json.loads(result_text)
 
+        has_explicit = data.get("has_explicit_date", False)
+        due = data.get("due_date", today_str)
+
+        # Fallback: if GPT missed the date but text clearly contains
+        # Russian date words, trust the extracted due_date and force flag
+        if not has_explicit and _text_has_date_words(text):
+            has_explicit = True
+            # If GPT also defaulted to today, try to infer from text
+            if due == today_str:
+                text_lower = text.lower()
+                if "завтра" in text_lower and "послезавтра" not in text_lower:
+                    due = tomorrow_str
+                elif "послезавтра" in text_lower:
+                    due = day_after
+
         return TaskFromVoice(
             title=data.get("title", text),
-            due_date=data.get("due_date", today_str),
+            due_date=due,
             scheduled_at=data.get("scheduled_at"),
-            has_explicit_date=data.get("has_explicit_date", False),
+            has_explicit_date=has_explicit,
         )
 
     except Exception as e:
         print(f"Error extracting task from text: {e}")
-        # Fallback: return the text as-is with today's date
+        # Fallback: even without GPT, try to detect dates from text
+        has_date = _text_has_date_words(text)
+        fallback_date = date.today().strftime("%Y-%m-%d")
+        text_lower = text.lower()
+        if "завтра" in text_lower and "послезавтра" not in text_lower:
+            fallback_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        elif "послезавтра" in text_lower:
+            fallback_date = (date.today() + timedelta(days=2)).strftime("%Y-%m-%d")
+
         return TaskFromVoice(
             title=text,
-            due_date=date.today().strftime("%Y-%m-%d"),
+            due_date=fallback_date,
             scheduled_at=None,
-            has_explicit_date=False,
+            has_explicit_date=has_date,
         )
 
 

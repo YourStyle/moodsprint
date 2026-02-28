@@ -532,6 +532,8 @@ def update_task(task_id: int):
             "card_emoji": companion_xp_result.get("card_emoji"),
             "level_up": companion_xp_result.get("level_up", False),
             "new_level": companion_xp_result.get("new_level"),
+            "card_xp": companion_xp_result.get("card_xp", 0),
+            "xp_to_next": companion_xp_result.get("xp_to_next", 100),
         }
 
     # Increment guild quest progress for task completion
@@ -1007,6 +1009,8 @@ def update_subtask(subtask_id: int):
                     "card_emoji": companion_xp_result.get("card_emoji"),
                     "level_up": companion_xp_result.get("level_up", False),
                     "new_level": companion_xp_result.get("new_level"),
+                    "card_xp": companion_xp_result.get("card_xp", 0),
+                    "xp_to_next": companion_xp_result.get("xp_to_next", 100),
                 }
         except NameError:
             pass

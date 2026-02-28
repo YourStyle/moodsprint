@@ -6,6 +6,8 @@ with Sparks and equip one card frame + one profile frame at a time.
 
 import logging
 
+from sqlalchemy.orm.attributes import flag_modified
+
 from app import db
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -191,6 +193,7 @@ class CosmeticsService:
         # Add to owned
         owned.append(cosmetic_id)
         profile.owned_cosmetics = owned
+        flag_modified(profile, "owned_cosmetics")
 
         # Record transaction
         from app.models.sparks import SparksTransaction

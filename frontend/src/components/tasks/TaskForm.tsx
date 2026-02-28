@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Calendar, Bell, Sparkles, ListPlus, X, Plus } from 'lucide-react';
-import { Button, Input, Textarea, TimePicker, roundToFiveMinutes } from '@/components/ui';
+import { Button, Input, Textarea, TimePicker, roundToFiveMinutes, DatePicker } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n';
 
 interface TaskFormProps {
@@ -105,12 +105,6 @@ export function TaskForm({
 
   const today = formatDateForInput(new Date());
   const tomorrow = formatDateForInput(new Date(Date.now() + 86400000));
-
-  const formatDateDisplay = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    const locale = language === 'ru' ? 'ru-RU' : 'en-US';
-    return date.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -251,23 +245,20 @@ export function TaskForm({
             >
               {t('tomorrow')}
             </button>
-            <label
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
+            <div className={`flex-1 rounded-xl transition-all ${
                 dueDate !== today && dueDate !== tomorrow
-                  ? 'bg-primary-500/20 text-primary-400 ring-2 ring-primary-500'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-primary-500/20 ring-2 ring-primary-500'
+                  : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              <Calendar className="w-4 h-4" />
-              {dueDate !== today && dueDate !== tomorrow ? formatDateDisplay(dueDate) : t('other')}
-              <input
-                type="date"
+              <DatePicker
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="sr-only"
+                onChange={setDueDate}
                 min={today}
+                compact
+                className="w-full flex items-center justify-center py-2 px-3"
               />
-            </label>
+            </div>
           </div>
         )}
       </div>
@@ -298,15 +289,13 @@ export function TaskForm({
               <label className="block text-xs text-gray-500 mb-1">
                 {t('date')}
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={reminderDate}
-                onChange={(e) => {
+                onChange={(v) => {
                   manualReminderDate.current = true;
-                  setReminderDate(e.target.value);
+                  setReminderDate(v);
                 }}
                 min={today}
-                className="w-full px-3 py-2 rounded-xl bg-gray-700 border border-gray-600 text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
             <div>
