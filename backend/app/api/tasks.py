@@ -830,6 +830,7 @@ def update_subtask(subtask_id: int):
 
     data = request.get_json() or {}
     old_status = subtask.status
+    old_task_status = subtask.task.status
 
     if "title" in data:
         title = data["title"].strip()
@@ -874,8 +875,11 @@ def update_subtask(subtask_id: int):
         xp_earned = XPCalculator.subtask_completed()
         task = subtask.task
 
-        # Bonus XP if all subtasks completed (task completed)
-        task_just_completed = task.status == TaskStatus.COMPLETED.value
+        # Bonus XP if all subtasks completed (task completed for the first time)
+        task_just_completed = (
+            task.status == TaskStatus.COMPLETED.value
+            and old_task_status != TaskStatus.COMPLETED.value
+        )
         is_quick_completion = False
         if task_just_completed:
             xp_earned += XPCalculator.task_completed()

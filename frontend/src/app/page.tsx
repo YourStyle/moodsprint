@@ -1048,7 +1048,7 @@ export default function HomePage() {
                                   NEW
                                 </span>
                               )}
-                              {task.status !== 'completed' && task.status !== 'archived' && (() => {
+                              {task.status !== 'completed' && task.status !== 'archived' && !session && (() => {
                                 const dl = getDeadlineInfo(task.due_date, t);
                                 return dl ? (
                                   <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${dl.bg} ${dl.color}`}>

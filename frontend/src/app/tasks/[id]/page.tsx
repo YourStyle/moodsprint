@@ -1111,12 +1111,13 @@ export default function TaskDetailPage() {
               <SubtaskItem
                 key={subtask.id}
                 subtask={subtask}
-                onToggle={() =>
+                onToggle={() => {
+                  if (task.status === 'completed') return;
                   toggleSubtaskMutation.mutate({
                     subtaskId: subtask.id,
                     completed: subtask.status !== 'completed',
-                  })
-                }
+                  });
+                }}
                 onFocus={() => handleStartFocus(subtask.id)}
                 onEdit={() => {
                   setEditingSubtask({
@@ -1126,7 +1127,7 @@ export default function TaskDetailPage() {
                   });
                   setShowEditSubtask(true);
                 }}
-                disabled={toggleSubtaskMutation.isPending}
+                disabled={toggleSubtaskMutation.isPending || task.status === 'completed'}
               />
             ))}
           </div>
